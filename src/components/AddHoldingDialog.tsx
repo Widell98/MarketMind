@@ -43,6 +43,7 @@ interface AddHoldingFormState {
   priceOverridden: boolean;
   currencyOverridden: boolean;
   nameOverridden: boolean;
+  holdingTypeOverridden: boolean;
   lastInitialDataSignature: string | null;
 }
 
@@ -58,6 +59,7 @@ const createDefaultFormState = (): AddHoldingFormState => ({
   priceOverridden: false,
   currencyOverridden: false,
   nameOverridden: false,
+  holdingTypeOverridden: false,
   lastInitialDataSignature: null,
 });
 
@@ -72,7 +74,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     ADD_HOLDING_FORM_STORAGE_KEY,
     createDefaultFormState
   );
-  const { formData, priceOverridden, currencyOverridden, nameOverridden } = dialogState;
+  const { formData, priceOverridden, currencyOverridden, nameOverridden, holdingTypeOverridden } = dialogState;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [symbolError, setSymbolError] = useState<string | null>(null);
   const [showMobileTickerList, setShowMobileTickerList] = useState(false);
@@ -80,6 +82,9 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const [yahooTickers, setYahooTickers] = useState<SheetTicker[]>([]);
   const [yahooLoading, setYahooLoading] = useState(false);
   const [yahooError, setYahooError] = useState<string | null>(null);
+  const [fundTickers, setFundTickers] = useState<SheetTicker[]>([]);
+  const [fundLoading, setFundLoading] = useState(false);
+  const [fundError, setFundError] = useState<string | null>(null);
   const [fetchedPrices, setFetchedPrices] = useState<Record<string, { price: number; currency: string | null }>>({});
   const [priceFetchState, setPriceFetchState] = useState<{ loading: boolean; error: string | null }>({
     loading: false,
@@ -133,6 +138,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
     sheetTickers.forEach(mergeTicker);
     yahooTickers.forEach(mergeTicker);
+    fundTickers.forEach(mergeTicker);
 
     return Array.from(map.values()).map((ticker) => {
       const fetched = fetchedPrices[ticker.symbol.toUpperCase()];
@@ -158,7 +164,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         currency: resolvedCurrency ?? null,
       };
     });
-  }, [sheetTickers, yahooTickers, fetchedPrices]);
+  }, [sheetTickers, yahooTickers, fundTickers, fetchedPrices]);
 
   const tickerLookup = useMemo(() => {
     const map = new Map<string, SheetTicker>();
@@ -177,48 +183,84 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       setYahooTickers([]);
       setYahooError(null);
       setYahooLoading(false);
+      setFundTickers([]);
+      setFundError(null);
+      setFundLoading(false);
       return;
     }
 
     let isActive = true;
     setYahooLoading(true);
     setYahooError(null);
+    setFundLoading(true);
+    setFundError(null);
 
     const handler = setTimeout(() => {
       (async () => {
-        try {
-          const { data, error } = await supabase.functions.invoke('list-sheet-tickers', {
-            body: { query: trimmedSymbol },
-          });
+        const sheetPromise = supabase.functions.invoke('list-sheet-tickers', {
+          body: { query: trimmedSymbol },
+        });
+        const fundsPromise = supabase.functions.invoke('list-funds', {
+          body: { query: trimmedSymbol },
+        });
 
-          if (!isActive) {
-            return;
-          }
+        const [sheetResult, fundsResult] = await Promise.allSettled([sheetPromise, fundsPromise]);
 
+        if (!isActive) {
+          return;
+        }
+
+        if (sheetResult.status === 'fulfilled') {
+          const { data, error } = sheetResult.value;
           if (error) {
-            throw new Error(error.message ?? 'Kunde inte hämta tickers från Yahoo Finance.');
+            const message = error.message ?? 'Kunde inte hämta tickers från Yahoo Finance.';
+            setYahooError(message);
+            setYahooTickers([]);
+          } else if (data?.success === false) {
+            const message = typeof data?.error === 'string' ? data.error : 'Kunde inte hämta tickers från Yahoo Finance.';
+            setYahooError(message);
+            setYahooTickers([]);
+          } else {
+            const list = Array.isArray(data?.tickers)
+              ? (data.tickers as RawSheetTicker[])
+              : [];
+            const source = typeof data?.source === 'string' ? data.source : 'yahoo';
+            setYahooTickers(sanitizeSheetTickerList(list, source));
+            setYahooError(null);
           }
-
-          const list = Array.isArray(data?.tickers)
-            ? (data.tickers as RawSheetTicker[])
-            : [];
-          const source = typeof data?.source === 'string' ? data.source : 'yahoo';
-
-          setYahooTickers(sanitizeSheetTickerList(list, source));
-          setYahooError(null);
-        } catch (err) {
-          if (!isActive) {
-            return;
-          }
-
-          console.error('Failed to fetch Yahoo Finance tickers:', err);
-          const message = err instanceof Error ? err.message : 'Kunde inte hämta tickers från Yahoo Finance.';
-          setYahooError(message);
+        } else {
+          console.error('Failed to fetch Yahoo Finance tickers:', sheetResult.reason);
+          setYahooError('Kunde inte hämta tickers från Yahoo Finance.');
           setYahooTickers([]);
-        } finally {
-          if (isActive) {
-            setYahooLoading(false);
+        }
+
+        if (fundsResult.status === 'fulfilled') {
+          const { data, error } = fundsResult.value;
+          if (error) {
+            const message = error.message ?? 'Kunde inte hämta fonder just nu.';
+            setFundError(message);
+            setFundTickers([]);
+          } else if (data?.success === false) {
+            const message = typeof data?.error === 'string' ? data.error : 'Kunde inte hämta fonder just nu.';
+            setFundError(message);
+            setFundTickers([]);
+          } else {
+            const list = Array.isArray(data?.funds)
+              ? (data.funds as RawSheetTicker[])
+              : [];
+            const source = typeof data?.source === 'string' ? data.source : 'yahoo_funds';
+            setFundTickers(sanitizeSheetTickerList(list, source));
+            setFundError(null);
           }
+        } else {
+          console.error('Failed to fetch fund tickers:', fundsResult.reason);
+          setFundError('Kunde inte hämta fonder just nu.');
+          setFundTickers([]);
+        }
+
+        if (isActive) {
+          setYahooLoading(false);
+          setFundLoading(false);
         }
       })();
     }, 350);
@@ -351,6 +393,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         priceOverridden: Boolean(initialData.purchase_price),
         currencyOverridden: Boolean(initialData.currency),
         nameOverridden: Boolean(initialData.name),
+        holdingTypeOverridden: Boolean(initialData.holding_type && initialData.holding_type !== 'stock'),
         lastInitialDataSignature: signatureParts,
       };
     });
@@ -454,6 +497,34 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       };
     });
   }, [matchedTicker?.currency, currencyOverridden, setDialogState]);
+
+  useEffect(() => {
+    if (holdingTypeOverridden) {
+      return;
+    }
+
+    const resolvedType = matchedTicker?.holdingType
+      ? matchedTicker.holdingType.toLowerCase()
+      : 'stock';
+
+    setDialogState(prev => {
+      if (prev.holdingTypeOverridden) {
+        return prev;
+      }
+
+      if (prev.formData.holding_type === resolvedType) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        formData: {
+          ...prev.formData,
+          holding_type: resolvedType,
+        },
+      };
+    });
+  }, [matchedTicker?.holdingType, holdingTypeOverridden, setDialogState]);
   const priceFormatter = useMemo(
     () => new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     []
@@ -473,12 +544,15 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     const priceLabel = typeof ticker.price === 'number' && Number.isFinite(ticker.price) && ticker.price > 0
       ? ` – ${formatDisplayPrice(ticker.price)}${ticker.currency ? ` ${ticker.currency}` : ''}`.trimEnd()
       : '';
+    const typeSuffix = ticker.holdingType === 'fund'
+      ? ' [Fond]'
+      : '';
 
     return (
       <option
         key={ticker.symbol}
         value={ticker.symbol}
-        label={`${label}${priceLabel}`}
+        label={`${label}${typeSuffix}${priceLabel}`}
       />
     );
   }), [deferredTickers, formatDisplayPrice]);
@@ -534,6 +608,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       let priceOverride = prev.priceOverridden;
       let currencyOverride = prev.currencyOverridden;
       let nameOverride = prev.nameOverridden;
+      let holdingTypeOverride = prev.holdingTypeOverridden;
       let lastSignature = prev.lastInitialDataSignature;
 
       if (field === 'name') {
@@ -544,6 +619,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         priceOverride = false;
         currencyOverride = false;
         nameOverride = false;
+        holdingTypeOverride = false;
         lastSignature = null;
       }
 
@@ -555,6 +631,10 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         currencyOverride = true;
       }
 
+      if (field === 'holding_type') {
+        holdingTypeOverride = true;
+      }
+
       const previousValue = prev.formData[field as keyof AddHoldingFormState['formData']];
 
       if (
@@ -562,6 +642,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         priceOverride === prev.priceOverridden &&
         currencyOverride === prev.currencyOverridden &&
         nameOverride === prev.nameOverridden &&
+        holdingTypeOverride === prev.holdingTypeOverridden &&
         lastSignature === prev.lastInitialDataSignature
       ) {
         return prev;
@@ -573,6 +654,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         priceOverridden: priceOverride,
         currencyOverridden: currencyOverride,
         nameOverridden: nameOverride,
+        holdingTypeOverridden: holdingTypeOverride,
         lastInitialDataSignature: lastSignature,
       };
     });
@@ -649,6 +731,12 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     if (!isSubmitting) {
       resetDialogState();
       setSymbolError(null);
+      setYahooTickers([]);
+      setYahooError(null);
+      setYahooLoading(false);
+      setFundTickers([]);
+      setFundError(null);
+      setFundLoading(false);
       setShowMobileTickerList(false);
       setMobileListManuallyExpanded(false);
       onClose();
@@ -701,7 +789,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
                       setShowMobileTickerList(true);
                     }
                   }}
-                  placeholder={(tickersLoading || yahooLoading) ? 'Hämtar tickers...' : 't.ex. VOLV-B'}
+                  placeholder={(tickersLoading || yahooLoading || fundLoading) ? 'Hämtar tickers...' : 't.ex. VOLV-B'}
                   required
                   className="flex-1"
                 />
@@ -724,6 +812,9 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
               {yahooError && (
                 <p className="text-sm text-muted-foreground">{yahooError}</p>
               )}
+              {fundError && (
+                <p className="text-sm text-muted-foreground">{fundError}</p>
+              )}
             </div>
           </div>
           <datalist id="sheet-tickers">
@@ -735,7 +826,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
                 id="mobile-ticker-suggestions"
                 className="max-h-56 overflow-y-auto rounded-2xl border border-border/60 bg-muted/50 p-1 shadow-sm"
               >
-                {(tickersLoading || yahooLoading) ? (
+                {(tickersLoading || yahooLoading || fundLoading) ? (
                   <p className="px-3 py-2 text-xs text-muted-foreground">Hämtar tickers...</p>
                 ) : mobileTickerSuggestions.length > 0 ? (
                   mobileTickerSuggestions.map((ticker) => {
@@ -751,7 +842,14 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
                         className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       >
                         <div>
-                          <div className="text-sm font-semibold text-foreground">{ticker.symbol}</div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm font-semibold text-foreground">{ticker.symbol}</div>
+                            {ticker.holdingType === 'fund' && (
+                              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                                Fond
+                              </span>
+                            )}
+                          </div>
                           {ticker.name && (
                             <div className="text-xs text-muted-foreground">{ticker.name}</div>
                           )}
@@ -838,7 +936,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
               id="sheet_price"
               value={sheetPriceDisplay}
               readOnly
-              placeholder={(tickersLoading || yahooLoading || isLivePriceLoading) ? 'Hämtar pris...' : 'Välj en ticker för att hämta priset'}
+              placeholder={(tickersLoading || yahooLoading || fundLoading || isLivePriceLoading) ? 'Hämtar pris...' : 'Välj en ticker för att hämta priset'}
             />
             <p className="text-xs text-muted-foreground">
               {sheetPriceDisplay
