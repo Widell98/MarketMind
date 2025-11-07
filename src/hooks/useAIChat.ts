@@ -9,6 +9,15 @@ const DAILY_MESSAGE_CREDITS = 10;
 
 type ProfileUpdates = Record<string, unknown>;
 
+type ProfileUpdateConfidences = Record<string, number>;
+
+type ProfileUpdateDetail = {
+  field: string;
+  value: unknown;
+  confidence: number;
+  evidence?: string;
+};
+
 type DetectedProfileIntent = {
   updates: ProfileUpdates;
   summary: string;
@@ -303,6 +312,10 @@ type MessageContext = {
   confidence?: number;
   isExchangeRequest?: boolean;
   profileUpdates?: ProfileUpdates;
+  profileUpdateConfidences?: ProfileUpdateConfidences | null;
+  profileUpdateDetails?: ProfileUpdateDetail[] | null;
+  profileUpdateDecision?: 'confirmed' | 'declined';
+  profileUpdateDecisionAt?: string;
   requiresConfirmation?: boolean;
   [key: string]: unknown;
 };
@@ -1015,7 +1028,9 @@ export const useAIChat = (portfolioId?: string) => {
       const reader = streamResponse.body?.getReader();
       const decoder = new TextDecoder();
       let accumulatedContent = '';
-      let profileUpdates = null;
+      let profileUpdates: ProfileUpdates | null = null;
+      let profileUpdateConfidences: ProfileUpdateConfidences | null = null;
+      let profileUpdateDetails: ProfileUpdateDetail[] | null = null;
       let requiresConfirmation = false;
       
       if (reader) {
@@ -1053,8 +1068,14 @@ export const useAIChat = (portfolioId?: string) => {
 
                   // Check for profile updates
                   if (parsed.profileUpdates) {
-                    profileUpdates = parsed.profileUpdates;
+                    profileUpdates = parsed.profileUpdates as ProfileUpdates;
                     requiresConfirmation = parsed.requiresConfirmation;
+                    if (parsed.profileUpdateConfidences) {
+                      profileUpdateConfidences = parsed.profileUpdateConfidences as ProfileUpdateConfidences;
+                    }
+                    if (Array.isArray(parsed.profileUpdateDetails)) {
+                      profileUpdateDetails = parsed.profileUpdateDetails as ProfileUpdateDetail[];
+                    }
                   }
                 } catch (e) {
                   // Ignore JSON parse errors
@@ -1072,6 +1093,8 @@ export const useAIChat = (portfolioId?: string) => {
                     context: {
                       ...msg.context,
                       profileUpdates,
+                      profileUpdateConfidences,
+                      profileUpdateDetails,
                       requiresConfirmation: true
                     }
                   }
@@ -1083,6 +1106,8 @@ export const useAIChat = (portfolioId?: string) => {
               context: {
                 ...aiMessage.context,
                 profileUpdates,
+                profileUpdateConfidences,
+                profileUpdateDetails,
                 requiresConfirmation: true,
               },
             };
@@ -1130,7 +1155,7 @@ export const useAIChat = (portfolioId?: string) => {
     }
   }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage, incrementUsage, loadMessages, addOrReplaceEphemeralMessage]);
 
-  const dismissProfileUpdatePrompt = useCallback(async (messageId: string) => {
+  const dismissProfileUpdatePrompt = useCallback(async (messageId: string, decision: 'declined' | 'confirmed' = 'declined') => {
     const targetMessage = messages.find(msg => msg.id === messageId);
 
     if (!targetMessage || !targetMessage.context) {
@@ -1140,6 +1165,8 @@ export const useAIChat = (portfolioId?: string) => {
     const updatedContext = {
       ...targetMessage.context,
       requiresConfirmation: false,
+      profileUpdateDecision: decision,
+      profileUpdateDecisionAt: new Date().toISOString(),
     };
 
     let updatedMessage: Message | undefined;
@@ -1244,7 +1271,7 @@ export const useAIChat = (portfolioId?: string) => {
       if (error) throw error;
 
       if (sourceMessageId) {
-        await dismissProfileUpdatePrompt(sourceMessageId);
+        await dismissProfileUpdatePrompt(sourceMessageId, 'confirmed');
       }
 
       toast({

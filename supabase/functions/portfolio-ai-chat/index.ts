@@ -958,6 +958,13 @@ type StockDetectionPattern = {
   requiresContext?: boolean;
 };
 
+type ProfileUpdateDetail = {
+  field: string;
+  value: unknown;
+  confidence: number;
+  evidence?: string;
+};
+
 const normalizeHostname = (url: string): string | null => {
   try {
     const { hostname } = new URL(url);
@@ -1337,6 +1344,85 @@ serve(async (req) => {
         .maybeSingle()
     ]);
 
+    const FALLBACK_COMPANY_NAMES: string[] = [
+      'Investor',
+      'Volvo',
+      'Ericsson',
+      'Sandvik',
+      'Atlas Copco',
+      'Kinnevik',
+      'Hexagon',
+      'Alfa Laval',
+      'SKF',
+      'Telia',
+      'SEB',
+      'Handelsbanken',
+      'Nordea',
+      'ABB',
+      'Astra Zeneca',
+      'Electrolux',
+      'Husqvarna',
+      'Getinge',
+      'Boliden',
+      'SSAB',
+      'Stora Enso',
+      'Svenska Cellulosa',
+      'Lundin Energy',
+      'Billerud',
+      'Holmen',
+      'Nibe',
+      'Beijer Alma',
+      'Essity',
+      'Kindred',
+      'Evolution Gaming',
+      'Betsson',
+      'Net Entertainment',
+      'Fingerprint',
+      'Sinch',
+      'Tobii',
+      'Xvivo',
+      'Medivir',
+      'Orexo',
+      'Camurus',
+      'Diamyd',
+      'Raysearch',
+      'Elekta',
+      'Sectra',
+      'Bactiguard',
+      'Vitrolife',
+      'Bioinvent',
+      'Immunovia',
+      'Hansa Biopharma',
+      'Cantargia',
+      'Oncopeptides',
+      'Wilson Therapeutics',
+      'Soltech',
+      'Probi',
+      'Biovica',
+      'Addlife',
+      'Duni',
+      'Traction',
+      'Embracer',
+      'Stillfront',
+      'Paradox Interactive',
+      'Starbreeze',
+      'Remedy Entertainment',
+      'Saab',
+      'Hennes & Mauritz',
+      'Assa Abloy',
+      'Epiroc',
+      'Trelleborg',
+      'Lifco',
+      'Indutrade',
+      'Fagerhult',
+      'Munters',
+      'Sweco',
+      'Addtech',
+      'Bufab',
+      'Nolato',
+      'Elanders',
+    ];
+
     let sheetTickerSymbols: string[] = [];
     let sheetTickerNames: string[] = [];
 
@@ -1383,6 +1469,17 @@ serve(async (req) => {
           }
         }
 
+        for (const fallbackName of FALLBACK_COMPANY_NAMES) {
+          const normalized = fallbackName.replace(/\s+/g, ' ').trim();
+          if (normalized.length === 0) continue;
+          nameSet.add(normalized);
+
+          const diacriticsStripped = removeDiacritics(normalized).trim();
+          if (diacriticsStripped.length > 0) {
+            nameSet.add(diacriticsStripped);
+          }
+        }
+
         sheetTickerSymbols = Array.from(symbolSet);
         sheetTickerNames = Array.from(nameSet);
 
@@ -1397,8 +1494,10 @@ serve(async (req) => {
 
     // ENHANCED INTENT DETECTION FOR PROFILE UPDATES
     const detectProfileUpdates = (message: string) => {
-      const updates: any = {};
-      let requiresConfirmation = false;
+      const updates: Record<string, unknown> = {};
+      const updateConfidences: Record<string, number> = {};
+      const updateDetails: ProfileUpdateDetail[] = [];
+      const appliedFields = new Set<string>();
       const lowerMessage = message.toLowerCase();
 
       const parseNumber = (value: string) => {
@@ -1406,15 +1505,107 @@ serve(async (req) => {
         return numeric ? parseInt(numeric, 10) : NaN;
       };
 
+      const getContextWindow = (index: number, length: number, radius = 70) => {
+        const start = Math.max(0, index - radius);
+        const end = Math.min(message.length, index + length + radius);
+        return message.slice(start, end);
+      };
+
+      const SELF_REFERENCE_REGEX = /\b(jag|mig|min|mitt|mina|vi|vår|vårt|våra|min\s+portfölj|min\s+profil|min\s+risk|min\s+inkomst|min\s+sparande|min\s+bostad)\b/i;
+      const THIRD_PARTY_REGEX = /\b(min[ae]?\s+(?:kompis|vän|partner|fru|man|sambo|chef|kollega|dotter|son|barn|mamma|pappa)|hans|hennes|deras)\b/i;
+      const NEGATION_REGEX = /\b(inga?|inget|inte|ej|utan|saknar|aldrig)\b/i;
+      const PAST_TENSE_REGEX = /\b(hade|har\s+haft|tidigare|förut|brukade|var\s+tidigare|hade\s+tidigare)\b/i;
+      const FUTURE_TENSE_REGEX = /\b(planerar|ska|kommer\s+att|tänker|vill\s+börja)\b/i;
+
+      type RegisterOptions = {
+        minimumCueCount?: number;
+        cues?: RegExp[];
+        disallowPatterns?: RegExp[];
+        baseConfidence?: number;
+      };
+
+      const registerUpdate = (
+        field: string,
+        value: unknown,
+        context: string,
+        options: RegisterOptions = {},
+      ) => {
+        if (value === undefined || value === null || appliedFields.has(field)) {
+          return;
+        }
+
+        const normalizedContext = context.toLowerCase();
+
+        if (options.disallowPatterns?.some(pattern => pattern.test(normalizedContext))) {
+          return;
+        }
+
+        const cues = options.cues ?? [];
+        let cueScore = 0;
+
+        if (SELF_REFERENCE_REGEX.test(normalizedContext)) {
+          cueScore += 1;
+        }
+
+        for (const cue of cues) {
+          if (cue.test(normalizedContext)) {
+            cueScore += 1;
+          }
+        }
+
+        if (typeof options.minimumCueCount === 'number' && cueScore < options.minimumCueCount) {
+          return;
+        }
+
+        let confidence = options.baseConfidence ?? 0.55;
+
+        if (cueScore >= 2) {
+          confidence += 0.12;
+        } else if (cueScore === 1) {
+          confidence += 0.06;
+        }
+
+        if (SELF_REFERENCE_REGEX.test(normalizedContext)) {
+          confidence += 0.18;
+        }
+
+        if (NEGATION_REGEX.test(normalizedContext)) {
+          confidence -= 0.45;
+        }
+
+        if (PAST_TENSE_REGEX.test(normalizedContext)) {
+          confidence -= 0.25;
+        }
+
+        if (FUTURE_TENSE_REGEX.test(normalizedContext)) {
+          confidence -= 0.12;
+        }
+
+        if (THIRD_PARTY_REGEX.test(normalizedContext)) {
+          confidence -= 0.18;
+        }
+
+        confidence = Math.min(1, Math.max(0, confidence));
+
+        if (confidence < 0.4) {
+          return;
+        }
+
+        updates[field] = value;
+        updateConfidences[field] = confidence;
+        updateDetails.push({ field, value, confidence, evidence: context.trim() });
+        appliedFields.add(field);
+      };
+
       // Parse monthly savings changes - more comprehensive
       const monthlySavingsPattern = /(öka|höja|minska|sänka|ändra).*(?:månad|månads).*(?:sparande|spara|investera).*?(\d+[\s,]*\d*)\s*(?:kr|sek|kronor)/i;
-      const monthlySavingsMatch = message.match(monthlySavingsPattern);
-      
+      const monthlySavingsMatch = monthlySavingsPattern.exec(message);
+
       if (monthlySavingsMatch) {
         const action = monthlySavingsMatch[1].toLowerCase();
         const amount = parseInt(monthlySavingsMatch[2].replace(/[\s,]/g, ''));
         const currentAmount = riskProfile?.monthly_investment_amount || 0;
-        
+
         let newAmount = amount;
         if (action.includes('öka') || action.includes('höja')) {
           newAmount = currentAmount + amount;
@@ -1423,34 +1614,49 @@ serve(async (req) => {
         }
 
         if (newAmount !== currentAmount) {
-          updates.monthly_investment_amount = newAmount;
-          requiresConfirmation = true;
+          const context = getContextWindow(monthlySavingsMatch.index ?? 0, monthlySavingsMatch[0].length);
+          registerUpdate('monthly_investment_amount', newAmount, context, {
+            baseConfidence: 0.62,
+            cues: [/(månad|månads)/i, /sparande|sparar|investera/i],
+            minimumCueCount: 2,
+          });
         }
       }
 
       // Direct monthly investment amount
-      const directMonthlyMatch = message.match(/(?:spara|investera|satsa|lägga)\s+(\d+(?:\s?\d{3})*)\s*(?:kr|kronor|SEK).*(?:månad|månads)/i);
+      const directMonthlyPattern = /(?:spara|investera|satsa|lägga)\s+(\d+(?:\s?\d{3})*)\s*(?:kr|kronor|sek).*(?:månad|månads)/i;
+      const directMonthlyMatch = directMonthlyPattern.exec(message);
       if (directMonthlyMatch) {
         const amount = parseInt(directMonthlyMatch[1].replace(/\s/g, ''));
         if (amount > 0 && amount !== riskProfile?.monthly_investment_amount) {
-          updates.monthly_investment_amount = amount;
-          requiresConfirmation = true;
+          const context = getContextWindow(directMonthlyMatch.index ?? 0, directMonthlyMatch[0].length);
+          registerUpdate('monthly_investment_amount', amount, context, {
+            baseConfidence: 0.68,
+            cues: [/(månad|månads)/i, /sparande|sparar|investera/i],
+            minimumCueCount: 2,
+          });
         }
       }
 
       // Parse liquid capital / savings on accounts
       const liquidCapitalPatterns = [
-        /(?:likvidt? kapital|tillgängligt kapital|kassa|sparkonto|kontanter|på kontot|i banken).*?(\d[\d\s.,]*)\s*(?:kr|kronor|sek)?/i,
-        /(\d[\d\s.,]*)\s*(?:kr|kronor|sek)?.*?(?:likvidt? kapital|tillgängligt kapital|kassa|sparkonto|kontanter|på kontot|i banken)/i
+        /(?:likvidt?\s+kapital|tillgängligt\s+kapital|kassa|sparkonto|kontanter|på\s+kontot|i\s+banken).*?(\d[\d\s.,]*)\s*(?:kr|kronor|sek)?/i,
+        /(\d[\d\s.,]*)\s*(?:kr|kronor|sek)?.*?(?:likvidt?\s+kapital|tillgängligt\s+kapital|kassa|sparkonto|kontanter|på\s+kontot|i\s+banken)/i,
       ];
 
       for (const pattern of liquidCapitalPatterns) {
-        const match = message.match(pattern);
+        pattern.lastIndex = 0;
+        const match = pattern.exec(message);
         if (match) {
           const amount = parseNumber(match[1]);
           if (!Number.isNaN(amount) && amount > 0 && amount !== riskProfile?.liquid_capital) {
-            updates.liquid_capital = amount;
-            requiresConfirmation = true;
+            const context = getContextWindow(match.index ?? 0, match[0].length);
+            registerUpdate('liquid_capital', amount, context, {
+              baseConfidence: 0.58,
+              cues: [/kapital|kassa|sparkonto|kontanter/i],
+              minimumCueCount: 2,
+              disallowPatterns: [THIRD_PARTY_REGEX],
+            });
           }
           break;
         }
@@ -1459,70 +1665,100 @@ serve(async (req) => {
       // Parse emergency buffer in months
       const emergencyBufferPatterns = [
         /(?:buffert|nödfond|akutfond|trygghetsbuffert).*?(\d+(?:[.,]\d+)?)\s*(?:månader|mån|months?)/i,
-        /(\d+(?:[.,]\d+)?)\s*(?:månader|mån)\s*(?:buffert|nödfond|akutfond)/i
+        /(\d+(?:[.,]\d+)?)\s*(?:månader|mån)\s*(?:buffert|nödfond|akutfond)/i,
       ];
 
       for (const pattern of emergencyBufferPatterns) {
-        const match = message.match(pattern);
+        pattern.lastIndex = 0;
+        const match = pattern.exec(message);
         if (match) {
           const bufferMonths = Math.round(parseFloat(match[1].replace(',', '.')));
           if (!Number.isNaN(bufferMonths) && bufferMonths > 0 && bufferMonths !== riskProfile?.emergency_buffer_months) {
-            updates.emergency_buffer_months = bufferMonths;
-            requiresConfirmation = true;
+            const context = getContextWindow(match.index ?? 0, match[0].length);
+            registerUpdate('emergency_buffer_months', bufferMonths, context, {
+              baseConfidence: 0.6,
+              cues: [/buffert|nödfond|akutfond/i, /månader|mån/i],
+              minimumCueCount: 2,
+              disallowPatterns: [THIRD_PARTY_REGEX],
+            });
           }
           break;
         }
       }
 
       // Parse preferred number of stocks/holdings
-      const preferredStockMatch = message.match(/(?:vill|önskar|föredrar|siktar på|tänker|ska|max|högst|upp till|äga|ha)\s*(?:ha|ägna|äga)?\s*(?:max|högst|upp till)?\s*(\d+(?:[.,]\d+)?)\s*(?:aktier|bolag|innehav)/i);
+      const preferredStockPattern = /(?:vill|önskar|föredrar|siktar\s+på|tänker|ska|max|högst|upp\s+till|äga|ha)\s*(?:ha|ägna|äga)?\s*(?:max|högst|upp\s+till)?\s*(\d+(?:[.,]\d+)?)\s*(?:aktier|bolag|innehav)/i;
+      const preferredStockMatch = preferredStockPattern.exec(message);
       if (preferredStockMatch) {
         const preferredCount = Math.round(parseFloat(preferredStockMatch[1].replace(',', '.')));
         if (!Number.isNaN(preferredCount) && preferredCount > 0 && preferredCount !== riskProfile?.preferred_stock_count) {
-          updates.preferred_stock_count = preferredCount;
-          requiresConfirmation = true;
+          const context = getContextWindow(preferredStockMatch.index ?? 0, preferredStockMatch[0].length);
+          registerUpdate('preferred_stock_count', preferredCount, context, {
+            baseConfidence: 0.55,
+            cues: [/aktier|bolag|innehav/i, /vill|önskar|föredrar|siktar|tänker|ska/i],
+            minimumCueCount: 2,
+            disallowPatterns: [THIRD_PARTY_REGEX],
+          });
         }
       }
 
       // Parse age updates
       const agePattern = /(?:är|age|ålder).*?(\d{2,3})\s*(?:år|years|old)/i;
-      const ageMatch = message.match(agePattern);
+      const ageMatch = agePattern.exec(message);
 
       if (ageMatch) {
         const newAge = parseInt(ageMatch[1]);
         if (newAge >= 18 && newAge <= 100 && newAge !== riskProfile?.age) {
-          updates.age = newAge;
-          requiresConfirmation = true;
+          const context = getContextWindow(ageMatch.index ?? 0, ageMatch[0].length);
+          const normalizedContext = context.toLowerCase();
+          if (!/barn|dotter|son|kund|företag/i.test(normalizedContext)) {
+            registerUpdate('age', newAge, context, {
+              baseConfidence: 0.62,
+              cues: [/ålder|år/i],
+              minimumCueCount: 2,
+              disallowPatterns: [THIRD_PARTY_REGEX],
+            });
+          }
         }
       }
 
       // Parse income updates
-      const incomePattern = /(årsinkomst|lön|income).*?(\d+[\s,]*\d*)\s*(?:kr|sek|kronor)/i;
-      const incomeMatch = message.match(incomePattern);
-      
+      const incomePattern = /(årsinkomst|månadslön|lön|income).*?(\d+[\s,]*\d*)\s*(?:kr|sek|kronor)/i;
+      const incomeMatch = incomePattern.exec(message);
+
       if (incomeMatch) {
         const newIncome = parseInt(incomeMatch[2].replace(/[\s,]/g, ''));
-        if (newIncome !== riskProfile?.annual_income) {
-          updates.annual_income = newIncome;
-          requiresConfirmation = true;
+        if (newIncome >= 50000 && newIncome <= 5000000 && newIncome !== riskProfile?.annual_income) {
+          const context = getContextWindow(incomeMatch.index ?? 0, incomeMatch[0].length);
+          registerUpdate('annual_income', newIncome, context, {
+            baseConfidence: 0.58,
+            cues: [/lön|inkomst|årsinkomst|månadslön/i],
+            minimumCueCount: 2,
+            disallowPatterns: [THIRD_PARTY_REGEX],
+          });
         }
       }
 
       // Risk tolerance updates - enhanced patterns
       const riskPatterns = [
-        { pattern: /(konservativ|låg risk|säker|försiktig)/i, value: 'conservative' },
+        { pattern: /(konservativ|låg\s+risk|säker|försiktig)/i, value: 'conservative' },
         { pattern: /(måttlig|medel|balanserad|moderate)/i, value: 'moderate' },
-        { pattern: /(aggressiv|hög risk|riskabel|risktagande)/i, value: 'aggressive' }
+        { pattern: /(aggressiv|hög\s+risk|riskabel|risktagande)/i, value: 'aggressive' },
       ];
 
       for (const riskPattern of riskPatterns) {
-        if (lowerMessage.match(riskPattern.pattern) &&
-            (lowerMessage.includes('risk') || lowerMessage.includes('inställning') ||
-            lowerMessage.includes('tolerans')) &&
-            riskPattern.value !== riskProfile?.risk_tolerance) {
-          updates.risk_tolerance = riskPattern.value;
-          requiresConfirmation = true;
-          break;
+        riskPattern.pattern.lastIndex = 0;
+        const match = riskPattern.pattern.exec(message);
+        if (match && riskPattern.value !== riskProfile?.risk_tolerance) {
+          const context = getContextWindow(match.index ?? 0, match[0].length);
+          registerUpdate('risk_tolerance', riskPattern.value, context, {
+            baseConfidence: 0.56,
+            cues: [/risk/i, /inställning|tolerans|profil/i],
+            minimumCueCount: 2,
+          });
+          if (updates.risk_tolerance) {
+            break;
+          }
         }
       }
 
@@ -1530,44 +1766,83 @@ serve(async (req) => {
       const horizonPatterns = [
         { pattern: /(kort|1-3|kortsiktig)/i, value: 'short' },
         { pattern: /(medel|3-7|mellanlång)/i, value: 'medium' },
-        { pattern: /(lång|7\+|långsiktig|över 7)/i, value: 'long' }
+        { pattern: /(lång|7\+|långsiktig|över\s+7)/i, value: 'long' },
       ];
 
       for (const horizonPattern of horizonPatterns) {
-        if (lowerMessage.match(horizonPattern.pattern) &&
-            (lowerMessage.includes('horisont') || lowerMessage.includes('sikt') ||
-            lowerMessage.includes('tidshorisont')) &&
-            horizonPattern.value !== riskProfile?.investment_horizon) {
-          updates.investment_horizon = horizonPattern.value;
-          requiresConfirmation = true;
-          break;
+        horizonPattern.pattern.lastIndex = 0;
+        const match = horizonPattern.pattern.exec(message);
+        if (match && horizonPattern.value !== riskProfile?.investment_horizon) {
+          const context = getContextWindow(match.index ?? 0, match[0].length);
+          registerUpdate('investment_horizon', horizonPattern.value, context, {
+            baseConfidence: 0.55,
+            cues: [/horisont|sikt|tidshorisont/i],
+            minimumCueCount: 2,
+          });
+          if (updates.investment_horizon) {
+            break;
+          }
         }
       }
 
       // Housing situation detection with loan status cues
-      let detectedHousing: string | null = null;
-
       const mentionsNoLoan = lowerMessage.includes('utan lån') || lowerMessage.includes('skuldfri') ||
         lowerMessage.includes('utan bolån') || lowerMessage.includes('inget bolån');
 
-      if (/(?:hyr|hyresrätt)/.test(lowerMessage)) {
-        detectedHousing = 'rents';
-      } else if (/bor hos (?:mina?|föräldrar)/.test(lowerMessage)) {
-        detectedHousing = 'lives_with_parents';
-      } else if (/(?:bostadsrätt|äg[er]?\s+(?:en\s+)?lägenhet|äg[er]?\s+(?:ett\s+)?hus|äg[er]?\s+(?:en\s+)?villa|äg[er]?\s+(?:ett\s+)?radhus|villa|radhus|egna hem)/.test(lowerMessage)) {
-        detectedHousing = mentionsNoLoan ? 'owns_no_loan' : 'owns_with_loan';
-      } else if (/bolån/.test(lowerMessage) && /(villa|hus|radhus|bostad|bostadsrätt)/.test(lowerMessage)) {
-        detectedHousing = mentionsNoLoan ? 'owns_no_loan' : 'owns_with_loan';
+      let detectedHousing: string | null = null;
+      let housingIndex = -1;
+      let housingLength = 0;
+
+      const housingPatterns: Array<{ regex: RegExp; evaluator: () => string | null; additionalCheck?: RegExp }> = [
+        { regex: /(?:hyr|hyresrätt)/i, evaluator: () => 'rents' },
+        { regex: /bor hos (?:mina?|föräldrar)/i, evaluator: () => 'lives_with_parents' },
+        {
+          regex: /(?:bostadsrätt|äg[er]?\s+(?:en\s+)?lägenhet|äg[er]?\s+(?:ett\s+)?hus|äg[er]?\s+(?:en\s+)?villa|äg[er]?\s+(?:ett\s+)?radhus|villa|radhus|egna\s+hem)/i,
+          evaluator: () => (mentionsNoLoan ? 'owns_no_loan' : 'owns_with_loan'),
+        },
+        {
+          regex: /bolån/i,
+          evaluator: () => (mentionsNoLoan ? 'owns_no_loan' : 'owns_with_loan'),
+          additionalCheck: /(villa|hus|radhus|bostad|bostadsrätt)/i,
+        },
+      ];
+
+      for (const { regex, evaluator, additionalCheck } of housingPatterns) {
+        regex.lastIndex = 0;
+        const match = regex.exec(message);
+        if (!match) {
+          continue;
+        }
+
+        if (additionalCheck && !additionalCheck.test(lowerMessage)) {
+          continue;
+        }
+
+        const value = evaluator();
+        if (!value) {
+          continue;
+        }
+
+        detectedHousing = value;
+        housingIndex = match.index ?? -1;
+        housingLength = match[0].length;
+        break;
       }
 
       if (detectedHousing && detectedHousing !== riskProfile?.housing_situation) {
-        updates.housing_situation = detectedHousing;
-        requiresConfirmation = true;
+        const context = housingIndex >= 0
+          ? getContextWindow(housingIndex, housingLength || detectedHousing.length)
+          : message;
+        registerUpdate('housing_situation', detectedHousing, context, {
+          baseConfidence: 0.54,
+          cues: [/bor|bostad|hus|lägenhet|villa|radhus|hyresrätt/i],
+          minimumCueCount: 2,
+        });
       }
 
       // Loan detection (true/false)
-      const loanIndicators = [/bolån/, /studielån/, /privatlån/, /billån/, /låneskulder/, /har lån/, /lån på huset/, /lånet/, /lån kvar/];
-      const loanNegativeIndicators = [/utan lån/, /skuldfri/, /inga lån/, /lånefri/, /helt skuldfri/, /utan bolån/, /inget lån/, /inget bolån/];
+      const loanIndicators = [/bolån/i, /studielån/i, /privatlån/i, /billån/i, /låneskulder/i, /har\s+lån/i, /lån på huset/i, /lånet/i, /lån kvar/i];
+      const loanNegativeIndicators = [/utan lån/i, /skuldfri/i, /inga lån/i, /lånefri/i, /helt skuldfri/i, /utan bolån/i, /inget lån/i, /inget bolån/i];
 
       const sanitizedLoanMessage = lowerMessage
         .replace(/utan\s+bolån/g, '')
@@ -1583,20 +1858,60 @@ serve(async (req) => {
 
       if (hasPositiveLoan) {
         if (riskProfile?.has_loans !== true) {
-          updates.has_loans = true;
-          requiresConfirmation = true;
+          const loanIndex = loanIndicators.reduce((idx, pattern) => {
+            if (idx >= 0) return idx;
+            const match = pattern.exec(message);
+            pattern.lastIndex = 0;
+            return match?.index ?? -1;
+          }, -1);
+          const context = loanIndex >= 0 ? getContextWindow(loanIndex, 12) : message;
+          registerUpdate('has_loans', true, context, {
+            baseConfidence: 0.52,
+            cues: [/lån/i],
+            minimumCueCount: 1,
+          });
         }
       } else if (hasNegativeLoan) {
         if (riskProfile?.has_loans !== false) {
-          updates.has_loans = false;
-          requiresConfirmation = true;
+          const loanIndex = loanNegativeIndicators.reduce((idx, pattern) => {
+            if (idx >= 0) return idx;
+            const match = pattern.exec(message);
+            pattern.lastIndex = 0;
+            return match?.index ?? -1;
+          }, -1);
+          const context = loanIndex >= 0 ? getContextWindow(loanIndex, 12) : message;
+          registerUpdate('has_loans', false, context, {
+            baseConfidence: 0.58,
+            cues: [/utan|inga|inget/i, /lån/i],
+            minimumCueCount: 2,
+          });
         }
       }
 
-      return { updates, requiresConfirmation };
+      const requiresConfirmation = Object.keys(updates).length > 0;
+
+      return { updates, requiresConfirmation, updateConfidences, updateDetails };
     };
 
     const profileChangeDetection = detectProfileUpdates(message);
+    const profileUpdateFields = profileChangeDetection.requiresConfirmation
+      ? Object.keys(profileChangeDetection.updates)
+      : [];
+    const profileUpdateAverageConfidence = profileChangeDetection.requiresConfirmation && profileUpdateFields.length > 0
+      ? profileUpdateFields.reduce((sum, field) => {
+          const confidence = profileChangeDetection.updateConfidences?.[field] ?? 0;
+          return sum + confidence;
+        }, 0) / profileUpdateFields.length
+      : null;
+    const serializedProfileUpdates = profileChangeDetection.requiresConfirmation
+      ? profileChangeDetection.updates
+      : null;
+    const serializedProfileUpdateConfidences = profileChangeDetection.requiresConfirmation
+      ? profileChangeDetection.updateConfidences
+      : null;
+    const serializedProfileUpdateDetails = profileChangeDetection.requiresConfirmation
+      ? profileChangeDetection.updateDetails
+      : null;
 
     const isPremium = subscriber?.subscribed || false;
     console.log('User premium status:', isPremium);
@@ -1620,7 +1935,7 @@ serve(async (req) => {
 
     const sheetTickerSymbolPatterns: StockDetectionPattern[] = sheetTickerSymbols.map(symbol =>
       ({
-        regex: new RegExp(createBoundaryPattern(escapeRegExp(symbol)), 'i'),
+        regex: new RegExp(createBoundaryPattern(escapeRegExp(symbol)), 'gi'),
         requiresContext: true,
       })
     );
@@ -1629,31 +1944,22 @@ serve(async (req) => {
       const collapsedName = name.replace(/\s+/g, ' ');
       const escapedName = escapeRegExp(collapsedName).replace(/\s+/g, '\\s+');
       return {
-        regex: new RegExp(createBoundaryPattern(escapedName), 'i'),
+        regex: new RegExp(createBoundaryPattern(escapedName), 'gi'),
         requiresContext: true,
       };
     });
 
-    const staticCompanyPattern: StockDetectionPattern = {
-      regex: new RegExp(
-        createBoundaryPattern('(?:investor|volvo|ericsson|sandvik|atlas|kinnevik|hex|alfa\\s+laval|skf|telia|seb|handelsbanken|nordea|abb|astra|electrolux|husqvarna|getinge|boliden|ssab|stora\\s+enso|svenska\\s+cellulosa|lund|billerud|holmen|nibe|beijer|essity|kindred|evolution|betsson|net\\s+entertainment|fingerprint|sinch|tobii|xvivo|medivir|orexo|camurus|diamyd|raysearch|elekta|sectra|bactiguard|vitrolife|bioinvent|immunovia|hansa|cantargia|oncopeptides|wilson\\s+therapeutics|solberg|probi|biovica|addlife|duni|traction|embracer|stillfront|paradox|starbreeze|remedy|gaming|saab|h&m|hennes|mauritz|assa\\s+abloy|atlas\\s+copco|epiroc|trelleborg|lifco|indutrade|fagerhult|munters|sweco|ramboll|hexagon|addtech|bufab|nolato|elanders)'),
-        'i'
-      ),
-      requiresContext: true,
-    };
-
     const stockMentionPatterns: StockDetectionPattern[] = [
-      staticCompanyPattern,
       {
-        regex: /(?:köpa|sälja|investera|aktier?|bolag|företag)\s+(?:i\s+)?([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,30})/i,
+        regex: /(?:köpa|sälja|investera|aktier?|bolag|företag)\s+(?:i\s+)?([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,30})/gi,
         requiresContext: false,
       },
       {
-        regex: /(?:aktien?|bolaget)\s+([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,30})/i,
+        regex: /(?:aktien?|bolaget)\s+([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,30})/gi,
         requiresContext: false,
       },
       {
-        regex: /(?:vad tycker du om|hur ser du på|bra aktie|dålig aktie|köpvärd|sälj)\s+([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,30})/i,
+        regex: /(?:vad tycker du om|hur ser du på|bra aktie|dålig aktie|köpvärd|sälj)\s+([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,30})/gi,
         requiresContext: false,
       },
       ...sheetTickerSymbolPatterns,
@@ -1671,22 +1977,56 @@ serve(async (req) => {
       const knownTickers = new Set<string>();
       const uppercaseFallback = new Set<string>();
 
+      const hasTickerContext = (index: number, length: number): boolean => {
+        const start = Math.max(0, index - 24);
+        const end = Math.min(input.length, index + length + 24);
+        const context = input.slice(start, end);
+        return /(aktie|aktien|ticker|börs|handla|köp|köpa|sälj|sälja|portfölj|bolag|företag|noterad|listad|stock|share|equity|investera|kurs)/i.test(context);
+      };
+
+      const isWithinUrlOrEmail = (index: number, length: number): boolean => {
+        const start = Math.max(0, index - 6);
+        const prefix = input.slice(start, index);
+        const suffix = input.slice(index + length, Math.min(input.length, index + length + 6));
+        if (/https?:\/\//i.test(prefix) || /www\./i.test(prefix)) {
+          return true;
+        }
+        if (prefix.includes('@')) {
+          return true;
+        }
+        if (/\.[a-z]{2,}$/i.test(suffix)) {
+          return true;
+        }
+        return false;
+      };
+
       for (const match of tickerMatches) {
         const rawToken = match[1];
         if (!rawToken) continue;
 
+        const matchIndex = match.index ?? normalizedInput.indexOf(rawToken);
+        if (matchIndex < 0) {
+          continue;
+        }
+
+        if (isWithinUrlOrEmail(matchIndex, rawToken.length)) {
+          continue;
+        }
+
         const normalizedSymbol = rawToken.toUpperCase();
-        const isUppercaseInMessage = rawToken === rawToken.toUpperCase();
+        const originalToken = input.slice(matchIndex, matchIndex + rawToken.length);
+        const isUppercaseInMessage = originalToken === originalToken.toUpperCase();
+        const contextHasCue = hasTickerContext(matchIndex, rawToken.length);
 
         if (sheetTickerSymbolSet.size > 0) {
-          if (sheetTickerSymbolSet.has(normalizedSymbol)) {
+          if (sheetTickerSymbolSet.has(normalizedSymbol) && (contextHasCue || isUppercaseInMessage)) {
             knownTickers.add(normalizedSymbol);
           }
-        } else if (isUppercaseInMessage) {
+        } else if (isUppercaseInMessage && contextHasCue) {
           knownTickers.add(normalizedSymbol);
         }
 
-        if (isUppercaseInMessage) {
+        if (isUppercaseInMessage && contextHasCue && rawToken.length >= 3) {
           uppercaseFallback.add(normalizedSymbol);
         }
       }
@@ -1889,13 +2229,47 @@ serve(async (req) => {
     })();
 
     // Check for stock mentions in user message
-    const stockMentionsInMessage = stockMentionPatterns.some(({ regex, requiresContext }) => {
-      regex.lastIndex = 0;
-      if (requiresContext && !hasStockContext) {
-        return false;
+    const detectedStockMentions = new Set<string>();
+    const stockMentionsInMessage = (() => {
+      let workingMessage = message;
+
+      for (const { regex, requiresContext } of stockMentionPatterns) {
+        regex.lastIndex = 0;
+
+        if (requiresContext && !hasStockContext) {
+          continue;
+        }
+
+        let match: RegExpExecArray | null;
+        while ((match = regex.exec(workingMessage)) !== null) {
+          const captured = typeof match[1] === 'string' ? match[1] : match[0];
+          const normalizedCaptured = removeDiacritics(captured).toLowerCase().trim();
+
+          if (!normalizedCaptured || detectedStockMentions.has(normalizedCaptured)) {
+            if (!regex.global) {
+              break;
+            }
+            continue;
+          }
+
+          detectedStockMentions.add(normalizedCaptured);
+
+          if (requiresContext) {
+            const start = match.index ?? workingMessage.indexOf(match[0]);
+            if (start >= 0) {
+              const end = start + match[0].length;
+              workingMessage = `${workingMessage.slice(0, start)}${' '.repeat(Math.max(1, end - start))}${workingMessage.slice(end)}`;
+            }
+          }
+
+          if (!regex.global) {
+            break;
+          }
+        }
       }
-      return regex.test(message);
-    }) || hasTickerSymbolMention;
+
+      return detectedStockMentions.size > 0;
+    })() || hasTickerSymbolMention;
 
     const lowerCaseMessage = message.toLowerCase();
     const isFinancialDataRequest = FINANCIAL_DATA_KEYWORDS.some(keyword => lowerCaseMessage.includes(keyword));
@@ -2502,7 +2876,11 @@ VIKTIGT:
       model,
       timestamp: new Date().toISOString(),
       hasMarketData,
-      isPremium
+      isPremium,
+      profileUpdateSuggestedCount: profileUpdateFields.length,
+      profileUpdateFields,
+      profileUpdateAverageConfidence,
+      detectedStockMentions: Array.from(detectedStockMentions),
     };
 
     console.log('TELEMETRY START:', telemetryData);
@@ -2570,7 +2948,9 @@ VIKTIGT:
               model,
               requestId,
               hasMarketData,
-              profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+              profileUpdates: serializedProfileUpdates,
+              profileUpdateConfidences: serializedProfileUpdateConfidences,
+              profileUpdateDetails: serializedProfileUpdateDetails,
               requiresConfirmation: profileChangeDetection.requiresConfirmation,
               confidence: 0.8
             }
@@ -2583,7 +2963,9 @@ VIKTIGT:
         JSON.stringify({
           response: aiMessage,
           requiresConfirmation: profileChangeDetection.requiresConfirmation,
-          profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null
+          profileUpdates: serializedProfileUpdates,
+          profileUpdateConfidences: serializedProfileUpdateConfidences,
+          profileUpdateDetails: serializedProfileUpdateDetails,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -2658,7 +3040,9 @@ VIKTIGT:
                           model,
                           requestId,
                           hasMarketData,
-                          profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+                          profileUpdates: serializedProfileUpdates,
+                          profileUpdateConfidences: serializedProfileUpdateConfidences,
+                          profileUpdateDetails: serializedProfileUpdateDetails,
                           requiresConfirmation: profileChangeDetection.requiresConfirmation,
                           confidence: 0.8
                         }
@@ -2676,9 +3060,11 @@ VIKTIGT:
                     aiMessage += content;
                     
                     // Stream content to client
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                       content,
-                      profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+                      profileUpdates: serializedProfileUpdates,
+                      profileUpdateConfidences: serializedProfileUpdateConfidences,
+                      profileUpdateDetails: serializedProfileUpdateDetails,
                       requiresConfirmation: profileChangeDetection.requiresConfirmation
                     })}\n\n`));
                   }
