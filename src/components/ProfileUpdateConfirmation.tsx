@@ -6,6 +6,7 @@ import { CheckCircle, X, User } from 'lucide-react';
 interface ProfileUpdateConfirmationProps {
   profileUpdates: any;
   summary?: string;
+  confidenceByField?: Record<string, number>;
   onConfirm: () => void | Promise<void>;
   onReject: () => void | Promise<void>;
 }
@@ -13,6 +14,7 @@ interface ProfileUpdateConfirmationProps {
 const ProfileUpdateConfirmation: React.FC<ProfileUpdateConfirmationProps> = ({
   profileUpdates,
   summary,
+  confidenceByField,
   onConfirm,
   onReject
 }) => {
@@ -83,16 +85,29 @@ const ProfileUpdateConfirmation: React.FC<ProfileUpdateConfirmationProps> = ({
       </CardHeader>
       <CardContent className="relative pt-0">
         <div className="space-y-2 rounded-[18px] border border-white/60 bg-white/80 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.05)] backdrop-blur-sm">
-          {Object.entries(profileUpdates).map(([key, value]) => (
-            <div key={key} className="flex items-start justify-between gap-3 text-sm text-[#0F1C2E]">
-              <span className="font-medium text-[#144272]">
-                {keyLabels[key] ?? key}
-              </span>
-              <span className="truncate text-right text-[#1f3c5c]">
-                {formatValue(key, value)}
-              </span>
-            </div>
-          ))}
+          {Object.entries(profileUpdates).map(([key, value]) => {
+            const confidence = typeof confidenceByField?.[key] === 'number'
+              ? Math.round(confidenceByField[key] * 100)
+              : null;
+
+            return (
+              <div key={key} className="flex items-start justify-between gap-3 text-sm text-[#0F1C2E]">
+                <span className="font-medium text-[#144272]">
+                  {keyLabels[key] ?? key}
+                </span>
+                <div className="flex flex-col items-end text-right">
+                  <span className="truncate text-[#1f3c5c]">
+                    {formatValue(key, value)}
+                  </span>
+                  {confidence !== null && (
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-[#205295]/80">
+                      {confidence}% säker
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">

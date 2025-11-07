@@ -374,7 +374,8 @@ const AIChat = ({
                     profileUpdates={profileUpdates}
                     summary={typeof message.context?.detectedSummary === 'string' ? message.context?.detectedSummary : undefined}
                     onConfirm={() => updateUserProfile(profileUpdates, message.id)}
-                    onReject={() => dismissProfileUpdatePrompt(message.id)}
+                    onReject={() => dismissProfileUpdatePrompt(message.id, 'declined')}
+                    confidenceByField={message.context?.profileUpdateConfidences as Record<string, number> | undefined}
                   />
                 );
               })}
