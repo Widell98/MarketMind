@@ -21,22 +21,7 @@ type BasePromptOptions = {
   preferredResponseLength?: 'concise' | 'balanced' | 'detailed' | null;
 };
 
-const BASE_PROMPT = `Du är en licensierad svensk finansiell rådgivare med många års erfarenhet av kapitalförvaltning. Du agerar som en personlig rådgivare som ger professionella investeringsråd utan att genomföra affärer åt kunden.
-
-⚡ SPRÅKREGLER:
-- Om användarens fråga är på svenska → översätt den först till engelska internt innan du resonerar.
-- Gör hela din analys och reasoning på engelska (för att utnyttja din styrka).
-- När du formulerar svaret → översätt tillbaka till naturlig och professionell svenska innan du skickar det till användaren.
-- Systeminstruktioner och stilregler (nedan) ska alltid följas på svenska.
-
-PERSONA & STIL:
-- Professionell men konverserande ton, som en erfaren rådgivare som bjuder in till dialog.
-- Bekräfta kort eventuella profiluppdateringar som användaren delar (t.ex. sparande, risknivå, mål) innan du fortsätter med rådgivningen.
-- Anpassa råden efter användarens profil och portfölj – referera till risknivå, tidshorisont och större innehav när det är relevant.
-- Använd svensk finansterminologi och marknadskontext.
-- När du refererar till extern realtidskontext: väv in källan direkt i texten (t.ex. "Enligt Reuters...").
-- Använd emojis sparsamt som rubrik- eller punktmarkörer (max en per sektion och undvik emojis när du beskriver allvarliga risker eller förluster).
-- Låt disclaimern hanteras av gränssnittet – inkludera ingen egen ansvarsfriskrivning i svaret.`;
+const BASE_PROMPT = `Du är en hjälpsam finansiell assistent. Håll en varm och konverserande ton, svara på svenska när användaren skriver på svenska och annars på samma språk som användaren. Anpassa detaljeringsgraden efter användarens erfarenhet och var tydlig med osäkerheter utan att lägga till onödiga formaliteter.`;
 
 const buildBasePrompt = (options: BasePromptOptions): string => {
   const personalizationLines: string[] = [];
@@ -108,6 +93,20 @@ OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
 - Ge råd i 2–4 meningar när frågan är enkel.
 - Anpassa förslag till användarens riskprofil och intressen.
 - När aktieförslag behövs ska formatet vara **Företagsnamn (TICKER)** - Kort motivering.`
+};
+
+const INTENT_HINTS: Partial<Record<IntentType, string>> = {
+  stock_analysis: 'Beskriv bolagets nuläge, relevanta drivkrafter och hur en investerare kan tänka kring nästa steg.',
+  portfolio_optimization: 'Hjälp användaren att resonera kring balans i portföljen och föreslå förändringar på ett konkret men samtalstonat sätt.',
+  buy_sell_decisions: 'Väg för- och nackdelar med att köpa eller sälja i ett resonemang som hjälper användaren att fatta beslut.',
+  market_analysis: 'Sammanfatta de viktigaste trenderna och vad de betyder för en privat investerare.',
+  general_news: 'Lyft de viktigaste rubrikerna och hur de kan påverka investeringsbeslut.',
+  news_update: 'Sammanfatta färska händelser och varför de är relevanta för användarens portfölj.',
+  general_advice: 'Ge balanserade råd som tar hänsyn till användarens mål och profil.',
+};
+
+const buildIntentHint = (intent: IntentType): string => {
+  return INTENT_HINTS[intent] ?? '';
 };
 
 const buildIntentPrompt = (intent: IntentType): string => {
@@ -1262,7 +1261,12 @@ serve(async (req) => {
     const requestBody = await req.json();
     console.log('Request body received:', JSON.stringify(requestBody, null, 2));
     
-    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData, stream } = requestBody;
+    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData, stream, chatgptMode: rawChatgptMode = false, structuredResponse: rawStructuredResponse } = requestBody;
+
+    const chatgptMode = Boolean(rawChatgptMode);
+    const structuredResponse = typeof rawStructuredResponse === 'boolean'
+      ? rawStructuredResponse
+      : !chatgptMode;
 
     console.log('Portfolio AI Chat function called with:', {
       message: message?.substring(0, 50) + '...',
@@ -1300,99 +1304,118 @@ serve(async (req) => {
 
     console.log('Supabase client initialized');
 
-    // Fetch all user data in parallel for better performance
-    const [
-      { data: aiMemory },
-      { data: riskProfile },
-      { data: portfolio },
-      { data: holdings },
-      { data: subscriber }
-    ] = await Promise.all([
-      supabase
-        .from('user_ai_memory')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle(),
-      supabase
-        .from('user_risk_profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from('user_portfolios')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .maybeSingle(),
-      supabase
-        .from('user_holdings')
-        .select('*')
-        .eq('user_id', userId),
-      supabase
-        .from('subscribers')
-        .select('subscribed')
-        .eq('user_id', userId)
-        .maybeSingle()
-    ]);
+    let aiMemory: any = null;
+    let riskProfile: any = null;
+    let portfolio: any = null;
+    let holdings: any = null;
+    let subscriber: { subscribed?: boolean } | null = null;
+
+    if (!chatgptMode) {
+      const [
+        aiMemoryResult,
+        riskProfileResult,
+        portfolioResult,
+        holdingsResult,
+        subscriberResult
+      ] = await Promise.all([
+        supabase
+          .from('user_ai_memory')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle(),
+        supabase
+          .from('user_risk_profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from('user_portfolios')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('is_active', true)
+          .maybeSingle(),
+        supabase
+          .from('user_holdings')
+          .select('*')
+          .eq('user_id', userId),
+        supabase
+          .from('subscribers')
+          .select('subscribed')
+          .eq('user_id', userId)
+          .maybeSingle()
+      ]);
+
+      aiMemory = aiMemoryResult.data ?? null;
+      riskProfile = riskProfileResult.data ?? null;
+      portfolio = portfolioResult.data ?? null;
+      holdings = holdingsResult.data ?? null;
+      subscriber = subscriberResult.data ?? null;
+    } else {
+      console.log('ChatGPT mode enabled – skipping portfolio and subscription fetch.');
+    }
 
     let sheetTickerSymbols: string[] = [];
     let sheetTickerNames: string[] = [];
 
-    try {
-      const { data: sheetTickerData, error: sheetTickerError } = await supabase.functions.invoke('list-sheet-tickers');
+    if (!chatgptMode) {
+      try {
+        const { data: sheetTickerData, error: sheetTickerError } = await supabase.functions.invoke('list-sheet-tickers');
 
-      if (sheetTickerError) {
-        console.error('Failed to fetch Google Sheets tickers:', sheetTickerError);
-      } else {
-        const typedData = sheetTickerData as SheetTickerEdgeResponse | null;
-        const rawTickers = Array.isArray(typedData?.tickers)
-          ? (typedData?.tickers as SheetTickerEdgeItem[])
-          : [];
+        if (sheetTickerError) {
+          console.error('Failed to fetch Google Sheets tickers:', sheetTickerError);
+        } else {
+          const typedData = sheetTickerData as SheetTickerEdgeResponse | null;
+          const rawTickers = Array.isArray(typedData?.tickers)
+            ? (typedData?.tickers as SheetTickerEdgeItem[])
+            : [];
 
-        const symbolSet = new Set<string>();
-        const nameSet = new Set<string>();
+          const symbolSet = new Set<string>();
+          const nameSet = new Set<string>();
 
-        for (const item of rawTickers) {
-          if (!item || typeof item !== 'object') continue;
+          for (const item of rawTickers) {
+            if (!item || typeof item !== 'object') continue;
 
-          const rawSymbol = typeof item.symbol === 'string' ? item.symbol : null;
-          if (rawSymbol) {
-            const trimmedSymbol = rawSymbol.trim();
-            const withoutPrefix = trimmedSymbol.includes(':')
-              ? trimmedSymbol.split(':').pop() ?? trimmedSymbol
-              : trimmedSymbol;
-            const cleanedSymbol = withoutPrefix.replace(/\s+/g, '').toUpperCase();
-            if (cleanedSymbol.length > 0) {
-              symbolSet.add(cleanedSymbol);
+            const rawSymbol = typeof item.symbol === 'string' ? item.symbol : null;
+            if (rawSymbol) {
+              const trimmedSymbol = rawSymbol.trim();
+              const withoutPrefix = trimmedSymbol.includes(':')
+                ? trimmedSymbol.split(':').pop() ?? trimmedSymbol
+                : trimmedSymbol;
+              const cleanedSymbol = withoutPrefix.replace(/\s+/g, '').toUpperCase();
+              if (cleanedSymbol.length > 0) {
+                symbolSet.add(cleanedSymbol);
+              }
             }
-          }
 
-          const rawName = typeof item.name === 'string' ? item.name : null;
-          if (rawName) {
-            const normalizedWhitespaceName = rawName.replace(/\s+/g, ' ').trim();
-            if (normalizedWhitespaceName.length > 0) {
-              nameSet.add(normalizedWhitespaceName);
+            const rawName = typeof item.name === 'string' ? item.name : null;
+            if (rawName) {
+              const normalizedWhitespaceName = rawName.replace(/\s+/g, ' ').trim();
+              if (normalizedWhitespaceName.length > 0) {
+                nameSet.add(normalizedWhitespaceName);
 
-              const diacriticsStripped = removeDiacritics(normalizedWhitespaceName).trim();
-              if (diacriticsStripped.length > 0 && diacriticsStripped !== normalizedWhitespaceName) {
-                nameSet.add(diacriticsStripped);
+                const diacriticsStripped = removeDiacritics(normalizedWhitespaceName).trim();
+                if (diacriticsStripped.length > 0 && diacriticsStripped !== normalizedWhitespaceName) {
+                  nameSet.add(diacriticsStripped);
+                }
               }
             }
           }
+
+          sheetTickerSymbols = Array.from(symbolSet);
+          sheetTickerNames = Array.from(nameSet);
+
+          console.log('Loaded Google Sheets tickers:', {
+            symbols: sheetTickerSymbols.length,
+            names: sheetTickerNames.length,
+          });
         }
-
-        sheetTickerSymbols = Array.from(symbolSet);
-        sheetTickerNames = Array.from(nameSet);
-
-        console.log('Loaded Google Sheets tickers:', {
-          symbols: sheetTickerSymbols.length,
-          names: sheetTickerNames.length,
-        });
+      } catch (error) {
+        console.error('Unexpected error when loading Google Sheets tickers:', error);
       }
-    } catch (error) {
-      console.error('Unexpected error when loading Google Sheets tickers:', error);
+    } else {
+      console.log('ChatGPT mode enabled – skipping ticker preload.');
     }
 
     // ENHANCED INTENT DETECTION FOR PROFILE UPDATES
@@ -1977,15 +2000,17 @@ serve(async (req) => {
       return 'general_advice';
     };
 
-    const userIntent = await detectIntent(message);
+    const userIntent = chatgptMode ? 'general_advice' : await detectIntent(message);
     console.log('Detected user intent:', userIntent);
 
-    const realTimeAssessment = await determineRealTimeSearchNeed({
-      message,
-      userIntent,
-      recentMessages: recentUserMessages,
-      openAIApiKey,
-    });
+    const realTimeAssessment = chatgptMode
+      ? { needsRealtime: false, signals: [], usedLLM: 'chatgpt_mode' }
+      : await determineRealTimeSearchNeed({
+        message,
+        userIntent,
+        recentMessages: recentUserMessages,
+        openAIApiKey,
+      });
     const hasRealTimeTrigger = realTimeAssessment.needsRealtime;
     if (realTimeAssessment.signals.length > 0) {
       console.log('Real-time assessment signals:', realTimeAssessment.signals.join(', '), 'LLM used:', realTimeAssessment.usedLLM);
@@ -2006,7 +2031,7 @@ serve(async (req) => {
       userIntent,
     });
 
-    const shouldFetchTavily = !isSimplePersonalAdviceRequest && (
+    const shouldFetchTavily = !chatgptMode && !isSimplePersonalAdviceRequest && (
       isStockMentionRequest || hasRealTimeTrigger
     );
     if (shouldFetchTavily) {
@@ -2265,10 +2290,19 @@ serve(async (req) => {
     });
 
     const contextSections = [basePrompt];
-    if (headingDirective) {
-      contextSections.push(headingDirective);
+    if (structuredResponse && !chatgptMode) {
+      if (headingDirective) {
+        contextSections.push(headingDirective);
+      }
+      if (intentPrompt) {
+        contextSections.push(intentPrompt);
+      }
+    } else {
+      const intentHint = buildIntentHint(userIntent);
+      if (intentHint) {
+        contextSections.push(`Fokus:\n${intentHint}`);
+      }
     }
-    contextSections.push(intentPrompt);
     if (personalizationPrompt) {
       contextSections.push(`PERSONLIGA PREFERENSER:\n${personalizationPrompt}`);
     }
@@ -2277,7 +2311,7 @@ serve(async (req) => {
 
 
     // Enhanced user context with current holdings and performance
-    if (riskProfile) {
+    if (!chatgptMode && riskProfile) {
       contextInfo += `\n\nANVÄNDARPROFIL (använd denna info, fråga ALDRIG efter den igen):
 - Ålder: ${riskProfile.age || 'Ej angiven'}
 - Risktolerans: ${riskProfile.risk_tolerance === 'conservative' ? 'Konservativ' : riskProfile.risk_tolerance === 'moderate' ? 'Måttlig' : 'Aggressiv'}
@@ -2302,7 +2336,7 @@ serve(async (req) => {
     }
 
     // Add current portfolio context with latest valuations
-    if (holdings && holdings.length > 0) {
+    if (!chatgptMode && holdings && holdings.length > 0) {
       const actualHoldings: HoldingRecord[] = (holdings as HoldingRecord[]).filter((h) => h.holding_type !== 'recommendation');
       if (actualHoldings.length > 0) {
         const holdingsWithValues = actualHoldings.map((holding) => ({
@@ -2438,8 +2472,9 @@ serve(async (req) => {
       }
     }
 
-    // Add response structure requirements
-    contextInfo += `
+    // Add response structure requirements when explicitly requested
+    if (!chatgptMode && structuredResponse) {
+      contextInfo += `
 SVARSSTRUKTUR (ANPASSNINGSBAR):
 - Anpassa alltid svarens format efter frågans karaktär.
 - Vid enkla frågor: svara kort (2–4 meningar) och avsluta bara med en följdfråga om det känns naturligt.
@@ -2464,6 +2499,7 @@ VIKTIGT:
 - Avsluta endast med en öppen fråga när det känns naturligt och svaret inte redan är komplett.
 - Avsluta svaret med en sektion "Källor:" där varje länk står på en egen rad (om källor finns).
 `;
+    }
 
 
     // Force using gpt-4o to avoid streaming restrictions and reduce cost
@@ -2478,16 +2514,24 @@ VIKTIGT:
 
     const hasMarketData = tavilyContext.formattedContext.length > 0;
     let tavilySourceInstruction = '';
-    if (tavilyContext.sources.length > 0) {
+    if (!chatgptMode && tavilyContext.sources.length > 0) {
       const formattedSourcesList = tavilyContext.sources
         .map((url, index) => `${index + 1}. ${url}`)
         .join('\n');
-      tavilySourceInstruction = `\n\nKÄLLHÄNVISNINGAR FÖR AGENTEN:\n${formattedSourcesList}\n\nINSTRUKTION: Avsluta alltid ditt svar med en sektion "Källor:" som listar dessa länkar i samma ordning och med en länk per rad.`;
+      if (structuredResponse) {
+        tavilySourceInstruction = `\n\nKÄLLHÄNVISNINGAR FÖR AGENTEN:\n${formattedSourcesList}\n\nINSTRUKTION: Avsluta alltid ditt svar med en sektion "Källor:" som listar dessa länkar i samma ordning och med en länk per rad.`;
+      } else {
+        tavilySourceInstruction = `\n\nTILLGÄNGLIGA KÄLLOR:\n${formattedSourcesList}\n\nAnvänd dem som underlag och nämn dem naturligt i texten vid behov.`;
+      }
     }
+
+    const systemContent = chatgptMode
+      ? contextInfo
+      : contextInfo + tavilyContext.formattedContext + tavilySourceInstruction;
 
     // Build messages array with enhanced context
     const messages = [
-      { role: 'system', content: contextInfo + tavilyContext.formattedContext + tavilySourceInstruction },
+      { role: 'system', content: systemContent },
       ...chatHistory,
       { role: 'user', content: message }
     ];

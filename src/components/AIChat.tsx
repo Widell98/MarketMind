@@ -29,17 +29,22 @@ interface AIChatProps {
   initialStock?: string | null;
   initialMessage?: string | null;
   showExamplePrompts?: boolean;
+  chatgptMode?: boolean;
+  structuredResponse?: boolean;
 }
 const AIChat = ({
   portfolioId,
   initialStock,
   initialMessage,
-  showExamplePrompts = true
+  showExamplePrompts = true,
+  chatgptMode = false,
+  structuredResponse,
 }: AIChatProps) => {
   const {
     user
   } = useAuth();
   const isMobile = useIsMobile();
+  const effectiveStructuredResponse = structuredResponse ?? !chatgptMode;
   const {
     messages,
     currentSessionId,
@@ -59,7 +64,10 @@ const AIChat = ({
     subscription,
     remainingCredits,
     totalCredits
-  } = useAIChat(portfolioId);
+  } = useAIChat(portfolioId, {
+    chatgptMode,
+    structuredResponse: effectiveStructuredResponse,
+  });
   const [input, setInput] = useState('');
   const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
