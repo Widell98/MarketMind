@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import AIChat from '@/components/AIChat';
 import AIChatLayout from '@/components/AIChatLayout';
@@ -13,6 +13,7 @@ import { AlertCircle, User } from 'lucide-react';
 const AIChatPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { t } = useLanguage();
   const { riskProfile, loading: riskProfileLoading } = useRiskProfile();
@@ -20,14 +21,20 @@ const AIChatPage = () => {
 
   const stockName = searchParams.get('stock');
   const message = searchParams.get('message');
+  const modeParam = searchParams.get('mode');
+  const structuredParam = searchParams.get('structured');
+  const isChatgptMode = modeParam === 'chatgpt' || location.pathname === '/portfolio-ai-chat';
+  const structuredResponse = structuredParam
+    ? !['false', '0', 'off'].includes(structuredParam.toLowerCase())
+    : !isChatgptMode;
 
   useEffect(() => {
-    if (user && !riskProfileLoading && !riskProfile) {
+    if (user && !riskProfileLoading && !riskProfile && !isChatgptMode) {
       navigate('/portfolio-advisor');
     }
-  }, [user, riskProfile, riskProfileLoading, navigate]);
+  }, [user, riskProfile, riskProfileLoading, navigate, isChatgptMode]);
 
-  if (user && riskProfileLoading) {
+  if (user && riskProfileLoading && !isChatgptMode) {
     return (
       <Layout>
         <AIChatLayout>
@@ -42,7 +49,7 @@ const AIChatPage = () => {
     );
   }
 
-  if (user && !riskProfile) {
+  if (user && !riskProfile && !isChatgptMode) {
     return (
       <Layout>
         <AIChatLayout>
@@ -71,6 +78,8 @@ const AIChatPage = () => {
           portfolioId={activePortfolio?.id}
           initialStock={stockName}
           initialMessage={message}
+          chatgptMode={isChatgptMode}
+          structuredResponse={structuredResponse}
         />
       </AIChatLayout>
     </Layout>

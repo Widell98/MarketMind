@@ -349,7 +349,12 @@ const clearPendingState = (sessionId: string, requestId: string) => {
 
 const getPendingState = (sessionId: string) => pendingSessionStates.get(sessionId);
 
-export const useAIChat = (portfolioId?: string) => {
+type UseAIChatOptions = {
+  chatgptMode?: boolean;
+  structuredResponse?: boolean;
+};
+
+export const useAIChat = (portfolioId?: string, options?: UseAIChatOptions) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { checkUsageLimit, subscription, usage, fetchUsage, incrementUsage } = useSubscription();
@@ -370,6 +375,9 @@ export const useAIChat = (portfolioId?: string) => {
   const [quotaExceeded, setQuotaExceeded] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
   const ephemeralMessagesRef = useRef<Message[]>([]);
+
+  const chatgptMode = options?.chatgptMode ?? false;
+  const structuredResponse = options?.structuredResponse ?? !chatgptMode;
 
   const addOrReplaceEphemeralMessage = useCallback((message: Message) => {
     ephemeralMessagesRef.current = [
@@ -914,7 +922,8 @@ export const useAIChat = (portfolioId?: string) => {
     };
 
     const hasPendingConfirmation = messages.some(msg => msg.context?.requiresConfirmation);
-    const detectedIntent = hasPendingConfirmation ? null : detectProfileUpdateIntent(trimmedContent);
+    const shouldDetectProfileUpdates = !chatgptMode && !hasPendingConfirmation;
+    const detectedIntent = shouldDetectProfileUpdates ? detectProfileUpdateIntent(trimmedContent) : null;
     const detectionTimestamp = Date.now();
     const detectionMessage: Message | null = detectedIntent
       ? {
@@ -972,7 +981,9 @@ export const useAIChat = (portfolioId?: string) => {
           chatHistory: chatHistoryForAPI,
           analysisType: 'general',
           detectedProfileUpdates: detectedIntent?.updates ?? undefined,
-          detectedProfileSummary: detectedIntent?.summary ?? undefined
+          detectedProfileSummary: detectedIntent?.summary ?? undefined,
+          chatgptMode,
+          structuredResponse,
         })
       });
 

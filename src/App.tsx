@@ -60,6 +60,7 @@ function App() {
                     <Route path="/portfolio-advisor" element={<PortfolioAdvisor />} />
                     <Route path="/ai-chat" element={<AIChat />} />
                     <Route path="/ai-chatt" element={<AIChat />} />
+                    <Route path="/portfolio-ai-chat" element={<AIChat />} />
                     <Route path="/learning" element={<Learning />} />
                     <Route path="/social" element={<SocialIndex />} />
                     <Route path="/admin/stock-cases" element={<AdminStockCases />} />
