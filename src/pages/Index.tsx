@@ -266,43 +266,57 @@ const Index = () => {
                 </div>
               </section>
 
-              {/* How it works - Clean Apple style */}
-              <div className="mx-auto mt-16 max-w-5xl sm:mt-20">
-                <div className="text-center">
-                  <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">{t('howItWorks.title')}</h2>
-                  <p className="mt-3 text-base text-muted-foreground sm:text-lg">{t('howItWorks.subtitle')}</p>
-                </div>
-                <div className="mt-10 grid grid-cols-1 gap-6 sm:mt-12 sm:grid-cols-2 lg:grid-cols-3 sm:gap-8 lg:gap-12">
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-                      <MessageSquare className="w-8 h-8 text-primary" />
-                    </div>
-                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step1.title')}</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {t('howItWorks.step1.description')}
+              <div className="mx-auto mt-16 max-w-4xl space-y-10 sm:mt-20 sm:space-y-12">
+                <Card className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm sm:p-8">
+                  <div className="space-y-4">
+                    <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">🟩 Sektion: Så fungerar det</h2>
+                    <p className="text-base text-muted-foreground sm:text-lg">Tre steg till en smartare marknadsöversikt</p>
+                    <ol className="space-y-5 text-left text-muted-foreground">
+                      <li>
+                        <p className="font-semibold text-foreground">1. Vi lär känna dig.</p>
+                        <p>Berätta om dina mål, din erfarenhet och hur du ser på risk – så skapar vi en personlig profil.</p>
+                      </li>
+                      <li>
+                        <p className="font-semibold text-foreground">2. AI:n analyserar både dig och marknaden.</p>
+                        <p>Vår teknik kopplar samman din portfölj med marknadssignaler, sentiment och trender för att identifiera möjligheter.</p>
+                      </li>
+                      <li>
+                        <p className="font-semibold text-foreground">3. Få nya perspektiv med moderna verktyg.</p>
+                        <p>Utforska nästa generation av investeringsverktyg – från algoritmisk analys till marknadsprediktioner – allt designat för att ge dig ett försprång.</p>
+                      </li>
+                    </ol>
+                  </div>
+                </Card>
+
+                <Card className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm sm:p-8">
+                  <div className="space-y-4">
+                    <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">🟩 Sektion: Visionen</h2>
+                    <p className="text-base text-muted-foreground sm:text-lg">
+                      Vi tror inte att framtidens investeringar handlar om fler grafer eller snabbare handel. De handlar om klarhet, förståelse och förtroende.
+                    </p>
+                    <p className="text-muted-foreground">
+                      Market Mind förenar AI, data och mänsklig insikt för att ge dig en tydligare bild av din ekonomi – och av världen omkring den.
                     </p>
                   </div>
-                  
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-                      <Brain className="w-8 h-8 text-primary" />
-                    </div>
-                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step2.title')}</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {t('howItWorks.step2.description')}
+                </Card>
+
+                <Card className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm sm:p-8">
+                  <div className="space-y-4">
+                    <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">🟩 Sektion: Trygghet och integritet</h2>
+                    <p className="text-muted-foreground">
+                      Din data hanteras med samma säkerhet som hos banker. All analys sker konfidentiellt och transparent – för att du ska kunna fokusera på det som verkligen betyder något: dina beslut.
                     </p>
                   </div>
-                  
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-                      <BarChart3 className="w-8 h-8 text-primary" />
-                    </div>
-                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step3.title')}</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {t('howItWorks.step3.description')}
+                </Card>
+
+                <Card className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm sm:p-8">
+                  <div className="space-y-3">
+                    <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">🟩 Sektion: Juridisk ton (diskret och moderniserad)</h2>
+                    <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
+                      Market Mind tillhandahåller AI-baserad marknadsanalys och innovativa verktyg för investerare. Informationen är allmän och inte personlig rådgivning. För specifika investeringsbeslut, kontakta en licensierad rådgivare.
                     </p>
                   </div>
-                </div>
+                </Card>
               </div>
 
             {/* Clean Examples Section */}
