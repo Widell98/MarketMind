@@ -197,20 +197,31 @@ const TRUSTED_TAVILY_DOMAINS = [
   'cnbc.com',
   'wsj.com',
   'marketwatch.com',
+  'finance.yahoo.com',
+  'investing.com',
+  'morningstar.com',
+  'marketscreener.com',
+  'seekingalpha.com',
+  'benzinga.com',
+  'globenewswire.com',
+  'sec.gov',
+  'placera.se',
+  'privataaffarer.se',
+  'svd.se',
+  'dn.se',
+  'news.cision.com',
 ];
 
 const EXTENDED_TAVILY_DOMAINS = [
   ...TRUSTED_TAVILY_DOMAINS,
-  'seekingalpha.com',
-  'finance.yahoo.com',
-  'morningstar.com',
-  'investing.com',
+  'marketbeat.com',
+  'stockanalysis.com',
+  'themotleyfool.com',
   'barrons.com',
   'forbes.com',
   'economist.com',
-  'privataaffarer.se',
-  'svd.se',
-  'dn.se',
+  'nordnetbloggen.se',
+  'breakit.se',
 ];
 
 const DEFAULT_EXCLUDED_TAVILY_DOMAINS = [
@@ -229,6 +240,11 @@ const DEFAULT_EXCLUDED_TAVILY_DOMAINS = [
   'discord.com',
   'pinterest.com',
 ];
+
+const RECENT_NEWS_MAX_DAYS = 3;
+const RECENT_MARKET_NEWS_MAX_DAYS = 7;
+const RECENT_FINANCIAL_DATA_MAX_DAYS = 45;
+const DEFAULT_UNDATED_FINANCIAL_DOMAINS = ['stockanalysis.com'];
 
 const FINANCIAL_RELEVANCE_KEYWORDS = [
   'aktie',
@@ -1171,11 +1187,18 @@ type TavilySearchOptions = {
   maxResults?: number;
   includeRawContent?: boolean;
   timeoutMs?: number;
+  requireRecentDays?: number;
+  allowUndatedFromDomains?: string[];
 };
 
 type StockDetectionPattern = {
   regex: RegExp;
   requiresContext?: boolean;
+};
+
+type TavilyFormattingOptions = {
+  requireRecentDays?: number;
+  allowUndatedFromDomains?: string[];
 };
 
 const normalizeHostname = (url: string): string | null => {
@@ -1225,6 +1248,7 @@ const selectSnippetSource = (result: TavilySearchResult): string => {
 const formatTavilyResults = (
   data: TavilySearchResponse | null,
   allowedDomains: string[],
+  options: TavilyFormattingOptions = {},
 ): TavilyContextPayload => {
   if (!data) {
     return { formattedContext: '', sources: [] };
@@ -1232,6 +1256,64 @@ const formatTavilyResults = (
 
   const sections: string[] = [];
   const sourceSet = new Set<string>();
+  const { requireRecentDays, allowUndatedFromDomains } = options;
+  const requireFreshness = typeof requireRecentDays === 'number'
+    && Number.isFinite(requireRecentDays)
+    && requireRecentDays > 0;
+
+  const normalizedUndatedDomains = Array.isArray(allowUndatedFromDomains)
+    ? allowUndatedFromDomains
+      .map(domain => domain.replace(/^www\./, '').toLowerCase())
+      .filter(Boolean)
+    : [];
+
+  const recencyThresholdMs = requireFreshness
+    ? requireRecentDays * 24 * 60 * 60 * 1000
+    : 0;
+  const nowMs = Date.now();
+
+  const isUndatedAllowed = (url: string): boolean => {
+    if (!requireFreshness) return true;
+    const hostname = normalizeHostname(url);
+    if (!hostname) {
+      return false;
+    }
+
+    return normalizedUndatedDomains.some(domain => hostname === domain || hostname.endsWith(`.${domain}`));
+  };
+
+  const isRecentEnough = (url: string, publishedDate?: string): boolean => {
+    if (!requireFreshness) {
+      return true;
+    }
+
+    if (typeof publishedDate === 'string' && publishedDate.trim().length > 0) {
+      const parsed = Date.parse(publishedDate);
+      if (!Number.isNaN(parsed)) {
+        const ageMs = nowMs - parsed;
+        if (ageMs < 0) {
+          return true;
+        }
+
+        if (ageMs <= recencyThresholdMs) {
+          return true;
+        }
+
+        console.log('Filtrerar bort Tavily-resultat som är äldre än tillåten gräns:', url, 'datum:', publishedDate);
+        return false;
+      }
+
+      console.log('Kunde inte tolka publiceringsdatum för Tavily-resultat:', url, 'datum:', publishedDate);
+      return isUndatedAllowed(url);
+    }
+
+    if (!isUndatedAllowed(url)) {
+      console.log('Filtrerar bort Tavily-resultat utan publiceringsdatum när färska källor krävs:', url);
+      return false;
+    }
+
+    return true;
+  };
 
   if (typeof data.answer === 'string' && data.answer.trim().length > 0) {
     sections.push(`Sammanfattning från realtidssökning: ${data.answer.trim()}`);
@@ -1258,6 +1340,10 @@ const formatTavilyResults = (
         const hasRelevance = hasFinancialRelevance(combinedText);
         if (!hasRelevance && combinedText.length < 60) {
           console.log('Filtrerar bort Tavily-resultat med låg finansiell relevans:', url);
+          return false;
+        }
+
+        if (!isRecentEnough(url, result.published_date)) {
           return false;
         }
 
@@ -1313,24 +1399,30 @@ const fetchTavilyContext = async (
   }
 
   try {
-    const effectiveIncludeDomains = Array.isArray(options.includeDomains) && options.includeDomains.length > 0
-      ? options.includeDomains
+    const {
+      requireRecentDays,
+      allowUndatedFromDomains,
+      ...searchOptions
+    } = options ?? {};
+
+    const effectiveIncludeDomains = Array.isArray(searchOptions.includeDomains) && searchOptions.includeDomains.length > 0
+      ? searchOptions.includeDomains
       : TRUSTED_TAVILY_DOMAINS;
 
-    const allowDomainFallback = (!Array.isArray(options.includeDomains) || options.includeDomains.length === 0)
+    const allowDomainFallback = (!Array.isArray(searchOptions.includeDomains) || searchOptions.includeDomains.length === 0)
       && EXTENDED_TAVILY_DOMAINS.length > 0;
 
     const effectiveExcludeDomains = Array.from(new Set([
       ...DEFAULT_EXCLUDED_TAVILY_DOMAINS,
-      ...(Array.isArray(options.excludeDomains) ? options.excludeDomains : []),
+      ...(Array.isArray(searchOptions.excludeDomains) ? searchOptions.excludeDomains : []),
     ]));
 
-    const effectiveTopic: TavilyTopic = options.topic ?? 'finance';
-    const shouldRequestRawContent = (options.includeRawContent ?? false)
-      && (options.searchDepth ?? 'basic') === 'advanced';
+    const effectiveTopic: TavilyTopic = searchOptions.topic ?? 'finance';
+    const shouldRequestRawContent = (searchOptions.includeRawContent ?? false)
+      && (searchOptions.searchDepth ?? 'basic') === 'advanced';
 
-    const timeout = typeof options.timeoutMs === 'number' && options.timeoutMs > 0
-      ? options.timeoutMs
+    const timeout = typeof searchOptions.timeoutMs === 'number' && searchOptions.timeoutMs > 0
+      ? searchOptions.timeoutMs
       : 6000;
 
     const domainAttempts: string[][] = [];
@@ -1355,10 +1447,10 @@ const fetchTavilyContext = async (
     }> => {
       const payload: Record<string, unknown> = {
         api_key: tavilyApiKey,
-        query: options.query ?? message,
-        search_depth: options.searchDepth ?? 'basic',
+        query: searchOptions.query ?? message,
+        search_depth: searchOptions.searchDepth ?? 'basic',
         include_answer: true,
-        max_results: options.maxResults ?? 5,
+        max_results: searchOptions.maxResults ?? 5,
       };
 
       if (shouldRequestRawContent) {
@@ -1377,12 +1469,12 @@ const fetchTavilyContext = async (
         payload.topic = effectiveTopic;
       }
 
-      if (typeof options.timeRange === 'string' && options.timeRange.trim().length > 0) {
-        payload.time_range = options.timeRange.trim();
+      if (typeof searchOptions.timeRange === 'string' && searchOptions.timeRange.trim().length > 0) {
+        payload.time_range = searchOptions.timeRange.trim();
       }
 
-      if (typeof options.days === 'number' && Number.isFinite(options.days)) {
-        payload.days = options.days;
+      if (typeof searchOptions.days === 'number' && Number.isFinite(searchOptions.days)) {
+        payload.days = searchOptions.days;
       }
 
       const controller = new AbortController();
@@ -1405,7 +1497,10 @@ const fetchTavilyContext = async (
         }
 
         const tavilyData = await response.json() as TavilySearchResponse;
-        const context = formatTavilyResults(tavilyData, includeDomains);
+        const context = formatTavilyResults(tavilyData, includeDomains, {
+          requireRecentDays,
+          allowUndatedFromDomains,
+        });
         const rawResultCount = Array.isArray(tavilyData.results) ? tavilyData.results.length : 0;
 
         return { context, rawResultCount };
@@ -2091,6 +2186,8 @@ serve(async (req) => {
         maxResults: 5,
         includeRawContent: true,
         timeoutMs: 7000,
+        requireRecentDays: RECENT_FINANCIAL_DATA_MAX_DAYS,
+        allowUndatedFromDomains: DEFAULT_UNDATED_FINANCIAL_DOMAINS,
       });
 
       return targetedContext;
@@ -2311,11 +2408,21 @@ serve(async (req) => {
           if (options.topic === 'news' && options.days === undefined) {
             options.days = 3;
           }
+          options.requireRecentDays = RECENT_NEWS_MAX_DAYS;
         } else if (userIntent === 'general_news' || userIntent === 'market_analysis') {
           options.timeRange = 'week';
           if (options.topic === 'news' && options.days === undefined) {
             options.days = 7;
           }
+          options.requireRecentDays = RECENT_MARKET_NEWS_MAX_DAYS;
+        }
+
+        if (isFinancialDataRequest) {
+          const candidateDays = RECENT_FINANCIAL_DATA_MAX_DAYS;
+          options.requireRecentDays = options.requireRecentDays !== undefined
+            ? Math.min(options.requireRecentDays, candidateDays)
+            : candidateDays;
+          options.allowUndatedFromDomains = DEFAULT_UNDATED_FINANCIAL_DOMAINS;
         }
 
         return options;
