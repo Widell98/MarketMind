@@ -1153,6 +1153,40 @@ const determineRealTimeSearchNeed = async ({
   openAIApiKey,
 }: RealTimeDecisionInput): Promise<RealTimeAssessment> => {
   const signals: string[] = [];
+  const normalizedMessage = message.toLowerCase();
+
+  const heuristics: string[] = [];
+
+  if (/(kolla|checka|visa|ge|få|sammanfatta|berätta|uppdatera|hämta).{0,40}(nyheterna|senaste\s+nytt)/i.test(normalizedMessage)) {
+    heuristics.push('heuristic:direct_news_request');
+  }
+
+  const hasNewsKeyword = /(nyhet|pressmeddelande|pressrelease|rapport)/i.test(normalizedMessage);
+  const hasRecencyCue = /(senaste|just nu|nuvarande|idag|i dag|igår|i går|nyss|nyligen|precis|färska|aktuella|sista\s+dygnet|24\s+timmar)/i
+    .test(normalizedMessage);
+  if (hasNewsKeyword && hasRecencyCue) {
+    heuristics.push('heuristic:news_with_recency');
+  }
+
+  if (/(rapport(?:en)?\s+(?:igår|i går|idag|i dag|nyligen|nyss|just)|släppte\s+(?:en\s+)?rapport)/i.test(normalizedMessage)) {
+    heuristics.push('heuristic:recent_report');
+  }
+
+  const hasCompanyContext = /(aktie|bolag|företag|ticker|börs|portfölj|stock|share|equity)/i.test(normalizedMessage);
+  const newsIntents = new Set<IntentType>(['news_update', 'general_news', 'stock_analysis', 'market_analysis']);
+  const shouldForceRealtime = heuristics.length > 0 && (newsIntents.has(userIntent) || hasCompanyContext);
+
+  if (heuristics.length > 0) {
+    signals.push(...heuristics);
+  }
+
+  if (shouldForceRealtime) {
+    return {
+      needsRealtime: true,
+      signals,
+      usedLLM: false,
+    };
+  }
 
   const { decision, rationale, usedModel } = await askLLMIfRealtimeNeeded({
     message,
@@ -2018,6 +2052,10 @@ serve(async (req) => {
       },
       {
         regex: /(?:vad tycker du om|hur ser du på|bra aktie|dålig aktie|köpvärd|sälj)\s+([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,30})/i,
+        requiresContext: false,
+      },
+      {
+        regex: /(?:nyhet(?:erna)?|senaste\s+nytt)\s+(?:om|kring|för|hos|i|på)\s+([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,30})/i,
         requiresContext: false,
       },
       ...sheetTickerSymbolPatterns,
