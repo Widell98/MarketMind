@@ -1,12 +1,10 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
 import { IntentType } from './intent-types.ts';
 import { detectUserIntentWithOpenAI } from './intent-detector.ts';
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { createCorsContext } from '../_shared/cors.ts';
+import { enforceRateLimit } from '../_shared/rate-limit.ts';
 
 type BasePromptOptions = {
   shouldOfferFollowUp: boolean;
@@ -1644,10 +1642,72 @@ const FINANCIAL_DATA_KEYWORDS = [
 ];
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  const cors = createCorsContext(req, { allowedMethods: ['POST', 'OPTIONS'] });
+
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return cors.toOptionsResponse();
   }
+
+  if (!cors.isAllowed) {
+    console.warn('Blocked portfolio-ai-chat request due to origin', {
+      origin: cors.origin,
+    });
+    return cors.toForbiddenResponse();
+  }
+
+  const jsonResponse = cors.json;
+  const unauthorizedResponse = (message: string) => jsonResponse({ success: false, error: 'unauthorized', message }, 401);
+  const ipAddress = req.headers.get('x-real-ip')
+    ?? req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? null;
+  let rateLimitResult: { remaining: number; resetAt: string } | null = null;
+  const withRateLimitHeaders = (response: Response): Response => {
+    if (rateLimitResult) {
+      response.headers.set('X-RateLimit-Remaining', Math.max(rateLimitResult.remaining, 0).toString());
+      response.headers.set('X-RateLimit-Reset', rateLimitResult.resetAt);
+    }
+
+    if (ipAddress) {
+      response.headers.set('X-Client-IP', ipAddress);
+    }
+
+    return response;
+  };
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('Missing Supabase credentials');
+    return withRateLimitHeaders(jsonResponse({
+      success: false,
+      error: 'server_error',
+      message: 'Server configuration error',
+    }, 500));
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: { persistSession: false },
+  });
+
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const tokenMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+
+  if (!tokenMatch) {
+    console.warn('Missing or invalid authorization header');
+    return withRateLimitHeaders(unauthorizedResponse('Missing or invalid authorization header'));
+  }
+
+  const accessToken = tokenMatch[1].trim();
+  const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
+
+  if (authError || !authData?.user) {
+    console.error('JWT verification failed', authError);
+    return withRateLimitHeaders(unauthorizedResponse('Invalid or expired token'));
+  }
+
+  const user = authData.user;
+  const userId = user.id;
 
   console.log('=== PORTFOLIO AI CHAT FUNCTION STARTED ===');
   console.log('Request method:', req.method);
@@ -1656,8 +1716,46 @@ serve(async (req) => {
   try {
     const requestBody = await req.json();
     console.log('Request body received:', JSON.stringify(requestBody, null, 2));
-    
-    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData, stream } = requestBody;
+
+    const { message, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData, stream, userId: bodyUserId } = requestBody;
+
+    if (bodyUserId && bodyUserId !== userId) {
+      console.warn('User ID mismatch between token and request body', {
+        tokenUserId: userId,
+        bodyUserId,
+      });
+      return withRateLimitHeaders(unauthorizedResponse('User ID mismatch'));
+    }
+
+    rateLimitResult = await enforceRateLimit({
+      supabase,
+      functionName: 'portfolio-ai-chat',
+      identifier: `user:${userId}`,
+    });
+
+    if (!rateLimitResult.allowed) {
+      console.warn('Rate limit exceeded for portfolio-ai-chat', {
+        userId,
+        origin: cors.origin,
+        ipAddress,
+        resetAt: rateLimitResult.resetAt,
+      });
+
+      const retryAfterSeconds = Math.max(
+        Math.ceil((new Date(rateLimitResult.resetAt).getTime() - Date.now()) / 1000),
+        0,
+      );
+
+      const rateLimited = jsonResponse({
+        success: false,
+        error: 'rate_limit_exceeded',
+        message: 'Du har nått den tillåtna anropsgränsen. Försök igen senare.',
+        resetAt: rateLimitResult.resetAt,
+      }, 429);
+
+      rateLimited.headers.set('Retry-After', retryAfterSeconds.toString());
+      return withRateLimitHeaders(rateLimited);
+    }
 
     console.log('Portfolio AI Chat function called with:', {
       message: message?.substring(0, 50) + '...',
@@ -1674,9 +1772,9 @@ serve(async (req) => {
         .slice(-3)
       : [];
 
-    if (!message || !userId) {
-      console.error('Missing required fields:', { message: !!message, userId: !!userId });
-      throw new Error('Message and userId are required');
+    if (!message) {
+      console.error('Missing required fields:', { message: !!message });
+      throw new Error('Message is required');
     }
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -1686,12 +1784,6 @@ serve(async (req) => {
     }
 
     console.log('OpenAI API key found, length:', openAIApiKey.length);
-
-    // Initialize Supabase client
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
 
     console.log('Supabase client initialized');
 
@@ -3219,14 +3311,19 @@ ${importantLines.join('\n')}
 
       console.log('TELEMETRY COMPLETE:', { ...telemetryData, responseLength: aiMessage.length, completed: true });
 
-      return new Response(
+      const headers = new Headers(cors.headers);
+      headers.set('Content-Type', 'application/json');
+
+      const nonStreamResponse = new Response(
         JSON.stringify({
           response: aiMessage,
           requiresConfirmation: profileChangeDetection.requiresConfirmation,
           profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers }
       );
+
+      return withRateLimitHeaders(nonStreamResponse);
     }
 
     // Default: streaming SSE response
@@ -3336,26 +3433,31 @@ ${importantLines.join('\n')}
       }
     });
 
-    return new Response(streamResp, {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
-    });
+    const streamHeaders = new Headers(cors.headers);
+    streamHeaders.set('Content-Type', 'text/event-stream');
+    streamHeaders.set('Cache-Control', 'no-cache');
+    streamHeaders.set('Connection', 'keep-alive');
+
+    return withRateLimitHeaders(new Response(streamResp, {
+      headers: streamHeaders,
+    }));
 
   } catch (error) {
     console.error('Error in portfolio-ai-chat function:', error);
-    return new Response(
-      JSON.stringify({ 
+    const errorHeaders = new Headers(cors.headers);
+    errorHeaders.set('Content-Type', 'application/json');
+
+    const errorResponse = new Response(
+      JSON.stringify({
         error: error.message || 'Internal server error',
-        success: false 
+        success: false
       }),
-      { 
+      {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: errorHeaders,
       }
     );
+
+    return withRateLimitHeaders(errorResponse);
   }
 });

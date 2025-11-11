@@ -2,40 +2,139 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { createCorsContext } from '../_shared/cors.ts';
+import { enforceRateLimit } from '../_shared/rate-limit.ts';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const alphaVantageKey = Deno.env.get('ALPHA_VANTAGE_API_KEY');
 
 serve(async (req) => {
+  const cors = createCorsContext(req, { allowedMethods: ['POST', 'OPTIONS'] });
+
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return cors.toOptionsResponse();
   }
+
+  if (!cors.isAllowed) {
+    console.warn('Blocked generate-quiz-questions request due to origin', {
+      origin: cors.origin,
+    });
+    return cors.toForbiddenResponse();
+  }
+
+  const jsonResponse = cors.json;
+  const unauthorizedResponse = (message: string) => jsonResponse({ success: false, error: 'unauthorized', message }, 401);
+  const ipAddress = req.headers.get('x-real-ip')
+    ?? req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? null;
+  let rateLimitResult: { remaining: number; resetAt: string } | null = null;
+  const withRateLimitHeaders = (response: Response): Response => {
+    if (rateLimitResult) {
+      response.headers.set('X-RateLimit-Remaining', Math.max(rateLimitResult.remaining, 0).toString());
+      response.headers.set('X-RateLimit-Reset', rateLimitResult.resetAt);
+    }
+
+    if (ipAddress) {
+      response.headers.set('X-Client-IP', ipAddress);
+    }
+
+    return response;
+  };
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('Missing Supabase credentials');
+    return withRateLimitHeaders(jsonResponse({
+      success: false,
+      error: 'server_error',
+      message: 'Server configuration error',
+    }, 500));
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: { persistSession: false },
+  });
+
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const tokenMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+
+  if (!tokenMatch) {
+    console.warn('Missing or invalid authorization header');
+    return withRateLimitHeaders(unauthorizedResponse('Missing or invalid authorization header'));
+  }
+
+  const accessToken = tokenMatch[1].trim();
+  const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
+
+  if (authError || !authData?.user) {
+    console.error('JWT verification failed', authError);
+    return withRateLimitHeaders(unauthorizedResponse('Invalid or expired token'));
+  }
+
+  const userId = authData.user.id;
 
   try {
     const { userLevel, userProgress, requestedCategory } = await req.json();
-    
-    console.log('Generating questions for user level:', userLevel);
-    
+
+    console.log('Generating questions for user level:', userLevel, 'userId:', authData.user.id);
+
+    rateLimitResult = await enforceRateLimit({
+      supabase,
+      functionName: 'generate-quiz-questions',
+      identifier: `user:${userId}`,
+    });
+
+    if (!rateLimitResult.allowed) {
+      console.warn('Rate limit exceeded for generate-quiz-questions', {
+        userId,
+        origin: cors.origin,
+        ipAddress,
+        resetAt: rateLimitResult.resetAt,
+      });
+
+      const retryAfterSeconds = Math.max(
+        Math.ceil((new Date(rateLimitResult.resetAt).getTime() - Date.now()) / 1000),
+        0,
+      );
+
+      const rateLimited = jsonResponse({
+        success: false,
+        error: 'rate_limit_exceeded',
+        message: 'Du har nått den tillåtna anropsgränsen. Försök igen senare.',
+        resetAt: rateLimitResult.resetAt,
+      }, 429);
+
+      rateLimited.headers.set('Retry-After', retryAfterSeconds.toString());
+      return withRateLimitHeaders(rateLimited);
+    }
+
     // Fetch current market data from Alpha Vantage
     const marketData = await fetchMarketData();
-    
+
     // Generate personalized questions using OpenAI
     const questions = await generateQuestionsWithAI(userLevel, userProgress, marketData, requestedCategory);
     
-    return new Response(JSON.stringify({ questions }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    const headers = new Headers(cors.headers);
+    headers.set('Content-Type', 'application/json');
+
+    const response = new Response(JSON.stringify({ questions }), {
+      headers,
     });
+
+    return withRateLimitHeaders(response);
   } catch (error) {
     console.error('Error generating quiz questions:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    const headers = new Headers(cors.headers);
+    headers.set('Content-Type', 'application/json');
+
+    const response = new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers,
     });
+
+    return withRateLimitHeaders(response);
   }
 });
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { requireAccessToken } from '@/utils/supabaseAuth';
 
 export interface ConversationData {
   isBeginnerInvestor?: boolean;
@@ -73,7 +74,7 @@ export interface ConversationData {
 
 export const useConversationalPortfolio = () => {
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { toast } = useToast();
 
   // Enhanced stock recommendation extraction - completely dynamic
@@ -1507,10 +1508,14 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       // Generate AI response with enhanced risk profile using proper endpoint.
       // The backend now owns the full system directive for OpenAI, so we only pass
       // through structured conversation data here to avoid conflicting prompts.
+      const accessToken = await requireAccessToken(session?.access_token);
+
       const { data: aiResponse, error: aiError } = await supabase.functions.invoke('generate-portfolio', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        },
         body: {
           riskProfileId: riskProfile.id,
-          userId: user.id,
           conversationData: mergedConversationData,
           conversationPrompt: enhancedPrompt
         }
