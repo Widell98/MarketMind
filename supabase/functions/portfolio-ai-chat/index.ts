@@ -86,7 +86,7 @@ OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
 - Erbjud uppföljande steg om användaren vill agera.`,
   market_analysis: `MARKNADSANALYSUPPGIFT:
 - Analysera övergripande trender koncist.
-- Beskriv effekten på användarens portfölj eller mål.
+- Beskriv effekten på användarens portfölj eller mål när användaren uttryckligen ber om det.
 - Föreslå 1–2 potentiella justeringar eller bevakningspunkter.`,
   general_news: `NYHETSBREV:
 - Ge en kort marknadssammanfattning uppdelad i sektioner (t.ex. globala marknader, sektorer, bolag).
@@ -2219,6 +2219,9 @@ serve(async (req) => {
     }) || hasTickerSymbolMention;
 
     const lowerCaseMessage = message.toLowerCase();
+    const mentionsPersonalPortfolio = /(?:min|mitt|mina|vår|vårt|våra)\s+(?:portfölj(?:en)?|innehav|investeringar|aktier)/i.test(message);
+    const asksAboutPortfolioImpact = /påverkar.*(?:min|mitt|mina|vår|vårt|våra).*(?:portfölj|portföljen|innehav|investeringar|aktier|sparande)/i.test(lowerCaseMessage);
+    const referencesPersonalInvestments = mentionsPersonalPortfolio || asksAboutPortfolioImpact;
     const isFinancialDataRequest = FINANCIAL_DATA_KEYWORDS.some(keyword => lowerCaseMessage.includes(keyword));
 
     let isStockMentionRequest = stockMentionsInMessage || isStockAnalysisRequest || (isFinancialDataRequest && detectedTickers.length > 0);
@@ -2333,6 +2336,18 @@ serve(async (req) => {
     };
 
     const { primaryIntent: userIntent, intents: detectedIntents, entities: interpretedEntities, language: interpretedLanguage, source: intentSource } = await detectIntent(message);
+    const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_sell_decisions', 'news_update', 'stock_analysis']);
+    let shouldIncludePersonalContext = personalIntentTypes.has(userIntent)
+      || isPersonalAdviceRequest
+      || isPortfolioOptimizationRequest
+      || referencesPersonalInvestments;
+
+    if ((userIntent === 'market_analysis' || userIntent === 'general_news')
+      && !referencesPersonalInvestments
+      && !isPersonalAdviceRequest) {
+      shouldIncludePersonalContext = false;
+    }
+
     console.log('Detected user intent:', userIntent, 'source:', intentSource, 'all intents:', detectedIntents.join(', '));
     if (interpretedEntities.length > 0) {
       console.log('Interpreter entities:', interpretedEntities.join(', '));
@@ -2649,7 +2664,7 @@ serve(async (req) => {
 
 
     // Enhanced user context with current holdings and performance
-    if (riskProfile) {
+    if (shouldIncludePersonalContext && riskProfile) {
       contextInfo += `\n\nANVÄNDARPROFIL (använd denna info, fråga ALDRIG efter den igen):
 - Ålder: ${riskProfile.age || 'Ej angiven'}
 - Risktolerans: ${riskProfile.risk_tolerance === 'conservative' ? 'Konservativ' : riskProfile.risk_tolerance === 'moderate' ? 'Måttlig' : 'Aggressiv'}
@@ -2674,7 +2689,7 @@ serve(async (req) => {
     }
 
     // Add current portfolio context with latest valuations
-    if (holdings && holdings.length > 0) {
+    if (shouldIncludePersonalContext && holdings && holdings.length > 0) {
       const actualHoldings: HoldingRecord[] = (holdings as HoldingRecord[]).filter((h) => h.holding_type !== 'recommendation');
       if (actualHoldings.length > 0) {
         const holdingsWithValues = actualHoldings.map((holding) => ({
