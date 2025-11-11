@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useId, useCallback } from 'react';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,7 @@ import {
   Trash2,
   Check,
   Upload,
+  Clipboard,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationalPortfolio, type ConversationData } from '@/hooks/useConversationalPortfolio';
@@ -51,6 +53,13 @@ interface Question {
   multiSelect?: boolean;
 }
 
+type MessageStatusVariant = 'default' | 'info' | 'success';
+
+interface MessageStatus {
+  label: string;
+  variant?: MessageStatusVariant;
+}
+
 interface Message {
   id: string;
   type: 'bot' | 'user';
@@ -61,7 +70,14 @@ interface Message {
   hasHoldingsInput?: boolean;
   questionId?: string;
   multiSelect?: boolean;
+  status?: MessageStatus;
 }
+
+const STATUS_BADGE_TONE: Record<MessageStatusVariant, string> = {
+  default: 'bg-muted/70 text-muted-foreground border-border/60',
+  info: 'bg-sky-100 text-sky-900 border-sky-200',
+  success: 'bg-emerald-100 text-emerald-900 border-emerald-200'
+};
 
 interface Holding {
   id: string;
@@ -491,6 +507,118 @@ const ChatPortfolioAdvisor = () => {
     }
   }, [portfolioResult?.plan, portfolioResult?.aiResponse]);
 
+  const renderBotMessageContent = useCallback((content: string) => {
+    const elements: React.ReactNode[] = [];
+    let listItems: string[] = [];
+    let currentListType: 'ul' | 'ol' | null = null;
+    let elementKey = 0;
+
+    const flushList = () => {
+      if (!currentListType || listItems.length === 0) {
+        return;
+      }
+
+      const listKey = elementKey++;
+      const ListTag: 'ul' | 'ol' = currentListType === 'ul' ? 'ul' : 'ol';
+      const listClassName = cn(
+        currentListType === 'ul' ? 'list-disc' : 'list-decimal',
+        'space-y-1 pl-5 text-sm sm:text-base text-foreground'
+      );
+
+      const listChildren = listItems.map((item, index) => (
+        <li key={`list-${listKey}-item-${index}`} className="text-sm leading-snug text-foreground">
+          {item}
+        </li>
+      ));
+
+      elements.push(
+        React.createElement(ListTag, { key: `list-${listKey}`, className: listClassName }, listChildren)
+      );
+
+      listItems = [];
+      currentListType = null;
+    };
+
+    const lines = content.split(/\r?\n/);
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+
+      if (!trimmed) {
+        flushList();
+        continue;
+      }
+
+      const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+      if (headingMatch) {
+        flushList();
+        const headingLevel = Math.min(headingMatch[1].length, 3);
+        const text = headingMatch[2].trim();
+        const HeadingTag: 'h3' | 'h4' | 'h5' = headingLevel === 1 ? 'h3' : headingLevel === 2 ? 'h4' : 'h5';
+        const headingClasses = cn(
+          'font-semibold text-foreground tracking-tight',
+          headingLevel === 1 ? 'text-base sm:text-lg' : 'text-sm sm:text-base'
+        );
+
+        elements.push(
+          React.createElement(HeadingTag, { key: `heading-${elementKey++}`, className: headingClasses }, text)
+        );
+        continue;
+      }
+
+      if (/^[-*]\s+/.test(trimmed)) {
+        if (currentListType !== 'ul') {
+          flushList();
+          currentListType = 'ul';
+        }
+        listItems.push(trimmed.replace(/^[-*]\s+/, '').trim());
+        continue;
+      }
+
+      if (/^\d+\.\s+/.test(trimmed)) {
+        if (currentListType !== 'ol') {
+          flushList();
+          currentListType = 'ol';
+        }
+        listItems.push(trimmed.replace(/^\d+\.\s+/, '').trim());
+        continue;
+      }
+
+      flushList();
+      elements.push(
+        <p key={`paragraph-${elementKey++}`} className="text-sm sm:text-base leading-snug text-foreground">
+          {trimmed}
+        </p>
+      );
+    }
+
+    flushList();
+
+    if (elements.length === 0) {
+      return [
+        <p key="paragraph-0" className="text-sm sm:text-base leading-snug text-foreground">
+          {content}
+        </p>
+      ];
+    }
+
+    return elements;
+  }, []);
+
+  const hasPlanContent = useMemo(() => {
+    if (structuredResponse) {
+      return (
+        Boolean(structuredResponse.actionSummary) ||
+        Boolean(structuredResponse.riskAlignment) ||
+        structuredResponse.nextSteps.length > 0 ||
+        structuredResponse.assets.length > 0 ||
+        Boolean(structuredResponse.disclaimer)
+      );
+    }
+
+    return typeof portfolioResult?.aiResponse === 'string' && portfolioResult.aiResponse.trim().length > 0;
+  }, [structuredResponse, portfolioResult?.aiResponse]);
+
   const questions: Question[] = [
     {
       id: 'experienceLevel',
@@ -817,7 +945,8 @@ const ChatPortfolioAdvisor = () => {
     options?: QuestionOption[],
     hasHoldingsInput: boolean = false,
     questionId?: string,
-    multiSelect?: boolean
+    multiSelect?: boolean,
+    status?: MessageStatus
   ) => {
     const message: Message = {
       id: `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Unique ID
@@ -828,7 +957,8 @@ const ChatPortfolioAdvisor = () => {
       options,
       hasHoldingsInput,
       questionId,
-      multiSelect
+      multiSelect,
+      status
     };
     setMessages(prev => [...prev, message]);
   };
@@ -2044,7 +2174,15 @@ const ChatPortfolioAdvisor = () => {
 
   const completeConversation = async () => {
     setIsGenerating(true);
-    addBotMessage('Tack för alla svar! Jag skapar nu din personliga portföljstrategi...');
+    addBotMessage(
+      'Tack för alla svar! Jag skapar nu din personliga portföljstrategi...',
+      false,
+      undefined,
+      false,
+      undefined,
+      undefined,
+      { label: 'Analyserar svar', variant: 'info' }
+    );
     
     // Save user holdings to database if they exist
     if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
@@ -2070,7 +2208,15 @@ const ChatPortfolioAdvisor = () => {
       await refetch();
       
       setTimeout(() => {
-        addBotMessage('🎉 Din personliga portföljstrategi är klar! Här är mina rekommendationer:');
+        addBotMessage(
+          '🎉 Din personliga portföljstrategi är klar! Här är mina rekommendationer:',
+          false,
+          undefined,
+          false,
+          undefined,
+          undefined,
+          { label: 'Strategi klar', variant: 'success' }
+        );
       }, 1000);
     }
     setIsGenerating(false);
@@ -2122,6 +2268,74 @@ const ChatPortfolioAdvisor = () => {
     }
   };
 
+  const handleCopyPlan = useCallback(async () => {
+    let textToCopy = '';
+
+    if (structuredResponse) {
+      const lines: string[] = [];
+      if (structuredResponse.actionSummary) {
+        lines.push(`Sammanfattning: ${structuredResponse.actionSummary}`);
+      }
+      if (structuredResponse.riskAlignment) {
+        lines.push(`Riskjustering: ${structuredResponse.riskAlignment}`);
+      }
+      if (structuredResponse.nextSteps.length > 0) {
+        lines.push('Nästa steg:');
+        structuredResponse.nextSteps.forEach((step, index) => {
+          lines.push(`${index + 1}. ${step}`);
+        });
+      }
+      if (structuredResponse.assets.length > 0) {
+        lines.push('Rekommenderade innehav:');
+        structuredResponse.assets.forEach(asset => {
+          const tickerPart = asset.ticker ? ` (${asset.ticker})` : '';
+          const rationalePart = asset.rationale ? ` – ${asset.rationale}` : '';
+          lines.push(`- ${asset.name}${tickerPart}: ${asset.allocationPercent}%${rationalePart}`);
+        });
+      }
+      if (structuredResponse.disclaimer) {
+        lines.push(`Disclaimer: ${structuredResponse.disclaimer}`);
+      }
+
+      textToCopy = lines.join('\n');
+    } else if (typeof portfolioResult?.aiResponse === 'string') {
+      textToCopy = portfolioResult.aiResponse;
+    }
+
+    if (!textToCopy.trim()) {
+      toast({
+        title: 'Ingen strategi att kopiera',
+        description: 'Skapa en strategi innan du kopierar.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (typeof navigator === 'undefined' || !navigator.clipboard) {
+      toast({
+        title: 'Kopiering stöds inte',
+        description: 'Din webbläsare saknar stöd för att kopiera automatiskt.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      toast({
+        title: 'Strategi kopierad',
+        description: 'Planen har kopierats till urklipp.'
+      });
+    } catch (error) {
+      console.error('Kunde inte kopiera planen:', error);
+      toast({
+        title: 'Kunde inte kopiera',
+        description: 'Prova igen eller kopiera manuellt.',
+        variant: 'destructive'
+      });
+    }
+  }, [structuredResponse, portfolioResult?.aiResponse, toast]);
+
   const renderAdvisorResponse = () => {
     const aiContent = portfolioResult?.aiResponse;
     if (!aiContent || typeof aiContent !== 'string') {
@@ -2132,35 +2346,63 @@ const ChatPortfolioAdvisor = () => {
 
     if (!plan) {
       return (
-        <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-          {aiContent
-            .split(/\n{2,}/)
-            .map(paragraph => paragraph.trim())
-            .filter(Boolean)
-            .map((paragraph, index) => (
-              <p key={`fallback-${index}`}>{paragraph}</p>
-            ))}
+        <div className="flex flex-col gap-2 text-sm sm:text-base leading-snug text-foreground">
+          {renderBotMessageContent(aiContent)}
         </div>
       );
     }
 
-    return (
-      <div className="space-y-5 text-sm leading-relaxed text-foreground">
-        {plan.actionSummary && (
-          <p className="text-base font-medium text-foreground">{plan.actionSummary}</p>
-        )}
+    const showOverviewCard = Boolean(plan.actionSummary || plan.riskAlignment);
 
-        {plan.riskAlignment && (
-          <p className="text-muted-foreground">{plan.riskAlignment}</p>
+    return (
+      <div className="space-y-6">
+        {showOverviewCard && (
+          <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/10 via-transparent to-transparent p-4 sm:p-5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-wide text-primary/80">Strategisk överblick</p>
+                {plan.actionSummary && (
+                  <p className="text-base sm:text-lg font-semibold leading-snug text-foreground">
+                    {plan.actionSummary}
+                  </p>
+                )}
+              </div>
+              <Badge
+                variant="outline"
+                className="rounded-full border-primary/30 bg-primary/10 text-primary text-[10px] sm:text-xs uppercase tracking-wide"
+              >
+                Strategirekommendation
+              </Badge>
+            </div>
+            {plan.riskAlignment && (
+              <p className="mt-3 text-sm leading-snug text-muted-foreground">{plan.riskAlignment}</p>
+            )}
+          </div>
         )}
 
         {plan.nextSteps.length > 0 && (
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Så går du vidare</h4>
-            <ol className="mt-2 space-y-1 list-decimal list-inside">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="secondary"
+                className="rounded-full border-transparent bg-amber-100 text-amber-900 text-[10px] sm:text-xs uppercase tracking-wide"
+              >
+                Nästa steg
+              </Badge>
+              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                Prioriterad handlingsplan
+              </span>
+            </div>
+            <ol className="space-y-3 list-none">
               {plan.nextSteps.map((step, index) => (
-                <li key={`step-${index}`} className="text-foreground">
-                  {step}
+                <li
+                  key={`step-${index}`}
+                  className="flex items-start gap-3 rounded-xl border border-border/60 bg-background/90 p-3"
+                >
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                    {index + 1}
+                  </span>
+                  <div className="flex-1 text-sm leading-snug text-foreground">{step}</div>
                 </li>
               ))}
             </ol>
@@ -2168,32 +2410,41 @@ const ChatPortfolioAdvisor = () => {
         )}
 
         {plan.assets.length > 0 && (
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Köpplan & allokering</h4>
-            <div className="mt-2 space-y-2">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className="rounded-full border-emerald-200 bg-emerald-50 text-emerald-700 text-[10px] sm:text-xs uppercase tracking-wide"
+              >
+                Föreslagen allokering
+              </Badge>
+              <span className="text-xs uppercase tracking-wide text-muted-foreground">Rekommenderade innehav</span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
               {plan.assets.map((asset, index) => (
                 <div
                   key={`${asset.name}-${asset.ticker ?? index}`}
-                  className="rounded-lg border border-border/60 bg-background/70 p-3"
+                  className="flex flex-col gap-2 rounded-xl border border-border/70 bg-background/90 p-4 shadow-sm"
                 >
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <div>
-                      <span className="font-semibold text-foreground">{asset.name}</span>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold leading-snug text-foreground">{asset.name}</p>
                       {asset.ticker && (
-                        <span className="ml-2 text-xs uppercase tracking-wide text-muted-foreground">
-                          {asset.ticker}
-                        </span>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">{asset.ticker}</p>
                       )}
                     </div>
                     <span className="text-sm font-semibold text-primary">{asset.allocationPercent}%</span>
                   </div>
                   {asset.rationale && (
-                    <p className="mt-2 text-sm text-muted-foreground">{asset.rationale}</p>
+                    <p className="text-sm leading-snug text-muted-foreground">{asset.rationale}</p>
                   )}
                   {asset.riskRole && (
-                    <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
-                      Roll i portföljen: {asset.riskRole}
-                    </p>
+                    <Badge
+                      variant="outline"
+                      className="self-start rounded-full border-primary/30 bg-primary/5 text-primary text-[10px] uppercase tracking-wide"
+                    >
+                      {asset.riskRole}
+                    </Badge>
                   )}
                 </div>
               ))}
@@ -2202,7 +2453,7 @@ const ChatPortfolioAdvisor = () => {
         )}
 
         {plan.disclaimer && (
-          <p className="text-xs text-muted-foreground italic border-t border-border/60 pt-3">
+          <p className="text-xs leading-snug text-muted-foreground/80 border-t border-border/60 pt-3">
             {plan.disclaimer}
           </p>
         )}
@@ -2232,7 +2483,7 @@ const ChatPortfolioAdvisor = () => {
 
       {/* Messages Container - matching AIChat style */}
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto">
-        <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+        <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
           {messages.map((message) => (
             <div key={message.id} className="space-y-2">
               {message.type === 'bot' ? (
@@ -2241,11 +2492,23 @@ const ChatPortfolioAdvisor = () => {
                     <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="bg-muted/50 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border shadow-sm">
-                      <div className="prose prose-sm max-w-none text-foreground">
-                        <p className="text-sm sm:text-base leading-relaxed mb-0">{message.content}</p>
+                    <div className="bg-muted/40 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border shadow-sm space-y-2">
+                      {message.status && (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'self-start uppercase tracking-wide text-[10px] sm:text-xs font-medium',
+                            STATUS_BADGE_TONE[message.status.variant ?? 'default']
+                          )}
+                        >
+                          {message.status.label}
+                        </Badge>
+                      )}
+
+                      <div className="flex flex-col gap-2 text-sm sm:text-base leading-snug text-foreground">
+                        {renderBotMessageContent(message.content)}
                       </div>
-                      
+
                       {/* Show predefined options if available */}
                       {message.hasOptions && message.options && waitingForAnswer && !showHoldingsInput && message.questionId === activeQuestion?.id && (
                         <div className="mt-3 sm:mt-4 space-y-3">
@@ -2493,7 +2756,7 @@ const ChatPortfolioAdvisor = () => {
               ) : (
                 <div className="flex gap-2 sm:gap-3 items-start justify-end">
                   <div className="bg-primary/10 backdrop-blur-sm rounded-2xl rounded-tr-lg p-2.5 sm:p-3 border border-primary/20 shadow-sm max-w-[80%] sm:max-w-md">
-                    <p className="text-sm sm:text-base text-foreground">{message.content}</p>
+                    <p className="text-sm sm:text-base leading-snug text-foreground">{message.content}</p>
                   </div>
                   <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
                     <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
@@ -2510,20 +2773,48 @@ const ChatPortfolioAdvisor = () => {
                 <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="bg-primary/10 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border border-primary/20 shadow-sm">
-                  <div className="prose prose-sm max-w-none text-foreground">
-                    {renderAdvisorResponse()}
-                  </div>
-                  
-                  <div className="mt-4 pt-4 border-t border-primary/20">
-                    <Button 
-                      onClick={handleImplementStrategy}
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-                      disabled={loading}
+                <div className="bg-primary/5 backdrop-blur-sm rounded-2xl rounded-tl-lg p-4 sm:p-5 border border-primary/20 shadow-sm space-y-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-xs uppercase tracking-wide text-primary/80">Din strategi</p>
+                      <h4 className="text-base sm:text-lg font-semibold leading-snug text-foreground">
+                        Din personliga portföljstrategi är klar
+                      </h4>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className="rounded-full border-primary/30 bg-primary/10 text-primary text-[10px] sm:text-xs uppercase tracking-wide"
                     >
-                      <TrendingUp className="w-4 h-4 mr-2" />
-                      {loading ? "Implementerar..." : "Implementera Strategin"}
-                    </Button>
+                      Strategi klar
+                    </Badge>
+                  </div>
+
+                  {renderAdvisorResponse()}
+
+                  <div className="flex flex-col gap-3 border-t border-primary/20 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs sm:text-sm text-muted-foreground leading-snug">
+                      Välj hur du vill gå vidare med rekommendationerna.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="border-primary/30 text-primary hover:bg-primary/10"
+                        onClick={handleCopyPlan}
+                        disabled={!hasPlanContent}
+                      >
+                        <Clipboard className="w-4 h-4 mr-2" />
+                        Kopiera sammanfattning
+                      </Button>
+                      <Button
+                        onClick={handleImplementStrategy}
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                        disabled={loading}
+                      >
+                        <TrendingUp className="w-4 h-4 mr-2" />
+                        {loading ? "Implementerar..." : "Implementera Strategin"}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
