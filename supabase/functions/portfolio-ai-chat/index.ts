@@ -209,6 +209,7 @@ const TRUSTED_TAVILY_DOMAINS = [
   'privataaffarer.se',
   'svd.se',
   'dn.se',
+  'efn.se',
   'news.cision.com',
 ];
 
@@ -220,8 +221,11 @@ const EXTENDED_TAVILY_DOMAINS = [
   'barrons.com',
   'forbes.com',
   'economist.com',
-  'nordnetbloggen.se',
   'breakit.se',
+  'dn.se',
+  'svd.se',
+  'privataaffarer.se',
+  'efn.se',
 ];
 
 const DEFAULT_EXCLUDED_TAVILY_DOMAINS = [
