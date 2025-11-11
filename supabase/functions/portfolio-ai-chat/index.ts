@@ -188,9 +188,22 @@ const buildPersonalizationPrompt = ({
   return sections.length > 0 ? sections.join('\n') : '';
 };
 
-const TRUSTED_TAVILY_DOMAINS = [
+const SWEDISH_TAVILY_DOMAINS = [
   'di.se',
   'affarsvarlden.se',
+  'placera.se',
+  'www.placera.se',
+  'www.placera.se/skribenter/199',
+  'placera.se/skribenter/199',
+  'privataaffarer.se',
+  'svd.se',
+  'dn.se',
+  'efn.se',
+  'breakit.se',
+  'news.cision.com',
+];
+
+const INTERNATIONAL_TAVILY_DOMAINS = [
   'reuters.com',
   'bloomberg.com',
   'ft.com',
@@ -205,15 +218,24 @@ const TRUSTED_TAVILY_DOMAINS = [
   'benzinga.com',
   'globenewswire.com',
   'sec.gov',
-  'placera.se',
-  'privataaffarer.se',
-  'svd.se',
-  'dn.se',
-  'efn.se',
-  'news.cision.com',
 ];
 
-const EXTENDED_TAVILY_DOMAINS = [
+const TRUSTED_TAVILY_DOMAINS = Array.from(new Set([
+  ...SWEDISH_TAVILY_DOMAINS,
+  ...INTERNATIONAL_TAVILY_DOMAINS,
+]));
+
+const SWEDISH_PRIORITY_TAVILY_DOMAINS = Array.from(new Set([
+  ...SWEDISH_TAVILY_DOMAINS,
+  ...INTERNATIONAL_TAVILY_DOMAINS,
+]));
+
+const INTERNATIONAL_PRIORITY_TAVILY_DOMAINS = Array.from(new Set([
+  ...INTERNATIONAL_TAVILY_DOMAINS,
+  ...SWEDISH_TAVILY_DOMAINS,
+]));
+
+const EXTENDED_TAVILY_DOMAINS = Array.from(new Set([
   ...TRUSTED_TAVILY_DOMAINS,
   'marketbeat.com',
   'stockanalysis.com',
@@ -221,12 +243,7 @@ const EXTENDED_TAVILY_DOMAINS = [
   'barrons.com',
   'forbes.com',
   'economist.com',
-  'breakit.se',
-  'dn.se',
-  'svd.se',
-  'privataaffarer.se',
-  'efn.se',
-];
+]));
 
 const DEFAULT_EXCLUDED_TAVILY_DOMAINS = [
   'reddit.com',
@@ -817,6 +834,8 @@ const formatAllocationLabel = (label: string): string => {
 type RealTimeAssessment = {
   needsRealtime: boolean;
   signals: string[];
+  questionType?: string;
+  recommendationPreference?: RecommendationPreference;
   usedLLM: boolean;
 };
 
@@ -1041,9 +1060,13 @@ type RealTimeDecisionInput = {
   openAIApiKey: string;
 };
 
+type RecommendationPreference = 'yes' | 'no';
+
 type RealTimeDecision = {
   decision: boolean;
   rationale?: string;
+  questionType?: string;
+  recommendationPreference?: RecommendationPreference;
   usedModel: boolean;
 };
 
@@ -1068,12 +1091,21 @@ const askLLMIfRealtimeNeeded = async ({
     }
 
     const userPromptSections = [
-      'Bedöm om den nuvarande frågan kräver realtidsdata (t.ex. intradagspriser, färska nyheter, pressreleaser).',
-      'Realtidsdata behövs när användaren ber om utveckling "just nu", "idag" eller efterfrågar omedelbara marknadshändelser.',
-      'Om frågan handlar om historik, utbildning eller långsiktiga strategier behövs ingen realtidssökning.',
+      'Du analyserar vilken typ av fråga en användare ställer i en finansiell chatt.',
+      '1. Klassificera frågan i en av följande kategorier:',
+      '   - latest_news (ber om senaste nyheter, uppdateringar eller rubriker).',
+      '   - recent_report (hänvisar till färska rapporter, kvartalsrapporter eller earnings calls).',
+      '   - intraday_price (vill veta aktuell kurs, intradagsrörelser eller "hur går den nu").',
+      '   - macro_event (handlar om dagsaktuella marknadshändelser, centralbanker eller makronyheter).',
+      '   - portfolio_update (ber om dagsfärsk status för sin portfölj eller innehav).',
+      '   - strategy_or_education (förklaringar, historik, långsiktiga strategier).',
+      '   - other (allt annat).',
+      '2. Avgör om realtidsdata krävs för att besvara frågan pålitligt. Realtidsdata behövs främst för kategorierna latest_news, recent_report, intraday_price, macro_event och portfolio_update.',
+      '3. Motivera kort på svenska varför realtidsdata behövs eller inte.',
+      '4. Avgör om användaren uttryckligen ber om investeringsrekommendationer, konkreta portföljåtgärder eller köp/sälj-råd.',
       contextLines.join('\n\n'),
       `Nuvarande användarmeddelande:\n"""${message}"""`,
-      'Svara strikt med JSON-format: {"realtime": "yes" eller "no", "reason": "kort motivering på svenska"}.',
+      'Returnera JSON i formatet {"realtime": "yes" eller "no", "reason": "...", "question_type": "...", "recommendations": "yes" eller "no"}.',
     ].filter(Boolean);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -1116,16 +1148,32 @@ const askLLMIfRealtimeNeeded = async ({
       const decisionText = String(parsed?.realtime ?? '').toLowerCase();
       const decision = decisionText === 'yes' || decisionText === 'ja';
       const rationale = typeof parsed?.reason === 'string' ? parsed.reason.trim() : undefined;
-      return { decision, rationale, usedModel: true };
+      const questionType = typeof parsed?.question_type === 'string'
+        ? parsed.question_type.trim().toLowerCase()
+        : undefined;
+      const recommendationPreferenceRaw = typeof parsed?.recommendations === 'string'
+        ? parsed.recommendations.trim().toLowerCase()
+        : undefined;
+      const recommendationPreference: RecommendationPreference | undefined =
+        recommendationPreferenceRaw === 'yes' || recommendationPreferenceRaw === 'no'
+          ? recommendationPreferenceRaw
+          : undefined;
+      return { decision, rationale, questionType, recommendationPreference, usedModel: true };
     } catch (jsonError) {
       console.warn('Failed to parse realtime LLM response as JSON:', jsonError, 'Raw response:', text);
       const normalized = text.toLowerCase();
       const decision = normalized.includes('ja') || normalized.includes('yes');
-      return { decision, rationale: text, usedModel: true };
+      return {
+        decision,
+        rationale: text,
+        questionType: undefined,
+        recommendationPreference: undefined,
+        usedModel: true,
+      };
     }
   } catch (error) {
     console.warn('Realtime LLM check encountered an error:', error);
-    return { decision: false, usedModel: false };
+    return { decision: false, recommendationPreference: undefined, usedModel: false };
   }
 };
 
@@ -1137,12 +1185,26 @@ const determineRealTimeSearchNeed = async ({
 }: RealTimeDecisionInput): Promise<RealTimeAssessment> => {
   const signals: string[] = [];
 
-  const { decision, rationale, usedModel } = await askLLMIfRealtimeNeeded({
+  const {
+    decision,
+    rationale,
+    questionType,
+    recommendationPreference,
+    usedModel,
+  } = await askLLMIfRealtimeNeeded({
     message,
     userIntent,
     recentMessages,
     openAIApiKey,
   });
+
+  if (questionType) {
+    signals.push(`llm:question_type:${questionType}`);
+  }
+
+  if (recommendationPreference) {
+    signals.push(`llm:recommendations:${recommendationPreference}`);
+  }
 
   if (rationale) {
     signals.push(`llm:${rationale}`);
@@ -1150,9 +1212,23 @@ const determineRealTimeSearchNeed = async ({
     signals.push(decision ? 'llm:yes' : 'llm:no');
   }
 
+  if (!usedModel) {
+    const newsIntents = new Set<IntentType>(['news_update', 'general_news', 'stock_analysis', 'market_analysis']);
+    if (userIntent && newsIntents.has(userIntent)) {
+      signals.push('fallback:intent_requires_realtime');
+      return {
+        needsRealtime: true,
+        signals,
+        usedLLM: false,
+      };
+    }
+  }
+
   return {
     needsRealtime: decision,
     signals,
+    questionType,
+    recommendationPreference,
     usedLLM: usedModel,
   };
 };
@@ -1658,6 +1734,9 @@ serve(async (req) => {
 
     let sheetTickerSymbols: string[] = [];
     let sheetTickerNames: string[] = [];
+    let sheetTickerCurrencyMap = new Map<string, string>();
+    let swedishTickerSymbols: string[] = [];
+    let swedishCompanyNamesNormalized: string[] = [];
 
     try {
       const { data: sheetTickerData, error: sheetTickerError } = await supabase.functions.invoke('list-sheet-tickers');
@@ -1672,19 +1751,33 @@ serve(async (req) => {
 
         const symbolSet = new Set<string>();
         const nameSet = new Set<string>();
+        const currencyMap = new Map<string, string>();
+        const swedishSymbolSet = new Set<string>();
+        const swedishNameSet = new Set<string>();
 
         for (const item of rawTickers) {
           if (!item || typeof item !== 'object') continue;
 
           const rawSymbol = typeof item.symbol === 'string' ? item.symbol : null;
+          const currencyNormalized = typeof item.currency === 'string'
+            ? item.currency.trim().toUpperCase()
+            : null;
           if (rawSymbol) {
             const trimmedSymbol = rawSymbol.trim();
             const withoutPrefix = trimmedSymbol.includes(':')
               ? trimmedSymbol.split(':').pop() ?? trimmedSymbol
               : trimmedSymbol;
             const cleanedSymbol = withoutPrefix.replace(/\s+/g, '').toUpperCase();
-            if (cleanedSymbol.length > 0) {
-              symbolSet.add(cleanedSymbol);
+            const normalizedSymbol = cleanedSymbol.replace(/[^A-Za-z0-9]/g, '');
+            const finalSymbol = normalizedSymbol.length > 0 ? normalizedSymbol : cleanedSymbol;
+            if (finalSymbol.length > 0) {
+              symbolSet.add(finalSymbol);
+              if (currencyNormalized) {
+                currencyMap.set(finalSymbol, currencyNormalized);
+                if (currencyNormalized === 'SEK') {
+                  swedishSymbolSet.add(finalSymbol);
+                }
+              }
             }
           }
 
@@ -1698,12 +1791,23 @@ serve(async (req) => {
               if (diacriticsStripped.length > 0 && diacriticsStripped !== normalizedWhitespaceName) {
                 nameSet.add(diacriticsStripped);
               }
+
+              if (currencyNormalized === 'SEK') {
+                const lowerName = normalizedWhitespaceName.toLowerCase();
+                swedishNameSet.add(lowerName);
+                if (diacriticsStripped.length > 0) {
+                  swedishNameSet.add(diacriticsStripped.toLowerCase());
+                }
+              }
             }
           }
         }
 
         sheetTickerSymbols = Array.from(symbolSet);
         sheetTickerNames = Array.from(nameSet);
+        sheetTickerCurrencyMap = currencyMap;
+        swedishTickerSymbols = Array.from(swedishSymbolSet);
+        swedishCompanyNamesNormalized = Array.from(swedishNameSet);
 
         console.log('Loaded Google Sheets tickers:', {
           symbols: sheetTickerSymbols.length,
@@ -1973,6 +2077,10 @@ serve(async (req) => {
       },
       {
         regex: /(?:vad tycker du om|hur ser du på|bra aktie|dålig aktie|köpvärd|sälj)\s+([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,30})/i,
+        requiresContext: false,
+      },
+      {
+        regex: /(?:nyhet(?:erna)?|senaste\s+nytt)\s+(?:om|kring|för|hos|i|på)\s+([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,30})/i,
         requiresContext: false,
       },
       ...sheetTickerSymbolPatterns,
@@ -2363,8 +2471,18 @@ serve(async (req) => {
       openAIApiKey,
     });
     const hasRealTimeTrigger = realTimeAssessment.needsRealtime;
+    const realTimeQuestionType = realTimeAssessment.questionType;
+    const recommendationPreference = realTimeAssessment.recommendationPreference;
     if (realTimeAssessment.signals.length > 0) {
       console.log('Real-time assessment signals:', realTimeAssessment.signals.join(', '), 'LLM used:', realTimeAssessment.usedLLM);
+    }
+
+    if (realTimeQuestionType) {
+      console.log('LLM question type:', realTimeQuestionType);
+    }
+
+    if (recommendationPreference) {
+      console.log('LLM recommendation preference:', recommendationPreference);
     }
 
     const isSimplePersonalAdviceRequest = (
@@ -2410,10 +2528,107 @@ serve(async (req) => {
         || userIntent === 'market_analysis'
         || hasRealTimeTrigger;
 
+      const normalizeTickerToken = (value: string | null | undefined): string => {
+        if (!value) return '';
+        const trimmed = value.trim();
+        if (!trimmed) return '';
+        const upper = trimmed.toUpperCase();
+        const withoutPrefix = upper.includes(':')
+          ? upper.split(':').pop() ?? upper
+          : upper;
+        return withoutPrefix.replace(/[^A-Za-z0-9]/g, '');
+      };
+
+      const swedishTickerLookup = new Set(swedishTickerSymbols.map(symbol => symbol.toUpperCase()));
+      const normalizedMessageNoDiacritics = removeDiacritics(message).toLowerCase();
+      const messageIncludesSwedishName = swedishCompanyNamesNormalized.some(name =>
+        typeof name === 'string'
+          && name.length > 2
+          && normalizedMessageNoDiacritics.includes(name)
+      );
+      const interpreterEntityText = interpretedEntities
+        .map(entity => removeDiacritics(entity).toLowerCase())
+        .join(' ');
+
+      let swedishScore = 0;
+      let internationalScore = 0;
+
+      const seenTickerTokens = new Set<string>();
+      const considerTickerForLocale = (ticker: string | null | undefined) => {
+        const normalizedTicker = normalizeTickerToken(ticker);
+        if (!normalizedTicker || seenTickerTokens.has(normalizedTicker)) {
+          return;
+        }
+        seenTickerTokens.add(normalizedTicker);
+
+        const mappedCurrency = sheetTickerCurrencyMap.get(normalizedTicker) ?? null;
+        if (mappedCurrency === 'SEK' || swedishTickerLookup.has(normalizedTicker)) {
+          swedishScore += 3;
+          return;
+        }
+
+        if (mappedCurrency && mappedCurrency !== 'SEK') {
+          internationalScore += 3;
+        }
+      };
+
+      considerTickerForLocale(primaryDetectedTicker);
+      detectedTickers.forEach(considerTickerForLocale);
+
+      if (messageIncludesSwedishName || staticCompanyPattern.regex.test(message)) {
+        swedishScore += 2;
+      }
+
+      const swedishContextPattern = /(sverige|svensk[at]?|stockholm|stockholmsbörsen|omx|first\s+north|large\s+cap|mid\s+cap|small\s+cap)/i;
+      const swedishTickerIndicatorPattern = /\b(?:[A-Z]{1,5}\.ST|STO:[A-Z0-9]+)\b/;
+      if (swedishContextPattern.test(message)) {
+        swedishScore += 1;
+      }
+      if (swedishTickerIndicatorPattern.test(message)) {
+        swedishScore += 1;
+      }
+      if (interpreterEntityText.includes('sweden') || interpreterEntityText.includes('swedish')) {
+        swedishScore += 1;
+      }
+
+      const internationalContextPattern = /(nasdaq|nyse|usa|amerikansk|amerika|wall\s+street|london|lse|storbritannien|uk|england|frankfurt|tyskland|germany|paris|euronext|tokyo|japan|hong\s*kong|kina|china|kanada|canada|tsx|asx|australien|singapore)/i;
+      if (internationalContextPattern.test(message)) {
+        internationalScore += 1;
+      }
+      if (interpreterEntityText.includes('usa')
+        || interpreterEntityText.includes('united states')
+        || interpreterEntityText.includes('germany')
+        || interpreterEntityText.includes('france')
+        || interpreterEntityText.includes('uk')
+        || interpreterEntityText.includes('london')
+        || interpreterEntityText.includes('china')
+        || interpreterEntityText.includes('japan')) {
+        internationalScore += 1;
+      }
+
+      const determineIncludeDomains = (): string[] => {
+        if (swedishScore === 0 && internationalScore === 0) {
+          return TRUSTED_TAVILY_DOMAINS;
+        }
+        if (swedishScore >= internationalScore) {
+          return SWEDISH_PRIORITY_TAVILY_DOMAINS;
+        }
+        return INTERNATIONAL_PRIORITY_TAVILY_DOMAINS;
+      };
+
+      const prioritizedIncludeDomains = determineIncludeDomains();
+      if (swedishScore > 0 || internationalScore > 0) {
+        console.log('Tavily domain preference scores:', {
+          swedishScore,
+          internationalScore,
+          prioritizedDomainsPreview: prioritizedIncludeDomains.slice(0, 6),
+        });
+      }
+
       const buildDefaultTavilyOptions = (): TavilySearchOptions => {
         const options: TavilySearchOptions = {
           query: entityAwareQuery ?? undefined,
-          includeDomains: TRUSTED_TAVILY_DOMAINS,
+          includeDomains: prioritizedIncludeDomains,
           excludeDomains: DEFAULT_EXCLUDED_TAVILY_DOMAINS,
           includeRawContent: shouldUseAdvancedDepth,
           topic: determineTavilyTopic(),
@@ -2656,6 +2871,11 @@ serve(async (req) => {
       contextSections.push(headingDirective);
     }
     contextSections.push(intentPrompt);
+    if (recommendationPreference === 'no') {
+      contextSections.push('REKOMMENDATIONSPOLICY:\n- Användaren har inte bett om investeringsrekommendationer eller köp/sälj-råd.\n- Fokusera på att beskriva nuläget, risker och observationer utan att föreslå specifika affärer eller omviktningar.\n- Om du nämner bevakningspunkter, håll dem neutrala och undvik att säga åt användaren att agera.');
+    } else if (recommendationPreference === 'yes') {
+      contextSections.push('REKOMMENDATIONSPOLICY:\n- Användaren vill ha konkreta investeringsrekommendationer. Leverera tydliga råd med motivering när det är relevant.');
+    }
     if (personalizationPrompt) {
       contextSections.push(`PERSONLIGA PREFERENSER:\n${personalizationPrompt}`);
     }
@@ -2826,30 +3046,63 @@ serve(async (req) => {
     }
 
     // Add response structure requirements
+    const structureLines = [
+      'SVARSSTRUKTUR (ANPASSNINGSBAR):',
+      '- Anpassa alltid svarens format efter frågans karaktär.',
+      '- Vid enkla frågor: svara kort (2–4 meningar) och avsluta bara med en följdfråga om det känns naturligt.',
+      '- Vid generella marknadsfrågor: använd en nyhetsbrevsliknande ton och rubriker enligt variationen ovan.',
+      '- Vid djupgående analyser: använd de rubriker som angavs tidigare (analys, rekommendation, risker, åtgärder) men ta enbart med sektioner som tillför värde.',
+    ];
+
+    if (recommendationPreference === 'no') {
+      structureLines.push('- Ge inga investeringsrekommendationer, köp/sälj-råd eller portföljjusteringar i detta svar. Fokusera på att ge lägesbild och analys.');
+    } else if (recommendationPreference === 'yes') {
+      structureLines.push('- Ge tydliga och motiverade rekommendationer när de stärker svaret, inklusive tickers enligt formatet som anges.');
+    } else {
+      structureLines.push('- Ge bara rekommendationer om användaren ber om det eller om frågan tydligt kräver en ståndpunkt.');
+    }
+
+    const emojiLines = [
+      'EMOJI-ANVÄNDNING:',
+      '- Använd relevanta emojis för att förstärka budskapet, men max en per sektion och undvik emojis i avsnitt som beskriver allvarliga risker eller förluster.',
+      '- Rotera emojis och rubriker enligt instruktionen ovan för att undvika monotona svar.',
+    ];
+
+    let recommendationSectionLine: string;
+    if (recommendationPreference === 'no') {
+      recommendationSectionLine = '- Rekommendation/Råd – Hoppa över denna sektion om användaren inte uttryckligen ber om åtgärdsförslag.';
+    } else if (recommendationPreference === 'yes') {
+      recommendationSectionLine = '- Rekommendation/Råd – Ge konkreta råd med aktier och investmentbolag i formatet **Företagsnamn (TICKER)** - Motivering, eftersom användaren efterfrågar det.';
+    } else {
+      recommendationSectionLine = '- Rekommendation/Råd – Om frågan verkligen kräver ett råd, ge konkreta tips med formatet **Företagsnamn (TICKER)** - Motivering, annars kan sektionen utelämnas.';
+    }
+
+    const optionalSections = [
+      'MÖJLIGA SEKTIONER (välj flexibelt utifrån behov):',
+      '- Analys/Insikt – Sammanfatta situationen eller frågan.',
+      recommendationSectionLine,
+      '- Risker & Överväganden – Endast om det finns relevanta risker att lyfta.',
+      '- Åtgärdsplan/Nästa steg – Använd vid komplexa frågor som kräver steg-för-steg.',
+      '- Nyhetsöversikt – Använd vid frågor om senaste nyheter eller marknadshändelser.',
+      '- Uppföljning – Använd när du föreslår fortsatta analyser eller handlingar.',
+    ];
+
+    const importantLines = [
+      'VIKTIGT:',
+      '- Använd aldrig hela strukturen slentrianmässigt – välj endast sektioner som ger värde.',
+      '- Variera rubriker och emojis för att undvika repetitiva svar.',
+      '- Avsluta endast med en öppen fråga när det känns naturligt och svaret inte redan är komplett.',
+      '- Avsluta svaret med en sektion "Källor:" där varje länk står på en egen rad (om källor finns).',
+    ];
+
     contextInfo += `
-SVARSSTRUKTUR (ANPASSNINGSBAR):
-- Anpassa alltid svarens format efter frågans karaktär.
-- Vid enkla frågor: svara kort (2–4 meningar) och avsluta bara med en följdfråga om det känns naturligt.
-- Vid generella marknadsfrågor: använd en nyhetsbrevsliknande ton och rubriker enligt variationen ovan.
-- Vid djupgående analyser: använd de rubriker som angavs tidigare (analys, rekommendation, risker, åtgärder) men ta enbart med sektioner som tillför värde.
+${structureLines.join('\n')}
 
-EMOJI-ANVÄNDNING:
-- Använd relevanta emojis för att förstärka budskapet, men max en per sektion och undvik emojis i avsnitt som beskriver allvarliga risker eller förluster.
-- Rotera emojis och rubriker enligt instruktionen ovan för att undvika monotona svar.
+${emojiLines.join('\n')}
 
-MÖJLIGA SEKTIONER (välj flexibelt utifrån behov):
-- Analys/Insikt – Sammanfatta situationen eller frågan.
-- Rekommendation/Råd – Ge konkreta råd med aktier och investmentbolag i formatet **Företagsnamn (TICKER)** - Motivering.
-- Risker & Överväganden – Endast om det finns relevanta risker att lyfta.
-- Åtgärdsplan/Nästa steg – Använd vid komplexa frågor som kräver steg-för-steg.
-- Nyhetsöversikt – Använd vid frågor om senaste nyheter eller marknadshändelser.
-- Uppföljning – Använd när du föreslår fortsatta analyser eller handlingar.
+${optionalSections.join('\n')}
 
-VIKTIGT:
-- Använd aldrig hela strukturen slentrianmässigt – välj endast sektioner som ger värde.
-- Variera rubriker och emojis för att undvika repetitiva svar.
-- Avsluta endast med en öppen fråga när det känns naturligt och svaret inte redan är komplett.
-- Avsluta svaret med en sektion "Källor:" där varje länk står på en egen rad (om källor finns).
+${importantLines.join('\n')}
 `;
 
 
