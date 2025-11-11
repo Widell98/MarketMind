@@ -109,7 +109,7 @@ const ChatMessages = ({
       className="flex-1 min-h-0 overflow-y-auto"
       style={{ scrollbarGutter: 'stable' }}
     >
-      <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-9 sm:space-y-10 sm:px-6 lg:max-w-4xl lg:space-y-12 lg:px-8 lg:py-12 xl:max-w-5xl xl:px-10 xl:py-14 2xl:max-w-6xl 2xl:space-y-14 2xl:px-12">
+      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:space-y-8 sm:px-6 sm:py-8 lg:max-w-4xl lg:space-y-10 lg:px-8 lg:py-10 xl:max-w-5xl xl:px-10 xl:py-12 2xl:max-w-6xl 2xl:space-y-12 2xl:px-12">
         {showGuideBot && (
           <GuideBot
             onPromptExample={handleGuidePrompt}
@@ -119,7 +119,7 @@ const ChatMessages = ({
         )}
 
         {messages.length === 0 && !isLoading && onExamplePrompt && !showGuideBot && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div className="text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#144272]/20 to-[#205295]/24 text-primary shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:shadow-none">
                 <Brain className="h-5 w-5" />
