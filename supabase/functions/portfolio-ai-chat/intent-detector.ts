@@ -1,0 +1,170 @@
+import { IntentDetectionResult, IntentType } from './intent-types.ts';
+
+const ALLOWED_INTENTS: IntentType[] = [
+  'stock_analysis',
+  'portfolio_optimization',
+  'buy_sell_decisions',
+  'market_analysis',
+  'general_news',
+  'news_update',
+  'general_advice',
+];
+
+const SYSTEM_PROMPT = `Du är en svensk finansiell assistent som tolkar användares frågor.\n\nInstruktioner:\n- Identifiera vilka av följande intents som passar: ${ALLOWED_INTENTS.join(', ')}.\n- Välj en eller flera intents som bäst matchar frågan.\n- Identifiera viktiga entiteter som bolag, tickers, index, sektorer eller makroteman.\n- Ange språket som \"sv\" om användaren skriver på svenska, annars \"en\".\n- Returnera alltid ett giltigt JSON-objekt med fälten intent (lista), entities (lista), language (sträng).\n- Om inget passar, välj endast general_advice.\n- Svara ENDAST med JSON, inga förklaringar.`;
+
+const EXAMPLE_CLASSIFICATIONS = [
+  {
+    user: 'Måste jag sälja Tesla nu?',
+    assistant: {
+      intent: ['stock_analysis', 'buy_sell_decisions'],
+      entities: ['Tesla', 'TSLA'],
+      language: 'sv',
+    },
+  },
+  {
+    user: 'Har det hänt något med OMXS30 idag?',
+    assistant: {
+      intent: ['news_update', 'market_analysis'],
+      entities: ['OMXS30'],
+      language: 'sv',
+    },
+  },
+  {
+    user: 'Can you help me rebalance my portfolio towards green energy?',
+    assistant: {
+      intent: ['portfolio_optimization'],
+      entities: ['Green energy'],
+      language: 'en',
+    },
+  },
+];
+
+const INTENT_SCHEMA = {
+  name: 'intent_detection_result',
+  schema: {
+    type: 'object',
+    properties: {
+      intent: {
+        type: 'array',
+        items: {
+          type: 'string',
+          enum: ALLOWED_INTENTS,
+        },
+        minItems: 1,
+      },
+      entities: {
+        type: 'array',
+        items: {
+          type: 'string',
+          minLength: 1,
+        },
+        default: [],
+      },
+      language: {
+        type: 'string',
+        enum: ['sv', 'en'],
+        default: 'sv',
+      },
+    },
+    required: ['intent', 'entities', 'language'],
+    additionalProperties: false,
+  },
+} as const;
+
+const sanitizeEntity = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed.length <= 8 ? trimmed.replace(/\s+/g, ' ') : trimmed;
+};
+
+const normalizeIntent = (value: unknown): IntentType | null => {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim() as IntentType;
+  return (ALLOWED_INTENTS as string[]).includes(normalized) ? normalized : null;
+};
+
+export const detectUserIntentWithOpenAI = async (
+  message: string,
+  apiKey: string,
+): Promise<IntentDetectionResult | null> => {
+  if (!apiKey || !message || !message.trim()) {
+    return null;
+  }
+
+  try {
+    const messages = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      ...EXAMPLE_CLASSIFICATIONS.flatMap(example => [
+        { role: 'user', content: example.user },
+        { role: 'assistant', content: JSON.stringify(example.assistant) },
+      ]),
+      { role: 'user', content: message.trim() },
+    ];
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        temperature: 0.2,
+        response_format: { type: 'json_schema', json_schema: INTENT_SCHEMA },
+        messages,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('Intent interpreter request failed', response.status, await response.text());
+      return null;
+    }
+
+    const data = await response.json();
+    const rawContent = data?.choices?.[0]?.message?.content;
+
+    if (!rawContent || typeof rawContent !== 'string') {
+      return null;
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawContent);
+    } catch (error) {
+      console.warn('Failed to parse intent interpreter response:', error);
+      return null;
+    }
+
+    const intentsRaw = Array.isArray((parsed as any)?.intent) ? (parsed as any).intent : [];
+    const entitiesRaw = Array.isArray((parsed as any)?.entities) ? (parsed as any).entities : [];
+    const languageRaw = typeof (parsed as any)?.language === 'string' ? (parsed as any).language : null;
+
+    const intents = intentsRaw
+      .map(normalizeIntent)
+      .filter((intent): intent is IntentType => Boolean(intent));
+
+    const entities = Array.from(
+      new Set(
+        entitiesRaw
+          .map(sanitizeEntity)
+          .filter((entity): entity is string => Boolean(entity))
+          .slice(0, 6),
+      ),
+    );
+
+    if (intents.length === 0) {
+      intents.push('general_advice');
+    }
+
+    return {
+      intents,
+      entities,
+      language: languageRaw ? languageRaw.toLowerCase() : null,
+      raw: rawContent,
+    };
+  } catch (error) {
+    console.error('Intent interpreter error:', error);
+    return null;
+  }
+};
