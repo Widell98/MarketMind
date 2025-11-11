@@ -1061,6 +1061,7 @@ type RealTimeDecisionInput = {
 type RealTimeDecision = {
   decision: boolean;
   rationale?: string;
+  questionType?: string;
   usedModel: boolean;
 };
 
@@ -1085,12 +1086,20 @@ const askLLMIfRealtimeNeeded = async ({
     }
 
     const userPromptSections = [
-      'Bedöm om den nuvarande frågan kräver realtidsdata (t.ex. intradagspriser, färska nyheter, pressreleaser).',
-      'Realtidsdata behövs när användaren ber om utveckling "just nu", "idag" eller efterfrågar omedelbara marknadshändelser.',
-      'Om frågan handlar om historik, utbildning eller långsiktiga strategier behövs ingen realtidssökning.',
+      'Du analyserar vilken typ av fråga en användare ställer i en finansiell chatt.',
+      '1. Klassificera frågan i en av följande kategorier:',
+      '   - latest_news (ber om senaste nyheter, uppdateringar eller rubriker).',
+      '   - recent_report (hänvisar till färska rapporter, kvartalsrapporter eller earnings calls).',
+      '   - intraday_price (vill veta aktuell kurs, intradagsrörelser eller "hur går den nu").',
+      '   - macro_event (handlar om dagsaktuella marknadshändelser, centralbanker eller makronyheter).',
+      '   - portfolio_update (ber om dagsfärsk status för sin portfölj eller innehav).',
+      '   - strategy_or_education (förklaringar, historik, långsiktiga strategier).',
+      '   - other (allt annat).',
+      '2. Avgör om realtidsdata krävs för att besvara frågan pålitligt. Realtidsdata behövs främst för kategorierna latest_news, recent_report, intraday_price, macro_event och portfolio_update.',
+      '3. Motivera kort på svenska varför realtidsdata behövs eller inte.',
       contextLines.join('\n\n'),
       `Nuvarande användarmeddelande:\n"""${message}"""`,
-      'Svara strikt med JSON-format: {"realtime": "yes" eller "no", "reason": "kort motivering på svenska"}.',
+      'Returnera JSON i formatet {"realtime": "yes" eller "no", "reason": "...", "question_type": "..."}.',
     ].filter(Boolean);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -1133,12 +1142,15 @@ const askLLMIfRealtimeNeeded = async ({
       const decisionText = String(parsed?.realtime ?? '').toLowerCase();
       const decision = decisionText === 'yes' || decisionText === 'ja';
       const rationale = typeof parsed?.reason === 'string' ? parsed.reason.trim() : undefined;
-      return { decision, rationale, usedModel: true };
+      const questionType = typeof parsed?.question_type === 'string'
+        ? parsed.question_type.trim().toLowerCase()
+        : undefined;
+      return { decision, rationale, questionType, usedModel: true };
     } catch (jsonError) {
       console.warn('Failed to parse realtime LLM response as JSON:', jsonError, 'Raw response:', text);
       const normalized = text.toLowerCase();
       const decision = normalized.includes('ja') || normalized.includes('yes');
-      return { decision, rationale: text, usedModel: true };
+      return { decision, rationale: text, questionType: undefined, usedModel: true };
     }
   } catch (error) {
     console.warn('Realtime LLM check encountered an error:', error);
@@ -1153,52 +1165,34 @@ const determineRealTimeSearchNeed = async ({
   openAIApiKey,
 }: RealTimeDecisionInput): Promise<RealTimeAssessment> => {
   const signals: string[] = [];
-  const normalizedMessage = message.toLowerCase();
 
-  const heuristics: string[] = [];
-
-  if (/(kolla|checka|visa|ge|få|sammanfatta|berätta|uppdatera|hämta).{0,40}(nyheterna|senaste\s+nytt)/i.test(normalizedMessage)) {
-    heuristics.push('heuristic:direct_news_request');
-  }
-
-  const hasNewsKeyword = /(nyhet|pressmeddelande|pressrelease|rapport)/i.test(normalizedMessage);
-  const hasRecencyCue = /(senaste|just nu|nuvarande|idag|i dag|igår|i går|nyss|nyligen|precis|färska|aktuella|sista\s+dygnet|24\s+timmar)/i
-    .test(normalizedMessage);
-  if (hasNewsKeyword && hasRecencyCue) {
-    heuristics.push('heuristic:news_with_recency');
-  }
-
-  if (/(rapport(?:en)?\s+(?:igår|i går|idag|i dag|nyligen|nyss|just)|släppte\s+(?:en\s+)?rapport)/i.test(normalizedMessage)) {
-    heuristics.push('heuristic:recent_report');
-  }
-
-  const hasCompanyContext = /(aktie|bolag|företag|ticker|börs|portfölj|stock|share|equity)/i.test(normalizedMessage);
-  const newsIntents = new Set<IntentType>(['news_update', 'general_news', 'stock_analysis', 'market_analysis']);
-  const shouldForceRealtime = heuristics.length > 0 && (newsIntents.has(userIntent) || hasCompanyContext);
-
-  if (heuristics.length > 0) {
-    signals.push(...heuristics);
-  }
-
-  if (shouldForceRealtime) {
-    return {
-      needsRealtime: true,
-      signals,
-      usedLLM: false,
-    };
-  }
-
-  const { decision, rationale, usedModel } = await askLLMIfRealtimeNeeded({
+  const { decision, rationale, questionType, usedModel } = await askLLMIfRealtimeNeeded({
     message,
     userIntent,
     recentMessages,
     openAIApiKey,
   });
 
+  if (questionType) {
+    signals.push(`llm:question_type:${questionType}`);
+  }
+
   if (rationale) {
     signals.push(`llm:${rationale}`);
   } else {
     signals.push(decision ? 'llm:yes' : 'llm:no');
+  }
+
+  if (!usedModel) {
+    const newsIntents = new Set<IntentType>(['news_update', 'general_news', 'stock_analysis', 'market_analysis']);
+    if (userIntent && newsIntents.has(userIntent)) {
+      signals.push('fallback:intent_requires_realtime');
+      return {
+        needsRealtime: true,
+        signals,
+        usedLLM: false,
+      };
+    }
   }
 
   return {
