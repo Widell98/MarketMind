@@ -834,6 +834,8 @@ const formatAllocationLabel = (label: string): string => {
 type RealTimeAssessment = {
   needsRealtime: boolean;
   signals: string[];
+  questionType?: string;
+  recommendationPreference?: RecommendationPreference;
   usedLLM: boolean;
 };
 
@@ -1058,10 +1060,13 @@ type RealTimeDecisionInput = {
   openAIApiKey: string;
 };
 
+type RecommendationPreference = 'yes' | 'no';
+
 type RealTimeDecision = {
   decision: boolean;
   rationale?: string;
   questionType?: string;
+  recommendationPreference?: RecommendationPreference;
   usedModel: boolean;
 };
 
@@ -1097,9 +1102,10 @@ const askLLMIfRealtimeNeeded = async ({
       '   - other (allt annat).',
       '2. Avgör om realtidsdata krävs för att besvara frågan pålitligt. Realtidsdata behövs främst för kategorierna latest_news, recent_report, intraday_price, macro_event och portfolio_update.',
       '3. Motivera kort på svenska varför realtidsdata behövs eller inte.',
+      '4. Avgör om användaren uttryckligen ber om investeringsrekommendationer, konkreta portföljåtgärder eller köp/sälj-råd.',
       contextLines.join('\n\n'),
       `Nuvarande användarmeddelande:\n"""${message}"""`,
-      'Returnera JSON i formatet {"realtime": "yes" eller "no", "reason": "...", "question_type": "..."}.',
+      'Returnera JSON i formatet {"realtime": "yes" eller "no", "reason": "...", "question_type": "...", "recommendations": "yes" eller "no"}.',
     ].filter(Boolean);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -1145,16 +1151,29 @@ const askLLMIfRealtimeNeeded = async ({
       const questionType = typeof parsed?.question_type === 'string'
         ? parsed.question_type.trim().toLowerCase()
         : undefined;
-      return { decision, rationale, questionType, usedModel: true };
+      const recommendationPreferenceRaw = typeof parsed?.recommendations === 'string'
+        ? parsed.recommendations.trim().toLowerCase()
+        : undefined;
+      const recommendationPreference: RecommendationPreference | undefined =
+        recommendationPreferenceRaw === 'yes' || recommendationPreferenceRaw === 'no'
+          ? recommendationPreferenceRaw
+          : undefined;
+      return { decision, rationale, questionType, recommendationPreference, usedModel: true };
     } catch (jsonError) {
       console.warn('Failed to parse realtime LLM response as JSON:', jsonError, 'Raw response:', text);
       const normalized = text.toLowerCase();
       const decision = normalized.includes('ja') || normalized.includes('yes');
-      return { decision, rationale: text, questionType: undefined, usedModel: true };
+      return {
+        decision,
+        rationale: text,
+        questionType: undefined,
+        recommendationPreference: undefined,
+        usedModel: true,
+      };
     }
   } catch (error) {
     console.warn('Realtime LLM check encountered an error:', error);
-    return { decision: false, usedModel: false };
+    return { decision: false, recommendationPreference: undefined, usedModel: false };
   }
 };
 
@@ -1166,7 +1185,13 @@ const determineRealTimeSearchNeed = async ({
 }: RealTimeDecisionInput): Promise<RealTimeAssessment> => {
   const signals: string[] = [];
 
-  const { decision, rationale, questionType, usedModel } = await askLLMIfRealtimeNeeded({
+  const {
+    decision,
+    rationale,
+    questionType,
+    recommendationPreference,
+    usedModel,
+  } = await askLLMIfRealtimeNeeded({
     message,
     userIntent,
     recentMessages,
@@ -1175,6 +1200,10 @@ const determineRealTimeSearchNeed = async ({
 
   if (questionType) {
     signals.push(`llm:question_type:${questionType}`);
+  }
+
+  if (recommendationPreference) {
+    signals.push(`llm:recommendations:${recommendationPreference}`);
   }
 
   if (rationale) {
@@ -1198,6 +1227,8 @@ const determineRealTimeSearchNeed = async ({
   return {
     needsRealtime: decision,
     signals,
+    questionType,
+    recommendationPreference,
     usedLLM: usedModel,
   };
 };
@@ -2440,8 +2471,18 @@ serve(async (req) => {
       openAIApiKey,
     });
     const hasRealTimeTrigger = realTimeAssessment.needsRealtime;
+    const realTimeQuestionType = realTimeAssessment.questionType;
+    const recommendationPreference = realTimeAssessment.recommendationPreference;
     if (realTimeAssessment.signals.length > 0) {
       console.log('Real-time assessment signals:', realTimeAssessment.signals.join(', '), 'LLM used:', realTimeAssessment.usedLLM);
+    }
+
+    if (realTimeQuestionType) {
+      console.log('LLM question type:', realTimeQuestionType);
+    }
+
+    if (recommendationPreference) {
+      console.log('LLM recommendation preference:', recommendationPreference);
     }
 
     const isSimplePersonalAdviceRequest = (
@@ -2830,6 +2871,11 @@ serve(async (req) => {
       contextSections.push(headingDirective);
     }
     contextSections.push(intentPrompt);
+    if (recommendationPreference === 'no') {
+      contextSections.push('REKOMMENDATIONSPOLICY:\n- Användaren har inte bett om investeringsrekommendationer eller köp/sälj-råd.\n- Fokusera på att beskriva nuläget, risker och observationer utan att föreslå specifika affärer eller omviktningar.\n- Om du nämner bevakningspunkter, håll dem neutrala och undvik att säga åt användaren att agera.');
+    } else if (recommendationPreference === 'yes') {
+      contextSections.push('REKOMMENDATIONSPOLICY:\n- Användaren vill ha konkreta investeringsrekommendationer. Leverera tydliga råd med motivering när det är relevant.');
+    }
     if (personalizationPrompt) {
       contextSections.push(`PERSONLIGA PREFERENSER:\n${personalizationPrompt}`);
     }
@@ -3000,30 +3046,63 @@ serve(async (req) => {
     }
 
     // Add response structure requirements
+    const structureLines = [
+      'SVARSSTRUKTUR (ANPASSNINGSBAR):',
+      '- Anpassa alltid svarens format efter frågans karaktär.',
+      '- Vid enkla frågor: svara kort (2–4 meningar) och avsluta bara med en följdfråga om det känns naturligt.',
+      '- Vid generella marknadsfrågor: använd en nyhetsbrevsliknande ton och rubriker enligt variationen ovan.',
+      '- Vid djupgående analyser: använd de rubriker som angavs tidigare (analys, rekommendation, risker, åtgärder) men ta enbart med sektioner som tillför värde.',
+    ];
+
+    if (recommendationPreference === 'no') {
+      structureLines.push('- Ge inga investeringsrekommendationer, köp/sälj-råd eller portföljjusteringar i detta svar. Fokusera på att ge lägesbild och analys.');
+    } else if (recommendationPreference === 'yes') {
+      structureLines.push('- Ge tydliga och motiverade rekommendationer när de stärker svaret, inklusive tickers enligt formatet som anges.');
+    } else {
+      structureLines.push('- Ge bara rekommendationer om användaren ber om det eller om frågan tydligt kräver en ståndpunkt.');
+    }
+
+    const emojiLines = [
+      'EMOJI-ANVÄNDNING:',
+      '- Använd relevanta emojis för att förstärka budskapet, men max en per sektion och undvik emojis i avsnitt som beskriver allvarliga risker eller förluster.',
+      '- Rotera emojis och rubriker enligt instruktionen ovan för att undvika monotona svar.',
+    ];
+
+    let recommendationSectionLine: string;
+    if (recommendationPreference === 'no') {
+      recommendationSectionLine = '- Rekommendation/Råd – Hoppa över denna sektion om användaren inte uttryckligen ber om åtgärdsförslag.';
+    } else if (recommendationPreference === 'yes') {
+      recommendationSectionLine = '- Rekommendation/Råd – Ge konkreta råd med aktier och investmentbolag i formatet **Företagsnamn (TICKER)** - Motivering, eftersom användaren efterfrågar det.';
+    } else {
+      recommendationSectionLine = '- Rekommendation/Råd – Om frågan verkligen kräver ett råd, ge konkreta tips med formatet **Företagsnamn (TICKER)** - Motivering, annars kan sektionen utelämnas.';
+    }
+
+    const optionalSections = [
+      'MÖJLIGA SEKTIONER (välj flexibelt utifrån behov):',
+      '- Analys/Insikt – Sammanfatta situationen eller frågan.',
+      recommendationSectionLine,
+      '- Risker & Överväganden – Endast om det finns relevanta risker att lyfta.',
+      '- Åtgärdsplan/Nästa steg – Använd vid komplexa frågor som kräver steg-för-steg.',
+      '- Nyhetsöversikt – Använd vid frågor om senaste nyheter eller marknadshändelser.',
+      '- Uppföljning – Använd när du föreslår fortsatta analyser eller handlingar.',
+    ];
+
+    const importantLines = [
+      'VIKTIGT:',
+      '- Använd aldrig hela strukturen slentrianmässigt – välj endast sektioner som ger värde.',
+      '- Variera rubriker och emojis för att undvika repetitiva svar.',
+      '- Avsluta endast med en öppen fråga när det känns naturligt och svaret inte redan är komplett.',
+      '- Avsluta svaret med en sektion "Källor:" där varje länk står på en egen rad (om källor finns).',
+    ];
+
     contextInfo += `
-SVARSSTRUKTUR (ANPASSNINGSBAR):
-- Anpassa alltid svarens format efter frågans karaktär.
-- Vid enkla frågor: svara kort (2–4 meningar) och avsluta bara med en följdfråga om det känns naturligt.
-- Vid generella marknadsfrågor: använd en nyhetsbrevsliknande ton och rubriker enligt variationen ovan.
-- Vid djupgående analyser: använd de rubriker som angavs tidigare (analys, rekommendation, risker, åtgärder) men ta enbart med sektioner som tillför värde.
+${structureLines.join('\n')}
 
-EMOJI-ANVÄNDNING:
-- Använd relevanta emojis för att förstärka budskapet, men max en per sektion och undvik emojis i avsnitt som beskriver allvarliga risker eller förluster.
-- Rotera emojis och rubriker enligt instruktionen ovan för att undvika monotona svar.
+${emojiLines.join('\n')}
 
-MÖJLIGA SEKTIONER (välj flexibelt utifrån behov):
-- Analys/Insikt – Sammanfatta situationen eller frågan.
-- Rekommendation/Råd – Ge konkreta råd med aktier och investmentbolag i formatet **Företagsnamn (TICKER)** - Motivering.
-- Risker & Överväganden – Endast om det finns relevanta risker att lyfta.
-- Åtgärdsplan/Nästa steg – Använd vid komplexa frågor som kräver steg-för-steg.
-- Nyhetsöversikt – Använd vid frågor om senaste nyheter eller marknadshändelser.
-- Uppföljning – Använd när du föreslår fortsatta analyser eller handlingar.
+${optionalSections.join('\n')}
 
-VIKTIGT:
-- Använd aldrig hela strukturen slentrianmässigt – välj endast sektioner som ger värde.
-- Variera rubriker och emojis för att undvika repetitiva svar.
-- Avsluta endast med en öppen fråga när det känns naturligt och svaret inte redan är komplett.
-- Avsluta svaret med en sektion "Källor:" där varje länk står på en egen rad (om källor finns).
+${importantLines.join('\n')}
 `;
 
 
