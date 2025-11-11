@@ -5,6 +5,7 @@ import { useCashHoldings } from './useCashHoldings';
 import { useUserHoldings } from './useUserHoldings';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { requireAccessToken } from '@/utils/supabaseAuth';
 import { getNormalizedValue } from '@/utils/currencyUtils';
 
 interface AIInsight {
@@ -23,7 +24,7 @@ export const useAIInsights = () => {
   const { performance } = usePortfolioPerformance();
   const { totalCash } = useCashHoldings();
   const { actualHoldings } = useUserHoldings();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
 
   // Local daily cache per user+portfolio to avoid too many AI requests
   const getStorageKey = () => (user?.id && activePortfolio?.id) ? `ai_insights_${user.id}_${activePortfolio.id}` : null;
@@ -84,12 +85,16 @@ export const useAIInsights = () => {
         })
       };
 
+      const accessToken = await requireAccessToken(session?.access_token);
+
       const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        },
         body: {
           message: `Analysera denna portfölj och ge 2-3 korta, actionable insikter på svenska. Fokusera på konkreta förbättringar och möjligheter. Portföljdata: ${JSON.stringify(portfolioContext)}`,
           analysisType: 'portfolio_insights',
           portfolioContext,
-          userId: user?.id,
           portfolioId: activePortfolio?.id
         }
       });

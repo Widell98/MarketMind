@@ -2,6 +2,8 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { QuizQuestion, getTimelessFallbackQuestions } from '@/mockData/quizData';
+import { useAuth } from '@/contexts/AuthContext';
+import { requireAccessToken } from '@/utils/supabaseAuth';
 
 export interface APIQuizQuestion extends Omit<QuizQuestion, 'day'> {
   isGenerated?: boolean;
@@ -16,6 +18,7 @@ interface UseQuizAPIReturn {
 export const useQuizAPI = (): UseQuizAPIReturn => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { session } = useAuth();
 
   const generateQuestions = useCallback(async (
     userLevel: string, 
@@ -26,7 +29,12 @@ export const useQuizAPI = (): UseQuizAPIReturn => {
     setError(null);
 
     try {
+      const accessToken = await requireAccessToken(session?.access_token);
+
       const { data, error: functionError } = await supabase.functions.invoke('generate-quiz-questions', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        },
         body: {
           userLevel,
           userProgress,

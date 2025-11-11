@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { requireAccessToken } from '@/utils/supabaseAuth';
 
 export interface Portfolio {
   id: string;
@@ -36,7 +37,7 @@ export const usePortfolio = () => {
   const [activePortfolio, setActivePortfolio] = useState<Portfolio | null>(null);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -119,11 +120,14 @@ export const usePortfolio = () => {
     setLoading(true);
     
     try {
-      // Call the edge function without authentication headers since it's now public
+      const accessToken = await requireAccessToken(session?.access_token);
+
       const { data, error } = await supabase.functions.invoke('generate-portfolio', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        },
         body: {
-          riskProfileId,
-          userId: user.id
+          riskProfileId
         }
       });
 

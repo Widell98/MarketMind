@@ -1,25 +1,9 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-const jsonResponse = (body: Record<string, unknown>, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
-
-const quotaExceededResponse = () =>
-  jsonResponse({
-    success: false,
-    error: 'quota_exceeded',
-    message: 'Du har nått din dagliga gräns för OpenAI API-användning. Vänligen kontrollera din fakturering eller försök igen senare.'
-  }, 429);
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
+import { createCorsContext } from '../_shared/cors.ts';
+import { enforceRateLimit } from '../_shared/rate-limit.ts';
 
 function detectSector(name: string, symbol?: string) {
   const n = name.toLowerCase();
@@ -33,38 +17,148 @@ function detectSector(name: string, symbol?: string) {
 }
 
 serve(async (req) => {
+  const cors = createCorsContext(req, { allowedMethods: ['POST', 'OPTIONS'] });
+
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return cors.toOptionsResponse();
   }
 
+  if (!cors.isAllowed) {
+    console.warn('Blocked generate-portfolio request due to origin', {
+      origin: cors.origin,
+    });
+    return cors.toForbiddenResponse();
+  }
+
+  const jsonResponse = cors.json;
+  const unauthorizedResponse = (message: string) => jsonResponse({
+    success: false,
+    error: 'unauthorized',
+    message,
+  }, 401);
+  const ipAddress = req.headers.get('x-real-ip')
+    ?? req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? null;
+  let rateLimitResult: { remaining: number; resetAt: string } | null = null;
+  const withRateLimitHeaders = (response: Response): Response => {
+    if (rateLimitResult) {
+      response.headers.set('X-RateLimit-Remaining', Math.max(rateLimitResult.remaining, 0).toString());
+      response.headers.set('X-RateLimit-Reset', rateLimitResult.resetAt);
+    }
+
+    if (ipAddress) {
+      response.headers.set('X-Client-IP', ipAddress);
+    }
+
+    return response;
+  };
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('Missing Supabase credentials');
+    return withRateLimitHeaders(jsonResponse({
+      success: false,
+      error: 'server_error',
+      message: 'Server configuration error',
+    }, 500));
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: { persistSession: false },
+  });
+
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const tokenMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+
+  if (!tokenMatch) {
+    console.warn('Missing or invalid authorization header');
+    return withRateLimitHeaders(unauthorizedResponse('Missing or invalid authorization header'));
+  }
+
+  const accessToken = tokenMatch[1].trim();
+
+  const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
+
+  if (authError || !authData?.user) {
+    console.error('JWT verification failed', authError);
+    return withRateLimitHeaders(unauthorizedResponse('Invalid or expired token'));
+  }
+
+  const user = authData.user;
+
   try {
-    const { riskProfileId, userId, conversationPrompt, conversationData } = await req.json();
+    const { riskProfileId, conversationPrompt, conversationData, userId: bodyUserId } = await req.json();
+
+    if (bodyUserId && bodyUserId !== user.id) {
+      console.warn('User ID mismatch between token and request body', {
+        tokenUserId: user.id,
+        bodyUserId,
+      });
+      return withRateLimitHeaders(unauthorizedResponse('User ID mismatch'));
+    }
 
     console.log('Generate portfolio request:', {
       riskProfileId,
-      userId,
+      userId: user.id,
       hasConversationPrompt: Boolean(conversationPrompt),
       hasConversationData: conversationData && typeof conversationData === 'object'
     });
 
-    if (!riskProfileId || !userId) {
-      throw new Error('Missing required parameters: riskProfileId and userId');
+    rateLimitResult = await enforceRateLimit({
+      supabase,
+      functionName: 'generate-portfolio',
+      identifier: `user:${user.id}`,
+    });
+
+    if (!rateLimitResult.allowed) {
+      console.warn('Rate limit exceeded for generate-portfolio', {
+        userId: user.id,
+        origin: cors.origin,
+        ipAddress,
+        resetAt: rateLimitResult.resetAt,
+      });
+
+      const retryAfterSeconds = Math.max(
+        Math.ceil((new Date(rateLimitResult.resetAt).getTime() - Date.now()) / 1000),
+        0,
+      );
+
+      const rateLimited = jsonResponse({
+        success: false,
+        error: 'rate_limit_exceeded',
+        message: 'Du har nått den tillåtna anropsgränsen. Försök igen senare.',
+        resetAt: rateLimitResult.resetAt,
+      }, 429);
+
+      rateLimited.headers.set('Retry-After', retryAfterSeconds.toString());
+      return withRateLimitHeaders(rateLimited);
     }
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    if (!riskProfileId) {
+      return withRateLimitHeaders(jsonResponse({
+        success: false,
+        error: 'validation_error',
+        message: 'riskProfileId är obligatoriskt.',
+      }, 400));
+    }
+
+    const userId = user.id;
 
     // Get risk profile data
     const { data: riskProfile, error: riskError } = await supabase
       .from('user_risk_profiles')
       .select('*')
       .eq('id', riskProfileId)
+      .eq('user_id', userId)
       .single();
 
     if (riskError || !riskProfile) {
       console.error('Error fetching risk profile:', riskError);
+      if (!riskError || riskError.code === 'PGRST116' || riskError.code === 'PGRST301') {
+        return withRateLimitHeaders(unauthorizedResponse('Risk profile not found for user'));
+      }
       throw new Error('Risk profile not found');
     }
 
@@ -544,7 +638,12 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
 
       // Handle specific quota exceeded error
       if (openAIResponse.status === 429) {
-        return quotaExceededResponse();
+        const quotaResponse = jsonResponse({
+          success: false,
+          error: 'quota_exceeded',
+          message: 'Du har nått din dagliga gräns för OpenAI API-användning. Vänligen kontrollera din fakturering eller försök igen senare.',
+        }, 429);
+        return withRateLimitHeaders(quotaResponse);
       }
 
       throw new Error(`OpenAI API error: ${openAIResponse.status}`);
@@ -574,7 +673,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
 
     if (!structuredPlan || recommendedStocks.length === 0) {
       console.error('AI response was missing structured recommendations even after fallback. Raw output:', aiRecommendationsRaw);
-      return jsonResponse({
+      return withRateLimitHeaders(jsonResponse({
         success: true,
         aiRecommendations: aiRecommendationsRaw,
         aiResponse: aiRecommendationsRaw,
@@ -584,7 +683,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
         recommendedStocks: [],
         portfolio: null,
         warning: 'AI kunde inte struktureras till en portfölj. Råtext returneras utan att skapa portfölj.'
-      });
+      }));
     }
 
     ensureSum100(recommendedStocks);
@@ -655,7 +754,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
 
     console.log('Returning response with normalized plan:', normalizedResponse.substring(0, 200));
 
-    return jsonResponse({
+    return withRateLimitHeaders(jsonResponse({
       success: true,
       portfolio: portfolio,
       aiRecommendations: normalizedResponse,
@@ -664,7 +763,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
       plan: structuredPlan,
       confidence: calculateConfidence(recommendedStocks, riskProfile),
       recommendedStocks: recommendedStocks
-    });
+    }));
 
   } catch (error) {
     console.error('Error in generate-portfolio function:', error);
@@ -672,13 +771,19 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
 
     // Check if it's a quota-related error
     if (errorMessage.includes('quota') || errorMessage.includes('insufficient_quota')) {
-      return quotaExceededResponse();
+      const response = jsonResponse({
+        success: false,
+        error: 'quota_exceeded',
+        message: 'Du har nått din dagliga gräns för OpenAI API-användning. Vänligen kontrollera din fakturering eller försök igen senare.',
+      }, 429);
+      return withRateLimitHeaders(response);
     }
 
-    return jsonResponse({
+    const response = jsonResponse({
       success: false,
       error: errorMessage
     }, 500);
+    return withRateLimitHeaders(response);
   }
 });
 

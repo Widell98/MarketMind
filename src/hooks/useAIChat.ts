@@ -4,6 +4,7 @@ import { useChatSessions } from '@/contexts/ChatSessionsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
+import { requireAccessToken } from '@/utils/supabaseAuth';
 
 const DAILY_MESSAGE_CREDITS = 10;
 
@@ -350,7 +351,7 @@ const clearPendingState = (sessionId: string, requestId: string) => {
 const getPendingState = (sessionId: string) => pendingSessionStates.get(sessionId);
 
 export const useAIChat = (portfolioId?: string) => {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { toast } = useToast();
   const { checkUsageLimit, subscription, usage, fetchUsage, incrementUsage } = useSubscription();
   const {
@@ -956,17 +957,16 @@ export const useAIChat = (portfolioId?: string) => {
       
       // Handle streaming response using direct fetch for better streaming support
       const supabaseUrl = 'https://qifolopsdeeyrevbuxfl.supabase.co';
-      const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpZm9sb3BzZGVleXJldmJ1eGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5MzY3MjMsImV4cCI6MjA2MzUxMjcyM30.x89y179_8EDl1NwTryhXfUDMzdxrnfomZfRmhmySMhM';
-      
+      const accessToken = await requireAccessToken(session?.access_token);
+
       const streamResponse = await fetch(`${supabaseUrl}/functions/v1/portfolio-ai-chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           message: trimmedContent,
-          userId: user.id,
           portfolioId: portfolioId,
           sessionId: targetSessionId,
           chatHistory: chatHistoryForAPI,

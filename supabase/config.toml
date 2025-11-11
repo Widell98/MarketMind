@@ -9,4 +9,10 @@ enabled = true
 # external_url tas bort – hanteras automatiskt av CLI/dashboard
 
 [functions.generate-portfolio]
-verify_jwt = false
+verify_jwt = true
+
+[functions.portfolio-ai-chat]
+verify_jwt = true
+
+[functions.generate-quiz-questions]
+verify_jwt = true
