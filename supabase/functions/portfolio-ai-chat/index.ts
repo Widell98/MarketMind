@@ -1,19 +1,12 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { IntentType } from './intent-types.ts';
+import { detectUserIntentWithOpenAI } from './intent-detector.ts';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-type IntentType =
-  | 'stock_analysis'
-  | 'portfolio_optimization'
-  | 'buy_sell_decisions'
-  | 'market_analysis'
-  | 'general_news'
-  | 'news_update'
-  | 'general_advice';
 
 type BasePromptOptions = {
   shouldOfferFollowUp: boolean;
@@ -36,6 +29,7 @@ PERSONA & STIL:
 - Använd svensk finansterminologi och marknadskontext.
 - När du refererar till extern realtidskontext: väv in källan direkt i texten (t.ex. "Enligt Reuters...").
 - Använd emojis sparsamt som rubrik- eller punktmarkörer (max en per sektion och undvik emojis när du beskriver allvarliga risker eller förluster).
+- När du rekommenderar en aktie ska bolaget vara börsnoterat och du måste ange dess ticker i formatet Företagsnamn (TICKER).
 - Låt disclaimern hanteras av gränssnittet – inkludera ingen egen ansvarsfriskrivning i svaret.`;
 
 const buildBasePrompt = (options: BasePromptOptions): string => {
@@ -79,7 +73,7 @@ const INTENT_PROMPTS: Record<IntentType, string> = {
 💡 Relaterade förslag – bara vid behov av alternativ.
 
 OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
-**Företagsnamn (TICKER)** - Kort motivering`,
+**Företagsnamn (TICKER)** - Kort motivering (endast börsnoterade bolag)`,
   portfolio_optimization: `PORTFÖLJOPTIMERINGSUPPGIFT:
 - Identifiera över-/underexponering mot sektorer och geografier.
 - Föreslå omviktningar med procentsatser när det behövs.
@@ -107,7 +101,7 @@ OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
   general_advice: `ALLMÄN INVESTERINGSRÅDGIVNING:
 - Ge råd i 2–4 meningar när frågan är enkel.
 - Anpassa förslag till användarens riskprofil och intressen.
-- När aktieförslag behövs ska formatet vara **Företagsnamn (TICKER)** - Kort motivering.`
+- När aktieförslag behövs ska formatet vara **Företagsnamn (TICKER)** - Kort motivering och endast inkludera börsnoterade bolag.`
 };
 
 const buildIntentPrompt = (intent: IntentType): string => {
@@ -203,20 +197,35 @@ const TRUSTED_TAVILY_DOMAINS = [
   'cnbc.com',
   'wsj.com',
   'marketwatch.com',
+  'finance.yahoo.com',
+  'investing.com',
+  'morningstar.com',
+  'marketscreener.com',
+  'seekingalpha.com',
+  'benzinga.com',
+  'globenewswire.com',
+  'sec.gov',
+  'placera.se',
+  'privataaffarer.se',
+  'svd.se',
+  'dn.se',
+  'efn.se',
+  'news.cision.com',
 ];
 
 const EXTENDED_TAVILY_DOMAINS = [
   ...TRUSTED_TAVILY_DOMAINS,
-  'seekingalpha.com',
-  'finance.yahoo.com',
-  'morningstar.com',
-  'investing.com',
+  'marketbeat.com',
+  'stockanalysis.com',
+  'themotleyfool.com',
   'barrons.com',
   'forbes.com',
   'economist.com',
-  'privataaffarer.se',
-  'svd.se',
+  'breakit.se',
   'dn.se',
+  'svd.se',
+  'privataaffarer.se',
+  'efn.se',
 ];
 
 const DEFAULT_EXCLUDED_TAVILY_DOMAINS = [
@@ -235,6 +244,11 @@ const DEFAULT_EXCLUDED_TAVILY_DOMAINS = [
   'discord.com',
   'pinterest.com',
 ];
+
+const RECENT_NEWS_MAX_DAYS = 3;
+const RECENT_MARKET_NEWS_MAX_DAYS = 7;
+const RECENT_FINANCIAL_DATA_MAX_DAYS = 45;
+const DEFAULT_UNDATED_FINANCIAL_DOMAINS = ['stockanalysis.com'];
 
 const FINANCIAL_RELEVANCE_KEYWORDS = [
   'aktie',
@@ -608,6 +622,7 @@ type EntityQueryInput = {
   companyNames: string[];
   hasRealTimeTrigger: boolean;
   userIntent: IntentType;
+  detectedEntities?: string[];
 };
 
 const buildEntityAwareQuery = ({
@@ -616,12 +631,23 @@ const buildEntityAwareQuery = ({
   companyNames,
   hasRealTimeTrigger,
   userIntent,
+  detectedEntities,
 }: EntityQueryInput): string | null => {
   const entitySet = new Set<string>();
   for (const ticker of tickers.slice(0, 4)) {
     if (ticker) {
       entitySet.add(ticker.toUpperCase());
     }
+  }
+
+  if (Array.isArray(detectedEntities)) {
+    detectedEntities.forEach(entity => {
+      if (typeof entity === 'string' && entity.trim()) {
+        const formatted = entity.trim();
+        const maybeTicker = formatted.length <= 8 ? formatted.toUpperCase() : formatted;
+        entitySet.add(maybeTicker);
+      }
+    });
   }
 
   for (const name of extractEntityCandidates(message, companyNames)) {
@@ -794,6 +820,220 @@ type RealTimeAssessment = {
   usedLLM: boolean;
 };
 
+type NewsIntentEvaluationParams = {
+  message: string;
+  hasPortfolio: boolean;
+  apiKey: string;
+};
+
+type NewsIntentLabel = 'news_update' | 'general_news' | 'none';
+
+const NEWS_INTENT_SCHEMA = {
+  name: 'news_intent_selection',
+  schema: {
+    type: 'object',
+    properties: {
+      intent: {
+        type: 'string',
+        enum: ['news_update', 'general_news', 'none'],
+        default: 'none',
+      },
+    },
+    required: ['intent'],
+    additionalProperties: false,
+  },
+} as const;
+
+const evaluateNewsIntentWithOpenAI = async ({
+  message,
+  hasPortfolio,
+  apiKey,
+}: NewsIntentEvaluationParams): Promise<IntentType | null> => {
+  if (!apiKey || !message || !message.trim()) {
+    return null;
+  }
+
+  try {
+    const systemPrompt = `Du hjälper en svensk finansiell assistent att välja rätt typ av nyhetssvar.\n- Välj \"news_update\" om användaren sannolikt vill ha en uppdatering om sina innehav eller portfölj.\n- Välj \"general_news\" om användaren vill ha ett brett marknadsbrev eller nyhetssvep.\n- Returnera \"none\" om inget av alternativen passar.\nSvara alltid med giltig JSON.`;
+
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      {
+        role: 'user',
+        content: `Meddelande: "${message.trim()}"\nHar användaren portföljdata hos oss: ${hasPortfolio ? 'ja' : 'nej'}\nVilket nyhetssvar förväntas?`,
+      },
+    ];
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        temperature: 0,
+        response_format: { type: 'json_schema', json_schema: NEWS_INTENT_SCHEMA },
+        messages,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('News intent evaluation failed', response.status, await response.text());
+      return null;
+    }
+
+    const data = await response.json();
+    const rawContent = data?.choices?.[0]?.message?.content;
+
+    if (!rawContent || typeof rawContent !== 'string') {
+      return null;
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawContent);
+    } catch (error) {
+      console.warn('Failed to parse news intent response:', error);
+      return null;
+    }
+
+    const intentRaw = typeof (parsed as any)?.intent === 'string' ? (parsed as any).intent as NewsIntentLabel : 'none';
+
+    if (intentRaw === 'news_update' || intentRaw === 'general_news') {
+      return intentRaw;
+    }
+
+    return null;
+  } catch (error) {
+    console.warn('News intent evaluator error:', error);
+    return null;
+  }
+};
+
+type StockIntentEvaluationParams = {
+  message: string;
+  detectedTickers: string[];
+  heuristicsTriggered: boolean;
+  hasStockContext: boolean;
+  analysisCue: boolean;
+  apiKey: string;
+};
+
+type StockIntentEvaluationResult = {
+  classification: 'stock_focus' | 'non_stock';
+  rationale?: string;
+};
+
+const STOCK_INTENT_SCHEMA = {
+  name: 'stock_intent_classification',
+  schema: {
+    type: 'object',
+    properties: {
+      classification: {
+        type: 'string',
+        enum: ['stock_focus', 'non_stock'],
+        default: 'non_stock',
+      },
+      rationale: {
+        type: 'string',
+        maxLength: 200,
+      },
+    },
+    required: ['classification'],
+    additionalProperties: false,
+  },
+} as const;
+
+const evaluateStockIntentWithOpenAI = async ({
+  message,
+  detectedTickers,
+  heuristicsTriggered,
+  hasStockContext,
+  analysisCue,
+  apiKey,
+}: StockIntentEvaluationParams): Promise<StockIntentEvaluationResult | null> => {
+  const trimmedMessage = message.trim();
+
+  if (!apiKey || !trimmedMessage) {
+    return null;
+  }
+
+  try {
+    const systemPrompt = `Du hjälper en svensk finansiell assistent att avgöra hur svaret ska formuleras.\n- Välj \"stock_focus\" om användaren förväntar sig resonemang om ett specifikt bolag eller dess aktie.\n- Välj \"non_stock\" om frågan främst gäller portföljer, sparande, index, makro eller andra bredare ämnen.\n- Använd signalerna men gör en egen helhetsbedömning.\n- Svara alltid med giltig JSON enligt schemat.`;
+
+    const tickerLine = detectedTickers.length > 0
+      ? detectedTickers.join(', ')
+      : 'inga';
+
+    const userContent = [
+      `Meddelande: "${trimmedMessage}"`,
+      `Identifierade tickers: ${tickerLine}`,
+      `Heuristik markerade som aktiefråga: ${heuristicsTriggered ? 'ja' : 'nej'}`,
+      `Investerings- eller bolagskontext hittad: ${hasStockContext ? 'ja' : 'nej'}`,
+      `Direkt analysfraser hittade: ${analysisCue ? 'ja' : 'nej'}`,
+      'Avgör om detta ska besvaras som en aktiespecifik fråga.',
+    ].join('\n');
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        temperature: 0,
+        response_format: { type: 'json_schema', json_schema: STOCK_INTENT_SCHEMA },
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userContent },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('Stock intent evaluation failed', response.status, await response.text());
+      return null;
+    }
+
+    const data = await response.json();
+    const rawContent = data?.choices?.[0]?.message?.content;
+
+    if (!rawContent || typeof rawContent !== 'string') {
+      return null;
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawContent);
+    } catch (error) {
+      console.warn('Failed to parse stock intent response:', error);
+      return null;
+    }
+
+    const classificationRaw = typeof (parsed as any)?.classification === 'string'
+      ? (parsed as any).classification as string
+      : 'non_stock';
+
+    if (classificationRaw !== 'stock_focus' && classificationRaw !== 'non_stock') {
+      return null;
+    }
+
+    const rationaleRaw = typeof (parsed as any)?.rationale === 'string'
+      ? (parsed as any).rationale.trim()
+      : '';
+
+    return {
+      classification: classificationRaw,
+      rationale: rationaleRaw.length > 0 ? rationaleRaw : undefined,
+    };
+  } catch (error) {
+    console.warn('Stock intent evaluator error:', error);
+    return null;
+  }
+};
+
 type RealTimeDecisionInput = {
   message: string;
   userIntent?: IntentType;
@@ -951,11 +1191,18 @@ type TavilySearchOptions = {
   maxResults?: number;
   includeRawContent?: boolean;
   timeoutMs?: number;
+  requireRecentDays?: number;
+  allowUndatedFromDomains?: string[];
 };
 
 type StockDetectionPattern = {
   regex: RegExp;
   requiresContext?: boolean;
+};
+
+type TavilyFormattingOptions = {
+  requireRecentDays?: number;
+  allowUndatedFromDomains?: string[];
 };
 
 const normalizeHostname = (url: string): string | null => {
@@ -1005,6 +1252,7 @@ const selectSnippetSource = (result: TavilySearchResult): string => {
 const formatTavilyResults = (
   data: TavilySearchResponse | null,
   allowedDomains: string[],
+  options: TavilyFormattingOptions = {},
 ): TavilyContextPayload => {
   if (!data) {
     return { formattedContext: '', sources: [] };
@@ -1012,6 +1260,64 @@ const formatTavilyResults = (
 
   const sections: string[] = [];
   const sourceSet = new Set<string>();
+  const { requireRecentDays, allowUndatedFromDomains } = options;
+  const requireFreshness = typeof requireRecentDays === 'number'
+    && Number.isFinite(requireRecentDays)
+    && requireRecentDays > 0;
+
+  const normalizedUndatedDomains = Array.isArray(allowUndatedFromDomains)
+    ? allowUndatedFromDomains
+      .map(domain => domain.replace(/^www\./, '').toLowerCase())
+      .filter(Boolean)
+    : [];
+
+  const recencyThresholdMs = requireFreshness
+    ? requireRecentDays * 24 * 60 * 60 * 1000
+    : 0;
+  const nowMs = Date.now();
+
+  const isUndatedAllowed = (url: string): boolean => {
+    if (!requireFreshness) return true;
+    const hostname = normalizeHostname(url);
+    if (!hostname) {
+      return false;
+    }
+
+    return normalizedUndatedDomains.some(domain => hostname === domain || hostname.endsWith(`.${domain}`));
+  };
+
+  const isRecentEnough = (url: string, publishedDate?: string): boolean => {
+    if (!requireFreshness) {
+      return true;
+    }
+
+    if (typeof publishedDate === 'string' && publishedDate.trim().length > 0) {
+      const parsed = Date.parse(publishedDate);
+      if (!Number.isNaN(parsed)) {
+        const ageMs = nowMs - parsed;
+        if (ageMs < 0) {
+          return true;
+        }
+
+        if (ageMs <= recencyThresholdMs) {
+          return true;
+        }
+
+        console.log('Filtrerar bort Tavily-resultat som är äldre än tillåten gräns:', url, 'datum:', publishedDate);
+        return false;
+      }
+
+      console.log('Kunde inte tolka publiceringsdatum för Tavily-resultat:', url, 'datum:', publishedDate);
+      return isUndatedAllowed(url);
+    }
+
+    if (!isUndatedAllowed(url)) {
+      console.log('Filtrerar bort Tavily-resultat utan publiceringsdatum när färska källor krävs:', url);
+      return false;
+    }
+
+    return true;
+  };
 
   if (typeof data.answer === 'string' && data.answer.trim().length > 0) {
     sections.push(`Sammanfattning från realtidssökning: ${data.answer.trim()}`);
@@ -1038,6 +1344,10 @@ const formatTavilyResults = (
         const hasRelevance = hasFinancialRelevance(combinedText);
         if (!hasRelevance && combinedText.length < 60) {
           console.log('Filtrerar bort Tavily-resultat med låg finansiell relevans:', url);
+          return false;
+        }
+
+        if (!isRecentEnough(url, result.published_date)) {
           return false;
         }
 
@@ -1093,24 +1403,30 @@ const fetchTavilyContext = async (
   }
 
   try {
-    const effectiveIncludeDomains = Array.isArray(options.includeDomains) && options.includeDomains.length > 0
-      ? options.includeDomains
+    const {
+      requireRecentDays,
+      allowUndatedFromDomains,
+      ...searchOptions
+    } = options ?? {};
+
+    const effectiveIncludeDomains = Array.isArray(searchOptions.includeDomains) && searchOptions.includeDomains.length > 0
+      ? searchOptions.includeDomains
       : TRUSTED_TAVILY_DOMAINS;
 
-    const allowDomainFallback = (!Array.isArray(options.includeDomains) || options.includeDomains.length === 0)
+    const allowDomainFallback = (!Array.isArray(searchOptions.includeDomains) || searchOptions.includeDomains.length === 0)
       && EXTENDED_TAVILY_DOMAINS.length > 0;
 
     const effectiveExcludeDomains = Array.from(new Set([
       ...DEFAULT_EXCLUDED_TAVILY_DOMAINS,
-      ...(Array.isArray(options.excludeDomains) ? options.excludeDomains : []),
+      ...(Array.isArray(searchOptions.excludeDomains) ? searchOptions.excludeDomains : []),
     ]));
 
-    const effectiveTopic: TavilyTopic = options.topic ?? 'finance';
-    const shouldRequestRawContent = (options.includeRawContent ?? false)
-      && (options.searchDepth ?? 'basic') === 'advanced';
+    const effectiveTopic: TavilyTopic = searchOptions.topic ?? 'finance';
+    const shouldRequestRawContent = (searchOptions.includeRawContent ?? false)
+      && (searchOptions.searchDepth ?? 'basic') === 'advanced';
 
-    const timeout = typeof options.timeoutMs === 'number' && options.timeoutMs > 0
-      ? options.timeoutMs
+    const timeout = typeof searchOptions.timeoutMs === 'number' && searchOptions.timeoutMs > 0
+      ? searchOptions.timeoutMs
       : 6000;
 
     const domainAttempts: string[][] = [];
@@ -1135,10 +1451,10 @@ const fetchTavilyContext = async (
     }> => {
       const payload: Record<string, unknown> = {
         api_key: tavilyApiKey,
-        query: options.query ?? message,
-        search_depth: options.searchDepth ?? 'basic',
+        query: searchOptions.query ?? message,
+        search_depth: searchOptions.searchDepth ?? 'basic',
         include_answer: true,
-        max_results: options.maxResults ?? 5,
+        max_results: searchOptions.maxResults ?? 5,
       };
 
       if (shouldRequestRawContent) {
@@ -1157,12 +1473,12 @@ const fetchTavilyContext = async (
         payload.topic = effectiveTopic;
       }
 
-      if (typeof options.timeRange === 'string' && options.timeRange.trim().length > 0) {
-        payload.time_range = options.timeRange.trim();
+      if (typeof searchOptions.timeRange === 'string' && searchOptions.timeRange.trim().length > 0) {
+        payload.time_range = searchOptions.timeRange.trim();
       }
 
-      if (typeof options.days === 'number' && Number.isFinite(options.days)) {
-        payload.days = options.days;
+      if (typeof searchOptions.days === 'number' && Number.isFinite(searchOptions.days)) {
+        payload.days = searchOptions.days;
       }
 
       const controller = new AbortController();
@@ -1185,7 +1501,10 @@ const fetchTavilyContext = async (
         }
 
         const tavilyData = await response.json() as TavilySearchResponse;
-        const context = formatTavilyResults(tavilyData, includeDomains);
+        const context = formatTavilyResults(tavilyData, includeDomains, {
+          requireRecentDays,
+          allowUndatedFromDomains,
+        });
         const rawResultCount = Array.isArray(tavilyData.results) ? tavilyData.results.length : 0;
 
         return { context, rawResultCount };
@@ -1871,6 +2190,8 @@ serve(async (req) => {
         maxResults: 5,
         includeRawContent: true,
         timeoutMs: 7000,
+        requireRecentDays: RECENT_FINANCIAL_DATA_MAX_DAYS,
+        allowUndatedFromDomains: DEFAULT_UNDATED_FINANCIAL_DOMAINS,
       });
 
       return targetedContext;
@@ -1900,8 +2221,28 @@ serve(async (req) => {
     const lowerCaseMessage = message.toLowerCase();
     const isFinancialDataRequest = FINANCIAL_DATA_KEYWORDS.some(keyword => lowerCaseMessage.includes(keyword));
 
-    const isStockMentionRequest = stockMentionsInMessage || isStockAnalysisRequest || (isFinancialDataRequest && detectedTickers.length > 0);
-     
+    let isStockMentionRequest = stockMentionsInMessage || isStockAnalysisRequest || (isFinancialDataRequest && detectedTickers.length > 0);
+
+    if (openAIApiKey) {
+      const stockIntentAssessment = await evaluateStockIntentWithOpenAI({
+        message,
+        detectedTickers,
+        heuristicsTriggered: isStockMentionRequest,
+        hasStockContext,
+        analysisCue: isStockAnalysisRequest,
+        apiKey: openAIApiKey,
+      });
+
+      if (stockIntentAssessment) {
+        console.log('Stock intent classification:', stockIntentAssessment.classification);
+        if (stockIntentAssessment.rationale) {
+          console.log('Stock intent rationale:', stockIntentAssessment.rationale);
+        }
+
+        isStockMentionRequest = stockIntentAssessment.classification === 'stock_focus';
+      }
+    }
+
     // Check if user wants personal investment advice/recommendations
     const isPersonalAdviceRequest = /(?:rekommendation|förslag|vad ska jag|bör jag|passar mig|min portfölj|mina intressen|för mig|personlig|skräddarsy|baserat på|investera|köpa|sälja|portföljanalys|investeringsstrategi)/i.test(message);
     const isPortfolioOptimizationRequest = /portfölj/i.test(message) && /optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma/i.test(message);
@@ -1913,72 +2254,92 @@ serve(async (req) => {
       holdings.some((holding: HoldingRecord) => holding?.holding_type !== 'recommendation');
 
     // ENHANCED INTENT ROUTING SYSTEM
-    const detectIntent = async (message: string): Promise<IntentType> => {
-      const msg = message.toLowerCase();
-
-      const newsUpdateKeywords = [
-        'kväll',
-        'ikväll',
-        'senaste',
-        'påverka min portfölj',
-        'portföljen'
-      ];
-
-      const generalNewsKeywords = [
-        'nyheter',
-        'marknadsbrev',
-        'dagens händelser',
-        'veckobrev',
-        'sammanfattning'
-      ];
-
-      // Stock/Company Analysis Intent - enhanced to catch more stock mentions
-      if (isStockMentionRequest ||
-          (/(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) &&
-          /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5})/i.test(message))) {
-        return 'stock_analysis';
-      }
-
-      // Portfolio news update intent
-      if (userHasPortfolio && newsUpdateKeywords.some(keyword => msg.includes(keyword))) {
-        return 'news_update';
-      }
-
-      // General market news intent
-      if (generalNewsKeywords.some(keyword => msg.includes(keyword))) {
-        return 'general_news';
-      }
-
-      // Portfolio Rebalancing/Optimization Intent
-      if (/(?:portfölj|portfolio)/i.test(message) && /(?:optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma|rebalansera)/i.test(message)) {
-        return 'portfolio_optimization';
-      }
-
-      // Buy/Sell Decisions Intent
-      if (/(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|position|handel)/i.test(message)) {
-        return 'buy_sell_decisions';
-      }
-
-      // Market Analysis Intent
-      if (/(?:marknad|index|trend|prognos|ekonomi|räntor|inflation|börsen)/i.test(message)) {
-        return 'market_analysis';
-      }
-
-      const embeddingIntent = await classifyIntentWithEmbeddings(message, supabase, openAIApiKey);
-      if (embeddingIntent) {
-        return embeddingIntent;
-      }
-
-      const llmIntent = await classifyIntentWithLLM(message, openAIApiKey);
-      if (llmIntent) {
-        return llmIntent;
-      }
-
-      return 'general_advice';
+    type IntentSelection = {
+      primaryIntent: IntentType;
+      intents: IntentType[];
+      entities: string[];
+      language: string | null;
+      source: 'interpreter' | 'fallback';
     };
 
-    const userIntent = await detectIntent(message);
-    console.log('Detected user intent:', userIntent);
+    const detectIntent = async (message: string): Promise<IntentSelection> => {
+      const interpreterResult = await detectUserIntentWithOpenAI(message, openAIApiKey);
+      const interpreterIntents = interpreterResult?.intents ?? [];
+      const interpreterEntities = interpreterResult?.entities ?? [];
+      const interpreterLanguage = interpreterResult?.language ?? null;
+
+      let primaryIntent = interpreterIntents[0];
+      let intentSource: 'interpreter' | 'fallback' = 'interpreter';
+      let resolvedIntents = interpreterIntents.slice();
+
+      if (!primaryIntent) {
+        const embeddingIntent = await classifyIntentWithEmbeddings(message, supabase, openAIApiKey);
+        if (embeddingIntent) {
+          primaryIntent = embeddingIntent;
+          intentSource = 'fallback';
+          resolvedIntents = [embeddingIntent];
+        }
+      }
+
+      if (!primaryIntent) {
+        const llmIntent = await classifyIntentWithLLM(message, openAIApiKey);
+        if (llmIntent) {
+          primaryIntent = llmIntent;
+          intentSource = 'fallback';
+          resolvedIntents = [llmIntent];
+        }
+      }
+
+      if (!primaryIntent) {
+        if (isStockMentionRequest ||
+            (/(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) &&
+            /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5})/i.test(message))) {
+          primaryIntent = 'stock_analysis';
+        } else {
+          const newsIntent = await evaluateNewsIntentWithOpenAI({
+            message,
+            hasPortfolio: userHasPortfolio,
+            apiKey: openAIApiKey,
+          });
+
+          if (newsIntent) {
+            primaryIntent = newsIntent;
+          } else if (/(?:portfölj|portfolio)/i.test(message) && /(?:optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma|rebalansera)/i.test(message)) {
+            primaryIntent = 'portfolio_optimization';
+          } else if (/(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|position|handel)/i.test(message)) {
+            primaryIntent = 'buy_sell_decisions';
+          } else if (/(?:marknad|index|trend|prognos|ekonomi|räntor|inflation|börsen)/i.test(message)) {
+            primaryIntent = 'market_analysis';
+          } else {
+            primaryIntent = 'general_advice';
+          }
+        }
+
+        intentSource = 'fallback';
+        resolvedIntents = [primaryIntent];
+      }
+
+      if (resolvedIntents.length === 0) {
+        resolvedIntents = [primaryIntent ?? 'general_advice'];
+      }
+
+      return {
+        primaryIntent: primaryIntent ?? 'general_advice',
+        intents: resolvedIntents,
+        entities: interpreterEntities,
+        language: interpreterLanguage,
+        source: intentSource,
+      };
+    };
+
+    const { primaryIntent: userIntent, intents: detectedIntents, entities: interpretedEntities, language: interpretedLanguage, source: intentSource } = await detectIntent(message);
+    console.log('Detected user intent:', userIntent, 'source:', intentSource, 'all intents:', detectedIntents.join(', '));
+    if (interpretedEntities.length > 0) {
+      console.log('Interpreter entities:', interpretedEntities.join(', '));
+    }
+    if (interpretedLanguage) {
+      console.log('Interpreter language guess:', interpretedLanguage);
+    }
 
     const realTimeAssessment = await determineRealTimeSearchNeed({
       message,
@@ -2004,6 +2365,7 @@ serve(async (req) => {
       companyNames: sheetTickerNames,
       hasRealTimeTrigger,
       userIntent,
+      detectedEntities: interpretedEntities,
     });
 
     const shouldFetchTavily = !isSimplePersonalAdviceRequest && (
@@ -2050,11 +2412,21 @@ serve(async (req) => {
           if (options.topic === 'news' && options.days === undefined) {
             options.days = 3;
           }
+          options.requireRecentDays = RECENT_NEWS_MAX_DAYS;
         } else if (userIntent === 'general_news' || userIntent === 'market_analysis') {
           options.timeRange = 'week';
           if (options.topic === 'news' && options.days === undefined) {
             options.days = 7;
           }
+          options.requireRecentDays = RECENT_MARKET_NEWS_MAX_DAYS;
+        }
+
+        if (isFinancialDataRequest) {
+          const candidateDays = RECENT_FINANCIAL_DATA_MAX_DAYS;
+          options.requireRecentDays = options.requireRecentDays !== undefined
+            ? Math.min(options.requireRecentDays, candidateDays)
+            : candidateDays;
+          options.allowUndatedFromDomains = DEFAULT_UNDATED_FINANCIAL_DOMAINS;
         }
 
         return options;
