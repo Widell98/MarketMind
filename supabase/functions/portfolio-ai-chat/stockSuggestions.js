@@ -66,9 +66,10 @@ const extractSuggestionCandidates = (message) => {
       const name = sanitizeName(rawName);
       const ticker = rawTicker.toUpperCase();
       const reason = sanitizeReason(rawReason);
+      const reasonTickers = rawReason ? Array.from(extractTickers(rawReason)) : [];
 
       if (isValidSuggestion(name, ticker) && !suggestions.find((s) => s.ticker === ticker)) {
-        suggestions.push({ name, ticker, reason });
+        suggestions.push({ name, ticker, reason, reasonTickers });
       }
     }
   }
@@ -108,6 +109,15 @@ export const ensureStockSuggestions = async (supabase, userMessage, aiMessage) =
 
   const suggestionCandidates = extractSuggestionCandidates(aiMessage);
   const suggestionTickers = new Set(suggestionCandidates.map((s) => s.ticker));
+  const reasonTickers = new Set();
+
+  for (const candidate of suggestionCandidates) {
+    if (Array.isArray(candidate.reasonTickers)) {
+      for (const ticker of candidate.reasonTickers) {
+        reasonTickers.add(ticker.toUpperCase());
+      }
+    }
+  }
 
   const lines = aiMessage.split('\n');
   const filteredLines = lines.filter((line) => {
@@ -120,6 +130,7 @@ export const ensureStockSuggestions = async (supabase, userMessage, aiMessage) =
   const candidateTickers = new Set([
     ...aiTickers,
     ...suggestionTickers,
+    ...reasonTickers,
   ]);
 
   if (candidateTickers.size === 0) {
@@ -151,7 +162,13 @@ export const ensureStockSuggestions = async (supabase, userMessage, aiMessage) =
     return { message: cleanedMessage, suggestions: [] };
   }
 
-  const prioritizedSuggestions = suggestionCandidates.filter((suggestion) => validTickers.has(suggestion.ticker));
+  const prioritizedSuggestions = suggestionCandidates
+    .filter((suggestion) => validTickers.has(suggestion.ticker))
+    .map((suggestion) => ({
+      name: suggestion.name,
+      ticker: suggestion.ticker,
+      reason: suggestion.reason,
+    }));
 
   const finalSuggestions = Array.from(validTickers)
     .filter((ticker) => {

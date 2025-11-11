@@ -65,3 +65,38 @@ test('handles tickers with dots, dashes, and numbers and filters invalid ones', 
   assert.match(message, /\*\*Berkshire Hathaway \(BRK\.B\)\*\*/);
 });
 
+test('fetches tickers that appear inside suggestion reasons', async () => {
+  let capturedTickers = [];
+
+  const mockSupabase = {
+    from: () => ({
+      select: () => ({
+        in: (_column, values) => {
+          capturedTickers = values;
+          return Promise.resolve({
+            data: [
+              { symbol: 'AAPL', name: 'Apple Inc.' },
+              { symbol: 'MSFT', name: 'Microsoft Corp.' },
+            ],
+          });
+        },
+      }),
+    }),
+  };
+
+  const userMessage = '';
+  const aiMessage = '- **Apple (AAPL)** - Starkare utveckling än Microsoft (MSFT) senaste året.';
+
+  const { suggestions } = await ensureStockSuggestions(
+    mockSupabase,
+    userMessage,
+    aiMessage,
+  );
+
+  assert.ok(capturedTickers.includes('MSFT'));
+  assert.deepEqual(
+    suggestions.map((s) => s.ticker),
+    ['AAPL'],
+  );
+});
+
