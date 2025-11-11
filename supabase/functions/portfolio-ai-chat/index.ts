@@ -188,9 +188,22 @@ const buildPersonalizationPrompt = ({
   return sections.length > 0 ? sections.join('\n') : '';
 };
 
-const TRUSTED_TAVILY_DOMAINS = [
+const SWEDISH_TAVILY_DOMAINS = [
   'di.se',
   'affarsvarlden.se',
+  'placera.se',
+  'www.placera.se',
+  'www.placera.se/skribenter/199',
+  'placera.se/skribenter/199',
+  'privataaffarer.se',
+  'svd.se',
+  'dn.se',
+  'efn.se',
+  'breakit.se',
+  'news.cision.com',
+];
+
+const INTERNATIONAL_TAVILY_DOMAINS = [
   'reuters.com',
   'bloomberg.com',
   'ft.com',
@@ -205,15 +218,24 @@ const TRUSTED_TAVILY_DOMAINS = [
   'benzinga.com',
   'globenewswire.com',
   'sec.gov',
-  'placera.se',
-  'privataaffarer.se',
-  'svd.se',
-  'dn.se',
-  'efn.se',
-  'news.cision.com',
 ];
 
-const EXTENDED_TAVILY_DOMAINS = [
+const TRUSTED_TAVILY_DOMAINS = Array.from(new Set([
+  ...SWEDISH_TAVILY_DOMAINS,
+  ...INTERNATIONAL_TAVILY_DOMAINS,
+]));
+
+const SWEDISH_PRIORITY_TAVILY_DOMAINS = Array.from(new Set([
+  ...SWEDISH_TAVILY_DOMAINS,
+  ...INTERNATIONAL_TAVILY_DOMAINS,
+]));
+
+const INTERNATIONAL_PRIORITY_TAVILY_DOMAINS = Array.from(new Set([
+  ...INTERNATIONAL_TAVILY_DOMAINS,
+  ...SWEDISH_TAVILY_DOMAINS,
+]));
+
+const EXTENDED_TAVILY_DOMAINS = Array.from(new Set([
   ...TRUSTED_TAVILY_DOMAINS,
   'marketbeat.com',
   'stockanalysis.com',
@@ -221,12 +243,7 @@ const EXTENDED_TAVILY_DOMAINS = [
   'barrons.com',
   'forbes.com',
   'economist.com',
-  'breakit.se',
-  'dn.se',
-  'svd.se',
-  'privataaffarer.se',
-  'efn.se',
-];
+]));
 
 const DEFAULT_EXCLUDED_TAVILY_DOMAINS = [
   'reddit.com',
@@ -1658,6 +1675,9 @@ serve(async (req) => {
 
     let sheetTickerSymbols: string[] = [];
     let sheetTickerNames: string[] = [];
+    let sheetTickerCurrencyMap = new Map<string, string>();
+    let swedishTickerSymbols: string[] = [];
+    let swedishCompanyNamesNormalized: string[] = [];
 
     try {
       const { data: sheetTickerData, error: sheetTickerError } = await supabase.functions.invoke('list-sheet-tickers');
@@ -1672,19 +1692,33 @@ serve(async (req) => {
 
         const symbolSet = new Set<string>();
         const nameSet = new Set<string>();
+        const currencyMap = new Map<string, string>();
+        const swedishSymbolSet = new Set<string>();
+        const swedishNameSet = new Set<string>();
 
         for (const item of rawTickers) {
           if (!item || typeof item !== 'object') continue;
 
           const rawSymbol = typeof item.symbol === 'string' ? item.symbol : null;
+          const currencyNormalized = typeof item.currency === 'string'
+            ? item.currency.trim().toUpperCase()
+            : null;
           if (rawSymbol) {
             const trimmedSymbol = rawSymbol.trim();
             const withoutPrefix = trimmedSymbol.includes(':')
               ? trimmedSymbol.split(':').pop() ?? trimmedSymbol
               : trimmedSymbol;
             const cleanedSymbol = withoutPrefix.replace(/\s+/g, '').toUpperCase();
-            if (cleanedSymbol.length > 0) {
-              symbolSet.add(cleanedSymbol);
+            const normalizedSymbol = cleanedSymbol.replace(/[^A-Za-z0-9]/g, '');
+            const finalSymbol = normalizedSymbol.length > 0 ? normalizedSymbol : cleanedSymbol;
+            if (finalSymbol.length > 0) {
+              symbolSet.add(finalSymbol);
+              if (currencyNormalized) {
+                currencyMap.set(finalSymbol, currencyNormalized);
+                if (currencyNormalized === 'SEK') {
+                  swedishSymbolSet.add(finalSymbol);
+                }
+              }
             }
           }
 
@@ -1698,12 +1732,23 @@ serve(async (req) => {
               if (diacriticsStripped.length > 0 && diacriticsStripped !== normalizedWhitespaceName) {
                 nameSet.add(diacriticsStripped);
               }
+
+              if (currencyNormalized === 'SEK') {
+                const lowerName = normalizedWhitespaceName.toLowerCase();
+                swedishNameSet.add(lowerName);
+                if (diacriticsStripped.length > 0) {
+                  swedishNameSet.add(diacriticsStripped.toLowerCase());
+                }
+              }
             }
           }
         }
 
         sheetTickerSymbols = Array.from(symbolSet);
         sheetTickerNames = Array.from(nameSet);
+        sheetTickerCurrencyMap = currencyMap;
+        swedishTickerSymbols = Array.from(swedishSymbolSet);
+        swedishCompanyNamesNormalized = Array.from(swedishNameSet);
 
         console.log('Loaded Google Sheets tickers:', {
           symbols: sheetTickerSymbols.length,
@@ -2410,10 +2455,107 @@ serve(async (req) => {
         || userIntent === 'market_analysis'
         || hasRealTimeTrigger;
 
+      const normalizeTickerToken = (value: string | null | undefined): string => {
+        if (!value) return '';
+        const trimmed = value.trim();
+        if (!trimmed) return '';
+        const upper = trimmed.toUpperCase();
+        const withoutPrefix = upper.includes(':')
+          ? upper.split(':').pop() ?? upper
+          : upper;
+        return withoutPrefix.replace(/[^A-Za-z0-9]/g, '');
+      };
+
+      const swedishTickerLookup = new Set(swedishTickerSymbols.map(symbol => symbol.toUpperCase()));
+      const normalizedMessageNoDiacritics = removeDiacritics(message).toLowerCase();
+      const messageIncludesSwedishName = swedishCompanyNamesNormalized.some(name =>
+        typeof name === 'string'
+          && name.length > 2
+          && normalizedMessageNoDiacritics.includes(name)
+      );
+      const interpreterEntityText = interpretedEntities
+        .map(entity => removeDiacritics(entity).toLowerCase())
+        .join(' ');
+
+      let swedishScore = 0;
+      let internationalScore = 0;
+
+      const seenTickerTokens = new Set<string>();
+      const considerTickerForLocale = (ticker: string | null | undefined) => {
+        const normalizedTicker = normalizeTickerToken(ticker);
+        if (!normalizedTicker || seenTickerTokens.has(normalizedTicker)) {
+          return;
+        }
+        seenTickerTokens.add(normalizedTicker);
+
+        const mappedCurrency = sheetTickerCurrencyMap.get(normalizedTicker) ?? null;
+        if (mappedCurrency === 'SEK' || swedishTickerLookup.has(normalizedTicker)) {
+          swedishScore += 3;
+          return;
+        }
+
+        if (mappedCurrency && mappedCurrency !== 'SEK') {
+          internationalScore += 3;
+        }
+      };
+
+      considerTickerForLocale(primaryDetectedTicker);
+      detectedTickers.forEach(considerTickerForLocale);
+
+      if (messageIncludesSwedishName || staticCompanyPattern.regex.test(message)) {
+        swedishScore += 2;
+      }
+
+      const swedishContextPattern = /(sverige|svensk[at]?|stockholm|stockholmsbörsen|omx|first\s+north|large\s+cap|mid\s+cap|small\s+cap)/i;
+      const swedishTickerIndicatorPattern = /\b(?:[A-Z]{1,5}\.ST|STO:[A-Z0-9]+)\b/;
+      if (swedishContextPattern.test(message)) {
+        swedishScore += 1;
+      }
+      if (swedishTickerIndicatorPattern.test(message)) {
+        swedishScore += 1;
+      }
+      if (interpreterEntityText.includes('sweden') || interpreterEntityText.includes('swedish')) {
+        swedishScore += 1;
+      }
+
+      const internationalContextPattern = /(nasdaq|nyse|usa|amerikansk|amerika|wall\s+street|london|lse|storbritannien|uk|england|frankfurt|tyskland|germany|paris|euronext|tokyo|japan|hong\s*kong|kina|china|kanada|canada|tsx|asx|australien|singapore)/i;
+      if (internationalContextPattern.test(message)) {
+        internationalScore += 1;
+      }
+      if (interpreterEntityText.includes('usa')
+        || interpreterEntityText.includes('united states')
+        || interpreterEntityText.includes('germany')
+        || interpreterEntityText.includes('france')
+        || interpreterEntityText.includes('uk')
+        || interpreterEntityText.includes('london')
+        || interpreterEntityText.includes('china')
+        || interpreterEntityText.includes('japan')) {
+        internationalScore += 1;
+      }
+
+      const determineIncludeDomains = (): string[] => {
+        if (swedishScore === 0 && internationalScore === 0) {
+          return TRUSTED_TAVILY_DOMAINS;
+        }
+        if (swedishScore >= internationalScore) {
+          return SWEDISH_PRIORITY_TAVILY_DOMAINS;
+        }
+        return INTERNATIONAL_PRIORITY_TAVILY_DOMAINS;
+      };
+
+      const prioritizedIncludeDomains = determineIncludeDomains();
+      if (swedishScore > 0 || internationalScore > 0) {
+        console.log('Tavily domain preference scores:', {
+          swedishScore,
+          internationalScore,
+          prioritizedDomainsPreview: prioritizedIncludeDomains.slice(0, 6),
+        });
+      }
+
       const buildDefaultTavilyOptions = (): TavilySearchOptions => {
         const options: TavilySearchOptions = {
           query: entityAwareQuery ?? undefined,
-          includeDomains: TRUSTED_TAVILY_DOMAINS,
+          includeDomains: prioritizedIncludeDomains,
           excludeDomains: DEFAULT_EXCLUDED_TAVILY_DOMAINS,
           includeRawContent: shouldUseAdvancedDepth,
           topic: determineTavilyTopic(),
