@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ChatDocument } from '@/hooks/useChatDocuments';
@@ -8,6 +8,7 @@ import {
   FileText,
   Loader2,
   Paperclip,
+  Sparkles,
   Trash,
   UploadCloud,
 } from 'lucide-react';
@@ -67,8 +68,22 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showUploadArea, setShowUploadArea] = useState(() => documents.length === 0);
 
   const selectedDocuments = useMemo(() => new Set(selectedDocumentIds), [selectedDocumentIds]);
+  const selectedCount = selectedDocuments.size;
+
+  useEffect(() => {
+    if (documents.length === 0) {
+      setShowUploadArea(true);
+    }
+  }, [documents.length]);
+
+  useEffect(() => {
+    if (isUploading) {
+      setShowUploadArea(true);
+    }
+  }, [isUploading]);
 
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -103,56 +118,81 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
 
   return (
     <div className="border-t border-b border-ai-border/50 bg-ai-surface-muted/40 px-4 py-3 sm:px-6">
-      <div
-        className={cn(
-          'flex flex-col gap-3 rounded-xl border border-dashed border-ai-border/70 bg-white/70 p-4 text-sm transition-colors dark:bg-ai-surface/80',
-          isDragging && 'border-primary/60 bg-primary/5'
-        )}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 text-foreground">
-            <UploadCloud className="h-4 w-4 text-primary" />
-            <span className="font-medium">Ladda upp dokument</span>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-ai-text-muted">
+            <Paperclip className="h-4 w-4 text-primary" />
+            <span>Dokumentkällor</span>
+            {selectedCount > 0 && (
+              <Badge variant="outline" className="rounded-full border-primary/40 bg-primary/10 text-[11px] text-primary">
+                {selectedCount} valda
+              </Badge>
+            )}
           </div>
-          <p className="text-xs text-ai-text-muted">
-            Dra in en årsredovisning eller annan PDF/textfil här, eller välj från din enhet.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="rounded-full border-primary/40 text-primary hover:bg-primary/10"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
+            className="h-8 rounded-full text-xs text-ai-text-muted hover:text-foreground"
+            onClick={() => setShowUploadArea((prev) => !prev)}
           >
-            {isUploading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Bearbetar...
-              </>
-            ) : (
-              <>
-                <Paperclip className="mr-2 h-4 w-4" />
-                Välj fil
-              </>
-            )}
+            {showUploadArea ? 'Dölj uppladdning' : 'Lägg till dokument'}
           </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.txt,text/plain,application/pdf"
-            className="hidden"
-            onChange={handleFileChange}
-          />
-          <Badge variant="secondary" className="rounded-full bg-ai-surface px-3 py-1 text-xs text-ai-text-muted">
-            PDF eller text, max 15 MB
-          </Badge>
         </div>
+
+        {showUploadArea && (
+          <div
+            className={cn(
+              'flex flex-col gap-3 rounded-xl border border-dashed border-ai-border/70 bg-white/70 p-4 text-sm transition-colors dark:bg-ai-surface/80',
+              isDragging && 'border-primary/60 bg-primary/5'
+            )}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2 text-foreground">
+                <UploadCloud className="h-4 w-4 text-primary" />
+                <span className="font-medium">Ladda upp dokument</span>
+              </div>
+              <p className="text-xs text-ai-text-muted">
+                Dra in en årsredovisning eller annan PDF/textfil här, eller välj från din enhet.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-full border-primary/40 text-primary hover:bg-primary/10"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Bearbetar...
+                  </>
+                ) : (
+                  <>
+                    <Paperclip className="mr-2 h-4 w-4" />
+                    Välj fil
+                  </>
+                )}
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.txt,text/plain,application/pdf"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              <Badge variant="secondary" className="rounded-full bg-ai-surface px-3 py-1 text-xs text-ai-text-muted">
+                PDF eller text, max 15 MB
+              </Badge>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-4 space-y-2">
@@ -164,6 +204,13 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
             </span>
           )}
         </div>
+
+        {selectedCount > 0 && (
+          <div className="flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2 text-xs text-primary">
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>AI:n använder de markerade dokumenten som källor i sitt svar.</span>
+          </div>
+        )}
 
         {documents.length === 0 ? (
           <p className="rounded-lg border border-dashed border-ai-border/60 bg-white/70 p-3 text-xs text-ai-text-muted">
@@ -180,14 +227,17 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
                 <div
                   key={document.id}
                   className={cn(
-                    'flex items-center justify-between gap-3 rounded-xl border bg-white/80 px-4 py-3 text-sm transition-colors dark:bg-ai-surface',
-                    isSelected ? 'border-primary/60 shadow-[0_12px_30px_rgba(15,23,42,0.08)]' : 'border-ai-border/60'
+                    'group relative flex items-center justify-between gap-3 rounded-xl border bg-white/80 px-4 py-3 text-sm transition-colors dark:bg-ai-surface',
+                    isSelected
+                      ? 'border-primary/70 shadow-[0_12px_30px_rgba(15,23,42,0.12)] ring-2 ring-primary/30'
+                      : 'border-ai-border/60 hover:border-ai-border'
                   )}
                 >
                   <button
                     type="button"
                     onClick={() => onToggleDocument(document.id)}
                     className="flex flex-1 items-center gap-3 text-left"
+                    aria-pressed={isSelected}
                   >
                     <div className={cn(
                       'flex h-10 w-10 items-center justify-center rounded-full border',
@@ -212,6 +262,11 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
                       {statusLabel}
                     </Badge>
                   </button>
+                  {isSelected && (
+                    <span className="absolute -top-2 left-4 inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                      <Sparkles className="h-3 w-3" /> Källa vald
+                    </span>
+                  )}
                   <Button
                     type="button"
                     variant="ghost"

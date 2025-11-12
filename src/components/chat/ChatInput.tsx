@@ -9,7 +9,8 @@ import {
   AlertCircle,
   Loader2,
   Crown,
-  X
+  Sparkles,
+  X,
 } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import PremiumUpgradeModal from './PremiumUpgradeModal';
@@ -80,25 +81,31 @@ const ChatInput = memo(({
         >
           <div className="flex-1 relative min-w-0">
             {attachedDocuments.length > 0 && (
-              <div className="mb-2 flex flex-wrap gap-2">
-                {attachedDocuments.map((doc) => (
-                  <span
-                    key={doc.id}
-                    className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
-                  >
-                    <span className="max-w-[160px] truncate" title={doc.name}>
-                      {doc.name}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => onRemoveDocument?.(doc.id)}
-                      className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/20 text-primary transition-colors hover:bg-primary/30"
-                      aria-label={`Ta bort ${doc.name}`}
+              <div className="mb-2 space-y-1.5">
+                <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-primary">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>AI:n använder dessa dokument som källor</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {attachedDocuments.map((doc) => (
+                    <span
+                      key={doc.id}
+                      className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
                     >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
+                      <span className="max-w-[160px] truncate" title={doc.name}>
+                        {doc.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onRemoveDocument?.(doc.id)}
+                        className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/20 text-primary transition-colors hover:bg-primary/30"
+                        aria-label={`Ta bort ${doc.name}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
             <Textarea
