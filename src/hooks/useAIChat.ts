@@ -219,15 +219,15 @@ const detectProfileUpdateIntent = (rawMessage: string): DetectedProfileIntent | 
   const horizonPatterns: Record<'short' | 'medium' | 'long', RegExp[]> = {
     short: [
       /kort sikt/,
-      /1-3 ar/,
-      /inom (ett|1) ar/,
+      /0[-–]2 ar/,
+      /inom (ett|1|tva|2) ar/,
       /snart behov/,
       /short term/,
     ],
     medium: [
       /medel sikt/,
       /medellang/,
-      /3-7 ar/,
+      /3[-–]5 ar/,
       /5 ar/,
       /inom nagra ar/,
       /medium term/,
@@ -235,6 +235,8 @@ const detectProfileUpdateIntent = (rawMessage: string): DetectedProfileIntent | 
     long: [
       /lang sikt/,
       /langtid/,
+      /5\+ ar/,
+      /6 ar/,
       /7 ar/,
       /10 ar/,
       /for (lang|langa) tiden/,
@@ -246,9 +248,9 @@ const detectProfileUpdateIntent = (rawMessage: string): DetectedProfileIntent | 
     if (patterns.some(pattern => pattern.test(normalized))) {
       updates.investment_horizon = horizon;
       const horizonLabels: Record<string, string> = {
-        short: 'justera din tidshorisont till Kort (1-3 år)',
-        medium: 'justera din tidshorisont till Medel (3-7 år)',
-        long: 'justera din tidshorisont till Lång (7+ år)',
+        short: 'justera din tidshorisont till Kort (0–2 år)',
+        medium: 'justera din tidshorisont till Medel (3–5 år)',
+        long: 'justera din tidshorisont till Lång (5+ år)',
       };
       summaryParts.push(horizonLabels[horizon]);
       break;
@@ -1238,9 +1240,9 @@ export const useAIChat = (portfolioId?: string) => {
     };
 
     const investmentHorizonLabels: Record<string, string> = {
-      short: 'Kort (1-3 år)',
-      medium: 'Medel (3-7 år)',
-      long: 'Lång (7+ år)'
+      short: 'Kort (0–2 år)',
+      medium: 'Medel (3–5 år)',
+      long: 'Lång (5+ år)'
     };
 
     const formatValue = (key: string, value: unknown) => {

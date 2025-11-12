@@ -468,9 +468,9 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
                   <SelectValue placeholder="Välj tidshorisont" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="short">Kort (1-3 år)</SelectItem>
-                  <SelectItem value="medium">Medellång (3-7 år)</SelectItem>
-                  <SelectItem value="long">Lång (7+ år)</SelectItem>
+                  <SelectItem value="short">Kort (0–2 år)</SelectItem>
+                  <SelectItem value="medium">Medellång (3–5 år)</SelectItem>
+                  <SelectItem value="long">Lång (5+ år)</SelectItem>
                 </SelectContent>
               </Select>
               {validationErrors.investment_horizon && (

@@ -5,7 +5,7 @@ CREATE TABLE public.user_risk_profiles (
   user_id uuid NOT NULL,
   age integer,
   annual_income numeric,
-  investment_horizon text, -- 'short' (1-3 years), 'medium' (3-7 years), 'long' (7+ years)
+  investment_horizon text, -- 'short' (0-2 years), 'medium' (3-5 years), 'long' (5+ years)
   investment_goal text, -- 'growth', 'income', 'preservation', 'balanced'
   risk_tolerance text, -- 'conservative', 'moderate', 'aggressive'
   investment_experience text, -- 'beginner', 'intermediate', 'advanced'

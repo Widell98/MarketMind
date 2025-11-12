@@ -1993,9 +1993,9 @@ serve(async (req) => {
 
       // Investment horizon updates - enhanced patterns
       const horizonPatterns = [
-        { pattern: /(kort|1-3|kortsiktig)/i, value: 'short' },
-        { pattern: /(medel|3-7|mellanlång)/i, value: 'medium' },
-        { pattern: /(lång|7\+|långsiktig|över 7)/i, value: 'long' }
+        { pattern: /(kort|0[-–]2|kortsiktig)/i, value: 'short' },
+        { pattern: /(medel|3[-–]5|mellanlång)/i, value: 'medium' },
+        { pattern: /(lång|5\+|långsiktig|över 5)/i, value: 'long' }
       ];
 
       for (const horizonPattern of horizonPatterns) {
@@ -2952,7 +2952,7 @@ serve(async (req) => {
       contextInfo += `\n\nANVÄNDARPROFIL (använd denna info, fråga ALDRIG efter den igen):
 - Ålder: ${riskProfile.age || 'Ej angiven'}
 - Risktolerans: ${riskProfile.risk_tolerance === 'conservative' ? 'Konservativ' : riskProfile.risk_tolerance === 'moderate' ? 'Måttlig' : 'Aggressiv'}
-- Investeringshorisont: ${riskProfile.investment_horizon === 'short' ? 'Kort (1-3 år)' : riskProfile.investment_horizon === 'medium' ? 'Medellång (3-7 år)' : 'Lång (7+ år)'}
+- Investeringshorisont: ${riskProfile.investment_horizon === 'short' ? 'Kort (0–2 år)' : riskProfile.investment_horizon === 'medium' ? 'Medellång (3–5 år)' : 'Lång (5+ år)'}
 - Erfarenhetsnivå: ${riskProfile.investment_experience === 'beginner' ? 'Nybörjare' : riskProfile.investment_experience === 'intermediate' ? 'Mellannivå' : 'Erfaren'}`;
       
       if (riskProfile.monthly_investment_amount) {
