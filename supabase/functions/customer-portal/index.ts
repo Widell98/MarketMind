@@ -116,11 +116,19 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "http://localhost:3000";
 
+    const portalConfigurationId = Deno.env.get("STRIPE_PORTAL_CONFIGURATION_ID") ?? undefined;
+
     try {
-      const portalSession = await stripe.billingPortal.sessions.create({
+      const sessionPayload: Stripe.BillingPortal.SessionCreateParams = {
         customer: customerId,
         return_url: `${origin}/portfolio-advisor`,
-      });
+      };
+
+      if (portalConfigurationId) {
+        sessionPayload.configuration = portalConfigurationId;
+      }
+
+      const portalSession = await stripe.billingPortal.sessions.create(sessionPayload);
 
       logStep("Portal session created", { sessionId: portalSession.id, url: portalSession.url });
 
@@ -130,10 +138,15 @@ serve(async (req) => {
       });
     } catch (stripeError) {
       const message = stripeError instanceof Error ? stripeError.message : String(stripeError);
-      logStep("Failed to create billing portal session", { message, customerId });
+      logStep("Failed to create billing portal session", { message, customerId, configuration: portalConfigurationId });
+
+      const configurationErrorMessage = "No configuration provided";
+      const userMessage = message.includes(configurationErrorMessage)
+        ? "Stripe-portalen saknar en konfiguration i live-läge. Spara inställningarna för kundportalen i Stripe och försök igen."
+        : "Kunde inte öppna Stripe-portalen. Kontakta support om problemet kvarstår.";
 
       return new Response(JSON.stringify({
-        error: "Kunde inte öppna Stripe-portalen. Kontakta support om problemet kvarstår."
+        error: userMessage
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 502,
