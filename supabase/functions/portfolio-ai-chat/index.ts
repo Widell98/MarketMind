@@ -106,7 +106,7 @@ OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
 - Utgå strikt från användarens uppladdade dokument som primär källa.
 - Läs igenom hela underlaget innan du formulerar svaret.
 - Plocka ut syfte, struktur och kärninsikter med sidreferenser när det är möjligt.
-- Presentera en sammanhängande översikt med tydliga sektioner som Översikt, Nyckelpunkter och Nästa steg när materialet motiverar det.
+- Presentera en sammanhängande översikt med tydliga sektioner som Översikt, Nyckelpunkter och VD´ns ord och reflektioner när materialet motiverar det.
 - Återge inte långa citat – destillera och tolka innehållet i en professionell ton.
 `
 };
@@ -3217,7 +3217,7 @@ serve(async (req) => {
 
               if (summaryContextSections.length > 0) {
                 contextInfo += `\n\nFULLSTÄNDIGT DOKUMENTUNDERLAG FÖR SAMMANFATTNING:\n${summaryContextSections.join('\n\n')}`;
-                contextInfo += `\n\nSAMMANFATTNINGSUPPDRAG:\n- Läs igenom hela textunderlaget ovan som representerar användarens uppladdade dokument.\n- Basera hela svaret på dokumentinnehållet som primär källa och komplettera endast med egna resonemang.\n- Identifiera dokumentets syfte, struktur och viktigaste slutsatser.\n- Destillera 5–7 centrala nyckelpunkter med relevanta siffror eller citat och hänvisa till sidnummer när det går.\n- Presentera en heltäckande men kondenserad sammanfattning med tydliga rubriker (t.ex. \"Översikt\", \"Nyckelpunkter\", \"Fördjupning\").\n- Avsluta med en sektion \"Förslag på nästa steg\" om dokumentet antyder åtgärder eller uppföljning.\n- Undvik att återge långa textstycken ordagrant – fokusera på analys och tolkning.`;
+                contextInfo += `\n\nSAMMANFATTNINGSUPPDRAG:\n- Läs igenom hela textunderlaget ovan som representerar användarens uppladdade dokument.\n- Basera hela svaret på dokumentinnehållet som primär källa och komplettera endast med egna resonemang.\n- Identifiera dokumentets syfte, struktur och viktigaste slutsatser.\n- Destillera 5–7 centrala nyckelpunkter med relevanta siffror eller citat och hänvisa till sidnummer när det går.\n- Presentera en heltäckande men kondenserad sammanfattning med tydliga rubriker (t.ex. \"Översikt\", \"Nyckelpunkter\", \"Fördjupning\").\n- Avsluta med en sektion \"VD´ns ord och reflektioner\" om dokumentet antyder åtgärder eller uppföljning.\n- Undvik att återge långa textstycken ordagrant – fokusera på analys och tolkning.`;
                 documentContextHandled = true;
               }
             }
@@ -3305,7 +3305,7 @@ serve(async (req) => {
     ];
 
     if (isDocumentSummaryRequest) {
-      structureLines.push('- Vid dokumentsammanfattningar: läs igenom hela underlaget, leverera en strukturerad översikt och inkludera sektioner för Översikt, Nyckelpunkter samt Förslag på nästa steg när materialet motiverar det.');
+      structureLines.push('- Vid dokumentsammanfattningar: läs igenom hela underlaget, leverera en strukturerad översikt och inkludera sektioner för Översikt, Nyckelpunkter samt VD´ns ord och reflektioner när materialet motiverar det.');
     }
 
     if (recommendationPreference === 'no') {
@@ -3339,7 +3339,7 @@ serve(async (req) => {
           '- Fördjupning – Använd när specifika avsnitt kräver extra analys eller kontext.',
           recommendationSectionLine,
           '- Risker & Överväganden – Endast om dokumentet tar upp begränsningar eller riskmoment.',
-          '- Förslag på nästa steg – Sammanfatta rekommenderade åtgärder eller uppföljningar från dokumentet.',
+          '- VD´ns ord och reflektioner – Lyft sammanfattade budskap eller nästa steg som framgår av dokumentet.',
           '- Uppföljning – Använd för att föreslå hur användaren kan arbeta vidare med materialet.',
         ]
       : [
