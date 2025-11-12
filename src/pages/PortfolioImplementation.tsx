@@ -14,8 +14,11 @@ import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { Button } from '@/components/ui/button';
-import { Brain, AlertCircle, User } from 'lucide-react';
+import { Brain, AlertCircle, User, Upload } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
+import { useToast } from '@/hooks/use-toast';
+import { parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
+import { supabase } from '@/integrations/supabase/client';
 const PortfolioImplementation = () => {
   const {
     actualHoldings,
@@ -49,6 +52,9 @@ const PortfolioImplementation = () => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const hasTriggeredAutoUpdate = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isImportingHoldings, setIsImportingHoldings] = useState(false);
+  const { toast } = useToast();
   useEffect(() => {
     // Only show login modal if auth has finished loading and user is not authenticated
     if (!authLoading && !user) {
@@ -115,6 +121,85 @@ const PortfolioImplementation = () => {
   };
   const handleUpdateProfile = () => {
     setShowOnboarding(true);
+  };
+
+  const roundToTwo = (value: number) => Math.round(value * 100) / 100;
+
+  const handleImportClick = () => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+
+    fileInputRef.current?.click();
+  };
+
+  const handlePortfolioCsvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    setIsImportingHoldings(true);
+
+    try {
+      const text = await file.text();
+      const parsed = parsePortfolioHoldingsFromCSV(text);
+
+      if (!parsed.length) {
+        throw new Error('Kunde inte tolka några innehav från CSV-filen. Kontrollera formatet.');
+      }
+
+      if (!user) {
+        throw new Error('Du måste vara inloggad för att importera innehav.');
+      }
+
+      const nowIso = new Date().toISOString();
+      const holdingsToInsert = parsed.map(holding => {
+        const normalizedSymbol = holding.symbol.trim() ? holding.symbol.trim().toUpperCase() : null;
+        const roundedPurchasePrice = roundToTwo(holding.purchasePrice);
+        const quantity = holding.quantity;
+        const currentValue = roundToTwo(roundedPurchasePrice * quantity);
+
+        return {
+          user_id: user.id,
+          name: holding.name,
+          symbol: normalizedSymbol,
+          quantity,
+          purchase_price: roundedPurchasePrice,
+          current_price_per_unit: roundedPurchasePrice,
+          price_currency: holding.currency,
+          current_value: currentValue,
+          currency: holding.currency,
+          holding_type: 'stock' as const,
+          purchase_date: nowIso,
+        };
+      });
+
+      const { error } = await supabase.from('user_holdings').insert(holdingsToInsert);
+
+      if (error) {
+        throw error;
+      }
+
+      await refetchHoldings({ silent: true });
+
+      toast({
+        title: 'Innehav importerade',
+        description: `${holdingsToInsert.length} innehav har lagts till från din CSV-fil.`,
+      });
+    } catch (error) {
+      console.error('Failed to import portfolio CSV:', error);
+      toast({
+        title: 'Fel vid import',
+        description: error instanceof Error ? error.message : 'Kunde inte läsa CSV-filen. Försök igen.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsImportingHoldings(false);
+      event.target.value = '';
+    }
   };
 
   // Show loading while portfolio is loading
@@ -187,6 +272,23 @@ const PortfolioImplementation = () => {
               <p className="mx-auto mt-3 max-w-2xl text-base text-muted-foreground sm:text-lg">
                 {t('portfolio.subtitle')}
               </p>
+              <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv,text/csv"
+                  className="hidden"
+                  onChange={handlePortfolioCsvUpload}
+                />
+                <Button
+                  onClick={handleImportClick}
+                  disabled={isImportingHoldings}
+                  className="rounded-2xl px-6 py-5 shadow-lg transition-all duration-200 hover:shadow-xl"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {isImportingHoldings ? 'Importerar...' : 'Importera portfölj (CSV)'}
+                </Button>
+              </div>
           </section>
 
           {/* Portfolio Health Score */}
