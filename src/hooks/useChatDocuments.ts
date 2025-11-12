@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { buildTextPageFromFile, type PdfTextPage } from '@/utils/documentProcessing';
+import { useSubscription } from '@/hooks/useSubscription';
 
 export type ChatDocument = {
   id: string;
@@ -18,6 +19,7 @@ export type ChatDocument = {
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
 const SUPPORTED_TYPES = ['application/pdf', 'text/plain'];
+const FREE_DAILY_DOCUMENT_LIMIT = 1;
 
 const isSupportedType = (file: File) => {
   if (!file.type) {
@@ -29,6 +31,7 @@ const isSupportedType = (file: File) => {
 export const useChatDocuments = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { subscription } = useSubscription();
   const [documents, setDocuments] = useState<ChatDocument[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -91,6 +94,39 @@ export const useChatDocuments = () => {
       return;
     }
 
+    if (subscription?.subscribed === false) {
+      const now = new Date();
+      const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+
+      const { count: todaysCount, error: limitError } = await supabase
+        .from('chat_documents')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .gte('created_at', startOfDay.toISOString())
+        .lt('created_at', endOfDay.toISOString());
+
+      if (limitError) {
+        console.error('Failed to check daily document limit', limitError);
+        toast({
+          title: 'Uppladdning misslyckades',
+          description: 'Kunde inte verifiera din dokumentgräns just nu. Försök igen senare.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if ((todaysCount ?? 0) >= FREE_DAILY_DOCUMENT_LIMIT) {
+        toast({
+          title: 'Daglig gräns nådd',
+          description: 'Uppgradera till Premium för att ladda upp fler dokument per dag.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     setIsUploading(true);
 
     try {
@@ -145,7 +181,7 @@ export const useChatDocuments = () => {
     } finally {
       setIsUploading(false);
     }
-  }, [user, toast, fetchDocuments]);
+  }, [user, toast, fetchDocuments, subscription]);
 
   const deleteDocument = useCallback(async (documentId: string) => {
     if (!user) return;
