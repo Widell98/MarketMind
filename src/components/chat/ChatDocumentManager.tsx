@@ -71,14 +71,6 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
     const idSet = new Set(selectedDocumentIds);
     return documents.filter((document) => idSet.has(document.id));
   }, [documents, selectedDocumentIds]);
-  const selectedCount = selectedDocuments.size;
-
-  useEffect(() => {
-    if (selectedCount > 0 && isCollapsed) {
-      setIsCollapsed(false);
-    }
-  }, [isCollapsed, selectedCount]);
-
   useEffect(() => {
     const handleOpenUpload = () => {
       requestAnimationFrame(() => {
@@ -135,21 +127,20 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
             </span>
           )}
         </div>
+        {selectedDocumentList.length > 0 && (
+          <div className="rounded-lg bg-ai-surface px-3 py-2 text-xs text-ai-text">
+            <p className="font-medium">AI:n använder dessa dokument som källor</p>
+            <div className="mt-1 space-y-0.5 text-[11px]">
+              {selectedDocumentList.map((document) => (
+                <p key={document.id} className="break-all">
+                  {document.name}
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
         {!isCollapsed && (
           <div id="chat-document-manager-panel" className="space-y-2">
-            {selectedDocumentList.length > 0 && (
-              <div className="rounded-lg bg-ai-surface px-3 py-2 text-xs text-ai-text">
-                <p className="font-medium">AI:n använder dessa dokument som källor</p>
-                <div className="mt-1 space-y-0.5 text-[11px]">
-                  {selectedDocumentList.map((document) => (
-                    <p key={document.id} className="break-all">
-                      {document.name}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {documents.length === 0 ? (
               <p className="rounded-lg border border-dashed border-ai-border/60 bg-white/70 p-3 text-xs text-ai-text-muted">
                 Du har inte laddat upp några dokument ännu.
