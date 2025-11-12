@@ -189,6 +189,10 @@ const PortfolioImplementation = () => {
         title: 'Innehav importerade',
         description: `${holdingsToInsert.length} innehav har lagts till från din CSV-fil.`,
       });
+
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
     } catch (error) {
       console.error('Failed to import portfolio CSV:', error);
       toast({
