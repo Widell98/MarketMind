@@ -3,6 +3,7 @@ import React, { useState, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { OPEN_CHAT_DOCUMENT_UPLOAD_EVENT } from '@/constants/chatDocuments';
 import {
   Send,
   MessageSquare,
@@ -11,6 +12,7 @@ import {
   Crown,
   Sparkles,
   X,
+  Paperclip,
 } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import PremiumUpgradeModal from './PremiumUpgradeModal';
@@ -24,9 +26,10 @@ interface ChatInputProps {
   inputRef: React.RefObject<HTMLTextAreaElement>;
   attachedDocuments?: Array<{ id: string; name: string; status?: 'processing' | 'processed' | 'failed' }>;
   onRemoveDocument?: (documentId: string) => void;
+  isAttachDisabled?: boolean;
 }
 
-const ChatInput = memo(({ 
+const ChatInput = memo(({
   input,
   setInput,
   onSubmit,
@@ -35,6 +38,7 @@ const ChatInput = memo(({
   inputRef,
   attachedDocuments = [],
   onRemoveDocument,
+  isAttachDisabled = false,
 }: ChatInputProps) => {
   const { usage, subscription } = useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -58,6 +62,15 @@ const ChatInput = memo(({
     }
 
     onSubmit(e);
+  };
+
+  const handleAttachClick = () => {
+    if (isAttachDisabled) {
+      return;
+    }
+
+    const event = new Event(OPEN_CHAT_DOCUMENT_UPLOAD_EVENT);
+    window.dispatchEvent(event);
   };
 
   return (
@@ -133,18 +146,38 @@ const ChatInput = memo(({
               <MessageSquare className="w-4 h-4" />
             </div>
           </div>
-          <Button
-            type="submit"
-            disabled={!input.trim() || isLoading || quotaExceeded}
-            size="default"
-            className="h-10 sm:h-11 lg:h-12 px-5 sm:px-6 bg-gradient-to-r from-blue-500 to-primary hover:from-blue-500/90 hover:to-primary/90 shadow-[0_24px_55px_rgba(15,23,42,0.18)] rounded-full text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_28px_70px_rgba(15,23,42,0.22)] text-primary-foreground flex-shrink-0 self-end dark:from-primary dark:to-primary dark:hover:from-primary/90 dark:hover:to-primary/90 dark:shadow-none"
-          >
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-          </Button>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={handleAttachClick}
+              disabled={isAttachDisabled}
+              className="h-10 w-10 rounded-full border border-transparent text-primary transition-colors hover:border-primary/30 hover:bg-primary/10 sm:h-11 sm:w-11 lg:h-12 lg:w-12 dark:text-ai-text-muted dark:hover:text-primary"
+              aria-label="Bifoga dokument"
+            >
+              <span className="relative flex h-4 w-4 items-center justify-center">
+                <Paperclip className="h-4 w-4" />
+                {attachedDocuments.length > 0 && (
+                  <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary px-[3px] text-[10px] font-semibold text-primary-foreground">
+                    {attachedDocuments.length}
+                  </span>
+                )}
+              </span>
+            </Button>
+            <Button
+              type="submit"
+              disabled={!input.trim() || isLoading || quotaExceeded}
+              size="default"
+              className="h-10 sm:h-11 lg:h-12 px-5 sm:px-6 bg-gradient-to-r from-blue-500 to-primary hover:from-blue-500/90 hover:to-primary/90 shadow-[0_24px_55px_rgba(15,23,42,0.18)] rounded-full text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_28px_70px_rgba(15,23,42,0.22)] text-primary-foreground flex-shrink-0 self-end dark:from-primary dark:to-primary dark:hover:from-primary/90 dark:hover:to-primary/90 dark:shadow-none"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
         </form>
 
         {/* Premium Badge for Premium Users */}

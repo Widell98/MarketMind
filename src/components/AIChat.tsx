@@ -282,7 +282,10 @@ const AIChat = ({
     if (!input.trim() || isLoading || !user) return;
     const messageToSend = input.trim();
     setInput('');
-    await sendMessage(messageToSend, { documentIds: selectedDocumentIds });
+    await sendMessage(messageToSend, {
+      documentIds: selectedDocumentIds,
+      documents: attachedDocuments.map((doc) => ({ id: doc.id, name: doc.name })),
+    });
   };
   const handleNewSession = useCallback(async () => {
     if (!user) return;
@@ -459,6 +462,7 @@ const AIChat = ({
                   status: doc.status,
                 }))}
                 onRemoveDocument={handleRemoveDocument}
+                isAttachDisabled={isUploadingDocument || quotaExceeded}
               />
             )}
           </div>

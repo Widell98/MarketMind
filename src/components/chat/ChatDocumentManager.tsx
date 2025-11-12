@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ChatDocument } from '@/hooks/useChatDocuments';
 import { cn } from '@/lib/utils';
+import { OPEN_CHAT_DOCUMENT_UPLOAD_EVENT } from '@/constants/chatDocuments';
 import {
   CheckCircle2,
   FileText,
@@ -78,6 +79,21 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
       setShowUploadArea(true);
     }
   }, [documents.length]);
+
+  useEffect(() => {
+    const handleOpenUpload = () => {
+      setShowUploadArea(true);
+      requestAnimationFrame(() => {
+        fileInputRef.current?.click();
+      });
+    };
+
+    window.addEventListener(OPEN_CHAT_DOCUMENT_UPLOAD_EVENT, handleOpenUpload);
+
+    return () => {
+      window.removeEventListener(OPEN_CHAT_DOCUMENT_UPLOAD_EVENT, handleOpenUpload);
+    };
+  }, []);
 
   useEffect(() => {
     if (isUploading) {

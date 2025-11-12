@@ -304,6 +304,8 @@ type MessageContext = {
   isExchangeRequest?: boolean;
   profileUpdates?: ProfileUpdates;
   requiresConfirmation?: boolean;
+  documentIds?: string[];
+  documentNames?: string[];
   [key: string]: unknown;
 };
 
@@ -800,6 +802,7 @@ export const useAIChat = (portfolioId?: string) => {
 
   type SendMessageOptions = {
     documentIds?: string[];
+    documents?: Array<{ id: string; name: string }>;
   };
 
   const sendMessage = useCallback(async (content: string, options?: SendMessageOptions) => {
@@ -910,11 +913,30 @@ export const useAIChat = (portfolioId?: string) => {
     const trimmedContent = content.trim();
     const userMessageId = Date.now().toString() + '_user_temp';
     const requestId = userMessageId;
+
+    const sanitizedDocumentIds = Array.isArray(options?.documentIds)
+      ? options.documentIds.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+      : [];
+
+    const documentNames = Array.isArray(options?.documents)
+      ? options.documents
+          .map((doc) => doc?.name)
+          .filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+      : [];
+
+    const userMessageContext = sanitizedDocumentIds.length > 0
+      ? {
+          documentIds: sanitizedDocumentIds,
+          ...(documentNames.length > 0 ? { documentNames } : {}),
+        }
+      : undefined;
+
     const userMessage: Message = {
       id: userMessageId,
       role: 'user',
       content: trimmedContent,
-      timestamp: new Date()
+      timestamp: new Date(),
+      context: userMessageContext,
     };
 
     const hasPendingConfirmation = messages.some(msg => msg.context?.requiresConfirmation);
@@ -973,8 +995,8 @@ export const useAIChat = (portfolioId?: string) => {
         detectedProfileSummary: detectedIntent?.summary ?? undefined,
       };
 
-      if (options?.documentIds && options.documentIds.length > 0) {
-        requestPayload.documentIds = options.documentIds;
+      if (sanitizedDocumentIds.length > 0) {
+        requestPayload.documentIds = sanitizedDocumentIds;
       }
 
       const streamResponse = await fetch(`${supabaseUrl}/functions/v1/portfolio-ai-chat`, {
