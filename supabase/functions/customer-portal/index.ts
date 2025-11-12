@@ -68,57 +68,90 @@ serve(async (req) => {
     const user = userData.user;
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const stripe = new Stripe(stripeKey, { 
-      apiVersion: "2023-10-16" 
+    const stripe = new Stripe(stripeKey, {
+      apiVersion: "2023-10-16"
     });
 
     logStep("Stripe initialized");
 
-    // Leta efter kund i Stripe
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    
-    if (customers.data.length === 0) {
-      logStep("No customer found, creating new customer");
-      // Om ingen kund finns, skapa en ny
-      const newCustomer = await stripe.customers.create({
-        email: user.email,
-        metadata: {
-          user_id: user.id,
-        },
-      });
-      logStep("New customer created", { customerId: newCustomer.id });
-      
-      // Uppdatera subscribers tabellen med den nya customer ID
-      await supabaseClient.from("subscribers").upsert({
-        email: user.email,
-        user_id: user.id,
-        stripe_customer_id: newCustomer.id,
-        subscribed: false,
-        subscription_tier: 'free',
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'email' });
+    const { data: subscriber, error: subscriberError } = await supabaseClient
+      .from("subscribers")
+      .select("stripe_customer_id, subscribed")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (subscriberError) {
+      logStep("Failed to load subscriber record", { error: subscriberError.message });
     }
-    
-    const customerId = customers.data.length > 0 ? customers.data[0].id : (await stripe.customers.create({
+
+    let customerId = subscriber?.stripe_customer_id ?? null;
+
+    if (!customerId) {
+      logStep("Stripe customer id missing, attempting lookup by email");
+      const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+
+      if (customers.data.length > 0) {
+        customerId = customers.data[0].id;
+        logStep("Found existing Stripe customer", { customerId });
+      }
+    }
+
+    if (!customerId) {
+      logStep("No existing customer found");
+      return new Response(JSON.stringify({
+        error: "Ingen prenumeration hittades för ditt konto. Starta en prenumeration innan du försöker hantera den."
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
+
+    await supabaseClient.from("subscribers").upsert({
       email: user.email,
-      metadata: { user_id: user.id }
-    })).id;
-    
-    logStep("Using customer ID", { customerId });
+      user_id: user.id,
+      stripe_customer_id: customerId,
+      subscribed: subscriber?.subscribed ?? false,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'email' });
 
     const origin = req.headers.get("origin") || "http://localhost:3000";
-    
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: customerId,
-      return_url: `${origin}/portfolio-advisor`,
-    });
 
-    logStep("Portal session created", { sessionId: portalSession.id, url: portalSession.url });
+    const portalConfigurationId = Deno.env.get("STRIPE_PORTAL_CONFIGURATION_ID") ?? undefined;
 
-    return new Response(JSON.stringify({ url: portalSession.url }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    try {
+      const sessionPayload: Stripe.BillingPortal.SessionCreateParams = {
+        customer: customerId,
+        return_url: `${origin}/portfolio-advisor`,
+      };
+
+      if (portalConfigurationId) {
+        sessionPayload.configuration = portalConfigurationId;
+      }
+
+      const portalSession = await stripe.billingPortal.sessions.create(sessionPayload);
+
+      logStep("Portal session created", { sessionId: portalSession.id, url: portalSession.url });
+
+      return new Response(JSON.stringify({ url: portalSession.url }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    } catch (stripeError) {
+      const message = stripeError instanceof Error ? stripeError.message : String(stripeError);
+      logStep("Failed to create billing portal session", { message, customerId, configuration: portalConfigurationId });
+
+      const configurationErrorMessage = "No configuration provided";
+      const userMessage = message.includes(configurationErrorMessage)
+        ? "Stripe-portalen saknar en konfiguration i live-läge. Spara inställningarna för kundportalen i Stripe och försök igen."
+        : "Kunde inte öppna Stripe-portalen. Kontakta support om problemet kvarstår.";
+
+      return new Response(JSON.stringify({
+        error: userMessage
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 502,
+      });
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message: errorMessage });

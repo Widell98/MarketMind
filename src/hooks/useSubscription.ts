@@ -151,9 +151,13 @@ export const useSubscription = () => {
       }
     } catch (error) {
       console.error('Error opening customer portal:', error);
+      const description =
+        error instanceof Error && error.message
+          ? error.message
+          : "Kunde inte öppna kundportalen. Kontrollera att du har en aktiv prenumeration och försök igen.";
       toast({
         title: "Fel",
-        description: "Kunde inte öppna kundportalen. Kontrollera att du har en aktiv prenumeration och försök igen.",
+        description,
         variant: "destructive",
       });
     }
