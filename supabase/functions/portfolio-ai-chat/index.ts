@@ -121,7 +121,7 @@ type HeadingDirectiveInput = {
 
 const HEADING_VARIATIONS: Record<string, string[]> = {
   analysis: ['**Analys 🔍**', '**Grundlig analys 🔎**', '**Analys & Insikt 💡**'],
-  recommendation: ['**Rekommendation 🌟**', '**Råd 💼**', '**Strategiska råd 🌠**'],
+  recommendation: ['**Håll koll på detta:**'],
   risks: ['**Risker ⚠️**', '**Riskbild ⚡**', '**Risker & Bevaka 🔔**'],
   news: ['**Nyheter 📰**', '**Marknadsnytt 🗞️**', '**Senaste nytt 📣**'],
   actions: ['**Åtgärder ✅**', '**Nästa steg 🧭**', '**Föreslagna åtgärder 🛠️**']
@@ -3311,9 +3311,9 @@ serve(async (req) => {
     if (recommendationPreference === 'no') {
       structureLines.push('- Ge inga investeringsrekommendationer, köp/sälj-råd eller portföljjusteringar i detta svar. Fokusera på att ge lägesbild och analys.');
     } else if (recommendationPreference === 'yes') {
-      structureLines.push('- Ge tydliga och motiverade rekommendationer när de stärker svaret, inklusive tickers enligt formatet som anges.');
+      structureLines.push('- Om användaren efterfrågar vägledning, formulera det som bevakningspunkter eller saker att hålla koll på i stället för direkta köp-/säljrekommendationer.');
     } else {
-      structureLines.push('- Ge bara rekommendationer om användaren ber om det eller om frågan tydligt kräver en ståndpunkt.');
+      structureLines.push('- Lyft endast fram bevakningspunkter när de verkligen behövs och undvik direkta rekommendationer.');
     }
 
     const emojiLines = [
@@ -3324,11 +3324,11 @@ serve(async (req) => {
 
     let recommendationSectionLine: string;
     if (recommendationPreference === 'no') {
-      recommendationSectionLine = '- Rekommendation/Råd – Hoppa över denna sektion om användaren inte uttryckligen ber om åtgärdsförslag.';
+      recommendationSectionLine = '- "Håll koll på detta" – Hoppa över denna sektion om användaren inte uttryckligen ber om bevakningspunkter.';
     } else if (recommendationPreference === 'yes') {
-      recommendationSectionLine = '- Rekommendation/Råd – Ge konkreta råd med aktier och investmentbolag i formatet **Företagsnamn (TICKER)** - Motivering, eftersom användaren efterfrågar det.';
+      recommendationSectionLine = '- "Håll koll på detta" – Om du anser att det tillför värde, lyft 1–2 viktiga observationer att bevaka i stället för konkreta rekommendationer.';
     } else {
-      recommendationSectionLine = '- Rekommendation/Råd – Om frågan verkligen kräver ett råd, ge konkreta tips med formatet **Företagsnamn (TICKER)** - Motivering, annars kan sektionen utelämnas.';
+      recommendationSectionLine = '- "Håll koll på detta" – Använd endast när det verkligen behövs och begränsa dig till korta bevakningspunkter.';
     }
 
     const optionalSections = isDocumentSummaryRequest
