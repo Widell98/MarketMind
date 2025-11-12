@@ -151,59 +151,66 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
                     <div
                       key={document.id}
                       className={cn(
-                        'group relative flex items-center justify-between gap-3 rounded-xl border bg-white/80 px-4 py-3 text-sm transition-colors dark:bg-ai-surface',
+                        'group rounded-xl border bg-white/80 px-4 py-3 text-sm transition-colors dark:bg-ai-surface',
                         isSelected
                           ? 'border-primary/70 shadow-[0_12px_30px_rgba(15,23,42,0.12)] ring-2 ring-primary/30'
                           : 'border-ai-border/60 hover:border-ai-border'
                       )}
                     >
-                      <button
-                        type="button"
-                        onClick={() => onToggleDocument(document.id)}
-                        className="flex flex-1 items-center gap-3 text-left"
-                        aria-pressed={isSelected}
-                      >
-                        <div className={cn(
-                          'flex h-10 w-10 items-center justify-center rounded-full border',
-                          isSelected ? 'border-primary/80 bg-primary/10 text-primary' : 'border-ai-border/60 text-ai-text-muted'
+                      <div className="flex flex-col gap-2">
+                        {isSelected && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                            <Sparkles className="h-3 w-3" /> Källa vald
+                          </span>
                         )}
-                        >
-                          {isSelected ? <CheckCircle2 className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => onToggleDocument(document.id)}
+                            className="flex flex-1 items-center gap-3 text-left"
+                            aria-pressed={isSelected}
+                          >
+                            <div
+                              className={cn(
+                                'flex h-10 w-10 items-center justify-center rounded-full border',
+                                isSelected
+                                  ? 'border-primary/80 bg-primary/10 text-primary'
+                                  : 'border-ai-border/60 text-ai-text-muted'
+                              )}
+                            >
+                              {isSelected ? <CheckCircle2 className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
+                            </div>
+                            <div className="flex flex-1 flex-col overflow-hidden">
+                              <span className="truncate font-medium text-foreground">{document.name}</span>
+                              <span className="text-xs text-ai-text-muted">{metaText}</span>
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                'rounded-full px-2 py-0 text-[11px] uppercase tracking-wide',
+                                document.status === 'processed' && 'border-emerald-400 text-emerald-600',
+                                document.status === 'failed' && 'border-destructive text-destructive',
+                                document.status === 'processing' && 'border-primary/50 text-primary'
+                              )}
+                            >
+                              {statusLabel}
+                            </Badge>
+                          </button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-ai-text-muted hover:text-destructive"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void onDelete(document.id);
+                            }}
+                            aria-label={`Ta bort ${document.name}`}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
                         </div>
-                        <div className="flex flex-1 flex-col overflow-hidden">
-                          <span className="truncate font-medium text-foreground">{document.name}</span>
-                          <span className="text-xs text-ai-text-muted">{metaText}</span>
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            'rounded-full px-2 py-0 text-[11px] uppercase tracking-wide',
-                            document.status === 'processed' && 'border-emerald-400 text-emerald-600',
-                            document.status === 'failed' && 'border-destructive text-destructive',
-                            document.status === 'processing' && 'border-primary/50 text-primary'
-                          )}
-                        >
-                          {statusLabel}
-                        </Badge>
-                      </button>
-                      {isSelected && (
-                        <span className="absolute -top-2 left-4 inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-                          <Sparkles className="h-3 w-3" /> Källa vald
-                        </span>
-                      )}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-ai-text-muted hover:text-destructive"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void onDelete(document.id);
-                        }}
-                        aria-label={`Ta bort ${document.name}`}
-                      >
-                        <Trash className="h-4 w-4" />
-                      </Button>
+                      </div>
                     </div>
                   );
                 })}
