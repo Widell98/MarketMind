@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { StockCase } from '@/types/stockCase';
 import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
+import { isSupabaseFetchError } from '@/utils/supabaseError';
 
 type UseStockCasesOptions = {
   followedOnly?: boolean;
@@ -41,6 +42,11 @@ export const useStockCases = (followedOnlyOrOptions: boolean | UseStockCasesOpti
           .eq('user_id', user.id);
 
         if (followsError) {
+          if (isSupabaseFetchError(followsError)) {
+            console.warn('Network error fetching followed stock cases:', followsError);
+            return [];
+          }
+
           console.error('Error fetching follows:', followsError);
           throw followsError;
         }
@@ -73,6 +79,11 @@ export const useStockCases = (followedOnlyOrOptions: boolean | UseStockCasesOpti
         const { data: stockCases, error: casesError } = await followedQuery;
 
         if (casesError) {
+          if (isSupabaseFetchError(casesError)) {
+            console.warn('Network error fetching followed stock cases list:', casesError);
+            return [];
+          }
+
           console.error('Error fetching followed stock cases:', casesError);
           throw casesError;
         }
@@ -103,6 +114,11 @@ export const useStockCases = (followedOnlyOrOptions: boolean | UseStockCasesOpti
       const { data, error } = await allCasesQuery;
 
       if (error) {
+        if (isSupabaseFetchError(error)) {
+          console.warn('Network error fetching stock cases:', error);
+          return [];
+        }
+
         console.error('Error fetching stock cases:', error);
         throw error;
       }

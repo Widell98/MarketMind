@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { isSupabaseFetchError } from '@/utils/supabaseError';
 
 export const useFollowingAnalyses = () => {
   const { user } = useAuth();
@@ -19,6 +20,11 @@ export const useFollowingAnalyses = () => {
         .eq('follower_id', user.id);
 
       if (followsError) {
+        if (isSupabaseFetchError(followsError)) {
+          console.warn('Network error fetching followed users:', followsError);
+          return [];
+        }
+
         console.error('Error fetching follows:', followsError);
         throw followsError;
       }
@@ -45,6 +51,11 @@ export const useFollowingAnalyses = () => {
         .order('created_at', { ascending: false });
 
       if (analysesError) {
+        if (isSupabaseFetchError(analysesError)) {
+          console.warn('Network error fetching analyses from followed users:', analysesError);
+          return [];
+        }
+
         console.error('Error fetching following analyses:', analysesError);
         throw analysesError;
       }
@@ -63,11 +74,29 @@ export const useFollowingAnalyses = () => {
             supabase.rpc('get_analysis_comment_count', { analysis_id: analysis.id })
           ]);
 
+          if (likeCountResult.error) {
+            if (!isSupabaseFetchError(likeCountResult.error)) {
+              throw likeCountResult.error;
+            }
+          }
+
+          if (userLikeResult && 'error' in userLikeResult && userLikeResult.error) {
+            if (!isSupabaseFetchError(userLikeResult.error)) {
+              throw userLikeResult.error;
+            }
+          }
+
+          if (commentCountResult.error) {
+            if (!isSupabaseFetchError(commentCountResult.error)) {
+              throw commentCountResult.error;
+            }
+          }
+
           return {
             ...analysis,
-            likes_count: likeCountResult.data || 0,
-            comments_count: commentCountResult.data || 0,
-            isLiked: !!userLikeResult?.data
+            likes_count: likeCountResult.error ? 0 : (likeCountResult.data || 0),
+            comments_count: commentCountResult.error ? 0 : (commentCountResult.data || 0),
+            isLiked: !!userLikeResult?.data && !userLikeResult.error
           };
         })
       );

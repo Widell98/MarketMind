@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { getSupabaseOfflineMessage, isSupabaseFetchError } from '@/utils/supabaseError';
 
 export type UserFollow = {
   id: string;
@@ -36,7 +37,9 @@ export const useUserFollows = () => {
       console.error('Error fetching follows:', error);
       toast({
         title: "Fel",
-        description: "Kunde inte ladda följningar",
+        description: isSupabaseFetchError(error)
+          ? getSupabaseOfflineMessage()
+          : "Kunde inte ladda följningar",
         variant: "destructive",
       });
     } finally {
@@ -68,7 +71,9 @@ export const useUserFollows = () => {
       console.error('Error following user:', error);
       toast({
         title: "Fel",
-        description: "Kunde inte följa användare",
+        description: isSupabaseFetchError(error)
+          ? getSupabaseOfflineMessage()
+          : "Kunde inte följa användare",
         variant: "destructive",
       });
     }
@@ -96,7 +101,9 @@ export const useUserFollows = () => {
       console.error('Error unfollowing user:', error);
       toast({
         title: "Fel",
-        description: "Kunde inte sluta följa användare",
+        description: isSupabaseFetchError(error)
+          ? getSupabaseOfflineMessage()
+          : "Kunde inte sluta följa användare",
         variant: "destructive",
       });
     }
