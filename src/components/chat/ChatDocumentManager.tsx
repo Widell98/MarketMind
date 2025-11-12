@@ -94,6 +94,15 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
     }
   }, [onUpload]);
 
+  const handleDocumentClick = useCallback((documentId: string) => {
+    const isAlreadySelected = selectedDocuments.has(documentId);
+    onToggleDocument(documentId);
+
+    if (!isAlreadySelected) {
+      setIsCollapsed(true);
+    }
+  }, [onToggleDocument, selectedDocuments]);
+
   return (
     <div className="border-t border-b border-ai-border/50 bg-ai-surface-muted/40 px-4 py-3 sm:px-6">
       <input
@@ -192,7 +201,7 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
                           <div className="flex items-center gap-3">
                             <button
                               type="button"
-                              onClick={() => onToggleDocument(document.id)}
+                              onClick={() => handleDocumentClick(document.id)}
                               className="flex flex-1 items-center gap-3 text-left"
                               aria-pressed={isSelected}
                             >
