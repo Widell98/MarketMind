@@ -186,7 +186,14 @@ const Index = () => {
                       {t('hero.badge')}
                     </div>
                     <h1 className="text-4xl font-semibold text-foreground sm:text-5xl lg:text-[3.2rem] lg:leading-[1.05]">
-                      {t('hero.headline')}
+                      {t('hero.headline')
+                        .split('\n')
+                        .map((line, index, array) => (
+                          <React.Fragment key={index}>
+                            {line}
+                            {index < array.length - 1 && <br />}
+                          </React.Fragment>
+                        ))}
                     </h1>
                     <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg">{t('hero.subtitle')}</p>
                     <div className="mt-7 flex flex-col gap-3 text-sm text-muted-foreground sm:text-base">
