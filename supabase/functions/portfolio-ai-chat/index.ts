@@ -3110,6 +3110,7 @@ serve(async (req) => {
 
             if (documentContextLines.length > 0) {
               contextInfo += `\n\nDOKUMENTUNDERLAG FRÅN UPPLADDADE FILER:\n${documentContextLines.join('\n\n')}`;
+              contextInfo += `\n\nSÅ HANTERAR DU UPPLADDADE DOKUMENT:\n- Lyft fram konkreta siffror och nyckeltal från underlagen när de stärker din analys (t.ex. omsättning, resultat, kassaflöden).\n- Ange tydligt vilken källa och sida siffrorna kommer från, exempelvis "Årsredovisning 2023 – Sida 12".\n- Knyt rekommendationer och slutsatser till dessa dokumenterade fakta när det är relevant.`;
             }
           }
         }
@@ -3121,8 +3122,7 @@ serve(async (req) => {
     // Add response structure requirements
     const structureLines = [
       'SVARSSTRUKTUR (ANPASSNINGSBAR):',
-      '- Anpassa alltid svarens format efter frågans karaktär.',
-      '- Vid enkla frågor: svara kort (2–4 meningar) och avsluta bara med en följdfråga om det känns naturligt.',
+      '- Anpassa alltid svarens format efter frågans karaktär och utveckla resonemanget så långt som behövs för att svaret ska bli komplett – det finns ingen strikt begränsning på längden.',
       '- Vid generella marknadsfrågor: använd en nyhetsbrevsliknande ton och rubriker enligt variationen ovan.',
       '- Vid djupgående analyser: använd de rubriker som angavs tidigare (analys, rekommendation, risker, åtgärder) men ta enbart med sektioner som tillför värde.',
     ];
@@ -3253,7 +3253,6 @@ ${importantLines.join('\n')}
         body: JSON.stringify({
           model,
           messages,
-          max_tokens: 2000,
           stream: false,
         }),
       });
@@ -3312,7 +3311,6 @@ ${importantLines.join('\n')}
       body: JSON.stringify({
         model,
         messages,
-        max_tokens: 2000,
         stream: true,
       }),
     });
