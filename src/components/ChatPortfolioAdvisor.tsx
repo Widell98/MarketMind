@@ -75,6 +75,11 @@ interface Holding {
   currencyManuallyEdited: boolean;
 }
 
+interface ChatPortfolioAdvisorProps {
+  autoOpenHoldingsImport?: boolean;
+  onHoldingsImportHandled?: () => void;
+}
+
 
 interface AdvisorPlanAsset {
   name: string;
@@ -182,7 +187,10 @@ const supportedCurrencies = [
   'AUD'
 ];
 
-const ChatPortfolioAdvisor = () => {
+const ChatPortfolioAdvisor: React.FC<ChatPortfolioAdvisorProps> = ({
+  autoOpenHoldingsImport = false,
+  onHoldingsImportHandled,
+}) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState('');
   const [currentStep, setCurrentStep] = useState(0);
@@ -1246,6 +1254,13 @@ const ChatPortfolioAdvisor = () => {
   const openHoldingsFileDialog = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
+
+  useEffect(() => {
+    if (autoOpenHoldingsImport) {
+      openHoldingsFileDialog();
+      onHoldingsImportHandled?.();
+    }
+  }, [autoOpenHoldingsImport, openHoldingsFileDialog, onHoldingsImportHandled]);
 
   const handleHoldingNameChange = (id: string, value: string) => {
     setHoldings(prev =>

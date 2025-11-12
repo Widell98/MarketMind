@@ -1,14 +1,15 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Brain, Sparkles } from 'lucide-react';
+import { Brain, Sparkles, Upload } from 'lucide-react';
 import ChatPortfolioAdvisor from './ChatPortfolioAdvisor';
 
 const ConversationalPortfolioAdvisor = () => {
   const [searchParams] = useSearchParams();
   const [showChat, setShowChat] = useState(false);
+  const [shouldImportCSV, setShouldImportCSV] = useState(false);
 
   useEffect(() => {
     // Check if direct parameter is present to skip intro
@@ -17,8 +18,22 @@ const ConversationalPortfolioAdvisor = () => {
     }
   }, [searchParams]);
 
+  const handleStartChat = useCallback(() => {
+    setShowChat(true);
+  }, []);
+
+  const handleImportCSV = useCallback(() => {
+    setShouldImportCSV(true);
+    setShowChat(true);
+  }, []);
+
   if (showChat) {
-    return <ChatPortfolioAdvisor />;
+    return (
+      <ChatPortfolioAdvisor
+        autoOpenHoldingsImport={shouldImportCSV}
+        onHoldingsImportHandled={() => setShouldImportCSV(false)}
+      />
+    );
   }
 
   return (
@@ -109,14 +124,25 @@ const ConversationalPortfolioAdvisor = () => {
             </ol>
           </div>
 
-          <Button 
-            onClick={() => setShowChat(true)}
-            className="w-full h-12 text-base font-medium"
-            size="lg"
-          >
-            Starta Chatt-konsultation
-            <Brain className="w-5 h-5 ml-2" />
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button
+              onClick={handleStartChat}
+              className="w-full h-12 text-base font-medium"
+              size="lg"
+            >
+              Starta Chatt-konsultation
+              <Brain className="w-5 h-5 ml-2" />
+            </Button>
+            <Button
+              onClick={handleImportCSV}
+              variant="outline"
+              className="w-full h-12 text-base font-medium"
+              size="lg"
+            >
+              Importera portfölj via CSV
+              <Upload className="w-5 h-5 ml-2" />
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
