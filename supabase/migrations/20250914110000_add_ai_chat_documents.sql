@@ -133,22 +133,57 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
--- Storage policies
-CREATE POLICY IF NOT EXISTS "Users can upload AI chat documents" ON storage.objects
-FOR INSERT WITH CHECK (
-  bucket_id = 'ai-chat-documents' AND
-  auth.uid() = owner
-);
+-- Storage policies need to be created conditionally because CREATE POLICY does not
+-- support IF NOT EXISTS. We guard the statements inside DO blocks to keep the
+-- migration idempotent when re-running in different environments.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE polname = 'Users can upload AI chat documents'
+      AND schemaname = 'storage'
+      AND tablename = 'objects'
+  ) THEN
+    CREATE POLICY "Users can upload AI chat documents" ON storage.objects
+      FOR INSERT
+      WITH CHECK (
+        bucket_id = 'ai-chat-documents'
+        AND auth.uid() = owner
+      );
+  END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "Users can view their AI chat documents" ON storage.objects
-FOR SELECT USING (
-  bucket_id = 'ai-chat-documents' AND
-  auth.uid() = owner
-);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE polname = 'Users can view their AI chat documents'
+      AND schemaname = 'storage'
+      AND tablename = 'objects'
+  ) THEN
+    CREATE POLICY "Users can view their AI chat documents" ON storage.objects
+      FOR SELECT
+      USING (
+        bucket_id = 'ai-chat-documents'
+        AND auth.uid() = owner
+      );
+  END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "Users can delete their AI chat documents" ON storage.objects
-FOR DELETE USING (
-  bucket_id = 'ai-chat-documents' AND
-  auth.uid() = owner
-);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE polname = 'Users can delete their AI chat documents'
+      AND schemaname = 'storage'
+      AND tablename = 'objects'
+  ) THEN
+    CREATE POLICY "Users can delete their AI chat documents" ON storage.objects
+      FOR DELETE
+      USING (
+        bucket_id = 'ai-chat-documents'
+        AND auth.uid() = owner
+      );
+  END IF;
+END $$;
 
