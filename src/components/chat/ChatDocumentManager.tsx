@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { ChatDocument } from '@/hooks/useChatDocuments';
 import { cn } from '@/lib/utils';
 import { OPEN_CHAT_DOCUMENT_UPLOAD_EVENT } from '@/constants/chatDocuments';
-import { CheckCircle2, ChevronDown, FileText, Loader2, Trash } from 'lucide-react';
+import { CheckCircle2, ChevronDown, FileText, Loader2, Sparkles, Trash } from 'lucide-react';
 
 interface ChatDocumentManagerProps {
   documents: ChatDocument[];
