@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { ChatDocument } from '@/hooks/useChatDocuments';
 import { cn } from '@/lib/utils';
 import { OPEN_CHAT_DOCUMENT_UPLOAD_EVENT } from '@/constants/chatDocuments';
-import { CheckCircle2, ChevronDown, FileText, Loader2, Sparkles, Trash } from 'lucide-react';
+import { CheckCircle2, ChevronDown, FileText, Loader2, Trash } from 'lucide-react';
 
 interface ChatDocumentManagerProps {
   documents: ChatDocument[];
@@ -138,17 +138,14 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
         {!isCollapsed && (
           <div id="chat-document-manager-panel" className="space-y-2">
             {selectedDocumentList.length > 0 && (
-              <div className="flex items-start gap-3 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2 text-xs text-primary">
-                <Sparkles className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-                <div className="space-y-1">
-                  <p className="font-medium text-primary">AI:n använder dessa dokument som källor</p>
-                  <ul className="space-y-0.5 text-[11px] text-primary/90">
-                    {selectedDocumentList.map((document) => (
-                      <li key={document.id} className="break-all">
-                        {document.name}
-                      </li>
-                    ))}
-                  </ul>
+              <div className="rounded-lg bg-ai-surface px-3 py-2 text-xs text-ai-text">
+                <p className="font-medium">AI:n använder dessa dokument som källor</p>
+                <div className="mt-1 space-y-0.5 text-[11px]">
+                  {selectedDocumentList.map((document) => (
+                    <p key={document.id} className="break-all">
+                      {document.name}
+                    </p>
+                  ))}
                 </div>
               </div>
             )}
