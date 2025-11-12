@@ -17,11 +17,13 @@ interface PortfolioOverviewProps {
   portfolio: any;
   onQuickChat?: (message: string) => void;
   onActionClick?: (action: string) => void;
+  importControls?: React.ReactNode;
 }
 const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   portfolio: _portfolio,
   onQuickChat,
-  onActionClick
+  onActionClick,
+  importControls
 }) => {
   const {
     actualHoldings,
@@ -257,7 +259,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   if (!user) {
     return <div className="space-y-6">
         {/* User's Current Holdings with integrated prices and cash management */}
-        <UserHoldingsManager />
+        <UserHoldingsManager importControls={importControls} />
 
         {/* Sector Exposure - Login Required */}
         <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -374,7 +376,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   }
   return (
     <div className="space-y-6">
-      <UserHoldingsManager sectorData={exposureData.sectorData} />
+      <UserHoldingsManager sectorData={exposureData.sectorData} importControls={importControls} />
 
       <AIRecommendations />
 

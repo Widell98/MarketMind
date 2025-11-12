@@ -241,6 +241,27 @@ const PortfolioImplementation = () => {
   const totalPortfolioValue = performance.totalPortfolioValue;
   const investedValue = performance.totalValue;
 
+  const portfolioImportControls = (
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv,text/csv"
+        className="hidden"
+        onChange={handlePortfolioCsvUpload}
+      />
+      <Button
+        onClick={handleImportClick}
+        disabled={isImportingHoldings}
+        className="rounded-xl px-4 py-4 shadow-md transition-all duration-200 hover:shadow-lg"
+        variant="outline"
+      >
+        <Upload className="mr-2 h-4 w-4" />
+        {isImportingHoldings ? 'Importerar...' : 'Importera från CSV'}
+      </Button>
+    </>
+  );
+
   // Calculate portfolio health metrics - fix the actualHoldings check
   const calculateHealthMetrics = () => {
     const totalHoldings = actualHoldings ? actualHoldings.length : 0;
@@ -272,23 +293,6 @@ const PortfolioImplementation = () => {
               <p className="mx-auto mt-3 max-w-2xl text-base text-muted-foreground sm:text-lg">
                 {t('portfolio.subtitle')}
               </p>
-              <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".csv,text/csv"
-                  className="hidden"
-                  onChange={handlePortfolioCsvUpload}
-                />
-                <Button
-                  onClick={handleImportClick}
-                  disabled={isImportingHoldings}
-                  className="rounded-2xl px-6 py-5 shadow-lg transition-all duration-200 hover:shadow-xl"
-                >
-                  <Upload className="mr-2 h-4 w-4" />
-                  {isImportingHoldings ? 'Importerar...' : 'Importera portfölj (CSV)'}
-                </Button>
-              </div>
           </section>
 
           {/* Portfolio Health Score */}
@@ -324,7 +328,12 @@ const PortfolioImplementation = () => {
           <div className="space-y-4 sm:space-y-6 lg:space-y-8">
             <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
-              <PortfolioOverview portfolio={activePortfolio} onQuickChat={handleQuickChat} onActionClick={handleActionClick} />
+              <PortfolioOverview
+                portfolio={activePortfolio}
+                onQuickChat={handleQuickChat}
+                onActionClick={handleActionClick}
+                importControls={portfolioImportControls}
+              />
             </div>
 
             <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
