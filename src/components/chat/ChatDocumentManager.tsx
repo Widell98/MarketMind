@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ChatDocument } from '@/hooks/useChatDocuments';
@@ -8,10 +8,8 @@ import {
   CheckCircle2,
   FileText,
   Loader2,
-  Paperclip,
   Sparkles,
   Trash,
-  UploadCloud,
 } from 'lucide-react';
 
 interface ChatDocumentManagerProps {
@@ -20,7 +18,6 @@ interface ChatDocumentManagerProps {
   onToggleDocument: (documentId: string) => void;
   onUpload: (file: File) => Promise<void> | void;
   onDelete: (documentId: string) => Promise<void> | void;
-  isUploading: boolean;
   isLoading: boolean;
 }
 
@@ -64,25 +61,15 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
   onToggleDocument,
   onUpload,
   onDelete,
-  isUploading,
   isLoading,
 }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [showUploadArea, setShowUploadArea] = useState(() => documents.length === 0);
 
   const selectedDocuments = useMemo(() => new Set(selectedDocumentIds), [selectedDocumentIds]);
   const selectedCount = selectedDocuments.size;
 
   useEffect(() => {
-    if (documents.length === 0) {
-      setShowUploadArea(true);
-    }
-  }, [documents.length]);
-
-  useEffect(() => {
     const handleOpenUpload = () => {
-      setShowUploadArea(true);
       requestAnimationFrame(() => {
         fileInputRef.current?.click();
       });
@@ -95,12 +82,6 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
     };
   }, []);
 
-  useEffect(() => {
-    if (isUploading) {
-      setShowUploadArea(true);
-    }
-  }, [isUploading]);
-
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -109,108 +90,15 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
     }
   }, [onUpload]);
 
-  const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setIsDragging(false);
-
-    const file = event.dataTransfer.files?.[0];
-    if (file) {
-      void onUpload(file);
-    }
-  }, [onUpload]);
-
-  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setIsDragging(false);
-  }, []);
-
   return (
     <div className="border-t border-b border-ai-border/50 bg-ai-surface-muted/40 px-4 py-3 sm:px-6">
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-ai-text-muted">
-            <Paperclip className="h-4 w-4 text-primary" />
-            <span>Dokumentkällor</span>
-            {selectedCount > 0 && (
-              <Badge variant="outline" className="rounded-full border-primary/40 bg-primary/10 text-[11px] text-primary">
-                {selectedCount} valda
-              </Badge>
-            )}
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 rounded-full text-xs text-ai-text-muted hover:text-foreground"
-            onClick={() => setShowUploadArea((prev) => !prev)}
-          >
-            {showUploadArea ? 'Dölj uppladdning' : 'Lägg till dokument'}
-          </Button>
-        </div>
-
-        {showUploadArea && (
-          <div
-            className={cn(
-              'flex flex-col gap-3 rounded-xl border border-dashed border-ai-border/70 bg-white/70 p-4 text-sm transition-colors dark:bg-ai-surface/80',
-              isDragging && 'border-primary/60 bg-primary/5'
-            )}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2 text-foreground">
-                <UploadCloud className="h-4 w-4 text-primary" />
-                <span className="font-medium">Ladda upp dokument</span>
-              </div>
-              <p className="text-xs text-ai-text-muted">
-                Dra in en årsredovisning eller annan PDF/textfil här, eller välj från din enhet.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="rounded-full border-primary/40 text-primary hover:bg-primary/10"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-              >
-                {isUploading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Bearbetar...
-                  </>
-                ) : (
-                  <>
-                    <Paperclip className="mr-2 h-4 w-4" />
-                    Välj fil
-                  </>
-                )}
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.txt,text/plain,application/pdf"
-                className="hidden"
-                onChange={handleFileChange}
-              />
-              <Badge variant="secondary" className="rounded-full bg-ai-surface px-3 py-1 text-xs text-ai-text-muted">
-                PDF eller text, max 15 MB
-              </Badge>
-            </div>
-          </div>
-        )}
-      </div>
-
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.txt,text/plain,application/pdf"
+        className="hidden"
+        onChange={handleFileChange}
+      />
       <div className="mt-4 space-y-2">
         <div className="flex items-center justify-between text-xs text-ai-text-muted">
           <span>Uppladdade dokument ({documents.length})</span>

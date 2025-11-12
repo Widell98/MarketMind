@@ -424,7 +424,6 @@ const AIChat = ({
                   onToggleDocument={handleToggleDocument}
                   onUpload={handleUploadDocument}
                   onDelete={handleDeleteDocument}
-                  isUploading={isUploadingDocument}
                   isLoading={isLoadingDocuments}
                 />
               )}
