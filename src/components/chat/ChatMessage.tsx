@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Bot, User, Plus, Check, TrendingUp, ChevronDown, Sparkles } from 'lucide-react';
+import { Bot, User, Plus, Check, TrendingUp, ChevronDown, Sparkles, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
@@ -124,6 +124,23 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
   };
 
   const stockSuggestions = message.role === 'assistant' ? extractStockSuggestions(message.content) : [];
+
+  const attachedDocumentNames = useMemo(() => {
+    const context = message.context as { documentNames?: unknown; documentIds?: unknown } | undefined;
+    const rawNames = Array.isArray(context?.documentNames)
+      ? context?.documentNames.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      : [];
+
+    if (rawNames.length > 0) {
+      return rawNames;
+    }
+
+    const rawIds = Array.isArray(context?.documentIds)
+      ? context?.documentIds.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      : [];
+
+    return rawIds.length > 0 ? rawIds : null;
+  }, [message.context]);
 
   const handleAddStock = async (suggestion: StockSuggestion) => {
     try {
@@ -419,7 +436,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         </>
       ) : (
         <>
-          <div className="flex-1 min-w-0 max-w-[75%]">
+          <div className="flex-1 min-w-0 max-w-[75%] space-y-2">
             <div className="rounded-[18px] border border-[#144272]/22 bg-gradient-to-br from-[#144272]/16 via-white/95 to-[#205295]/14 px-4 py-3.5 text-foreground shadow-[0_18px_46px_rgba(15,23,42,0.1)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble-user dark:px-4 dark:py-3 dark:shadow-sm">
               <div className="flex items-center justify-between text-[11px] font-medium text-ai-text-muted">
                 <span>Du</span>
@@ -427,6 +444,21 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
               </div>
               <p className="mt-2 whitespace-pre-wrap break-words text-[13px] leading-[1.6] text-foreground">{message.content}</p>
             </div>
+            {attachedDocumentNames && (
+              <div className="flex flex-wrap items-center gap-2 pl-1 text-xs">
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                  <Paperclip className="h-3 w-3" /> Bifogade källor
+                </span>
+                {attachedDocumentNames.map((name, index) => (
+                  <span
+                    key={`${message.id}-doc-${index}`}
+                    className="inline-flex items-center rounded-full border border-primary/30 bg-white/80 px-2.5 py-1 text-[11px] font-medium text-primary shadow-sm"
+                  >
+                    {name}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-blue-500 to-blue-600 text-white shadow-[0_16px_40px_rgba(15,23,42,0.18)] ring-1 ring-[#144272]/35 transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:ring-transparent dark:shadow-none">
             <User className="h-4 w-4" />

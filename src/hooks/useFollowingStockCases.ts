@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
+import { getSupabaseOfflineMessage, isSupabaseFetchError } from '@/utils/supabaseError';
 
 export const useFollowingStockCases = () => {
   const [followingStockCases, setFollowingStockCases] = useState<any[]>([]);
@@ -26,7 +27,15 @@ export const useFollowingStockCases = () => {
         .select('following_id')
         .eq('follower_id', user.id);
 
-      if (followsError) throw followsError;
+      if (followsError) {
+        if (isSupabaseFetchError(followsError)) {
+          console.warn('Network error fetching followed users for stock cases:', followsError);
+          setFollowingStockCases([]);
+          return;
+        }
+
+        throw followsError;
+      }
 
       if (!follows || follows.length === 0) {
         setFollowingStockCases([]);
@@ -45,7 +54,15 @@ export const useFollowingStockCases = () => {
         .eq('is_public', true)
         .order('created_at', { ascending: false });
 
-      if (stockCasesError) throw stockCasesError;
+      if (stockCasesError) {
+        if (isSupabaseFetchError(stockCasesError)) {
+          console.warn('Network error fetching stock cases from followed users:', stockCasesError);
+          setFollowingStockCases([]);
+          return;
+        }
+
+        throw stockCasesError;
+      }
 
       // Get profile information for the users
       const { data: profiles, error: profilesError } = await supabase
@@ -53,7 +70,13 @@ export const useFollowingStockCases = () => {
         .select('id, username, display_name')
         .in('id', followingUserIds);
 
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        if (isSupabaseFetchError(profilesError)) {
+          console.warn('Network error fetching profiles for followed stock cases:', profilesError);
+        } else {
+          throw profilesError;
+        }
+      }
 
       // Merge stock cases with profile information
       const stockCasesWithProfiles = (stockCases || []).map(stockCase => ({
@@ -67,7 +90,9 @@ export const useFollowingStockCases = () => {
       console.error('Error fetching following stock cases:', error);
       toast({
         title: "Fel",
-        description: "Kunde inte ladda aktiefall från följda användare",
+        description: isSupabaseFetchError(error)
+          ? getSupabaseOfflineMessage()
+          : "Kunde inte ladda aktiefall från följda användare",
         variant: "destructive",
       });
     } finally {
