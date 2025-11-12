@@ -89,7 +89,7 @@ const ChatMessages = ({
         className="flex-1 min-h-0 overflow-y-auto"
         style={{ scrollbarGutter: 'stable' }}
       >
-        <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-10 sm:px-6 lg:max-w-4xl lg:px-8 xl:max-w-5xl xl:px-10 2xl:max-w-6xl 2xl:px-12">
+        <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-10 sm:px-6 lg:max-w-3xl lg:px-8 xl:max-w-4xl xl:px-10 2xl:max-w-4xl 2xl:px-12">
           {[1, 2, 3].map((item) => (
             <div key={item} className="flex items-start gap-3">
               <Skeleton className="h-10 w-10 rounded-full" />
@@ -109,7 +109,7 @@ const ChatMessages = ({
       className="flex-1 min-h-0 overflow-y-auto"
       style={{ scrollbarGutter: 'stable' }}
     >
-      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:space-y-8 sm:px-6 sm:py-8 lg:max-w-4xl lg:space-y-10 lg:px-8 lg:py-10 xl:max-w-5xl xl:px-10 xl:py-12 2xl:max-w-6xl 2xl:space-y-12 2xl:px-12">
+      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:space-y-8 sm:px-6 sm:py-8 lg:max-w-3xl lg:space-y-10 lg:px-8 lg:py-10 xl:max-w-4xl xl:px-10 xl:py-12 2xl:max-w-4xl 2xl:space-y-12 2xl:px-12">
         {showGuideBot && (
           <GuideBot
             onPromptExample={handleGuidePrompt}
