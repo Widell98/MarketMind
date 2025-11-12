@@ -140,7 +140,7 @@ DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
-    WHERE polname = 'Users can upload AI chat documents'
+    WHERE policyname = 'Users can upload AI chat documents'
       AND schemaname = 'storage'
       AND tablename = 'objects'
   ) THEN
@@ -157,7 +157,7 @@ DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
-    WHERE polname = 'Users can view their AI chat documents'
+    WHERE policyname = 'Users can view their AI chat documents'
       AND schemaname = 'storage'
       AND tablename = 'objects'
   ) THEN
@@ -174,7 +174,7 @@ DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
-    WHERE polname = 'Users can delete their AI chat documents'
+    WHERE policyname = 'Users can delete their AI chat documents'
       AND schemaname = 'storage'
       AND tablename = 'objects'
   ) THEN
