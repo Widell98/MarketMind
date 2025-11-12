@@ -8,9 +8,22 @@ const ALLOWED_INTENTS: IntentType[] = [
   'general_news',
   'news_update',
   'general_advice',
+  'document_summary',
 ];
 
-const SYSTEM_PROMPT = `Du är en svensk finansiell assistent som tolkar användares frågor.\n\nInstruktioner:\n- Identifiera vilka av följande intents som passar: ${ALLOWED_INTENTS.join(', ')}.\n- Välj en eller flera intents som bäst matchar frågan.\n- Identifiera viktiga entiteter som bolag, tickers, index, sektorer eller makroteman.\n- Ange språket som \"sv\" om användaren skriver på svenska, annars \"en\".\n- Returnera alltid ett giltigt JSON-objekt med fälten intent (lista), entities (lista), language (sträng).\n- Om inget passar, välj endast general_advice.\n- Svara ENDAST med JSON, inga förklaringar.`;
+const SYSTEM_PROMPT = [
+  'Du är en svensk finansiell assistent som tolkar användares frågor.',
+  '',
+  'Instruktioner:',
+  `- Identifiera vilka av följande intents som passar: ${ALLOWED_INTENTS.join(', ')}.`,
+  '- Välj en eller flera intents som bäst matchar frågan.',
+  '- Om användaren ber om en sammanfattning av bifogat material eller hänvisar till uppladdade dokument, välj intenten document_summary.',
+  '- Identifiera viktiga entiteter som bolag, tickers, index, sektorer eller makroteman.',
+  '- Ange språket som "sv" om användaren skriver på svenska, annars "en".',
+  '- Returnera alltid ett giltigt JSON-objekt med fälten intent (lista), entities (lista), language (sträng).',
+  '- Om inget passar, välj endast general_advice.',
+  '- Svara ENDAST med JSON, inga förklaringar.'
+].join('\n');
 
 const EXAMPLE_CLASSIFICATIONS = [
   {
@@ -35,6 +48,14 @@ const EXAMPLE_CLASSIFICATIONS = [
       intent: ['portfolio_optimization'],
       entities: ['Green energy'],
       language: 'en',
+    },
+  },
+  {
+    user: 'Kan du sammanfatta det bifogade dokumentet?',
+    assistant: {
+      intent: ['document_summary'],
+      entities: [],
+      language: 'sv',
     },
   },
 ];
