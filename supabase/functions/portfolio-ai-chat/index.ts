@@ -101,7 +101,14 @@ OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
   general_advice: `ALLMÄN INVESTERINGSRÅDGIVNING:
 - Ge råd i 2–4 meningar när frågan är enkel.
 - Anpassa förslag till användarens riskprofil och intressen.
-- När aktieförslag behövs ska formatet vara **Företagsnamn (TICKER)** - Kort motivering och endast inkludera börsnoterade bolag.`
+- När aktieförslag behövs ska formatet vara **Företagsnamn (TICKER)** - Kort motivering och endast inkludera börsnoterade bolag.`,
+  document_summary: `DOKUMENTSAMMANFATTNING:
+- Utgå strikt från användarens uppladdade dokument som primär källa.
+- Läs igenom hela underlaget innan du formulerar svaret.
+- Plocka ut syfte, struktur och kärninsikter med sidreferenser när det är möjligt.
+- Presentera en sammanhängande översikt med tydliga sektioner som Översikt, Nyckelpunkter och Nästa steg när materialet motiverar det.
+- Återge inte långa citat – destillera och tolka innehållet i en professionell ton.
+`
 };
 
 const buildIntentPrompt = (intent: IntentType): string => {
@@ -114,13 +121,31 @@ type HeadingDirectiveInput = {
 
 const HEADING_VARIATIONS: Record<string, string[]> = {
   analysis: ['**Analys 🔍**', '**Grundlig analys 🔎**', '**Analys & Insikt 💡**'],
-  recommendation: ['**Rekommendation 🌟**', '**Råd 💼**', '**Strategiska råd 🌠**'],
+  recommendation: ['**Håll koll på detta:**'],
   risks: ['**Risker ⚠️**', '**Riskbild ⚡**', '**Risker & Bevaka 🔔**'],
   news: ['**Nyheter 📰**', '**Marknadsnytt 🗞️**', '**Senaste nytt 📣**'],
   actions: ['**Åtgärder ✅**', '**Nästa steg 🧭**', '**Föreslagna åtgärder 🛠️**']
 };
 
 const DOCUMENT_CONTEXT_MATCH_COUNT = 8;
+const DOCUMENT_SUMMARY_CONTEXT_MAX_CHARS_PER_DOCUMENT = 60000;
+const DOCUMENT_SUMMARY_PATTERNS: RegExp[] = [
+  /sammanfatta/i,
+  /sammanfattning/i,
+  /summering/i,
+  /sammanställ/i,
+  /sammanstall/i,
+  /summary/i,
+  /summarize/i,
+  /summarise/i,
+  /key points?/i,
+  /key takeaways?/i,
+  /nyckelpunkter/i,
+  /huvudpunkter/i,
+  /huvudinsikter/i,
+  /övergripande bild/i,
+  /helhetsbild/i,
+];
 
 const pickRandom = (values: string[]): string => {
   if (values.length === 0) return '';
@@ -1665,6 +1690,17 @@ serve(async (req) => {
       ? documentIds.filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0)
       : [];
 
+    const hasUploadedDocuments = filteredDocumentIds.length > 0;
+    const normalizedSummaryCheckValue = message
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ');
+    const summaryPatternTriggered =
+      DOCUMENT_SUMMARY_PATTERNS.some((pattern) => pattern.test(message)) ||
+      DOCUMENT_SUMMARY_PATTERNS.some((pattern) => pattern.test(normalizedSummaryCheckValue));
+    let isDocumentSummaryRequest = hasUploadedDocuments && summaryPatternTriggered;
+
     console.log('Portfolio AI Chat function called with:', {
       message: message?.substring(0, 50) + '...',
       userId,
@@ -2389,6 +2425,12 @@ serve(async (req) => {
       let intentSource: 'interpreter' | 'fallback' = 'interpreter';
       let resolvedIntents = interpreterIntents.slice();
 
+      const interpreterMarkedSummary = interpreterIntents.includes('document_summary');
+      if (hasUploadedDocuments && interpreterMarkedSummary) {
+        primaryIntent = 'document_summary';
+        resolvedIntents = ['document_summary'];
+      }
+
       if (!primaryIntent) {
         const embeddingIntent = await classifyIntentWithEmbeddings(message, supabase, openAIApiKey);
         if (embeddingIntent) {
@@ -2408,7 +2450,9 @@ serve(async (req) => {
       }
 
       if (!primaryIntent) {
-        if (isStockMentionRequest ||
+        if (hasUploadedDocuments && summaryPatternTriggered) {
+          primaryIntent = 'document_summary';
+        } else if (isStockMentionRequest ||
             (/(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) &&
             /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5})/i.test(message))) {
           primaryIntent = 'stock_analysis';
@@ -2436,6 +2480,12 @@ serve(async (req) => {
         resolvedIntents = [primaryIntent];
       }
 
+      if (hasUploadedDocuments && (summaryPatternTriggered || resolvedIntents.includes('document_summary'))) {
+        primaryIntent = 'document_summary';
+        intentSource = interpreterMarkedSummary ? intentSource : 'fallback';
+        resolvedIntents = ['document_summary'];
+      }
+
       if (resolvedIntents.length === 0) {
         resolvedIntents = [primaryIntent ?? 'general_advice'];
       }
@@ -2450,11 +2500,19 @@ serve(async (req) => {
     };
 
     const { primaryIntent: userIntent, intents: detectedIntents, entities: interpretedEntities, language: interpretedLanguage, source: intentSource } = await detectIntent(message);
+
+    if (hasUploadedDocuments && (userIntent === 'document_summary' || detectedIntents.includes('document_summary'))) {
+      isDocumentSummaryRequest = true;
+    }
     const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_sell_decisions', 'news_update', 'stock_analysis']);
     let shouldIncludePersonalContext = personalIntentTypes.has(userIntent)
       || isPersonalAdviceRequest
       || isPortfolioOptimizationRequest
       || referencesPersonalInvestments;
+
+    if (isDocumentSummaryRequest) {
+      shouldIncludePersonalContext = false;
+    }
 
     if ((userIntent === 'market_analysis' || userIntent === 'general_news')
       && !referencesPersonalInvestments
@@ -2507,7 +2565,7 @@ serve(async (req) => {
       detectedEntities: interpretedEntities,
     });
 
-    const shouldFetchTavily = !isSimplePersonalAdviceRequest && (
+    const shouldFetchTavily = !hasUploadedDocuments && !isDocumentSummaryRequest && !isSimplePersonalAdviceRequest && (
       isStockMentionRequest || hasRealTimeTrigger
     );
     if (shouldFetchTavily) {
@@ -3051,71 +3109,190 @@ serve(async (req) => {
       }
     }
 
+    let documentContextHandled = false;
+
     if (filteredDocumentIds.length > 0) {
-      try {
-        const queryEmbedding = await fetchEmbedding(message, openAIApiKey);
-        if (queryEmbedding) {
-          const { data: documentMatches, error: documentMatchError } = await supabase.rpc('match_chat_document_chunks', {
-            p_query_embedding: queryEmbedding,
-            p_match_count: DOCUMENT_CONTEXT_MATCH_COUNT,
-            p_user_id: userId,
-            p_document_ids: filteredDocumentIds.length > 0 ? filteredDocumentIds : null,
-          });
+      if (isDocumentSummaryRequest) {
+        try {
+          const { data: documentRecords, error: documentRecordsError } = await supabase
+            .from('chat_documents')
+            .select('id, user_id, name, metadata, chunk_count')
+            .in('id', filteredDocumentIds)
+            .eq('user_id', userId);
 
-          if (documentMatchError) {
-            console.error('Document match RPC failed', documentMatchError);
-          } else if (Array.isArray(documentMatches) && documentMatches.length > 0) {
-            const groupedMatches = new Map<string, { name: string; entries: Array<{ content: string; metadata: { page_number?: number }; similarity: number | null }> }>();
+          if (documentRecordsError) {
+            console.error('Failed to fetch document metadata for summary', documentRecordsError);
+          } else {
+            const documentMetaMap = new Map<string, { name: string; metadata: Record<string, unknown> | null; chunkCount: number | null }>();
+            const authorizedDocumentIds: string[] = [];
 
-            (documentMatches as Array<{
-              document_id: string;
-              document_name?: string | null;
-              content: string;
-              metadata?: { page_number?: number } | null;
-              similarity?: number | null;
-            }>).forEach((match) => {
-              if (!match.document_id) {
-                return;
+            (documentRecords ?? []).forEach((record) => {
+              if (
+                record &&
+                typeof record.id === 'string' &&
+                typeof record.user_id === 'string' &&
+                record.user_id === userId
+              ) {
+                authorizedDocumentIds.push(record.id);
+                documentMetaMap.set(record.id, {
+                  name: typeof record.name === 'string' && record.name.trim().length > 0 ? record.name.trim() : 'Dokument',
+                  metadata: (record.metadata ?? null) as Record<string, unknown> | null,
+                  chunkCount: typeof record.chunk_count === 'number' ? record.chunk_count : null,
+                });
               }
-
-              const existing = groupedMatches.get(match.document_id) ?? {
-                name: typeof match.document_name === 'string' && match.document_name.trim().length > 0
-                  ? match.document_name.trim()
-                  : 'Dokument',
-                entries: [],
-              };
-
-              existing.entries.push({
-                content: match.content,
-                metadata: (match.metadata ?? {}) as { page_number?: number },
-                similarity: typeof match.similarity === 'number' ? match.similarity : null,
-              });
-
-              groupedMatches.set(match.document_id, existing);
             });
 
-            const documentContextLines: string[] = [];
-            let sourceCounter = 1;
-
-            for (const [, value] of groupedMatches) {
-              const topEntries = value.entries.slice(0, 3);
-              topEntries.forEach((entry) => {
-                const pageNumber = typeof entry.metadata?.page_number === 'number' ? entry.metadata.page_number : undefined;
-                const similarityText = entry.similarity !== null ? ` (Relevans ${(entry.similarity * 100).toFixed(1)}%)` : '';
-                const header = `${value.name}${pageNumber ? ` – Sida ${pageNumber}` : ''}${similarityText}`;
-                documentContextLines.push(`Källa ${sourceCounter}: ${header}\n${entry.content}`);
-                sourceCounter += 1;
-              });
+            if (authorizedDocumentIds.length === 0) {
+              console.warn('No authorized documents found for summary request', { filteredDocumentIds, userId });
             }
 
-            if (documentContextLines.length > 0) {
-              contextInfo += `\n\nDOKUMENTUNDERLAG FRÅN UPPLADDADE FILER:\n${documentContextLines.join('\n\n')}`;
-              contextInfo += `\n\nSÅ HANTERAR DU UPPLADDADE DOKUMENT:\n- Lyft fram konkreta siffror och nyckeltal från underlagen när de stärker din analys (t.ex. omsättning, resultat, kassaflöden).\n- Ange tydligt vilken källa och sida siffrorna kommer från, exempelvis "Årsredovisning 2023 – Sida 12".\n- Knyt rekommendationer och slutsatser till dessa dokumenterade fakta när det är relevant.`;
+            const { data: chunkData, error: chunkError } = authorizedDocumentIds.length === 0
+              ? { data: null, error: null }
+              : await supabase
+                .from('chat_document_chunks')
+                .select('document_id, content, metadata, chunk_index')
+                .in('document_id', authorizedDocumentIds)
+                .order('document_id', { ascending: true })
+                .order('chunk_index', { ascending: true });
+
+            if (chunkError) {
+              console.error('Failed to fetch document chunks for summary', chunkError);
+            } else if (Array.isArray(chunkData) && chunkData.length > 0) {
+              const groupedChunks = new Map<string, Array<{ content: string; metadata: { page_number?: number } | null; chunk_index: number | null }>>();
+
+              chunkData.forEach((entry) => {
+                if (!entry || typeof entry.document_id !== 'string') {
+                  return;
+                }
+
+                const existing = groupedChunks.get(entry.document_id) ?? [];
+                const metadata = (entry.metadata ?? null) as { page_number?: number } | null;
+                existing.push({
+                  content: typeof entry.content === 'string' ? entry.content : '',
+                  metadata,
+                  chunk_index: typeof entry.chunk_index === 'number' ? entry.chunk_index : null,
+                });
+                groupedChunks.set(entry.document_id, existing);
+              });
+
+              const summaryContextSections: string[] = [];
+              let sourceCounter = 1;
+
+              for (const [documentId, entries] of groupedChunks.entries()) {
+                const sortedEntries = entries.sort((a, b) => (a.chunk_index ?? 0) - (b.chunk_index ?? 0));
+                const meta = documentMetaMap.get(documentId);
+                const documentName = meta?.name ?? 'Dokument';
+                const metadataRecord = meta?.metadata as { page_count?: unknown } | null;
+                const pageCount = typeof metadataRecord?.page_count === 'number' ? metadataRecord.page_count : null;
+                const chunkCount = meta?.chunkCount ?? sortedEntries.length;
+
+                const headerParts: string[] = [documentName];
+                if (pageCount) {
+                  headerParts.push(`${pageCount} sidor`);
+                }
+                headerParts.push(`${chunkCount} textavsnitt`);
+
+                const aggregatedContent = sortedEntries
+                  .map((entry) => {
+                    const pageNumberRaw = typeof entry.metadata?.page_number === 'number'
+                      ? entry.metadata.page_number
+                      : null;
+                    const pagePrefix = pageNumberRaw !== null ? `[Sida ${pageNumberRaw}] ` : '';
+                    return `${pagePrefix}${entry.content}`.trim();
+                  })
+                  .filter((value) => value.length > 0)
+                  .join('\n\n');
+
+                if (aggregatedContent.length === 0) {
+                  continue;
+                }
+
+                const truncatedContent = aggregatedContent.length > DOCUMENT_SUMMARY_CONTEXT_MAX_CHARS_PER_DOCUMENT
+                  ? `${aggregatedContent.slice(0, DOCUMENT_SUMMARY_CONTEXT_MAX_CHARS_PER_DOCUMENT)}\n[Texten har kortats för att passa sammanfattningsuppdraget.]`
+                  : aggregatedContent;
+
+                summaryContextSections.push(`Källa ${sourceCounter}: ${headerParts.join(' – ')}\n${truncatedContent}`);
+                sourceCounter += 1;
+              }
+
+              if (summaryContextSections.length > 0) {
+                contextInfo += `\n\nFULLSTÄNDIGT DOKUMENTUNDERLAG FÖR SAMMANFATTNING:\n${summaryContextSections.join('\n\n')}`;
+                contextInfo += `\n\nSAMMANFATTNINGSUPPDRAG:\n- Läs igenom hela textunderlaget ovan som representerar användarens uppladdade dokument.\n- Basera hela svaret på dokumentinnehållet som primär källa och komplettera endast med egna resonemang.\n- Identifiera dokumentets syfte, struktur och viktigaste slutsatser.\n- Destillera 5–7 centrala nyckelpunkter med relevanta siffror eller citat och hänvisa till sidnummer när det går.\n- Presentera en heltäckande men kondenserad sammanfattning med tydliga rubriker (t.ex. \"Översikt\", \"Nyckelpunkter\", \"Fördjupning\").\n- Avsluta med en sektion \"Förslag på nästa steg\" om dokumentet antyder åtgärder eller uppföljning.\n- Undvik att återge långa textstycken ordagrant – fokusera på analys och tolkning.`;
+                documentContextHandled = true;
+              }
             }
           }
+        } catch (error) {
+          console.error('Failed to prepare document summary context', error);
         }
-      } catch (error) {
-        console.error('Failed to enrich chat with document context', error);
+      }
+
+      if (!documentContextHandled) {
+        try {
+          const queryEmbedding = await fetchEmbedding(message, openAIApiKey);
+          if (queryEmbedding) {
+            const { data: documentMatches, error: documentMatchError } = await supabase.rpc('match_chat_document_chunks', {
+              p_query_embedding: queryEmbedding,
+              p_match_count: DOCUMENT_CONTEXT_MATCH_COUNT,
+              p_user_id: userId,
+              p_document_ids: filteredDocumentIds.length > 0 ? filteredDocumentIds : null,
+            });
+
+            if (documentMatchError) {
+              console.error('Document match RPC failed', documentMatchError);
+            } else if (Array.isArray(documentMatches) && documentMatches.length > 0) {
+              const groupedMatches = new Map<string, { name: string; entries: Array<{ content: string; metadata: { page_number?: number }; similarity: number | null }> }>();
+
+              (documentMatches as Array<{
+                document_id: string;
+                document_name?: string | null;
+                content: string;
+                metadata?: { page_number?: number } | null;
+                similarity?: number | null;
+              }>).forEach((match) => {
+                if (!match.document_id) {
+                  return;
+                }
+
+                const existing = groupedMatches.get(match.document_id) ?? {
+                  name: typeof match.document_name === 'string' && match.document_name.trim().length > 0
+                    ? match.document_name.trim()
+                    : 'Dokument',
+                  entries: [],
+                };
+
+                existing.entries.push({
+                  content: match.content,
+                  metadata: (match.metadata ?? {}) as { page_number?: number },
+                  similarity: typeof match.similarity === 'number' ? match.similarity : null,
+                });
+
+                groupedMatches.set(match.document_id, existing);
+              });
+
+              const documentContextLines: string[] = [];
+              let sourceCounter = 1;
+
+              for (const [, value] of groupedMatches) {
+                const topEntries = value.entries.slice(0, 3);
+                topEntries.forEach((entry) => {
+                  const pageNumber = typeof entry.metadata?.page_number === 'number' ? entry.metadata.page_number : undefined;
+                  const similarityText = entry.similarity !== null ? ` (Relevans ${(entry.similarity * 100).toFixed(1)}%)` : '';
+                  const header = `${value.name}${pageNumber ? ` – Sida ${pageNumber}` : ''}${similarityText}`;
+                  documentContextLines.push(`Källa ${sourceCounter}: ${header}\n${entry.content}`);
+                  sourceCounter += 1;
+                });
+              }
+
+              if (documentContextLines.length > 0) {
+                contextInfo += `\n\nDOKUMENTUNDERLAG FRÅN UPPLADDADE FILER:\n${documentContextLines.join('\n\n')}`;
+                contextInfo += `\n\nSÅ HANTERAR DU UPPLADDADE DOKUMENT:\n- Utgå från dokumentet som primär källa och dra dina slutsatser med det som bas.\n- Lyft fram konkreta siffror och nyckeltal från underlagen när de stärker din analys (t.ex. omsättning, resultat, kassaflöden).\n- Ange tydligt vilken källa och sida siffrorna kommer från, exempelvis "Årsredovisning 2023 – Sida 12".\n- Knyt rekommendationer och slutsatser till dessa dokumenterade fakta när det är relevant.`;
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Failed to enrich chat with document context', error);
+        }
       }
     }
 
@@ -3127,12 +3304,16 @@ serve(async (req) => {
       '- Vid djupgående analyser: använd de rubriker som angavs tidigare (analys, rekommendation, risker, åtgärder) men ta enbart med sektioner som tillför värde.',
     ];
 
+    if (isDocumentSummaryRequest) {
+      structureLines.push('- Vid dokumentsammanfattningar: läs igenom hela underlaget, leverera en strukturerad översikt och inkludera sektioner för Översikt, Nyckelpunkter samt Förslag på nästa steg när materialet motiverar det.');
+    }
+
     if (recommendationPreference === 'no') {
       structureLines.push('- Ge inga investeringsrekommendationer, köp/sälj-råd eller portföljjusteringar i detta svar. Fokusera på att ge lägesbild och analys.');
     } else if (recommendationPreference === 'yes') {
-      structureLines.push('- Ge tydliga och motiverade rekommendationer när de stärker svaret, inklusive tickers enligt formatet som anges.');
+      structureLines.push('- Om användaren efterfrågar vägledning, formulera det som bevakningspunkter eller saker att hålla koll på i stället för direkta köp-/säljrekommendationer.');
     } else {
-      structureLines.push('- Ge bara rekommendationer om användaren ber om det eller om frågan tydligt kräver en ståndpunkt.');
+      structureLines.push('- Lyft endast fram bevakningspunkter när de verkligen behövs och undvik direkta rekommendationer.');
     }
 
     const emojiLines = [
@@ -3143,22 +3324,33 @@ serve(async (req) => {
 
     let recommendationSectionLine: string;
     if (recommendationPreference === 'no') {
-      recommendationSectionLine = '- Rekommendation/Råd – Hoppa över denna sektion om användaren inte uttryckligen ber om åtgärdsförslag.';
+      recommendationSectionLine = '- "Håll koll på detta" – Hoppa över denna sektion om användaren inte uttryckligen ber om bevakningspunkter.';
     } else if (recommendationPreference === 'yes') {
-      recommendationSectionLine = '- Rekommendation/Råd – Ge konkreta råd med aktier och investmentbolag i formatet **Företagsnamn (TICKER)** - Motivering, eftersom användaren efterfrågar det.';
+      recommendationSectionLine = '- "Håll koll på detta" – Om du anser att det tillför värde, lyft 1–2 viktiga observationer att bevaka i stället för konkreta rekommendationer.';
     } else {
-      recommendationSectionLine = '- Rekommendation/Råd – Om frågan verkligen kräver ett råd, ge konkreta tips med formatet **Företagsnamn (TICKER)** - Motivering, annars kan sektionen utelämnas.';
+      recommendationSectionLine = '- "Håll koll på detta" – Använd endast när det verkligen behövs och begränsa dig till korta bevakningspunkter.';
     }
 
-    const optionalSections = [
-      'MÖJLIGA SEKTIONER (välj flexibelt utifrån behov):',
-      '- Analys/Insikt – Sammanfatta situationen eller frågan.',
-      recommendationSectionLine,
-      '- Risker & Överväganden – Endast om det finns relevanta risker att lyfta.',
-      '- Åtgärdsplan/Nästa steg – Använd vid komplexa frågor som kräver steg-för-steg.',
-      '- Nyhetsöversikt – Använd vid frågor om senaste nyheter eller marknadshändelser.',
-      '- Uppföljning – Använd när du föreslår fortsatta analyser eller handlingar.',
-    ];
+    const optionalSections = isDocumentSummaryRequest
+      ? [
+          'MÖJLIGA SEKTIONER (välj flexibelt utifrån behov):',
+          '- Översikt – Ge en kort bakgrund till dokumentet och dess huvudsakliga syfte.',
+          '- Nyckelpunkter – Lista 5–7 huvudinsikter med sidreferenser när det är möjligt.',
+          '- Fördjupning – Använd när specifika avsnitt kräver extra analys eller kontext.',
+          recommendationSectionLine,
+          '- Risker & Överväganden – Endast om dokumentet tar upp begränsningar eller riskmoment.',
+          '- Förslag på nästa steg – Sammanfatta rekommenderade åtgärder eller uppföljningar från dokumentet.',
+          '- Uppföljning – Använd för att föreslå hur användaren kan arbeta vidare med materialet.',
+        ]
+      : [
+          'MÖJLIGA SEKTIONER (välj flexibelt utifrån behov):',
+          '- Analys/Insikt – Sammanfatta situationen eller frågan.',
+          recommendationSectionLine,
+          '- Risker & Överväganden – Endast om det finns relevanta risker att lyfta.',
+          '- Åtgärdsplan/Nästa steg – Använd vid komplexa frågor som kräver steg-för-steg.',
+          '- Nyhetsöversikt – Använd vid frågor om senaste nyheter eller marknadshändelser.',
+          '- Uppföljning – Använd när du föreslår fortsatta analyser eller handlingar.',
+        ];
 
     const importantLines = [
       'VIKTIGT:',
@@ -3167,6 +3359,10 @@ serve(async (req) => {
       '- Avsluta endast med en öppen fråga när det känns naturligt och svaret inte redan är komplett.',
       '- Avsluta svaret med en sektion "Källor:" där varje länk står på en egen rad (om källor finns).',
     ];
+
+    if (isDocumentSummaryRequest) {
+      importantLines.push('- Vid dokumentsammanfattningar: inkludera sidreferenser när du nämner nyckelfakta och fokusera på att destillera det viktigaste i stället för att citera långa textavsnitt.');
+    }
 
     contextInfo += `
 ${structureLines.join('\n')}
