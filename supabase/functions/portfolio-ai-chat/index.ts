@@ -3116,15 +3116,24 @@ serve(async (req) => {
         try {
           const { data: documentRecords, error: documentRecordsError } = await supabase
             .from('chat_documents')
-            .select('id, name, metadata, chunk_count')
-            .in('id', filteredDocumentIds);
+            .select('id, user_id, name, metadata, chunk_count')
+            .in('id', filteredDocumentIds)
+            .eq('user_id', userId);
 
           if (documentRecordsError) {
             console.error('Failed to fetch document metadata for summary', documentRecordsError);
           } else {
             const documentMetaMap = new Map<string, { name: string; metadata: Record<string, unknown> | null; chunkCount: number | null }>();
+            const authorizedDocumentIds: string[] = [];
+
             (documentRecords ?? []).forEach((record) => {
-              if (record && typeof record.id === 'string') {
+              if (
+                record &&
+                typeof record.id === 'string' &&
+                typeof record.user_id === 'string' &&
+                record.user_id === userId
+              ) {
+                authorizedDocumentIds.push(record.id);
                 documentMetaMap.set(record.id, {
                   name: typeof record.name === 'string' && record.name.trim().length > 0 ? record.name.trim() : 'Dokument',
                   metadata: (record.metadata ?? null) as Record<string, unknown> | null,
@@ -3133,12 +3142,18 @@ serve(async (req) => {
               }
             });
 
-            const { data: chunkData, error: chunkError } = await supabase
-              .from('chat_document_chunks')
-              .select('document_id, content, metadata, chunk_index')
-              .in('document_id', filteredDocumentIds)
-              .order('document_id', { ascending: true })
-              .order('chunk_index', { ascending: true });
+            if (authorizedDocumentIds.length === 0) {
+              console.warn('No authorized documents found for summary request', { filteredDocumentIds, userId });
+            }
+
+            const { data: chunkData, error: chunkError } = authorizedDocumentIds.length === 0
+              ? { data: null, error: null }
+              : await supabase
+                .from('chat_document_chunks')
+                .select('document_id, content, metadata, chunk_index')
+                .in('document_id', authorizedDocumentIds)
+                .order('document_id', { ascending: true })
+                .order('chunk_index', { ascending: true });
 
             if (chunkError) {
               console.error('Failed to fetch document chunks for summary', chunkError);
