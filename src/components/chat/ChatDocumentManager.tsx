@@ -63,13 +63,21 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const selectedDocuments = useMemo(() => new Set(selectedDocumentIds), [selectedDocumentIds]);
+  const selectedDocumentList = useMemo(() => {
+    if (selectedDocumentIds.length === 0) {
+      return [] as ChatDocument[];
+    }
+
+    const idSet = new Set(selectedDocumentIds);
+    return documents.filter((document) => idSet.has(document.id));
+  }, [documents, selectedDocumentIds]);
   const selectedCount = selectedDocuments.size;
 
   useEffect(() => {
-    if (selectedCount > 0) {
+    if (selectedCount > 0 && isCollapsed) {
       setIsCollapsed(false);
     }
-  }, [selectedCount]);
+  }, [isCollapsed, selectedCount]);
 
   useEffect(() => {
     const handleOpenUpload = () => {
@@ -129,10 +137,19 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
         </div>
         {!isCollapsed && (
           <div id="chat-document-manager-panel" className="space-y-2">
-            {selectedCount > 0 && (
-              <div className="flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2 text-xs text-primary">
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>AI:n använder de markerade dokumenten som källor i sitt svar.</span>
+            {selectedDocumentList.length > 0 && (
+              <div className="flex items-start gap-3 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2 text-xs text-primary">
+                <Sparkles className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                <div className="space-y-1">
+                  <p className="font-medium text-primary">AI:n använder dessa dokument som källor</p>
+                  <ul className="space-y-0.5 text-[11px] text-primary/90">
+                    {selectedDocumentList.map((document) => (
+                      <li key={document.id} className="break-all">
+                        {document.name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             )}
 
