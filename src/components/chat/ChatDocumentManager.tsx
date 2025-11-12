@@ -13,6 +13,7 @@ interface ChatDocumentManagerProps {
   onUpload: (file: File) => Promise<void> | void;
   onDelete: (documentId: string) => Promise<void> | void;
   isLoading: boolean;
+  isUploading: boolean;
 }
 
 const getStatusLabel = (document: ChatDocument) => {
@@ -56,6 +57,7 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
   onUpload,
   onDelete,
   isLoading,
+  isUploading,
 }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -119,9 +121,9 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
             </span>
             <span className="text-xs text-ai-text-muted">Uppladdade dokument ({documents.length})</span>
           </button>
-          {isLoading && (
+          {(isLoading || isUploading) && (
             <span className="flex items-center gap-1 text-primary">
-              <Loader2 className="h-3 w-3 animate-spin" /> Hämtar
+              <Loader2 className="h-3 w-3 animate-spin" /> {isUploading ? 'Uppladdar' : 'Hämtar'}
             </span>
           )}
         </div>
