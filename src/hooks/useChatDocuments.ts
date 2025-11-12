@@ -17,12 +17,7 @@ export type ChatDocument = {
 };
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
-const SUPPORTED_TYPES = [
-  'application/pdf',
-  'text/plain',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-];
+const SUPPORTED_TYPES = ['application/pdf', 'text/plain'];
 
 const isSupportedType = (file: File) => {
   if (!file.type) {

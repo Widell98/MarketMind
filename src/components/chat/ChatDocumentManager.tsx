@@ -145,7 +145,7 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf,.txt,.doc,.docx,text/plain,application/pdf"
+            accept=".pdf,.txt,text/plain,application/pdf"
             className="hidden"
             onChange={handleFileChange}
           />
