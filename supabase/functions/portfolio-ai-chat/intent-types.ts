@@ -5,7 +5,8 @@ export type IntentType =
   | 'market_analysis'
   | 'general_news'
   | 'news_update'
-  | 'general_advice';
+  | 'general_advice'
+  | 'document_summary';
 
 export type IntentDetectionResult = {
   intents: IntentType[];

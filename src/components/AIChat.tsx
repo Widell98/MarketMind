@@ -7,6 +7,9 @@ import ChatMessages from './chat/ChatMessages';
 import ChatInput from './chat/ChatInput';
 import ProfileUpdateConfirmation from './ProfileUpdateConfirmation';
 import ChatFolderSidebar from './chat/ChatFolderSidebar';
+import ChatDocumentManager from './chat/ChatDocumentManager';
+import { useChatDocuments } from '@/hooks/useChatDocuments';
+import { useToast } from '@/hooks/use-toast';
 
 import { LogIn, MessageSquare, Brain, Lock, Sparkles, Menu, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -39,6 +42,7 @@ const AIChat = ({
   const {
     user
   } = useAuth();
+  const { toast } = useToast();
   const isMobile = useIsMobile();
   const {
     messages,
@@ -60,11 +64,19 @@ const AIChat = ({
     remainingCredits,
     totalCredits
   } = useAIChat(portfolioId);
+  const {
+    documents: uploadedDocuments,
+    isLoading: isLoadingDocuments,
+    isUploading: isUploadingDocument,
+    uploadDocument,
+    deleteDocument,
+  } = useChatDocuments();
   const [input, setInput] = useState('');
   const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [isGuideSession, setIsGuideSession] = useState(false);
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -76,6 +88,47 @@ const AIChat = ({
     const portfolioKey = portfolioId ?? 'default';
     return `ai-chat-draft:${portfolioKey}:${sessionKey}`;
   }, [currentSessionId, portfolioId]);
+
+  useEffect(() => {
+    setSelectedDocumentIds((prev) =>
+      prev.filter((id) => uploadedDocuments.some((doc) => doc.id === id && doc.status !== 'failed'))
+    );
+  }, [uploadedDocuments]);
+
+  const attachedDocuments = useMemo(
+    () => uploadedDocuments.filter((doc) => selectedDocumentIds.includes(doc.id)),
+    [uploadedDocuments, selectedDocumentIds]
+  );
+
+  const handleToggleDocument = useCallback((documentId: string) => {
+    const targetDocument = uploadedDocuments.find((doc) => doc.id === documentId);
+    if (targetDocument && targetDocument.status !== 'processed') {
+      toast({
+        title: 'Bearbetning pågår',
+        description: 'Vänta tills dokumentet är färdigbearbetat innan du använder det i chatten.',
+      });
+      return;
+    }
+
+    setSelectedDocumentIds((prev) =>
+      prev.includes(documentId)
+        ? prev.filter((id) => id !== documentId)
+        : [...prev, documentId]
+    );
+  }, [uploadedDocuments, toast]);
+
+  const handleRemoveDocument = useCallback((documentId: string) => {
+    setSelectedDocumentIds((prev) => prev.filter((id) => id !== documentId));
+  }, []);
+
+  const handleUploadDocument = useCallback(async (file: File) => {
+    await uploadDocument(file);
+  }, [uploadDocument]);
+
+  const handleDeleteDocument = useCallback(async (documentId: string) => {
+    await deleteDocument(documentId);
+    setSelectedDocumentIds((prev) => prev.filter((id) => id !== documentId));
+  }, [deleteDocument]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -229,7 +282,10 @@ const AIChat = ({
     if (!input.trim() || isLoading || !user) return;
     const messageToSend = input.trim();
     setInput('');
-    await sendMessage(messageToSend);
+    await sendMessage(messageToSend, {
+      documentIds: selectedDocumentIds,
+      documents: attachedDocuments.map((doc) => ({ id: doc.id, name: doc.name })),
+    });
   };
   const handleNewSession = useCallback(async () => {
     if (!user) return;
@@ -361,6 +417,18 @@ const AIChat = ({
                 showGuideBot={isGuideSession}
               />
 
+              {user && !isGuideSession && (
+                <ChatDocumentManager
+                  documents={uploadedDocuments}
+                  selectedDocumentIds={selectedDocumentIds}
+                  onToggleDocument={handleToggleDocument}
+                  onUpload={handleUploadDocument}
+                  onDelete={handleDeleteDocument}
+                  isLoading={isLoadingDocuments}
+                  isUploading={isUploadingDocument}
+                />
+              )}
+
               {messages.map((message) => {
                 const profileUpdates = message.context?.profileUpdates;
 
@@ -380,7 +448,7 @@ const AIChat = ({
               })}
             </div>
 
-            {!isGuideSession && (
+            {user && !isGuideSession && (
               <ChatInput
                 input={input}
                 setInput={setInput}
@@ -388,6 +456,13 @@ const AIChat = ({
                 isLoading={isLoading}
                 quotaExceeded={quotaExceeded}
                 inputRef={inputRef}
+                attachedDocuments={attachedDocuments.map((doc) => ({
+                  id: doc.id,
+                  name: doc.name,
+                  status: doc.status,
+                }))}
+                onRemoveDocument={handleRemoveDocument}
+                isAttachDisabled={isUploadingDocument || quotaExceeded}
               />
             )}
           </div>
