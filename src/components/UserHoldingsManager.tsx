@@ -67,9 +67,10 @@ interface TransformedHolding {
 
 interface UserHoldingsManagerProps {
   sectorData?: { name: string; value: number; percentage: number }[];
+  importControls?: React.ReactNode;
 }
 
-const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = [] }) => {
+const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = [], importControls }) => {
   const {
     actualHoldings,
     loading,
@@ -401,6 +402,11 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                 : "Lägg till dina befintliga aktier, fonder och kassapositioner för bättre portföljanalys"
             }
           </CardDescription>
+          {importControls && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {importControls}
+            </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           {loading || cashLoading ? (
