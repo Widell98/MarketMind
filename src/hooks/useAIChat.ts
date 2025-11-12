@@ -798,8 +798,12 @@ export const useAIChat = (portfolioId?: string) => {
     }
   }, [user, toast]);
 
-  const sendMessage = useCallback(async (content: string) => {
-    
+  type SendMessageOptions = {
+    documentIds?: string[];
+  };
+
+  const sendMessage = useCallback(async (content: string, options?: SendMessageOptions) => {
+
     if (!user || !content.trim()) {
       return;
     }
@@ -822,15 +826,15 @@ export const useAIChat = (portfolioId?: string) => {
 
     // If no session exists, create one and send message
     if (!currentSessionId) {
-      await createNewSessionAndSendMessage(content);
+      await createNewSessionAndSendMessage(content, options);
       return;
     }
 
-    await sendMessageToSession(content);
+    await sendMessageToSession(content, undefined, options);
   }, [user, currentSessionId, checkUsageLimit, subscription, usage, toast, portfolioId]);
 
-  const createNewSessionAndSendMessage = useCallback(async (messageContent: string) => {
-    
+  const createNewSessionAndSendMessage = useCallback(async (messageContent: string, options?: SendMessageOptions) => {
+
     if (!user) {
       return;
     }
@@ -881,8 +885,8 @@ export const useAIChat = (portfolioId?: string) => {
       
       
       // Now send the message to the newly created session
-      await sendMessageToSession(messageContent, newSession.id);
-      
+      await sendMessageToSession(messageContent, newSession.id, options);
+
     } catch (error) {
       console.error('Error creating new session:', error);
       toast({
@@ -895,10 +899,10 @@ export const useAIChat = (portfolioId?: string) => {
     }
   }, [user, toast, clearEphemeralMessages, currentSessionId, portfolioId]);
 
-  const sendMessageToSession = useCallback(async (content: string, sessionId?: string) => {
-    
+  const sendMessageToSession = useCallback(async (content: string, sessionId?: string, options?: SendMessageOptions) => {
+
     const targetSessionId = sessionId || currentSessionId;
-    
+
     if (!user || !content.trim() || !targetSessionId) {
       return;
     }
@@ -958,22 +962,28 @@ export const useAIChat = (portfolioId?: string) => {
       const supabaseUrl = 'https://qifolopsdeeyrevbuxfl.supabase.co';
       const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpZm9sb3BzZGVleXJldmJ1eGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5MzY3MjMsImV4cCI6MjA2MzUxMjcyM30.x89y179_8EDl1NwTryhXfUDMzdxrnfomZfRmhmySMhM';
       
+      const requestPayload: Record<string, unknown> = {
+        message: trimmedContent,
+        userId: user.id,
+        portfolioId: portfolioId,
+        sessionId: targetSessionId,
+        chatHistory: chatHistoryForAPI,
+        analysisType: 'general',
+        detectedProfileUpdates: detectedIntent?.updates ?? undefined,
+        detectedProfileSummary: detectedIntent?.summary ?? undefined,
+      };
+
+      if (options?.documentIds && options.documentIds.length > 0) {
+        requestPayload.documentIds = options.documentIds;
+      }
+
       const streamResponse = await fetch(`${supabaseUrl}/functions/v1/portfolio-ai-chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseAnonKey}`,
         },
-        body: JSON.stringify({
-          message: trimmedContent,
-          userId: user.id,
-          portfolioId: portfolioId,
-          sessionId: targetSessionId,
-          chatHistory: chatHistoryForAPI,
-          analysisType: 'general',
-          detectedProfileUpdates: detectedIntent?.updates ?? undefined,
-          detectedProfileSummary: detectedIntent?.summary ?? undefined
-        })
+        body: JSON.stringify(requestPayload)
       });
 
       if (streamResponse.status === 429) {

@@ -120,6 +120,8 @@ const HEADING_VARIATIONS: Record<string, string[]> = {
   actions: ['**Åtgärder ✅**', '**Nästa steg 🧭**', '**Föreslagna åtgärder 🛠️**']
 };
 
+const DOCUMENT_CONTEXT_MATCH_COUNT = 8;
+
 const pickRandom = (values: string[]): string => {
   if (values.length === 0) return '';
   const index = Math.floor(Math.random() * values.length);
@@ -1657,7 +1659,11 @@ serve(async (req) => {
     const requestBody = await req.json();
     console.log('Request body received:', JSON.stringify(requestBody, null, 2));
     
-    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData, stream } = requestBody;
+    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData, stream, documentIds } = requestBody;
+
+    const filteredDocumentIds: string[] = Array.isArray(documentIds)
+      ? documentIds.filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0)
+      : [];
 
     console.log('Portfolio AI Chat function called with:', {
       message: message?.substring(0, 50) + '...',
@@ -3042,6 +3048,73 @@ serve(async (req) => {
           contextInfo += `\n- Portföljens riskpoäng: ${portfolio.risk_score || 'Ej beräknad'}
 - Förväntad årlig avkastning: ${portfolio.expected_return || 'Ej beräknad'}%`;
         }
+      }
+    }
+
+    if (filteredDocumentIds.length > 0) {
+      try {
+        const queryEmbedding = await fetchEmbedding(message, openAIApiKey);
+        if (queryEmbedding) {
+          const { data: documentMatches, error: documentMatchError } = await supabase.rpc('match_chat_document_chunks', {
+            p_query_embedding: queryEmbedding,
+            p_match_count: DOCUMENT_CONTEXT_MATCH_COUNT,
+            p_user_id: userId,
+            p_document_ids: filteredDocumentIds.length > 0 ? filteredDocumentIds : null,
+          });
+
+          if (documentMatchError) {
+            console.error('Document match RPC failed', documentMatchError);
+          } else if (Array.isArray(documentMatches) && documentMatches.length > 0) {
+            const groupedMatches = new Map<string, { name: string; entries: Array<{ content: string; metadata: { page_number?: number }; similarity: number | null }> }>();
+
+            (documentMatches as Array<{
+              document_id: string;
+              document_name?: string | null;
+              content: string;
+              metadata?: { page_number?: number } | null;
+              similarity?: number | null;
+            }>).forEach((match) => {
+              if (!match.document_id) {
+                return;
+              }
+
+              const existing = groupedMatches.get(match.document_id) ?? {
+                name: typeof match.document_name === 'string' && match.document_name.trim().length > 0
+                  ? match.document_name.trim()
+                  : 'Dokument',
+                entries: [],
+              };
+
+              existing.entries.push({
+                content: match.content,
+                metadata: (match.metadata ?? {}) as { page_number?: number },
+                similarity: typeof match.similarity === 'number' ? match.similarity : null,
+              });
+
+              groupedMatches.set(match.document_id, existing);
+            });
+
+            const documentContextLines: string[] = [];
+            let sourceCounter = 1;
+
+            for (const [, value] of groupedMatches) {
+              const topEntries = value.entries.slice(0, 3);
+              topEntries.forEach((entry) => {
+                const pageNumber = typeof entry.metadata?.page_number === 'number' ? entry.metadata.page_number : undefined;
+                const similarityText = entry.similarity !== null ? ` (Relevans ${(entry.similarity * 100).toFixed(1)}%)` : '';
+                const header = `${value.name}${pageNumber ? ` – Sida ${pageNumber}` : ''}${similarityText}`;
+                documentContextLines.push(`Källa ${sourceCounter}: ${header}\n${entry.content}`);
+                sourceCounter += 1;
+              });
+            }
+
+            if (documentContextLines.length > 0) {
+              contextInfo += `\n\nDOKUMENTUNDERLAG FRÅN UPPLADDADE FILER:\n${documentContextLines.join('\n\n')}`;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to enrich chat with document context', error);
       }
     }
 

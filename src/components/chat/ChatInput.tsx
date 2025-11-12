@@ -3,12 +3,13 @@ import React, { useState, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Send, 
-  MessageSquare, 
+import {
+  Send,
+  MessageSquare,
   AlertCircle,
   Loader2,
-  Crown
+  Crown,
+  X
 } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import PremiumUpgradeModal from './PremiumUpgradeModal';
@@ -20,15 +21,19 @@ interface ChatInputProps {
   isLoading: boolean;
   quotaExceeded: boolean;
   inputRef: React.RefObject<HTMLTextAreaElement>;
+  attachedDocuments?: Array<{ id: string; name: string; status?: 'processing' | 'processed' | 'failed' }>;
+  onRemoveDocument?: (documentId: string) => void;
 }
 
-const ChatInput = memo(({
+const ChatInput = memo(({ 
   input,
   setInput,
   onSubmit,
   isLoading,
   quotaExceeded,
-  inputRef
+  inputRef,
+  attachedDocuments = [],
+  onRemoveDocument,
 }: ChatInputProps) => {
   const { usage, subscription } = useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -74,6 +79,28 @@ const ChatInput = memo(({
           className="mx-auto flex w-full max-w-4xl items-end gap-2 sm:gap-3 lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl"
         >
           <div className="flex-1 relative min-w-0">
+            {attachedDocuments.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-2">
+                {attachedDocuments.map((doc) => (
+                  <span
+                    key={doc.id}
+                    className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
+                  >
+                    <span className="max-w-[160px] truncate" title={doc.name}>
+                      {doc.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveDocument?.(doc.id)}
+                      className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/20 text-primary transition-colors hover:bg-primary/30"
+                      aria-label={`Ta bort ${doc.name}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
             <Textarea
               ref={inputRef}
               value={input}
