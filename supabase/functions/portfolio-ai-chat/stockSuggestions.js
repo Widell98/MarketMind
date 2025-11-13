@@ -2,10 +2,20 @@
  * @typedef {{name: string, ticker: string, reason?: string}} StockSuggestion
  */
 
-const TICKER_REGEX = /\b([A-Z0-9]{1,6}(?:[.-][A-Z0-9]{1,3})?)\b/g;
-const SUGGESTION_LINE_REGEX = /^(?:[-*•]\s*)?\*\*([^*()]+?)\s*\(([A-Z0-9]{1,6}(?:[.-][A-Z0-9]{1,3})?)\)\*\*(?:\s*[-–—:]\s*(.*))?$/i;
-const ALT_SUGGESTION_LINE_REGEX = /^(?:[-*•]\s*)?\*\*([^*]+?)\*\*\s*\(([A-Z0-9]{1,6}(?:[.-][A-Z0-9]{1,3})?)\)(?:\s*[-–—:]\s*(.*))?$/i;
-const GENERIC_SUGGESTION_LINE_REGEX = /^(?:[-*•]\s*)?([^*()]+?)\s*\(([A-Z0-9]{1,6}(?:[.-][A-Z0-9]{1,3})?)\)(?:\s*[-–—:]\s*(.*))?$/i;
+const TICKER_PATTERN = '[A-Z0-9]{1,6}(?:[ .-][A-Z0-9]{1,3})?';
+const TICKER_REGEX = new RegExp(`\\b(${TICKER_PATTERN})\\b`, 'g');
+const SUGGESTION_LINE_REGEX = new RegExp(
+  `^(?:[-*•]\\s*)?\\*\\*([^*()]+?)\\s*\\((${TICKER_PATTERN})\\)\\*\\*(?:\\s*[-–—:]\\s*(.*))?$`,
+  'i',
+);
+const ALT_SUGGESTION_LINE_REGEX = new RegExp(
+  `^(?:[-*•]\\s*)?\\*\\*([^*]+?)\\*\\*\\s*\\((${TICKER_PATTERN})\\)(?:\\s*[-–—:]\\s*(.*))?$`,
+  'i',
+);
+const GENERIC_SUGGESTION_LINE_REGEX = new RegExp(
+  `^(?:[-*•]\\s*)?([^*()]+?)\\s*\\((${TICKER_PATTERN})\\)(?:\\s*[-–—:]\\s*(.*))?$`,
+  'i',
+);
 
 const SUGGESTION_SECTION_REGEX = /(?:\n{0,2}\*\*?Aktieförslag\*\*?:?[\s\S]*?(?=\n{2,}|$))/gi;
 const LEGACY_JSON_REGEX = /Aktieförslag:\s*\[[^\]]*\]/gi;
@@ -28,19 +38,24 @@ const sanitizeName = (name) => {
     .trim();
 };
 
+const normalizeTicker = (ticker) => {
+  if (!ticker) return '';
+  return ticker.toUpperCase().replace(/\s+/g, ' ').trim();
+};
+
 const extractTickers = (text) => {
   TICKER_REGEX.lastIndex = 0;
   const tickers = new Set();
   let match;
   while ((match = TICKER_REGEX.exec(text)) !== null) {
-    tickers.add(match[1].toUpperCase());
+    tickers.add(normalizeTicker(match[1]));
   }
   return tickers;
 };
 
 const isValidSuggestion = (name, ticker) => {
   if (!name || !ticker) return false;
-  if (!/^[A-Z0-9]{1,6}(?:[.-][A-Z0-9]{1,3})?$/.test(ticker)) return false;
+  if (!new RegExp(`^${TICKER_PATTERN}$`).test(ticker)) return false;
   if (BANNED_SYMBOLS.has(ticker.toUpperCase())) return false;
   if (name.length < 2 || name.length > 100) return false;
   if (!name.match(/[a-öA-Ö]/)) return false;
@@ -64,9 +79,11 @@ const extractSuggestionCandidates = (message) => {
     if (match) {
       const [, rawName, rawTicker, rawReason] = match;
       const name = sanitizeName(rawName);
-      const ticker = rawTicker.toUpperCase();
+      const ticker = normalizeTicker(rawTicker);
       const reason = sanitizeReason(rawReason);
-      const reasonTickers = rawReason ? Array.from(extractTickers(rawReason)) : [];
+      const reasonTickers = rawReason
+        ? Array.from(extractTickers(rawReason), (t) => normalizeTicker(t))
+        : [];
 
       if (isValidSuggestion(name, ticker) && !suggestions.find((s) => s.ticker === ticker)) {
         suggestions.push({ name, ticker, reason, reasonTickers });
