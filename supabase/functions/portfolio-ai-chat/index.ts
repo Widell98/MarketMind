@@ -3419,6 +3419,16 @@ ${importantLines.join('\n')}
     // Save user message to database first
     if (sessionId) {
       try {
+        const userMessageContext: Record<string, unknown> = {
+          analysisType,
+          requestId,
+          timestamp: new Date().toISOString()
+        };
+
+        if (filteredDocumentIds.length > 0) {
+          userMessageContext.documentIds = filteredDocumentIds;
+        }
+
         await supabase
           .from('portfolio_chat_history')
           .insert({
@@ -3426,11 +3436,7 @@ ${importantLines.join('\n')}
             chat_session_id: sessionId,
             message: message,
             message_type: 'user',
-            context_data: {
-              analysisType,
-              requestId,
-              timestamp: new Date().toISOString()
-            }
+            context_data: userMessageContext
           });
         console.log('User message saved to database');
       } catch (error) {
