@@ -2,20 +2,8 @@
 import React, { useState, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { OPEN_CHAT_DOCUMENT_UPLOAD_EVENT } from '@/constants/chatDocuments';
-import {
-  Send,
-  MessageSquare,
-  AlertCircle,
-  Loader2,
-  Crown,
-  Infinity,
-  Sparkles,
-  X,
-  Paperclip,
-} from 'lucide-react';
+import { Send, MessageSquare, AlertCircle, Loader2, Sparkles, X, Paperclip } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import PremiumUpgradeModal from './PremiumUpgradeModal';
 
@@ -167,25 +155,6 @@ const ChatInput = memo(({
                 )}
               </span>
             </Button>
-            {isPremium && (
-              <TooltipProvider delayDuration={120}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge className="inline-flex h-6 items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 py-0.5 text-[11px] font-semibold text-white shadow-sm">
-                      <Crown className="h-3 w-3" aria-hidden />
-                      Premium
-                      <span className="sr-only"> – Obegränsade meddelanden</span>
-                      <span className="inline-flex items-center gap-0.5 text-[10px] font-medium tracking-wide text-white/80">
-                        <Infinity className="h-3 w-3" aria-hidden />
-                      </span>
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" align="end" className="text-xs font-medium">
-                    Premium – Obegränsade meddelanden
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
             <Button
               type="submit"
               disabled={!input.trim() || isLoading || quotaExceeded}

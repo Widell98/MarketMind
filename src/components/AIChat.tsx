@@ -11,8 +11,10 @@ import ChatDocumentManager from './chat/ChatDocumentManager';
 import { useChatDocuments } from '@/hooks/useChatDocuments';
 import { useToast } from '@/hooks/use-toast';
 
-import { LogIn, MessageSquare, Brain, Lock, Sparkles, Menu, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { LogIn, MessageSquare, Brain, Lock, Sparkles, Menu, PanelLeftClose, PanelLeft, Crown, Infinity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 interface Message {
   id: string;
@@ -410,7 +412,25 @@ const AIChat = ({
               </div> */}
 
               <div className="flex items-center justify-end gap-2">
-                {!isPremium && (
+                {isPremium ? (
+                  <TooltipProvider delayDuration={120}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge className="inline-flex h-7 items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 text-[11px] font-semibold text-white shadow-sm">
+                          <Crown className="h-3.5 w-3.5" aria-hidden />
+                          Premium
+                          <span className="sr-only"> – Obegränsade meddelanden</span>
+                          <span className="inline-flex items-center gap-0.5 text-[10px] font-medium tracking-wide text-white/80">
+                            <Infinity className="h-3 w-3" aria-hidden />
+                          </span>
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" align="end" className="text-xs font-medium">
+                        Premium – Obegränsade meddelanden
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
                   <span className="hidden rounded-full border border-ai-border/70 bg-ai-surface-muted/60 px-3 py-1 text-xs font-medium text-ai-text-muted sm:inline-flex">
                     {remainingCredits}/{totalCredits} krediter kvar
                   </span>
