@@ -2,18 +2,8 @@
 import React, { useState, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { OPEN_CHAT_DOCUMENT_UPLOAD_EVENT } from '@/constants/chatDocuments';
-import {
-  Send,
-  MessageSquare,
-  AlertCircle,
-  Loader2,
-  Crown,
-  Sparkles,
-  X,
-  Paperclip,
-} from 'lucide-react';
+import { Send, MessageSquare, AlertCircle, Loader2, Sparkles, X, Paperclip } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import PremiumUpgradeModal from './PremiumUpgradeModal';
 
@@ -75,7 +65,7 @@ const ChatInput = memo(({
 
   return (
     <>
-      <div className="flex-shrink-0 border-t border-[#144272]/20 bg-white/95 px-4 py-4 shadow-[0_-20px_60px_rgba(15,23,42,0.07)] backdrop-blur-sm transition-colors sm:px-6 sm:py-5 lg:px-10 lg:py-8 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))] dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none">
+      <div className="flex-shrink-0 border-t border-[#144272]/15 bg-white/95 px-4 py-3 shadow-[0_-12px_35px_rgba(15,23,42,0.05)] backdrop-blur-sm transition-colors sm:px-6 sm:py-3.5 lg:px-10 lg:py-5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:pb-[calc(1rem+env(safe-area-inset-bottom))] dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none">
         {quotaExceeded && (
           <div className="mb-3 sm:mb-4 rounded-[18px] border border-destructive/20 bg-destructive/10 p-3 shadow-[0_16px_40px_rgba(239,68,68,0.18)]">
             <div className="flex items-center gap-2 font-medium mb-1 text-destructive text-sm">
@@ -138,15 +128,15 @@ const ChatInput = memo(({
               readOnly={isLoading && !quotaExceeded}
               aria-disabled={isLoading || quotaExceeded}
               aria-busy={isLoading}
-              className="min-h-[48px] max-h-[160px] w-full resize-none rounded-[18px] border border-[#205295]/22 bg-white/90 px-4 pr-12 text-sm shadow-[0_16px_40px_rgba(15,23,42,0.06)] transition-all duration-200 focus:border-primary/60 focus:shadow-[0_20px_55px_rgba(15,23,42,0.08)] focus:ring-2 focus:ring-primary/20 sm:px-5 sm:text-base dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-sm dark:focus:border-ai-border/80 dark:focus:ring-0"
+              className="min-h-[40px] max-h-[160px] w-full resize-none rounded-[14px] border border-[#205295]/18 bg-white px-3 pr-10 text-sm shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition-all duration-200 focus:border-primary/50 focus:shadow-[0_12px_30px_rgba(15,23,42,0.08)] focus:ring-1 focus:ring-primary/20 sm:px-4 sm:text-base dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none dark:focus:border-ai-border/80 dark:focus:ring-0"
               style={{ fontSize: '16px' }}
               rows={1}
             />
-            <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-primary/50 transition-colors dark:text-ai-text-muted">
+            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-primary/40 transition-colors dark:text-ai-text-muted">
               <MessageSquare className="w-4 h-4" />
             </div>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
             <Button
               type="button"
               variant="ghost"
@@ -180,15 +170,6 @@ const ChatInput = memo(({
           </div>
         </form>
 
-        {/* Premium Badge for Premium Users */}
-        {isPremium && (
-          <div className="flex justify-center mt-3">
-            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs px-3 py-1">
-              <Crown className="w-3 h-3 mr-1" />
-              Premium - Obegränsade meddelanden
-            </Badge>
-          </div>
-        )}
       </div>
 
       <PremiumUpgradeModal
