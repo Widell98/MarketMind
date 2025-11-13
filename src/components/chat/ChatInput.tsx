@@ -75,7 +75,7 @@ const ChatInput = memo(({
 
   return (
     <>
-      <div className="flex-shrink-0 border-t border-[#144272]/20 bg-white/95 px-4 py-4 shadow-[0_-20px_60px_rgba(15,23,42,0.07)] backdrop-blur-sm transition-colors sm:px-5 sm:py-5 lg:px-6 lg:py-6 xl:px-10 xl:py-8 2xl:px-14 2xl:py-9 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-[calc(1.25rem+env(safe-area-inset-bottom))] xl:pb-[calc(1.5rem+env(safe-area-inset-bottom))] 2xl:pb-[calc(1.75rem+env(safe-area-inset-bottom))] dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none">
+      <div className="flex-shrink-0 border-t border-[#144272]/20 bg-white/95 px-4 py-4 shadow-[0_-20px_60px_rgba(15,23,42,0.07)] backdrop-blur-sm transition-colors sm:px-5 sm:py-5 lg:px-6 lg:py-6 xl:px-10 xl:py-7 2xl:px-12 2xl:py-8 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-[calc(1.25rem+env(safe-area-inset-bottom))] xl:pb-[calc(1.4rem+env(safe-area-inset-bottom))] 2xl:pb-[calc(1.5rem+env(safe-area-inset-bottom))] dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none">
         {quotaExceeded && (
           <div className="mb-3 sm:mb-4 rounded-[18px] border border-destructive/20 bg-destructive/10 p-3 shadow-[0_16px_40px_rgba(239,68,68,0.18)]">
             <div className="flex items-center gap-2 font-medium mb-1 text-destructive text-sm">

@@ -7,7 +7,7 @@ interface AIChatLayoutProps {
 
 const AIChatLayout: React.FC<AIChatLayoutProps> = ({ children, footerSlot }) => {
   return (
-    <div className="relative flex h-full min-h-screen flex-1 overflow-hidden">
+    <div className="relative flex h-full min-h-0 flex-1 overflow-hidden lg:min-h-[85vh] xl:min-h-[88vh] 2xl:min-h-[90vh]">
       <div aria-hidden className="absolute inset-0 overflow-hidden">
         <div className="absolute inset-0 bg-white transition-colors duration-300 dark:bg-ai-shell" />
       </div>
