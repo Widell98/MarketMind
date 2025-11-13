@@ -392,7 +392,7 @@ const StockCaseDetail = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="max-w-5xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto space-y-6 px-3 sm:px-6 lg:px-8">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-1/2 mb-4"></div>
             <div className="h-4 bg-gray-200 rounded w-3/4 mb-6"></div>
@@ -415,7 +415,7 @@ const StockCaseDetail = () => {
   if (error || !stockCase) {
     return (
       <Layout>
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-8">
+        <div className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 text-center py-8">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
             Stock Case hittades inte
           </h1>
@@ -1208,10 +1208,10 @@ const StockCaseDetail = () => {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto space-y-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto space-y-12 px-3 sm:px-6 lg:px-8">
         {/* Hero Section */}
         {isAiGeneratedCase ? (
-          <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.55)]">
+          <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-4 sm:p-8 lg:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.55)]">
             <div className="absolute inset-0 bg-gradient-to-br from-muted/15 via-transparent to-muted/5 dark:from-muted/20 dark:via-transparent dark:to-muted/10" />
 
             <div className="relative z-10 space-y-8">
@@ -1319,13 +1319,13 @@ const StockCaseDetail = () => {
                 </div>
               </div>
 
-              <div className="rounded-[28px] border border-border/30 bg-muted/20 px-6 py-6 shadow-[0_24px_60px_-60px_rgba(15,23,42,0.45)]">
+              <div className="rounded-[28px] border border-border/30 bg-muted/20 px-5 py-6 sm:px-6 shadow-[0_24px_60px_-60px_rgba(15,23,42,0.45)]">
                 {renderPrimaryActionContent()}
               </div>
             </div>
           </div>
         ) : (
-          <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.65)]">
+          <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-4 sm:p-8 lg:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.65)]">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent dark:from-primary/15 dark:via-transparent dark:to-transparent" />
 
             <div className="relative z-10 flex flex-col gap-8">
