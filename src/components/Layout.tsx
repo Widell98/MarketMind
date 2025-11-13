@@ -23,7 +23,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const rootClassName = isChatRoute
     ? 'h-screen w-full flex overflow-hidden bg-white dark:bg-background'
-    : 'min-h-screen bg-background w-full flex overflow-hidden';
+    : 'relative min-h-screen w-full flex overflow-hidden';
 
   const mainClassName = isChatRoute
     ? 'flex-1 w-full min-h-0 max-w-full flex flex-col overflow-hidden'
@@ -47,7 +47,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
           <div className="flex-1 flex flex-col min-w-0 max-w-full">
             {/* Header */}
-            <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border shadow-sm">
+            <header className="sticky top-0 z-40 border-b border-white/20 bg-gradient-to-b from-background/90 via-background/70 to-background/30 shadow-sm supports-[backdrop-filter]:backdrop-blur-xl dark:border-white/10">
               <div className="container-responsive py-2 sm:py-3 lg:py-4 flex justify-between items-center">
                 <div className="flex items-center space-x-2 sm:space-x-4 md:space-x-6 min-w-0">
                   {/* Sidebar trigger for desktop */}
