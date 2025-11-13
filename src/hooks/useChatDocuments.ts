@@ -31,7 +31,7 @@ const isSupportedType = (file: File) => {
 export const useChatDocuments = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { subscription } = useSubscription();
+  const { subscription, loading: subscriptionLoading } = useSubscription();
   const [documents, setDocuments] = useState<ChatDocument[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -94,7 +94,16 @@ export const useChatDocuments = () => {
       return;
     }
 
-    if (subscription?.subscribed === false) {
+    if (subscriptionLoading || !subscription) {
+      toast({
+        title: 'Verifierar prenumeration',
+        description: 'Vänta ett ögonblick och försök igen.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (subscription.subscribed === false) {
       const now = new Date();
       const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
       const endOfDay = new Date(startOfDay);
@@ -181,7 +190,7 @@ export const useChatDocuments = () => {
     } finally {
       setIsUploading(false);
     }
-  }, [user, toast, fetchDocuments, subscription]);
+  }, [user, toast, fetchDocuments, subscription, subscriptionLoading]);
 
   const deleteDocument = useCallback(async (documentId: string) => {
     if (!user) return;
