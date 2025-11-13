@@ -378,7 +378,40 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
     )
   })).filter(group => group.holdings.length > 0);
 
+  const HOLDINGS_PER_PAGE = 6;
+  const [currentPage, setCurrentPage] = useState(1);
+
   const filteredHoldings = filteredGroups.flatMap(group => group.holdings);
+  const totalPages = Math.max(1, Math.ceil(filteredHoldings.length / HOLDINGS_PER_PAGE));
+  const startIndex = (currentPage - 1) * HOLDINGS_PER_PAGE;
+  const endIndex = startIndex + HOLDINGS_PER_PAGE;
+  const paginatedHoldings = filteredHoldings.slice(startIndex, endIndex);
+  const paginatedHoldingsSet = new Set(paginatedHoldings.map(holding => holding.id));
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, viewMode, actualHoldings.length, cashHoldings.length]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedGroups = filteredGroups
+    .map(group => ({
+      ...group,
+      holdings: group.holdings.filter(holding => paginatedHoldingsSet.has(holding.id))
+    }))
+    .filter(group => group.holdings.length > 0);
+
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  };
+
+  const handlePreviousPage = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
 
   return (
     <>
@@ -484,7 +517,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
 
               {viewMode === 'cards' ? (
                 <div className="space-y-4">
-                  {filteredGroups.map((group) => (
+                  {paginatedGroups.map((group) => (
                     <HoldingsGroupSection
                       key={group.key}
                       title={group.title}
@@ -510,7 +543,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                 </div>
               ) : (
                 <HoldingsTable
-                  holdings={filteredHoldings}
+                  holdings={paginatedHoldings}
                   onRefreshPrice={handleUpdateHoldingPrice}
                   isUpdatingPrice={updating}
                   refreshingTicker={refreshingTicker}
@@ -518,8 +551,34 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                 />
               )}
 
-              {allHoldings.length > 0 && (
-                <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
+              {filteredHoldings.length > 0 && (
+                <div className="flex flex-col gap-2 pt-4 border-t border-border sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    Visar {startIndex + 1}-{Math.min(endIndex, filteredHoldings.length)} av {filteredHoldings.length} innehav
+                  </div>
+                  {filteredHoldings.length > HOLDINGS_PER_PAGE && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handlePreviousPage}
+                        disabled={currentPage === 1}
+                      >
+                        Föregående
+                      </Button>
+                      <span className="text-sm text-muted-foreground">
+                        {currentPage} / {totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleNextPage}
+                        disabled={currentPage === totalPages}
+                      >
+                        Nästa
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
