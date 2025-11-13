@@ -122,8 +122,14 @@ const AIChat = ({
   }, []);
 
   const handleUploadDocument = useCallback(async (file: File) => {
-    await uploadDocument(file);
-  }, [uploadDocument]);
+    const newDocumentId = await uploadDocument(file);
+
+    if (newDocumentId) {
+      setSelectedDocumentIds((prev) =>
+        prev.includes(newDocumentId) ? prev : [...prev, newDocumentId]
+      );
+    }
+  }, [setSelectedDocumentIds, uploadDocument]);
 
   const handleDeleteDocument = useCallback(async (documentId: string) => {
     await deleteDocument(documentId);

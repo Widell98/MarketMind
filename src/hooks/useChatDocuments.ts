@@ -66,14 +66,14 @@ export const useChatDocuments = () => {
     void fetchDocuments();
   }, [fetchDocuments]);
 
-  const uploadDocument = useCallback(async (file: File) => {
+  const uploadDocument = useCallback(async (file: File): Promise<string | undefined> => {
     if (!user) {
       toast({
         title: 'Inloggning krävs',
         description: 'Logga in för att ladda upp dokument.',
         variant: 'destructive',
       });
-      return;
+      return undefined;
     }
 
     if (!isSupportedType(file)) {
@@ -82,7 +82,7 @@ export const useChatDocuments = () => {
         description: 'Endast PDF- eller textfiler stöds just nu.',
         variant: 'destructive',
       });
-      return;
+      return undefined;
     }
 
     if (file.size > MAX_FILE_SIZE) {
@@ -91,7 +91,7 @@ export const useChatDocuments = () => {
         description: 'Välj en fil som är mindre än 15 MB.',
         variant: 'destructive',
       });
-      return;
+      return undefined;
     }
 
     if (subscriptionLoading || !subscription) {
@@ -100,7 +100,7 @@ export const useChatDocuments = () => {
         description: 'Vänta ett ögonblick och försök igen.',
         variant: 'destructive',
       });
-      return;
+      return undefined;
     }
 
     if (subscription.subscribed === false) {
@@ -123,7 +123,7 @@ export const useChatDocuments = () => {
           description: 'Kunde inte verifiera din dokumentgräns just nu. Försök igen senare.',
           variant: 'destructive',
         });
-        return;
+        return undefined;
       }
 
       if ((todaysCount ?? 0) >= FREE_DAILY_DOCUMENT_LIMIT) {
@@ -132,7 +132,7 @@ export const useChatDocuments = () => {
           description: 'Uppgradera till Premium för att ladda upp fler dokument per dag.',
           variant: 'destructive',
         });
-        return;
+        return undefined;
       }
     }
 
@@ -168,8 +168,10 @@ export const useChatDocuments = () => {
         },
       });
 
-      if (processError || (processData && (processData as { error?: string }).error)) {
-        const message = processError?.message || (processData as { error?: string })?.error;
+      const processResult = processData as { error?: string; documentId?: string } | null;
+
+      if (processError || processResult?.error) {
+        const message = processError?.message || processResult?.error;
         console.error('Document processing failed', processError || processData);
         throw new Error(message || 'Kunde inte bearbeta dokumentet');
       }
@@ -180,6 +182,8 @@ export const useChatDocuments = () => {
       });
 
       await fetchDocuments();
+
+      return processResult?.documentId;
     } catch (error) {
       console.error('Document upload failed', error);
       toast({
@@ -187,6 +191,7 @@ export const useChatDocuments = () => {
         description: error instanceof Error ? error.message : 'Ett oväntat fel inträffade.',
         variant: 'destructive',
       });
+      return undefined;
     } finally {
       setIsUploading(false);
     }
