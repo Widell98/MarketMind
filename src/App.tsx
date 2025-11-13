@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
+import { Analytics } from "@vercel/analytics/next";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ChatSessionsProvider } from "@/contexts/ChatSessionsContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
@@ -45,6 +46,7 @@ function App() {
                 <Sonner />
                 <ErrorBoundary>
                   <BrowserRouter>
+                    <Analytics />
                     <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/stock-cases" element={<StockCases />} />
