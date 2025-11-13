@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { buildTextPageFromFile, type PdfTextPage } from '@/utils/documentProcessing';
+import { useSubscription } from '@/hooks/useSubscription';
 
 export type ChatDocument = {
   id: string;
@@ -18,6 +19,7 @@ export type ChatDocument = {
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
 const SUPPORTED_TYPES = ['application/pdf', 'text/plain'];
+const FREE_DAILY_DOCUMENT_LIMIT = 1;
 
 const isSupportedType = (file: File) => {
   if (!file.type) {
@@ -29,6 +31,7 @@ const isSupportedType = (file: File) => {
 export const useChatDocuments = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { subscription, loading: subscriptionLoading } = useSubscription();
   const [documents, setDocuments] = useState<ChatDocument[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -63,14 +66,14 @@ export const useChatDocuments = () => {
     void fetchDocuments();
   }, [fetchDocuments]);
 
-  const uploadDocument = useCallback(async (file: File) => {
+  const uploadDocument = useCallback(async (file: File): Promise<string | undefined> => {
     if (!user) {
       toast({
         title: 'Inloggning krävs',
         description: 'Logga in för att ladda upp dokument.',
         variant: 'destructive',
       });
-      return;
+      return undefined;
     }
 
     if (!isSupportedType(file)) {
@@ -79,7 +82,7 @@ export const useChatDocuments = () => {
         description: 'Endast PDF- eller textfiler stöds just nu.',
         variant: 'destructive',
       });
-      return;
+      return undefined;
     }
 
     if (file.size > MAX_FILE_SIZE) {
@@ -88,7 +91,49 @@ export const useChatDocuments = () => {
         description: 'Välj en fil som är mindre än 15 MB.',
         variant: 'destructive',
       });
-      return;
+      return undefined;
+    }
+
+    if (subscriptionLoading || !subscription) {
+      toast({
+        title: 'Verifierar prenumeration',
+        description: 'Vänta ett ögonblick och försök igen.',
+        variant: 'destructive',
+      });
+      return undefined;
+    }
+
+    if (subscription.subscribed === false) {
+      const now = new Date();
+      const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+
+      const { count: todaysCount, error: limitError } = await supabase
+        .from('chat_documents')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .gte('created_at', startOfDay.toISOString())
+        .lt('created_at', endOfDay.toISOString());
+
+      if (limitError) {
+        console.error('Failed to check daily document limit', limitError);
+        toast({
+          title: 'Uppladdning misslyckades',
+          description: 'Kunde inte verifiera din dokumentgräns just nu. Försök igen senare.',
+          variant: 'destructive',
+        });
+        return undefined;
+      }
+
+      if ((todaysCount ?? 0) >= FREE_DAILY_DOCUMENT_LIMIT) {
+        toast({
+          title: 'Daglig gräns nådd',
+          description: 'Uppgradera till Premium för att ladda upp fler dokument per dag.',
+          variant: 'destructive',
+        });
+        return undefined;
+      }
     }
 
     setIsUploading(true);
@@ -123,8 +168,10 @@ export const useChatDocuments = () => {
         },
       });
 
-      if (processError || (processData && (processData as { error?: string }).error)) {
-        const message = processError?.message || (processData as { error?: string })?.error;
+      const processResult = processData as { error?: string; documentId?: string } | null;
+
+      if (processError || processResult?.error) {
+        const message = processError?.message || processResult?.error;
         console.error('Document processing failed', processError || processData);
         throw new Error(message || 'Kunde inte bearbeta dokumentet');
       }
@@ -135,6 +182,8 @@ export const useChatDocuments = () => {
       });
 
       await fetchDocuments();
+
+      return processResult?.documentId;
     } catch (error) {
       console.error('Document upload failed', error);
       toast({
@@ -142,10 +191,11 @@ export const useChatDocuments = () => {
         description: error instanceof Error ? error.message : 'Ett oväntat fel inträffade.',
         variant: 'destructive',
       });
+      return undefined;
     } finally {
       setIsUploading(false);
     }
-  }, [user, toast, fetchDocuments]);
+  }, [user, toast, fetchDocuments, subscription, subscriptionLoading]);
 
   const deleteDocument = useCallback(async (documentId: string) => {
     if (!user) return;

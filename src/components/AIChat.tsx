@@ -122,8 +122,14 @@ const AIChat = ({
   }, []);
 
   const handleUploadDocument = useCallback(async (file: File) => {
-    await uploadDocument(file);
-  }, [uploadDocument]);
+    const newDocumentId = await uploadDocument(file);
+
+    if (newDocumentId) {
+      setSelectedDocumentIds((prev) =>
+        prev.includes(newDocumentId) ? prev : [...prev, newDocumentId]
+      );
+    }
+  }, [setSelectedDocumentIds, uploadDocument]);
 
   const handleDeleteDocument = useCallback(async (documentId: string) => {
     await deleteDocument(documentId);
@@ -279,13 +285,18 @@ const AIChat = ({
   }, [createNewSession]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading || !user) return;
-    const messageToSend = input.trim();
+    const trimmedInput = input.trim();
+    if (!trimmedInput || isLoading || !user) return;
+    const previousInput = input;
     setInput('');
-    await sendMessage(messageToSend, {
+    const wasSent = await sendMessage(trimmedInput, {
       documentIds: selectedDocumentIds,
       documents: attachedDocuments.map((doc) => ({ id: doc.id, name: doc.name })),
     });
+
+    if (!wasSent) {
+      setInput(previousInput);
+    }
   };
   const handleNewSession = useCallback(async () => {
     if (!user) return;

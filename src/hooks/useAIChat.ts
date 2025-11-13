@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
 
 const DAILY_MESSAGE_CREDITS = 10;
+const FREE_DAILY_DOCUMENT_MESSAGE_LIMIT = 1;
 
 type ProfileUpdates = Record<string, unknown>;
 
@@ -356,7 +357,14 @@ const getPendingState = (sessionId: string) => pendingSessionStates.get(sessionI
 export const useAIChat = (portfolioId?: string) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { checkUsageLimit, subscription, usage, fetchUsage, incrementUsage } = useSubscription();
+  const {
+    checkUsageLimit,
+    subscription,
+    usage,
+    fetchUsage,
+    incrementUsage,
+    loading: subscriptionLoading,
+  } = useSubscription();
   const {
     sessions,
     setSessions,
@@ -807,16 +815,71 @@ export const useAIChat = (portfolioId?: string) => {
     documents?: Array<{ id: string; name: string }>;
   };
 
-  const sendMessage = useCallback(async (content: string, options?: SendMessageOptions) => {
+  const sendMessage = useCallback(async (content: string, options?: SendMessageOptions): Promise<boolean> => {
 
     if (!user || !content.trim()) {
-      return;
+      return false;
     }
+
+    const sanitizedDocumentIds = Array.isArray(options?.documentIds)
+      ? options.documentIds.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+      : [];
+
+    const hasDocumentAttachments = sanitizedDocumentIds.length > 0;
+
+    if (hasDocumentAttachments) {
+      if (subscriptionLoading || !subscription) {
+        toast({
+          title: "Verifierar prenumeration",
+          description: "Vänta ett ögonblick och försök igen.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      if (subscription.subscribed === false) {
+        const now = new Date();
+        const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
+        const endOfDay = new Date(startOfDay);
+        endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+
+        const { count: todaysSourceMessages, error: sourceMessageError } = await supabase
+          .from('portfolio_chat_history')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('message_type', 'user')
+          .not('context_data->documentIds', 'is', null)
+          .gte('created_at', startOfDay.toISOString())
+          .lt('created_at', endOfDay.toISOString());
+
+        if (sourceMessageError) {
+          console.error('Failed to verify daily source message limit', sourceMessageError);
+          toast({
+            title: "Kunde inte verifiera källgränsen",
+            description: "Försök igen om en liten stund.",
+            variant: "destructive",
+          });
+          return false;
+        }
+
+        if ((todaysSourceMessages ?? 0) >= FREE_DAILY_DOCUMENT_MESSAGE_LIMIT) {
+          toast({
+            title: "Daglig källgräns nådd",
+            description: "Du kan skicka ett meddelande per dag med uppladdade källor på gratisplanen. Uppgradera för fler.",
+            variant: "destructive",
+          });
+          return false;
+        }
+      }
+    }
+
+    const normalizedOptions: SendMessageOptions | undefined = (options || hasDocumentAttachments)
+      ? { ...(options ?? {}), documentIds: sanitizedDocumentIds }
+      : undefined;
 
     // Check usage limit with better error handling
     const canSendMessage = checkUsageLimit('ai_message');
     const isPremium = subscription?.subscribed;
-    const currentUsage = usage?.ai_messages_count || 0;
     const dailyLimit = DAILY_MESSAGE_CREDITS;
 
     if (!canSendMessage && !isPremium) {
@@ -826,24 +889,30 @@ export const useAIChat = (portfolioId?: string) => {
         variant: "destructive",
       });
       setQuotaExceeded(true);
-      return;
+      return false;
     }
 
     // If no session exists, create one and send message
     if (!currentSessionId) {
-      await createNewSessionAndSendMessage(content, options);
-      return;
+      return await createNewSessionAndSendMessage(content, normalizedOptions);
     }
 
-    await sendMessageToSession(content, undefined, options);
-  }, [user, currentSessionId, checkUsageLimit, subscription, usage, toast, portfolioId]);
+    return await sendMessageToSession(content, undefined, normalizedOptions);
+  }, [
+    user,
+    currentSessionId,
+    checkUsageLimit,
+    subscription,
+    toast,
+    subscriptionLoading,
+  ]);
 
-  const createNewSessionAndSendMessage = useCallback(async (messageContent: string, options?: SendMessageOptions) => {
+  const createNewSessionAndSendMessage = useCallback(async (messageContent: string, options?: SendMessageOptions): Promise<boolean> => {
 
     if (!user) {
-      return;
+      return false;
     }
-    
+
     setIsLoading(true);
 
     // Clear messages immediately when creating new session
@@ -852,16 +921,16 @@ export const useAIChat = (portfolioId?: string) => {
     if (currentSessionId) {
       pendingSessionStates.delete(currentSessionId);
     }
-    
+
     try {
       const now = new Date();
       const sessionName = `Chat ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
-      
-      
+
+
       const { data, error } = await supabase
         .from('ai_chat_sessions')
-        .insert([{ 
-          user_id: user.id, 
+        .insert([{
+          user_id: user.id,
           session_name: sessionName,
           context_data: {
             created_for: 'advisory',
@@ -887,10 +956,11 @@ export const useAIChat = (portfolioId?: string) => {
 
       setSessions(prev => [newSession, ...prev]);
       setCurrentSessionId(newSession.id);
-      
-      
+
+
       // Now send the message to the newly created session
-      await sendMessageToSession(messageContent, newSession.id, options);
+      const sendResult = await sendMessageToSession(messageContent, newSession.id, options);
+      return sendResult;
 
     } catch (error) {
       console.error('Error creating new session:', error);
@@ -899,17 +969,18 @@ export const useAIChat = (portfolioId?: string) => {
         description: "Kunde inte skapa ny session. Försök igen.",
         variant: "destructive",
       });
+      return false;
     } finally {
       setIsLoading(false);
     }
   }, [user, toast, clearEphemeralMessages, currentSessionId, portfolioId]);
 
-  const sendMessageToSession = useCallback(async (content: string, sessionId?: string, options?: SendMessageOptions) => {
+  const sendMessageToSession = useCallback(async (content: string, sessionId?: string, options?: SendMessageOptions): Promise<boolean> => {
 
     const targetSessionId = sessionId || currentSessionId;
 
     if (!user || !content.trim() || !targetSessionId) {
-      return;
+      return false;
     }
     
     const trimmedContent = content.trim();
@@ -1021,7 +1092,7 @@ export const useAIChat = (portfolioId?: string) => {
         clearPendingState(targetSessionId, requestId);
         setIsLoading(false);
         await fetchUsage();
-        return;
+        return false;
       }
 
       if (!streamResponse.ok) {
@@ -1147,7 +1218,8 @@ export const useAIChat = (portfolioId?: string) => {
       } else {
         incrementUsage('ai_message');
       }
-      
+      return true;
+
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -1159,6 +1231,7 @@ export const useAIChat = (portfolioId?: string) => {
       // Remove the temporary user message on error
       setMessages(prev => prev.filter(msg => !msg.id.includes('_temp')));
       clearPendingState(targetSessionId, requestId);
+      return false;
     } finally {
       setIsLoading(false);
     }
