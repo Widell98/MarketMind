@@ -52,6 +52,10 @@
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
     --gradient-blue: linear-gradient(135deg, hsl(var(--blue-500)), hsl(var(--blue-600)));
     --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--blue-50)));
+    --app-shell-gradient: radial-gradient(circle at 18% 18%, rgba(59, 130, 246, 0.18), transparent 55%),
+      radial-gradient(circle at 82% 12%, rgba(45, 212, 191, 0.12), transparent 55%),
+      linear-gradient(180deg, rgba(15, 23, 42, 0.06), transparent 65%);
+    --app-noise-opacity: 0.06;
 
     /* Shadows */
     --shadow-blue: 0 10px 30px -10px hsl(var(--blue-500) / 0.3);
@@ -133,6 +137,10 @@
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
     --gradient-blue: linear-gradient(135deg, hsl(var(--blue-500)), hsl(var(--blue-400)));
     --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--blue-50)));
+    --app-shell-gradient: radial-gradient(circle at 18% 18%, rgba(59, 130, 246, 0.22), transparent 55%),
+      radial-gradient(circle at 85% 10%, rgba(56, 189, 248, 0.18), transparent 55%),
+      linear-gradient(180deg, rgba(15, 23, 42, 0.55), rgba(2, 6, 23, 0.7));
+    --app-noise-opacity: 0.08;
 
     /* Shadows - dark mode */
     --shadow-blue: 0 10px 30px -10px hsl(var(--blue-500) / 0.4);
@@ -164,10 +172,33 @@
     @apply box-border;
   }
   body {
-    @apply bg-background text-foreground font-sans overflow-y-scroll;
+    @apply relative bg-background text-foreground font-sans overflow-y-scroll;
+    background-image: var(--app-shell-gradient);
+    background-color: hsl(var(--background));
+    background-attachment: fixed;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScyMDAnIGhlaWdodD0nMjAwJz48ZmlsdGVyIGlkPSduJz48ZmVUdXJidWxlbmNlIHR5cGU9J2ZyYWN0YWxOb2lzZScgYmFzZUZyZXF1ZW5jeT0nMC45JyBudW1PY3RhdmVzPSc0JyBzdGl0Y2hUaWxlcz0nc3RpdGNoJy8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsdGVyPSd1cmwoI24pJyBvcGFjaXR5PScwLjM1Jy8+PC9zdmc+");
+    background-size: 200px 200px;
+    background-repeat: repeat;
+    mix-blend-mode: soft-light;
+    opacity: var(--app-noise-opacity);
+    animation: pulse-soft 18s ease-in-out infinite;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading font-semibold;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    animation: none !important;
   }
 }
 

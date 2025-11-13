@@ -9,7 +9,9 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-lg border bg-card text-card-foreground shadow-sm",
+      "group relative overflow-hidden rounded-3xl border border-border/60 bg-card/70 text-card-foreground shadow-glass supports-[backdrop-filter]:backdrop-blur-xl transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
+      "before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-gradient-to-br before:from-white/40 before:via-white/10 before:to-transparent before:opacity-0 before:transition-opacity before:duration-500 before:ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:before:transition-none dark:before:from-white/15 dark:before:via-white/5",
+      "motion-safe:hover:shadow-glass-strong motion-safe:hover:-translate-y-0.5 motion-safe:hover:before:opacity-100",
       className
     )}
     {...props}
@@ -23,7 +25,7 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-6", className)}
+    className={cn("relative z-10 flex flex-col space-y-1.5 p-6", className)}
     {...props}
   />
 ))
@@ -60,7 +62,7 @@ const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+  <div ref={ref} className={cn("relative z-10 p-6 pt-0", className)} {...props} />
 ))
 CardContent.displayName = "CardContent"
 
@@ -70,7 +72,7 @@ const CardFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex items-center p-6 pt-0", className)}
+    className={cn("relative z-10 flex items-center p-6 pt-0", className)}
     {...props}
   />
 ))
