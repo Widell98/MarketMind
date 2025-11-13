@@ -2,8 +2,8 @@
  * @typedef {{name: string, ticker: string, reason?: string}} StockSuggestion
  */
 
-const TICKER_PATTERN = '[A-Z0-9]{1,6}(?:[ .-][A-Z0-9]{1,3})?';
-const TICKER_REGEX = new RegExp(`\\b(${TICKER_PATTERN})\\b`, 'g');
+const TICKER_PATTERN = '[A-Z0-9]{1,6}(?:[ .-][A-Z0-9]{1,3}|\\.)?';
+const TICKER_REGEX = new RegExp(`\\b(${TICKER_PATTERN})(?=$|[^A-Z0-9])`, 'g');
 const SUGGESTION_LINE_REGEX = new RegExp(
   `^(?:[-*•]\\s*)?\\*\\*([^*()]+?)\\s*\\((${TICKER_PATTERN})\\)\\*\\*(?:\\s*[-–—:]\\s*(.*))?$`,
   'i',
