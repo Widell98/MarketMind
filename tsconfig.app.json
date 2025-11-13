@@ -23,7 +23,8 @@
 
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@vercel/analytics/next": ["./src/integrations/vercelAnalytics.tsx"]
     }
   },
   "include": ["src"]
