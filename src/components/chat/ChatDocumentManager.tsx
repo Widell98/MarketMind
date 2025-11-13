@@ -104,8 +104,8 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
   }, [onToggleDocument, selectedDocuments]);
 
   return (
-    <div className="border-t border-b border-ai-border/50 bg-ai-surface-muted/40 px-4 py-3 sm:px-5 lg:px-6 xl:px-8">
-      <div className="mx-auto w-full max-w-4xl">
+    <div className="border-t border-b border-ai-border/50 bg-ai-surface-muted/40 px-4 py-3 sm:px-5 lg:px-6 xl:px-10 2xl:px-14">
+      <div className="mx-auto w-full max-w-5xl lg:max-w-6xl xl:max-w-6xl 2xl:max-w-7xl">
         <input
           ref={fileInputRef}
           type="file"
