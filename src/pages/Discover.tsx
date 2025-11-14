@@ -7,7 +7,6 @@ import Layout from '@/components/Layout';
 import StockCaseCard from '@/components/StockCaseCard';
 import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
 import GeneratedReportsSection from '@/components/GeneratedReportsSection';
-import GeneratedReportsCarousel from '@/components/GeneratedReportsCarousel';
 
 import { useStockCases } from '@/hooks/useStockCases';
 import { useToast } from '@/hooks/use-toast';
@@ -20,10 +19,7 @@ const Discover = () => {
   const { stockCases: allStockCases, loading: stockCasesLoading } = useStockCases(false);
   const { toast } = useToast();
   const { isAdmin } = useUserRole();
-  const {
-    reports: generatedReports,
-    loading: generatedReportsLoading,
-  } = useDiscoverReportSummaries(REPORT_SUMMARY_LIMIT);
+  const { reports: generatedReports } = useDiscoverReportSummaries(REPORT_SUMMARY_LIMIT);
 
   const [caseSearchTerm, setCaseSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('');
@@ -135,8 +131,6 @@ const Discover = () => {
     <Layout>
       <div className="w-full pb-12">
         <div className="mx-auto w-full max-w-6xl space-y-8 px-1 sm:px-4 lg:px-0">
-          <GeneratedReportsCarousel reports={generatedReports} isLoading={generatedReportsLoading} />
-
           <section className="rounded-3xl border border-border/60 bg-card/70 p-6 text-center shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:p-10">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 sm:h-14 sm:w-14">
               <Sparkles className="h-6 w-6 text-primary" />
