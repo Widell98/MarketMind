@@ -15,6 +15,7 @@ import {
 
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -77,6 +78,7 @@ interface AIGenerationAdminControlsProps {
 
 const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ onReportGenerated }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { user } = useAuth();
   const { isAdmin, loading: roleLoading } = useUserRole();
   const { toast } = useToast();
   const [isBatchGenerating, setIsBatchGenerating] = useState(false);
@@ -85,9 +87,9 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
   const [companyName, setCompanyName] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
   const [sourceContent, setSourceContent] = useState('');
-  const [reportFile, setReportFile] = useState<File | null>(null);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
-  const [reportFileInfo, setReportFileInfo] = useState<{
+  const [reportDocumentInfo, setReportDocumentInfo] = useState<{
+    id: string;
     name: string;
     size: number;
     pageCount: number;
@@ -123,6 +125,15 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
       return;
     }
 
+    if (!user) {
+      toast({
+        title: 'Inloggning krävs',
+        description: 'Logga in för att ladda upp och bearbeta dokument.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!isSupportedDocument(file)) {
       toast({
         title: 'Ogiltig filtyp',
@@ -141,6 +152,8 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
       return;
     }
 
+    setReportDocumentInfo(null);
+    setSourceContent('');
     setIsProcessingFile(true);
 
     try {
@@ -150,22 +163,58 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
         throw new Error('Kunde inte läsa någon text från dokumentet.');
       }
 
+      const storagePath = `${user.id}/discover/${Date.now()}_${file.name}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('ai-chat-documents')
+        .upload(storagePath, file, {
+          contentType: file.type || 'application/octet-stream',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error('Failed to upload discover report document', uploadError);
+        throw new Error('Kunde inte spara dokumentet i lagringen.');
+      }
+
+      const { data: processData, error: processError } = await supabase.functions.invoke(
+        'process-chat-document',
+        {
+          body: {
+            userId: user.id,
+            documentName: file.name,
+            fileType: file.type,
+            fileSize: file.size,
+            storagePath,
+            pages,
+          },
+        },
+      );
+
+      const processResult = processData as { error?: string; documentId?: string } | null;
+
+      if (processError || processResult?.error || !processResult?.documentId) {
+        const message = processError?.message || processResult?.error || 'Kunde inte bearbeta dokumentet.';
+        console.error('Discover document processing failed', processError || processData);
+        throw new Error(message);
+      }
+
       const combined = pages
         .map((page) => `Sida ${page.pageNumber}\n${page.text}`)
         .join('\n\n')
         .trim();
 
       setSourceContent(combined);
-      setReportFile(file);
-      setReportFileInfo({
+      setReportDocumentInfo({
+        id: processResult.documentId,
         name: file.name,
         size: file.size,
         pageCount: pages.length,
       });
 
       toast({
-        title: 'Dokument läst',
-        description: 'Rapporten laddades upp och konverterades automatiskt.',
+        title: 'Dokument bearbetat',
+        description: 'Rapporten laddades upp via AI-chatten och är redo att analyseras.',
       });
     } catch (error) {
       console.error('Failed to process report document', error);
@@ -174,8 +223,7 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
         description: error instanceof Error ? error.message : 'Ett oväntat fel inträffade vid bearbetning.',
         variant: 'destructive',
       });
-      setReportFile(null);
-      setReportFileInfo(null);
+      setReportDocumentInfo(null);
       setSourceContent('');
     } finally {
       setIsProcessingFile(false);
@@ -183,8 +231,7 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
   };
 
   const handleClearFile = () => {
-    setReportFile(null);
-    setReportFileInfo(null);
+    setReportDocumentInfo(null);
     setSourceContent('');
   };
 
@@ -252,7 +299,7 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
       return;
     }
 
-    if (!normalizedContent && !normalizedUrl) {
+    if (!reportDocumentInfo && !normalizedContent && !normalizedUrl) {
       toast({
         title: 'Lägg till underlag',
         description: 'Ladda upp ett dokument eller ange en länk som underlag för analysen.',
@@ -268,9 +315,10 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
           company_name: normalizedCompany,
           report_title: normalizedTitle || `${normalizedCompany} rapport`,
           source_url: normalizedUrl || null,
-          source_content: normalizedContent || null,
-          source_type: reportFile ? 'document' : normalizedContent ? 'text' : 'url',
-          source_document_name: reportFileInfo?.name ?? null,
+          source_content: reportDocumentInfo ? null : normalizedContent || null,
+          source_type: reportDocumentInfo ? 'document' : normalizedContent ? 'text' : 'url',
+          source_document_name: reportDocumentInfo?.name ?? null,
+          source_document_id: reportDocumentInfo?.id ?? null,
         },
       });
 
@@ -294,8 +342,7 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
       setReportTitle('');
       setSourceUrl('');
       setSourceContent('');
-      setReportFile(null);
-      setReportFileInfo(null);
+      setReportDocumentInfo(null);
     } catch (err) {
       console.error('Failed to generate report summary:', err);
       const message = err instanceof Error ? err.message : 'Ett oväntat fel uppstod vid generering av analys.';
@@ -442,7 +489,7 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
                       </>
                     )}
                   </Button>
-                  {reportFile && (
+                  {reportDocumentInfo && (
                     <Button
                       type="button"
                       variant="ghost"
@@ -457,18 +504,18 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
                 </div>
               </div>
 
-              {reportFileInfo && (
+              {reportDocumentInfo && (
                 <div className="mt-4 rounded-xl border border-border/60 bg-card/60 p-3 text-xs text-muted-foreground">
                   <div className="flex flex-wrap items-center gap-2 text-sm text-foreground">
                     <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    <span className="font-medium">{reportFileInfo.name}</span>
+                    <span className="font-medium">{reportDocumentInfo.name}</span>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-3">
                     <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary">
-                      {formatFileSize(reportFileInfo.size)}
+                      {formatFileSize(reportDocumentInfo.size)}
                     </Badge>
                     <Badge variant="secondary" className="rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
-                      {reportFileInfo.pageCount} sidor
+                      {reportDocumentInfo.pageCount} sidor
                     </Badge>
                     {sourceContent.length > 0 && (
                       <Badge variant="outline" className="rounded-full">
@@ -507,10 +554,13 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
               value={sourceContent}
               onChange={(event) => setSourceContent(event.target.value)}
               disabled={isGeneratingReport}
+              readOnly={!!reportDocumentInfo}
               className="h-40 resize-y rounded-2xl"
             />
             <p className="text-xs text-muted-foreground">
-              Justera texten om något saknas eller behöver förtydligas innan sammanfattningen skapas.
+              {reportDocumentInfo
+                ? 'Texten visas som förhandsgranskning. Analysen använder den bearbetade dokumentuppladdningen.'
+                : 'Justera texten om något saknas eller behöver förtydligas innan sammanfattningen skapas.'}
             </p>
           </div>
 
@@ -519,8 +569,9 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
               onClick={handleGenerateReport}
               disabled={
                 isGeneratingReport ||
+                isProcessingFile ||
                 !companyName.trim() ||
-                (!sourceContent.trim() && !sourceUrl.trim())
+                (!reportDocumentInfo && !sourceContent.trim() && !sourceUrl.trim())
               }
               className="rounded-xl"
             >
