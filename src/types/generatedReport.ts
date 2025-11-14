@@ -16,4 +16,5 @@ export interface GeneratedReport {
   sourceUrl?: string | null;
   sourceType?: 'text' | 'url' | 'document';
   sourceDocumentName?: string | null;
+  sourceDocumentId?: string | null;
 }

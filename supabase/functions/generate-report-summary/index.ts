@@ -16,6 +16,7 @@ type GenerateReportSummaryPayload = {
   source_type?: "text" | "url" | "document";
   source_document_name?: string | null;
   source_document_id?: string | null;
+  created_by?: string | null;
 };
 
 type OpenAIResponse = {
@@ -164,21 +165,29 @@ Underlag (${sourceDescriptor}):
 ${reportContent}
 """`;
 
-const fetchDocumentContent = async (documentId: string) => {
+const createServiceRoleClient = () => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.warn("Missing Supabase configuration for document fetch");
-    return { content: null, documentName: null } as { content: string | null; documentName: string | null };
+    console.error("Missing Supabase configuration for report summaries");
+    return null;
   }
 
-  const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  return createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
   });
+};
+
+const fetchDocumentContent = async (documentId: string) => {
+  const supabase = createServiceRoleClient();
+
+  if (!supabase) {
+    return { content: null, documentName: null } as { content: string | null; documentName: string | null };
+  }
 
   const { data: document, error: documentError } = await supabase
     .from("chat_documents")
@@ -382,21 +391,62 @@ serve(async (req) => {
       });
     }
 
-    const report = {
-      id: crypto.randomUUID(),
-      companyName,
-      reportTitle: reportTitle ?? `${companyName} rapport`,
-      summary,
-      keyPoints,
-      sourceUrl,
-      keyMetrics,
-      ceoCommentary: ceoCommentary || undefined,
-      sourceType: payload?.source_type ?? (sourceUrl ? "url" : "text"),
-      sourceDocumentName: resolvedDocumentName,
-      createdAt: new Date().toISOString(),
+    const supabase = createServiceRoleClient();
+
+    if (!supabase) {
+      console.error("Supabase client missing for storing discover report summary");
+      return new Response(JSON.stringify({ success: false, error: "Serverkonfiguration saknas" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const reportId = crypto.randomUUID();
+    const sourceType = payload?.source_type ?? (sourceUrl ? "url" : "text");
+
+    const { data: insertedReport, error: insertError } = await supabase
+      .from("discover_report_summaries")
+      .insert({
+        id: reportId,
+        company_name: companyName,
+        report_title: reportTitle ?? `${companyName} rapport`,
+        summary,
+        key_points: keyPoints,
+        key_metrics: keyMetrics,
+        ceo_commentary: ceoCommentary || null,
+        source_url: sourceUrl,
+        source_type: sourceType,
+        source_document_name: resolvedDocumentName,
+        source_document_id: payload?.source_document_id ?? null,
+        created_by: payload?.created_by ?? null,
+      })
+      .select()
+      .single();
+
+    if (insertError || !insertedReport) {
+      console.error("Failed to store discover report summary", insertError);
+      return new Response(JSON.stringify({ success: false, error: "Kunde inte spara rapporten" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const responseReport = {
+      id: insertedReport.id,
+      companyName: insertedReport.company_name,
+      reportTitle: insertedReport.report_title,
+      summary: insertedReport.summary,
+      keyPoints: normalizeKeyPoints(insertedReport.key_points ?? keyPoints),
+      keyMetrics: normalizeKeyMetrics(insertedReport.key_metrics ?? keyMetrics),
+      ceoCommentary: insertedReport.ceo_commentary ?? undefined,
+      createdAt: insertedReport.created_at,
+      sourceUrl: insertedReport.source_url,
+      sourceType: (insertedReport.source_type as "text" | "url" | "document" | null) ?? undefined,
+      sourceDocumentName: insertedReport.source_document_name,
+      sourceDocumentId: insertedReport.source_document_id,
     };
 
-    return new Response(JSON.stringify({ success: true, report }), {
+    return new Response(JSON.stringify({ success: true, report: responseReport }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

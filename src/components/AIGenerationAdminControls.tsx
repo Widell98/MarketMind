@@ -322,6 +322,7 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
           source_type: reportDocumentInfo ? 'document' : normalizedContent ? 'text' : 'url',
           source_document_name: reportDocumentInfo?.name ?? null,
           source_document_id: reportDocumentInfo?.id ?? null,
+          created_by: user?.id ?? null,
         },
       });
 

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Camera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -8,17 +9,26 @@ import StockCaseCard from '@/components/StockCaseCard';
 import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
 import AIGenerationAdminControls from '@/components/AIGenerationAdminControls';
 import GeneratedReportsSection from '@/components/GeneratedReportsSection';
+import GeneratedReportsCarousel from '@/components/GeneratedReportsCarousel';
 
 import { useStockCases } from '@/hooks/useStockCases';
 import { useToast } from '@/hooks/use-toast';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useDiscoverReportSummaries, DISCOVER_REPORT_SUMMARIES_QUERY_KEY } from '@/hooks/useDiscoverReportSummaries';
 import { GeneratedReport } from '@/types/generatedReport';
 
 const Discover = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const REPORT_SUMMARY_LIMIT = 12;
   const { stockCases: allStockCases, loading: stockCasesLoading } = useStockCases(false);
   const { toast } = useToast();
   const { isAdmin } = useUserRole();
+  const {
+    reports: generatedReports,
+    loading: generatedReportsLoading,
+    refetch: refetchGeneratedReports,
+  } = useDiscoverReportSummaries(REPORT_SUMMARY_LIMIT);
 
   const [caseSearchTerm, setCaseSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('');
@@ -26,7 +36,21 @@ const Discover = () => {
   const [caseSortBy, setCaseSortBy] = useState('created_at');
   const [caseSortOrder, setCaseSortOrder] = useState<'asc' | 'desc'>('desc');
   const [caseViewMode, setCaseViewMode] = useState<'grid' | 'list'>('grid');
-  const [generatedReports, setGeneratedReports] = useState<GeneratedReport[]>([]);
+
+  const handleReportGenerated = (report: GeneratedReport) => {
+    queryClient.setQueryData<GeneratedReport[]>(
+      [DISCOVER_REPORT_SUMMARIES_QUERY_KEY, REPORT_SUMMARY_LIMIT],
+      (current = []) => {
+        const merged = [report, ...current];
+        const unique = merged.filter((item, index, array) =>
+          array.findIndex((candidate) => candidate.id === item.id) === index
+        );
+        return unique.slice(0, REPORT_SUMMARY_LIMIT);
+      }
+    );
+
+    refetchGeneratedReports();
+  };
 
   const filteredCases = useMemo(() => {
     let filtered = [...(allStockCases || [])];
@@ -131,6 +155,8 @@ const Discover = () => {
     <Layout>
       <div className="w-full pb-12">
         <div className="mx-auto w-full max-w-6xl space-y-8 px-1 sm:px-4 lg:px-0">
+          <GeneratedReportsCarousel reports={generatedReports} isLoading={generatedReportsLoading} />
+
           <section className="rounded-3xl border border-border/60 bg-card/70 p-6 text-center shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:p-10">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 sm:h-14 sm:w-14">
               <Sparkles className="h-6 w-6 text-primary" />
@@ -143,11 +169,7 @@ const Discover = () => {
             </p>
           </section>
 
-          <AIGenerationAdminControls
-            onReportGenerated={(report) =>
-              setGeneratedReports((prev) => [report, ...prev])
-            }
-          />
+          <AIGenerationAdminControls onReportGenerated={handleReportGenerated} />
 
           <GeneratedReportsSection reports={generatedReports} />
 
