@@ -116,6 +116,9 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
   const latestRun = latestRunQuery.data;
   const latestRunError = latestRunQuery.error as { message?: string } | null;
   const runStatusLabel = latestRun?.status ? STATUS_LABELS[latestRun.status] ?? latestRun.status : 'Ingen körning';
+  const lastRunDistance = latestRun?.created_at
+    ? formatDistanceToNow(new Date(latestRun.created_at), { addSuffix: true, locale: sv })
+    : 'Ingen körning';
 
   const handleFileSelection = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
