@@ -140,7 +140,23 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
               <span className="flex items-center gap-1 text-primary">
                 <Loader2 className="h-3 w-3 animate-spin" /> {isUploading ? 'Uppladdar' : 'Hämtar'}
               </span>
-            )}
+              <span className="text-xs text-ai-text-muted">Uppladdade dokument ({documents.length})</span>
+            </button>
+            <div className="flex items-center gap-2">
+              {selectedDocumentsCount > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="rounded-full bg-primary/10 text-[10px] font-semibold uppercase tracking-wide text-primary"
+                >
+                  {selectedDocumentsCount} valda
+                </Badge>
+              )}
+              {(isLoading || isUploading) && (
+                <span className="flex items-center gap-1 text-primary">
+                  <Loader2 className="h-3 w-3 animate-spin" /> {isUploading ? 'Uppladdar' : 'Hämtar'}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         {!isCollapsed && (
