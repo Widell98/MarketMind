@@ -7,10 +7,12 @@ import Layout from '@/components/Layout';
 import StockCaseCard from '@/components/StockCaseCard';
 import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
 import AIGenerationAdminControls from '@/components/AIGenerationAdminControls';
+import GeneratedReportsSection from '@/components/GeneratedReportsSection';
 
 import { useStockCases } from '@/hooks/useStockCases';
 import { useToast } from '@/hooks/use-toast';
 import { useUserRole } from '@/hooks/useUserRole';
+import { GeneratedReport } from '@/types/generatedReport';
 
 const Discover = () => {
   const navigate = useNavigate();
@@ -24,6 +26,7 @@ const Discover = () => {
   const [caseSortBy, setCaseSortBy] = useState('created_at');
   const [caseSortOrder, setCaseSortOrder] = useState<'asc' | 'desc'>('desc');
   const [caseViewMode, setCaseViewMode] = useState<'grid' | 'list'>('grid');
+  const [generatedReports, setGeneratedReports] = useState<GeneratedReport[]>([]);
 
   const filteredCases = useMemo(() => {
     let filtered = [...(allStockCases || [])];
@@ -140,7 +143,13 @@ const Discover = () => {
             </p>
           </section>
 
-          <AIGenerationAdminControls />
+          <AIGenerationAdminControls
+            onReportGenerated={(report) =>
+              setGeneratedReports((prev) => [report, ...prev])
+            }
+          />
+
+          <GeneratedReportsSection reports={generatedReports} />
 
           <div className="w-full space-y-6 sm:space-y-8">
             <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">

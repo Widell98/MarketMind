@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
-import { Sparkles, CalendarClock, AlertCircle, Loader2 } from 'lucide-react';
+import { Sparkles, CalendarClock, AlertCircle, Loader2, FileText } from 'lucide-react';
 
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
@@ -10,6 +10,10 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { GeneratedReport } from '@/types/generatedReport';
 
 const STATUS_LABELS: Record<string, string> = {
   running: 'Pågår',
@@ -27,10 +31,25 @@ type GenerateWeeklyCasesResponse = {
   warnings?: string[];
 };
 
-const AIGenerationAdminControls = () => {
+type GenerateReportSummaryResponse = {
+  success: boolean;
+  report?: GeneratedReport;
+  error?: string;
+};
+
+interface AIGenerationAdminControlsProps {
+  onReportGenerated?: (report: GeneratedReport) => void;
+}
+
+const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ onReportGenerated }) => {
   const { isAdmin, loading: roleLoading } = useUserRole();
   const { toast } = useToast();
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isBatchGenerating, setIsBatchGenerating] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [reportTitle, setReportTitle] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
+  const [sourceContent, setSourceContent] = useState('');
 
   const latestRunQuery = useQuery<AIGenerationRun | null>({
     queryKey: ['ai-generation-runs', 'latest'],
@@ -55,10 +74,10 @@ const AIGenerationAdminControls = () => {
   const runStatusLabel = latestRun?.status ? STATUS_LABELS[latestRun.status] ?? latestRun.status : 'Ingen körning';
 
   const handleRegenerate = async () => {
-    if (!isAdmin || isGenerating) return;
+    if (!isAdmin || isBatchGenerating) return;
 
     try {
-      setIsGenerating(true);
+      setIsBatchGenerating(true);
       const { data, error } = await supabase.functions.invoke<GenerateWeeklyCasesResponse>('generate-weekly-cases', {
         body: { triggered_by: 'admin_manual' },
       });
@@ -86,15 +105,89 @@ const AIGenerationAdminControls = () => {
       }
 
       await latestRunQuery.refetch();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to regenerate AI cases:', err);
+      const message = err instanceof Error ? err.message : 'Ett oväntat fel uppstod';
       toast({
         title: 'Kunde inte generera AI-case',
-        description: err?.message || 'Ett oväntat fel uppstod',
+        description: message,
         variant: 'destructive',
       });
     } finally {
-      setIsGenerating(false);
+      setIsBatchGenerating(false);
+    }
+  };
+
+  const handleGenerateReport = async () => {
+    if (!isAdmin || isGeneratingReport) {
+      return;
+    }
+
+    const normalizedCompany = companyName.trim();
+    const normalizedTitle = reportTitle.trim();
+    const normalizedUrl = sourceUrl.trim();
+    const normalizedContent = sourceContent.trim();
+
+    if (!normalizedCompany) {
+      toast({
+        title: 'Fyll i bolagsnamn',
+        description: 'Ange vilket bolag rapporten handlar om innan du genererar en analys.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!normalizedContent && !normalizedUrl) {
+      toast({
+        title: 'Lägg till underlag',
+        description: 'Klistra in rapporttext eller ange en länk som underlag för analysen.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setIsGeneratingReport(true);
+      const { data, error } = await supabase.functions.invoke<GenerateReportSummaryResponse>('generate-report-summary', {
+        body: {
+          company_name: normalizedCompany,
+          report_title: normalizedTitle || `${normalizedCompany} rapport`,
+          source_url: normalizedUrl || null,
+          source_content: normalizedContent || null,
+          source_type: normalizedContent ? 'text' : 'url',
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data?.success || !data.report) {
+        throw new Error(data?.error || 'Rapportsammanfattningen kunde inte skapas');
+      }
+
+      toast({
+        title: 'Rapport genererad',
+        description: `${data.report.companyName} sammanfattades automatiskt.`,
+      });
+
+      if (onReportGenerated) {
+        onReportGenerated(data.report);
+      }
+
+      setReportTitle('');
+      setSourceUrl('');
+      setSourceContent('');
+    } catch (err) {
+      console.error('Failed to generate report summary:', err);
+      const message = err instanceof Error ? err.message : 'Ett oväntat fel uppstod vid generering av analys.';
+      toast({
+        title: 'Kunde inte skapa rapport',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGeneratingReport(false);
     }
   };
 
@@ -149,11 +242,11 @@ const AIGenerationAdminControls = () => {
         {showAdminActions && (
           <Button
             onClick={handleRegenerate}
-            disabled={isGenerating || isLoading}
+            disabled={isBatchGenerating || isLoading}
             size="sm"
             className="self-start"
           >
-            {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {isBatchGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Generera AI-case
           </Button>
         )}
@@ -163,6 +256,69 @@ const AIGenerationAdminControls = () => {
         <div className="mt-4 flex items-center gap-2 rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
           <AlertCircle className="h-4 w-4" />
           {latestRunError.message || 'Det gick inte att hämta status för AI-generationen.'}
+        </div>
+      )}
+
+      {showAdminActions && (
+        <div className="mt-6 space-y-4 rounded-2xl border border-border/70 bg-background/50 p-4 sm:p-5">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <FileText className="h-4 w-4 text-blue-500" />
+            Generera rapportanalys
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="report-company">Bolag *</Label>
+              <Input
+                id="report-company"
+                placeholder="Volvo, Investor, etc."
+                value={companyName}
+                onChange={(event) => setCompanyName(event.target.value)}
+                disabled={isGeneratingReport}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="report-title">Rapporttitel</Label>
+              <Input
+                id="report-title"
+                placeholder="Q2-rapport 2024"
+                value={reportTitle}
+                onChange={(event) => setReportTitle(event.target.value)}
+                disabled={isGeneratingReport}
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="report-url">Länk till källa</Label>
+              <Input
+                id="report-url"
+                placeholder="https://"
+                value={sourceUrl}
+                onChange={(event) => setSourceUrl(event.target.value)}
+                disabled={isGeneratingReport}
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="report-content">Klistra in rapporttext</Label>
+              <Textarea
+                id="report-content"
+                placeholder="Klistra in relevanta avsnitt från rapporten här..."
+                value={sourceContent}
+                onChange={(event) => setSourceContent(event.target.value)}
+                disabled={isGeneratingReport}
+                className="min-h-[120px]"
+              />
+              <p className="text-xs text-muted-foreground">
+                Ange antingen en länk till rapporten eller klistra in ett utdrag för att skapa en AI-sammanfattning.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end">
+            <Button onClick={handleGenerateReport} disabled={isGeneratingReport}>
+              {isGeneratingReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Generera case
+            </Button>
+          </div>
         </div>
       )}
     </section>
