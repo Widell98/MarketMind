@@ -154,35 +154,58 @@ const buildPrompt = (
         .join("\n")}\n\n`
     : "";
 
-  return `Du är en erfaren finansanalytiker som sammanfattar rapporter.
+    const objectives = [
+      "Läs igenom underlaget noggrant och identifiera följande:",
+      "",
+      "1. Bolagsnamn – exakt som det står i rapporten.",
+      "2. Rapporttitel – exempelvis “Q3 Interim Report 2025”, “Delårsrapport Q2 2025” eller “Annual Report 2024”.",
+      "3. Kärnbudskapet – 3–4 meningar som objektivt sammanfattar rapportens läge, baserat enbart på siffror och text från rapporten.",
+      "4. Nyckelsiffror – minst tre, direkt citerade från rapportens data. Exempel: Nettoomsättning, Net Sales, EBIT, EBITDA, Free Cash Flow, tillväxt %, organisk tillväxt, eller segmentdata. Etiketten ska alltid skrivas exakt som i rapporten.",
+      "5. Nyckelpunkter – 3–6 korta och konkreta observationer baserade på rapportens innehåll, utan egna slutsatser eller tolkningar.",
+      "6. VD-kommentar – om VD uttalar sig i dokumentet, sammanfatta kärnan i 1–2 meningar. Om ingen VD-kommentar finns: \"Ingen VD-kommentar identifierad\".",
+    ].join("\n");
 
-Identifiera vilket bolag och vilken rapport underlaget gäller, och skapa en svensk rapportanalys baserat på texten.
+    const importantNotes = [
+      "VIKTIGT:",
+      "- Hitta inte på siffror. Använd endast exakta värden som står i rapporten.",
+      "- Gissa inte bolagsnamn. Om det är oklart, använd det som står på rapportens första sida.",
+      "- Om rapporten innehåller flera segment (exempelvis Automotive, Games, Retail) får du använda segmentdata, men ange tydligt vilken kategori siffrorna gäller.",
+      "- Sammanfattningen ska vara kort, neutral, faktabaserad och enkel att använda i UI.",
+    ].join("\n");
 
-${hintsBlock}Fokusera på att:
-- ge en kort bakgrund till rapporten och dess viktigaste budskap
-- lyfta fram minst tre centrala nyckelsiffror med tydliga värden och trender
-- sammanfatta VD:ns viktigaste kommentarer eller guidning
-- avsluta med en tydlig slutsats för investerare
+    const jsonFormat = [
+      "RETURNERA UTESLUTANDE FÖLJANDE GILTIGA JSON:",
+      "",
+      "{",
+      "  \"company_name\": \"identifierat bolagsnamn\",",
+      "  \"report_title\": \"identifierad rapporttitel\",",
+      "  \"summary\": \"3-4 meningar som summerar rapporten.\",",
+      "  \"key_metrics\": [",
+      "    { \"label\": \"Nettoförsäljning Q3\", \"value\": \"99,1 MSEK\", \"trend\": \"+25 % y/y\" }",
+      "  ],",
+      "  \"key_points\": [\"punkt\"],",
+      "  \"ceo_commentary\": \"1-2 meningar\"",
+      "}",
+      "",
+      `Underlag (${sourceDescriptor}):`,
+      "\"\"\"",
+      reportContent,
+      "\"\"\"",
+    ].join("\n");
 
-Returnera svaret som giltig JSON med följande struktur:
-{
-  "company_name": "identifierat bolagsnamn",
-  "report_title": "identifierad rapporttitel",
-  "summary": "3-4 meningar som sammanfattar rapporten",
-  "key_metrics": [
-    { "label": "Omsättning Q2", "value": "123 MSEK", "trend": "+8 % y/y" }
-  ],
-  "key_points": ["kort punkt"],
-  "ceo_commentary": "1-2 meningar som beskriver vad VD:n lyfte fram"
-}
+    const promptSections = [
+      "Du är en senior finansanalytiker som analyserar års- och kvartalsrapporter.",
+      "Du svarar alltid med giltig JSON, aldrig text utanför JSON-strukturen.",
+      "",
+      hintsBlock ? `${hintsBlock}${objectives}`.trim() : objectives,
+      "",
+      importantNotes,
+      "",
+      jsonFormat,
+    ];
 
-Om VD:n inte kommenterar något relevant, skriv "Ingen VD-kommentar identifierad" som ceo_commentary.
-
-Underlag (${sourceDescriptor}):
-"""
-${reportContent}
-"""`;
-};
+    return promptSections.join("\n");
+  };
 
 const createServiceRoleClient = () => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
