@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Camera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -7,19 +6,16 @@ import Layout from '@/components/Layout';
 
 import StockCaseCard from '@/components/StockCaseCard';
 import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
-import AIGenerationAdminControls from '@/components/AIGenerationAdminControls';
 import GeneratedReportsSection from '@/components/GeneratedReportsSection';
 import GeneratedReportsCarousel from '@/components/GeneratedReportsCarousel';
 
 import { useStockCases } from '@/hooks/useStockCases';
 import { useToast } from '@/hooks/use-toast';
 import { useUserRole } from '@/hooks/useUserRole';
-import { useDiscoverReportSummaries, DISCOVER_REPORT_SUMMARIES_QUERY_KEY } from '@/hooks/useDiscoverReportSummaries';
-import { GeneratedReport } from '@/types/generatedReport';
+import { useDiscoverReportSummaries } from '@/hooks/useDiscoverReportSummaries';
 
 const Discover = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const REPORT_SUMMARY_LIMIT = 12;
   const { stockCases: allStockCases, loading: stockCasesLoading } = useStockCases(false);
   const { toast } = useToast();
@@ -27,7 +23,6 @@ const Discover = () => {
   const {
     reports: generatedReports,
     loading: generatedReportsLoading,
-    refetch: refetchGeneratedReports,
   } = useDiscoverReportSummaries(REPORT_SUMMARY_LIMIT);
 
   const [caseSearchTerm, setCaseSearchTerm] = useState('');
@@ -36,21 +31,6 @@ const Discover = () => {
   const [caseSortBy, setCaseSortBy] = useState('created_at');
   const [caseSortOrder, setCaseSortOrder] = useState<'asc' | 'desc'>('desc');
   const [caseViewMode, setCaseViewMode] = useState<'grid' | 'list'>('grid');
-
-  const handleReportGenerated = (report: GeneratedReport) => {
-    queryClient.setQueryData<GeneratedReport[]>(
-      [DISCOVER_REPORT_SUMMARIES_QUERY_KEY, REPORT_SUMMARY_LIMIT],
-      (current = []) => {
-        const merged = [report, ...current];
-        const unique = merged.filter((item, index, array) =>
-          array.findIndex((candidate) => candidate.id === item.id) === index
-        );
-        return unique.slice(0, REPORT_SUMMARY_LIMIT);
-      }
-    );
-
-    refetchGeneratedReports();
-  };
 
   const filteredCases = useMemo(() => {
     let filtered = [...(allStockCases || [])];
@@ -168,8 +148,6 @@ const Discover = () => {
               Hitta inspiration genom visuella aktiecase och AI-drivna idéer.
             </p>
           </section>
-
-          <AIGenerationAdminControls onReportGenerated={handleReportGenerated} />
 
           <GeneratedReportsSection reports={generatedReports} />
 
