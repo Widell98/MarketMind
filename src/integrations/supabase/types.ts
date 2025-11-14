@@ -757,6 +757,62 @@ export type Database = {
         }
         Relationships: []
       }
+      discover_report_summaries: {
+        Row: {
+          ceo_commentary: string | null
+          company_name: string
+          created_at: string
+          created_by: string | null
+          id: string
+          key_metrics: Json | null
+          key_points: string[] | null
+          report_title: string
+          source_document_id: string | null
+          source_document_name: string | null
+          source_type: string | null
+          source_url: string | null
+          summary: string
+        }
+        Insert: {
+          ceo_commentary?: string | null
+          company_name: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          key_metrics?: Json | null
+          key_points?: string[] | null
+          report_title: string
+          source_document_id?: string | null
+          source_document_name?: string | null
+          source_type?: string | null
+          source_url?: string | null
+          summary: string
+        }
+        Update: {
+          ceo_commentary?: string | null
+          company_name?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          key_metrics?: Json | null
+          key_points?: string[] | null
+          report_title?: string
+          source_document_id?: string | null
+          source_document_name?: string | null
+          source_type?: string | null
+          source_url?: string | null
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discover_report_summaries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saved_opportunities: {
         Row: {
           created_at: string
