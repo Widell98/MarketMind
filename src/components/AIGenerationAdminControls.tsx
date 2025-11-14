@@ -88,6 +88,7 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
     size: number;
     pageCount: number;
     characterCount: number;
+    textContent: string;
   } | null>(null);
 
   const latestRunQuery = useQuery<AIGenerationRun | null>({
@@ -160,6 +161,15 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
         throw new Error('Kunde inte läsa någon text från dokumentet.');
       }
 
+      const combinedText = pages
+        .map((page) => page.text)
+        .join('\n\n')
+        .trim();
+
+      if (!combinedText) {
+        throw new Error('Dokumentet saknar läsbar text.');
+      }
+
       const storagePath = `${user.id}/discover/${Date.now()}_${file.name}`;
 
       const { error: uploadError } = await supabase.storage
@@ -196,13 +206,14 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
         throw new Error(message);
       }
 
-      const characterCount = pages.reduce((total, page) => total + page.text.length, 0);
+      const characterCount = combinedText.length;
       setReportDocumentInfo({
         id: processResult.documentId,
         name: file.name,
         size: file.size,
         pageCount: pages.length,
         characterCount,
+        textContent: combinedText,
       });
 
       toast({
@@ -292,6 +303,7 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
           source_type: 'document',
           source_document_name: reportDocumentInfo?.name ?? null,
           source_document_id: reportDocumentInfo?.id ?? null,
+          source_content: reportDocumentInfo?.textContent ?? null,
           created_by: user?.id ?? null,
         },
       });
