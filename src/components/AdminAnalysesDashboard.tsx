@@ -1,21 +1,10 @@
-
-import React, { useState, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Trash2, FileText, Calendar, User } from 'lucide-react';
-import { useDeleteAnalysis, useAdminAnalyses } from '@/hooks/useAnalysisOperations';
+import React, { useEffect, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { BarChart3, Calendar, FileText, Pencil, Plus, Trash2, User } from 'lucide-react';
+
+import AIGenerationAdminControls from '@/components/AIGenerationAdminControls';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,11 +16,32 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import AIGenerationAdminControls from '@/components/AIGenerationAdminControls';
-import { DISCOVER_REPORT_SUMMARIES_QUERY_KEY } from '@/hooks/useDiscoverReportSummaries';
-import { GeneratedReport } from '@/types/generatedReport';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
+import { supabase } from '@/integrations/supabase/client';
+import { useAdminAnalyses, useDeleteAnalysis } from '@/hooks/useAnalysisOperations';
+import {
+  DISCOVER_REPORT_SUMMARIES_QUERY_KEY,
+  useDiscoverReportSummaries,
+} from '@/hooks/useDiscoverReportSummaries';
+import { useToast } from '@/hooks/use-toast';
+import { GeneratedReport, GeneratedReportKeyMetric } from '@/types/generatedReport';
 
-type Analysis = {
+interface Analysis {
   id: string;
   title: string;
   content: string;
@@ -54,94 +64,447 @@ type Analysis = {
   user_portfolios?: {
     portfolio_name: string;
   };
-};
+}
 
-const AdminAnalysesDashboard = () => {
+interface EditableMetric {
+  label: string;
+  value: string;
+  trend: string;
+}
+
+interface UpdateReportPayload {
+  id: string;
+  report_title: string;
+  company_name: string;
+  summary: string;
+  key_points: string[];
+  key_metrics: GeneratedReportKeyMetric[];
+  ceo_commentary: string | null;
+  source_url: string | null;
+}
+
+const PUBLIC_REPORT_LIMIT = 12;
+const ADMIN_REPORT_LIMIT = 50;
+
+const AdminAnalysesDashboard: React.FC = () => {
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loadingAnalyses, setLoadingAnalyses] = useState(false);
+  const [editingReport, setEditingReport] = useState<GeneratedReport | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    reportTitle: '',
+    companyName: '',
+    summary: '',
+    keyPointsText: '',
+    ceoCommentary: '',
+    sourceUrl: '',
+  });
+  const [editMetrics, setEditMetrics] = useState<EditableMetric[]>([]);
+
   const queryClient = useQueryClient();
-  const REPORT_SUMMARY_LIMIT = 12;
+  const { toast } = useToast();
   const deleteAnalysis = useDeleteAnalysis();
   const { fetchAllAnalyses } = useAdminAnalyses();
+  const { reports: reportSummaries, loading: reportsLoading } = useDiscoverReportSummaries(ADMIN_REPORT_LIMIT);
 
   const loadAnalyses = async () => {
-    setLoading(true);
+    setLoadingAnalyses(true);
     const data = await fetchAllAnalyses();
     setAnalyses(data);
-    setLoading(false);
+    setLoadingAnalyses(false);
   };
 
   useEffect(() => {
     loadAnalyses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleDelete = async (analysisId: string) => {
+  const handleDeleteAnalysis = async (analysisId: string) => {
     await deleteAnalysis.mutateAsync(analysisId);
-    loadAnalyses(); // Refresh the list
+    loadAnalyses();
+  };
+
+  const syncReportCache = (report: GeneratedReport) => {
+    const updateCache = (limit: number) => {
+      queryClient.setQueryData<GeneratedReport[]>(
+        [DISCOVER_REPORT_SUMMARIES_QUERY_KEY, limit],
+        (current = []) => {
+          const merged = [report, ...current.filter((item) => item.id !== report.id)];
+          return merged.slice(0, limit);
+        },
+      );
+    };
+
+    updateCache(PUBLIC_REPORT_LIMIT);
+    updateCache(ADMIN_REPORT_LIMIT);
+  };
+
+  const pruneReportCache = (reportId: string) => {
+    const prune = (limit: number) => {
+      queryClient.setQueryData<GeneratedReport[]>(
+        [DISCOVER_REPORT_SUMMARIES_QUERY_KEY, limit],
+        (current = []) => current.filter((item) => item.id !== reportId),
+      );
+    };
+
+    prune(PUBLIC_REPORT_LIMIT);
+    prune(ADMIN_REPORT_LIMIT);
   };
 
   const handleReportGenerated = (report: GeneratedReport) => {
-    queryClient.setQueryData<GeneratedReport[]>(
-      [DISCOVER_REPORT_SUMMARIES_QUERY_KEY, REPORT_SUMMARY_LIMIT],
-      (current = []) => {
-        const merged = [report, ...current];
-        const unique = merged.filter((item, index, array) =>
-          array.findIndex((candidate) => candidate.id === item.id) === index
-        );
-        return unique.slice(0, REPORT_SUMMARY_LIMIT);
-      }
-    );
-
+    syncReportCache(report);
     queryClient.invalidateQueries({ queryKey: [DISCOVER_REPORT_SUMMARIES_QUERY_KEY] });
   };
 
   const getAnalysisTypeColor = (type: string) => {
     const colors = {
-      'market_insight': 'bg-purple-100 text-purple-800',
-      'technical_analysis': 'bg-blue-100 text-blue-800',
-      'fundamental_analysis': 'bg-green-100 text-green-800',
-      'sector_analysis': 'bg-orange-100 text-orange-800',
-      'portfolio_analysis': 'bg-indigo-100 text-indigo-800',
-      'position_analysis': 'bg-pink-100 text-pink-800',
-      'sector_deep_dive': 'bg-yellow-100 text-yellow-800'
-    };
+      market_insight: 'bg-purple-100 text-purple-800',
+      technical_analysis: 'bg-blue-100 text-blue-800',
+      fundamental_analysis: 'bg-green-100 text-green-800',
+      sector_analysis: 'bg-orange-100 text-orange-800',
+      portfolio_analysis: 'bg-indigo-100 text-indigo-800',
+      position_analysis: 'bg-pink-100 text-pink-800',
+      sector_deep_dive: 'bg-yellow-100 text-yellow-800',
+    } as const;
+
     return colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
   const getAnalysisTypeLabel = (type: string) => {
     const labels = {
-      'market_insight': 'Marknadsinsikt',
-      'technical_analysis': 'Teknisk analys',
-      'fundamental_analysis': 'Fundamental analys',
-      'sector_analysis': 'Sektoranalys',
-      'portfolio_analysis': 'Portföljanalys',
-      'position_analysis': 'Positionsanalys',
-      'sector_deep_dive': 'Djupanalys sektor'
-    };
+      market_insight: 'Marknadsinsikt',
+      technical_analysis: 'Teknisk analys',
+      fundamental_analysis: 'Fundamental analys',
+      sector_analysis: 'Sektoranalys',
+      portfolio_analysis: 'Portföljanalys',
+      position_analysis: 'Positionsanalys',
+      sector_deep_dive: 'Djupanalys sektor',
+    } as const;
+
     return labels[type as keyof typeof labels] || type;
   };
 
-  if (loading) {
-    return (
-      <Card>
-        <CardContent className="pt-6">
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Laddar analyser...</p>
-          </div>
-        </CardContent>
-      </Card>
+  const resetEditState = () => {
+    setEditingReport(null);
+    setEditForm({
+      reportTitle: '',
+      companyName: '',
+      summary: '',
+      keyPointsText: '',
+      ceoCommentary: '',
+      sourceUrl: '',
+    });
+    setEditMetrics([]);
+  };
+
+  const closeEditDialog = () => {
+    setEditDialogOpen(false);
+    resetEditState();
+  };
+
+  const updateReportMutation = useMutation<GeneratedReport, Error, UpdateReportPayload>({
+    mutationFn: async (payload) => {
+      const { data, error } = await supabase.functions.invoke('update-report-summary', {
+        body: payload,
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Ett fel uppstod vid uppdateringen.');
+      }
+
+      const response = data as { success?: boolean; report?: GeneratedReport; error?: string } | null;
+
+      if (!response?.success || !response.report) {
+        throw new Error(response?.error || 'Rapporten kunde inte uppdateras.');
+      }
+
+      return response.report;
+    },
+    onSuccess: (updatedReport) => {
+      syncReportCache(updatedReport);
+      toast({
+        title: 'Rapport uppdaterad',
+        description: `${updatedReport.companyName} sparades.`,
+      });
+      closeEditDialog();
+      queryClient.invalidateQueries({ queryKey: [DISCOVER_REPORT_SUMMARIES_QUERY_KEY] });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Kunde inte spara rapporten',
+        description: error.message || 'Ett oväntat fel uppstod.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const deleteReportMutation = useMutation<string, Error, string>({
+    mutationFn: async (reportId) => {
+      const { data, error } = await supabase.functions.invoke('delete-report-summary', {
+        body: { id: reportId },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Ett fel uppstod vid borttagningen.');
+      }
+
+      const response = data as { success?: boolean; error?: string } | null;
+
+      if (!response?.success) {
+        throw new Error(response?.error || 'Rapporten kunde inte tas bort.');
+      }
+
+      return reportId;
+    },
+    onSuccess: (reportId) => {
+      pruneReportCache(reportId);
+      toast({
+        title: 'Rapport borttagen',
+        description: 'Rapportsammanfattningen togs bort från Discover.',
+      });
+      queryClient.invalidateQueries({ queryKey: [DISCOVER_REPORT_SUMMARIES_QUERY_KEY] });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Kunde inte ta bort rapporten',
+        description: error.message || 'Ett oväntat fel uppstod.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const openEditDialog = (report: GeneratedReport) => {
+    setEditingReport(report);
+    setEditForm({
+      reportTitle: report.reportTitle,
+      companyName: report.companyName,
+      summary: report.summary,
+      keyPointsText: report.keyPoints.join('\n'),
+      ceoCommentary: report.ceoCommentary ?? '',
+      sourceUrl: report.sourceUrl ?? '',
+    });
+    setEditMetrics(
+      report.keyMetrics.map((metric) => ({
+        label: metric.label,
+        value: metric.value,
+        trend: metric.trend ?? '',
+      })),
     );
-  }
+    setEditDialogOpen(true);
+  };
+
+  const handleMetricChange = (index: number, field: keyof EditableMetric, value: string) => {
+    setEditMetrics((previous) =>
+      previous.map((metric, idx) => (idx === index ? { ...metric, [field]: value } : metric)),
+    );
+  };
+
+  const handleRemoveMetric = (index: number) => {
+    setEditMetrics((previous) => previous.filter((_, idx) => idx !== index));
+  };
+
+  const handleAddMetric = () => {
+    setEditMetrics((previous) => [...previous, { label: '', value: '', trend: '' }]);
+  };
+
+  const handleUpdateReport = () => {
+    if (!editingReport) {
+      return;
+    }
+
+    const reportTitle = editForm.reportTitle.trim();
+    const companyName = editForm.companyName.trim();
+    const summary = editForm.summary.trim();
+    const ceoCommentary = editForm.ceoCommentary.trim();
+    const sourceUrl = editForm.sourceUrl.trim();
+
+    if (!companyName) {
+      toast({
+        title: 'Bolagsnamn krävs',
+        description: 'Ange vilket bolag rapporten avser innan du sparar.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!reportTitle) {
+      toast({
+        title: 'Rapporttitel saknas',
+        description: 'Lägg till en titel för sammanfattningen.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!summary) {
+      toast({
+        title: 'Sammanfattning saknas',
+        description: 'Sammanfattningen kan inte vara tom.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const keyPoints = editForm.keyPointsText
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    const keyMetrics: GeneratedReportKeyMetric[] = editMetrics
+      .map((metric) => ({
+        label: metric.label.trim(),
+        value: metric.value.trim(),
+        trend: metric.trend.trim() ? metric.trend.trim() : undefined,
+      }))
+      .filter((metric) => metric.label || metric.value || metric.trend);
+
+    const payload: UpdateReportPayload = {
+      id: editingReport.id,
+      report_title: reportTitle,
+      company_name: companyName,
+      summary,
+      key_points: keyPoints,
+      key_metrics: keyMetrics,
+      ceo_commentary: ceoCommentary ? ceoCommentary : null,
+      source_url: sourceUrl ? sourceUrl : null,
+    };
+
+    updateReportMutation.mutate(payload);
+  };
+
+  const handleDeleteReport = (reportId: string) => {
+    deleteReportMutation.mutate(reportId);
+  };
 
   return (
     <div className="space-y-6">
       <AIGenerationAdminControls onReportGenerated={handleReportGenerated} />
-      {loading ? (
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            AI-rapporter ({reportSummaries.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {reportsLoading ? (
+            <div className="py-8 text-center">
+              <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600" />
+              <p className="text-gray-600">Hämtar rapportsammanfattningar...</p>
+            </div>
+          ) : reportSummaries.length === 0 ? (
+            <div className="py-8 text-center">
+              <BarChart3 className="mx-auto mb-4 h-16 w-16 text-gray-300" />
+              <p className="text-gray-600">Inga AI-genererade rapporter har sparats ännu.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Rapport</TableHead>
+                    <TableHead>Nyckelinsikter</TableHead>
+                    <TableHead>Skapad</TableHead>
+                    <TableHead className="text-right">Åtgärder</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reportSummaries.map((report) => (
+                    <TableRow key={report.id}>
+                      <TableCell className="min-w-[220px] align-top">
+                        <div className="font-semibold leading-tight">{report.reportTitle}</div>
+                        <div className="text-sm text-muted-foreground">{report.companyName}</div>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          {report.sourceType && (
+                            <Badge variant="outline" className="capitalize">
+                              Källa: {report.sourceType}
+                            </Badge>
+                          )}
+                          {report.sourceDocumentName && (
+                            <Badge variant="secondary">{report.sourceDocumentName}</Badge>
+                          )}
+                          {report.sourceUrl && !report.sourceDocumentName && (
+                            <Badge variant="secondary">Extern länk</Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <div className="text-sm">{report.keyMetrics.length} nyckeltal</div>
+                        <div className="text-sm text-muted-foreground">
+                          {report.keyPoints.length} nyckelpunkter
+                        </div>
+                        {report.ceoCommentary && (
+                          <div className="mt-1 text-sm text-muted-foreground">
+                            VD-kommentar inkluderad
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <div className="flex items-center gap-1 text-sm text-gray-600">
+                          <Calendar className="h-4 w-4" />
+                          {formatDistanceToNow(new Date(report.createdAt), {
+                            addSuffix: true,
+                            locale: sv,
+                          })}
+                        </div>
+                      </TableCell>
+                      <TableCell className="align-top text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditDialog(report)}
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Redigera
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                disabled={deleteReportMutation.isPending}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Ta bort
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Ta bort rapport</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Är du säker på att du vill ta bort sammanfattningen "{report.reportTitle}"?
+                                  Den visas inte längre på Discover efter borttagning.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteReport(report.id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Ta bort
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {loadingAnalyses ? (
         <Card>
           <CardContent className="pt-6">
             <div className="py-8 text-center">
-              <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
+              <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600" />
               <p className="text-gray-600">Laddar analyser...</p>
             </div>
           </CardContent>
@@ -197,8 +560,8 @@ const AdminAnalysesDashboard = () => {
                             <User className="h-4 w-4 text-gray-400" />
                             <span className="text-sm">
                               {analysis.profiles?.display_name ||
-                               analysis.profiles?.username ||
-                               'Okänd användare'}
+                                analysis.profiles?.username ||
+                                'Okänd användare'}
                             </span>
                           </div>
                         </TableCell>
@@ -258,7 +621,7 @@ const AdminAnalysesDashboard = () => {
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Avbryt</AlertDialogCancel>
                                 <AlertDialogAction
-                                  onClick={() => handleDelete(analysis.id)}
+                                  onClick={() => handleDeleteAnalysis(analysis.id)}
                                   className="bg-red-600 hover:bg-red-700"
                                 >
                                   Ta bort
@@ -276,6 +639,182 @@ const AdminAnalysesDashboard = () => {
           </CardContent>
         </Card>
       )}
+
+      <Dialog
+        open={editDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeEditDialog();
+          }
+        }}
+      >
+        <DialogContent className="max-h-[85vh] sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Redigera rapportsammanfattning</DialogTitle>
+            <DialogDescription>
+              Uppdatera texten, nyckelpunkterna och nyckeltalen innan du sparar ändringarna.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh] pr-2">
+            <div className="space-y-4 py-2">
+              <div className="grid gap-2">
+                <Label htmlFor="reportTitle">Rapporttitel</Label>
+                <Input
+                  id="reportTitle"
+                  value={editForm.reportTitle}
+                  onChange={(event) =>
+                    setEditForm((previous) => ({ ...previous, reportTitle: event.target.value }))
+                  }
+                  placeholder="Q2-rapporten"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="companyName">Bolag</Label>
+                <Input
+                  id="companyName"
+                  value={editForm.companyName}
+                  onChange={(event) =>
+                    setEditForm((previous) => ({ ...previous, companyName: event.target.value }))
+                  }
+                  placeholder="Exempel AB"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="summary">Sammanfattning</Label>
+                <Textarea
+                  id="summary"
+                  value={editForm.summary}
+                  onChange={(event) =>
+                    setEditForm((previous) => ({ ...previous, summary: event.target.value }))
+                  }
+                  rows={5}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="keyPoints">Nyckelpunkter</Label>
+                <Textarea
+                  id="keyPoints"
+                  value={editForm.keyPointsText}
+                  onChange={(event) =>
+                    setEditForm((previous) => ({ ...previous, keyPointsText: event.target.value }))
+                  }
+                  placeholder={'En rad per punkt\nExempel: Förbättrat kassaflöde'}
+                  rows={4}
+                />
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Nyckeltal</Label>
+                  <Button type="button" variant="secondary" size="sm" onClick={handleAddMetric}>
+                    <Plus className="mr-2 h-4 w-4" /> Lägg till nyckeltal
+                  </Button>
+                </div>
+                {editMetrics.length === 0 ? (
+                  <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                    Inga nyckeltal är sparade för denna rapport ännu.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {editMetrics.map((metric, index) => (
+                      <div key={`metric-${index}`} className="space-y-3 rounded-lg border p-4">
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="grid gap-1">
+                            <Label htmlFor={`metric-label-${index}`}>Rubrik</Label>
+                            <Input
+                              id={`metric-label-${index}`}
+                              value={metric.label}
+                              onChange={(event) =>
+                                handleMetricChange(index, 'label', event.target.value)
+                              }
+                              placeholder="Omsättning Q2"
+                            />
+                          </div>
+                          <div className="grid gap-1">
+                            <Label htmlFor={`metric-value-${index}`}>Värde</Label>
+                            <Input
+                              id={`metric-value-${index}`}
+                              value={metric.value}
+                              onChange={(event) =>
+                                handleMetricChange(index, 'value', event.target.value)
+                              }
+                              placeholder="123 MSEK"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
+                          <div className="grid gap-1">
+                            <Label htmlFor={`metric-trend-${index}`}>Trend / kommentar</Label>
+                            <Input
+                              id={`metric-trend-${index}`}
+                              value={metric.trend}
+                              onChange={(event) =>
+                                handleMetricChange(index, 'trend', event.target.value)
+                              }
+                              placeholder="+8 % y/y"
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="justify-self-start text-destructive"
+                            onClick={() => handleRemoveMetric(index)}
+                          >
+                            Ta bort
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="ceoCommentary">VD:s kommentar</Label>
+                <Textarea
+                  id="ceoCommentary"
+                  value={editForm.ceoCommentary}
+                  onChange={(event) =>
+                    setEditForm((previous) => ({ ...previous, ceoCommentary: event.target.value }))
+                  }
+                  rows={3}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="sourceUrl">Källa (URL)</Label>
+                <Input
+                  id="sourceUrl"
+                  value={editForm.sourceUrl}
+                  onChange={(event) =>
+                    setEditForm((previous) => ({ ...previous, sourceUrl: event.target.value }))
+                  }
+                  placeholder="https://"
+                />
+                {editingReport?.sourceDocumentName && (
+                  <p className="text-xs text-muted-foreground">
+                    Dokument: {editingReport.sourceDocumentName}
+                  </p>
+                )}
+              </div>
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeEditDialog}
+              disabled={updateReportMutation.isPending}
+            >
+              Avbryt
+            </Button>
+            <Button
+              type="button"
+              onClick={handleUpdateReport}
+              disabled={updateReportMutation.isPending}
+            >
+              {updateReportMutation.isPending ? 'Sparar...' : 'Spara ändringar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
