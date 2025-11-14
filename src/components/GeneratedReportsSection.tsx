@@ -34,14 +34,47 @@ const GeneratedReportsSection: React.FC<GeneratedReportsSectionProps> = ({ repor
                   <CardTitle className="text-base font-semibold sm:text-lg">
                     {report.reportTitle}
                   </CardTitle>
-                  <Badge variant="outline" className="text-xs">
-                    {report.companyName}
-                  </Badge>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline" className="text-xs">
+                      {report.companyName}
+                    </Badge>
+                    {report.sourceDocumentName && (
+                      <Badge variant="secondary" className="text-xs">
+                        {report.sourceDocumentName}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <p className="text-xs text-muted-foreground">Genererad {generatedAt}</p>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-muted-foreground">
                 <p className="leading-relaxed text-foreground/90 dark:text-gray-200">{report.summary}</p>
+                {report.keyMetrics && report.keyMetrics.length > 0 && (
+                  <div className="space-y-2">
+                    <Separator className="bg-border/70" />
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Viktiga siffror</p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {report.keyMetrics.map((metric, metricIndex) => (
+                          <div
+                            key={`${report.id}-metric-${metricIndex}`}
+                            className="rounded-2xl border border-border/60 bg-card/60 p-3"
+                          >
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              {metric.label}
+                            </p>
+                            <p className="text-base font-semibold text-foreground">
+                              {metric.value}
+                            </p>
+                            {metric.trend && (
+                              <p className="text-xs text-muted-foreground">{metric.trend}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {report.keyPoints.length > 0 && (
                   <div className="space-y-2">
                     <Separator className="bg-border/70" />
@@ -52,6 +85,17 @@ const GeneratedReportsSection: React.FC<GeneratedReportsSectionProps> = ({ repor
                           <li key={`${report.id}-point-${keyIndex}`}>{point}</li>
                         ))}
                       </ul>
+                    </div>
+                  </div>
+                )}
+                {report.ceoCommentary && (
+                  <div className="space-y-2">
+                    <Separator className="bg-border/70" />
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">VD:s ord</p>
+                      <blockquote className="rounded-2xl border-l-4 border-primary/60 bg-primary/10 p-3 text-sm italic text-foreground/90 dark:text-gray-200">
+                        {report.ceoCommentary}
+                      </blockquote>
                     </div>
                   </div>
                 )}

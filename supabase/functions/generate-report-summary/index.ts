@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { jsonrepair } from "https://esm.sh/jsonrepair@3.6.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,7 +13,9 @@ type GenerateReportSummaryPayload = {
   report_title?: string | null;
   source_url?: string | null;
   source_content?: string | null;
-  source_type?: "text" | "url";
+  source_type?: "text" | "url" | "document";
+  source_document_name?: string | null;
+  source_document_id?: string | null;
 };
 
 type OpenAIResponse = {
@@ -32,6 +35,12 @@ const extractJsonPayload = (content: string): string => {
   return trimmed;
 };
 
+type ParsedMetric = {
+  label: string;
+  value: string;
+  trend?: string;
+};
+
 const normalizeKeyPoints = (value: unknown): string[] => {
   if (Array.isArray(value)) {
     return value
@@ -49,7 +58,73 @@ const normalizeKeyPoints = (value: unknown): string[] => {
   return [];
 };
 
-const truncateContent = (content: string, limit = 7000) => {
+const normalizeKeyMetrics = (value: unknown): ParsedMetric[] => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (typeof item === "string") {
+          const trimmed = item.trim();
+          if (!trimmed) {
+            return null;
+          }
+          const [labelPart, ...valueParts] = trimmed.split(":");
+          if (valueParts.length > 0) {
+            return {
+              label: labelPart.trim() || "Nyckeltal",
+              value: valueParts.join(":").trim(),
+            } as ParsedMetric;
+          }
+          return {
+            label: "Nyckeltal",
+            value: trimmed,
+          } as ParsedMetric;
+        }
+
+        if (item && typeof item === "object") {
+          const candidate = item as Record<string, unknown>;
+          const label = typeof candidate.label === "string"
+            ? candidate.label.trim()
+            : typeof candidate.metric === "string"
+              ? candidate.metric.trim()
+              : "";
+          const valueText = typeof candidate.value === "string"
+            ? candidate.value.trim()
+            : "";
+          const trend = typeof candidate.trend === "string"
+            ? candidate.trend.trim()
+            : typeof candidate.description === "string"
+              ? candidate.description.trim()
+              : "";
+
+          if (!label && !valueText && !trend) {
+            return null;
+          }
+
+          return {
+            label: label || "Nyckeltal",
+            value: valueText || (label ? "" : "Saknas"),
+            trend: trend || undefined,
+          } as ParsedMetric;
+        }
+
+        return null;
+      })
+      .filter((metric): metric is ParsedMetric => !!metric && (!!metric.label || !!metric.value));
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    return [
+      {
+        label: "Nyckeltal",
+        value: value.trim(),
+      },
+    ];
+  }
+
+  return [];
+};
+
+const truncateContent = (content: string, limit = 12000) => {
   if (content.length <= limit) {
     return content;
   }
@@ -61,27 +136,84 @@ const buildPrompt = (
   companyName: string,
   reportTitle: string,
   reportContent: string,
-  sourceUrl?: string | null,
+  sourceDescriptor: string,
 ) => `Du är en erfaren finansanalytiker som sammanfattar rapporter.
 
 Skapa en svensk rapportanalys för bolaget "${companyName}" baserad på underlaget nedan.
 
 Fokusera på att:
-- ge en kort bakgrund till rapporten
-- lyfta fram de viktigaste drivkrafterna, siffrorna och riskerna
+- ge en kort bakgrund till rapporten och dess viktigaste budskap
+- lyfta fram minst tre centrala nyckelsiffror med tydliga värden och trender
+- sammanfatta VD:ns viktigaste kommentarer eller guidning
 - avsluta med en tydlig slutsats för investerare
 
 Returnera svaret som giltig JSON med följande struktur:
 {
   "summary": "3-4 meningar som sammanfattar rapporten",
+  "key_metrics": [
+    { "label": "Omsättning Q2", "value": "123 MSEK", "trend": "+8 % y/y" }
+  ],
   "key_points": ["kort punkt"],
-  "tone": "kort beskrivning av analysens ton"
+  "ceo_commentary": "1-2 meningar som beskriver vad VD:n lyfte fram"
 }
 
-Underlag (${sourceUrl ? `från ${sourceUrl}` : "inklistrad text"}):
+Om VD:n inte kommenterar något relevant, skriv "Ingen VD-kommentar identifierad" som ceo_commentary.
+
+Underlag (${sourceDescriptor}):
 """
 ${reportContent}
 """`;
+
+const fetchDocumentContent = async (documentId: string) => {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.warn("Missing Supabase configuration for document fetch");
+    return { content: null, documentName: null } as { content: string | null; documentName: string | null };
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  const { data: document, error: documentError } = await supabase
+    .from("chat_documents")
+    .select("id, name, status")
+    .eq("id", documentId)
+    .single();
+
+  if (documentError || !document) {
+    console.warn("Failed to fetch chat document", { documentId, error: documentError });
+    return { content: null, documentName: null };
+  }
+
+  if (document.status !== "processed") {
+    console.warn("Document not processed", { documentId, status: document.status });
+    return { content: null, documentName: document.name as string };
+  }
+
+  const { data: chunks, error: chunkError } = await supabase
+    .from("chat_document_chunks")
+    .select("content, chunk_index")
+    .eq("document_id", documentId)
+    .order("chunk_index", { ascending: true })
+    .limit(200);
+
+  if (chunkError || !chunks || chunks.length === 0) {
+    console.warn("No chunks found for document", { documentId, error: chunkError });
+    return { content: null, documentName: document.name as string };
+  }
+
+  const combined = chunks
+    .map((chunk) => chunk.content)
+    .join("\n\n");
+
+  return { content: combined, documentName: document.name as string };
+};
 
 const parseOpenAIResponse = (content: string) => {
   const normalized = extractJsonPayload(content);
@@ -139,6 +271,7 @@ serve(async (req) => {
   const reportTitle = payload?.report_title?.trim();
   const sourceUrl = payload?.source_url?.trim() || null;
   let sourceContent = payload?.source_content?.trim() || null;
+  let resolvedDocumentName = payload?.source_document_name?.trim() || null;
 
   if (!companyName) {
     return new Response(JSON.stringify({ success: false, error: "company_name krävs" }), {
@@ -149,6 +282,14 @@ serve(async (req) => {
 
   if (!sourceContent && sourceUrl) {
     sourceContent = await fetchSourceContent(sourceUrl);
+  }
+
+  if (!sourceContent && payload?.source_document_id) {
+    const { content, documentName } = await fetchDocumentContent(payload.source_document_id);
+    sourceContent = content;
+    if (!resolvedDocumentName && documentName) {
+      resolvedDocumentName = documentName;
+    }
   }
 
   if (!sourceContent) {
@@ -167,7 +308,20 @@ serve(async (req) => {
     });
   }
 
-  const prompt = buildPrompt(companyName, reportTitle ?? `${companyName} rapport`, truncateContent(sourceContent), sourceUrl);
+  const sourceDescriptor = sourceUrl
+    ? `från ${sourceUrl}`
+    : resolvedDocumentName
+      ? `från dokumentet ${resolvedDocumentName}`
+      : payload?.source_type === "document"
+        ? "från det uppladdade dokumentet"
+        : "inklistrad text";
+
+  const prompt = buildPrompt(
+    companyName,
+    reportTitle ?? `${companyName} rapport`,
+    truncateContent(sourceContent),
+    sourceDescriptor,
+  );
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -216,6 +370,10 @@ serve(async (req) => {
     const parsed = parseOpenAIResponse(content);
     const summary = typeof parsed?.summary === "string" ? parsed.summary.trim() : "";
     const keyPoints = normalizeKeyPoints(parsed?.key_points);
+    const keyMetrics = normalizeKeyMetrics(parsed?.key_metrics);
+    const ceoCommentary = typeof parsed?.ceo_commentary === "string"
+      ? parsed.ceo_commentary.trim()
+      : "";
 
     if (!summary) {
       return new Response(JSON.stringify({ success: false, error: "Sammanfattningen kunde inte skapas" }), {
@@ -231,7 +389,10 @@ serve(async (req) => {
       summary,
       keyPoints,
       sourceUrl,
+      keyMetrics,
+      ceoCommentary: ceoCommentary || undefined,
       sourceType: payload?.source_type ?? (sourceUrl ? "url" : "text"),
+      sourceDocumentName: resolvedDocumentName,
       createdAt: new Date().toISOString(),
     };
 
