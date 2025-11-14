@@ -20,8 +20,6 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { GeneratedReport } from '@/types/generatedReport';
 import { buildTextPageFromFile } from '@/utils/documentProcessing';
@@ -83,16 +81,13 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
   const { toast } = useToast();
   const [isBatchGenerating, setIsBatchGenerating] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-  const [reportTitle, setReportTitle] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [sourceUrl, setSourceUrl] = useState('');
-  const [sourceContent, setSourceContent] = useState('');
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [reportDocumentInfo, setReportDocumentInfo] = useState<{
     id: string;
     name: string;
     size: number;
     pageCount: number;
+    characterCount: number;
   } | null>(null);
 
   const latestRunQuery = useQuery<AIGenerationRun | null>({
@@ -156,7 +151,6 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
     }
 
     setReportDocumentInfo(null);
-    setSourceContent('');
     setIsProcessingFile(true);
 
     try {
@@ -202,17 +196,13 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
         throw new Error(message);
       }
 
-      const combined = pages
-        .map((page) => `Sida ${page.pageNumber}\n${page.text}`)
-        .join('\n\n')
-        .trim();
-
-      setSourceContent(combined);
+      const characterCount = pages.reduce((total, page) => total + page.text.length, 0);
       setReportDocumentInfo({
         id: processResult.documentId,
         name: file.name,
         size: file.size,
         pageCount: pages.length,
+        characterCount,
       });
 
       toast({
@@ -227,7 +217,6 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
         variant: 'destructive',
       });
       setReportDocumentInfo(null);
-      setSourceContent('');
     } finally {
       setIsProcessingFile(false);
     }
@@ -235,7 +224,6 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
 
   const handleClearFile = () => {
     setReportDocumentInfo(null);
-    setSourceContent('');
   };
 
   const handleRegenerate = async () => {
@@ -288,24 +276,10 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
       return;
     }
 
-    const normalizedCompany = companyName.trim();
-    const normalizedTitle = reportTitle.trim();
-    const normalizedUrl = sourceUrl.trim();
-    const normalizedContent = sourceContent.trim();
-
-    if (!normalizedCompany) {
+    if (!reportDocumentInfo) {
       toast({
-        title: 'Fyll i bolagsnamn',
-        description: 'Ange vilket bolag rapporten handlar om innan du genererar en analys.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!reportDocumentInfo && !normalizedContent && !normalizedUrl) {
-      toast({
-        title: 'Lägg till underlag',
-        description: 'Ladda upp ett dokument eller ange en länk som underlag för analysen.',
+        title: 'Lägg till rapport',
+        description: 'Ladda upp ett dokument som underlag för sammanfattningen.',
         variant: 'destructive',
       });
       return;
@@ -315,11 +289,7 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
       setIsGeneratingReport(true);
       const { data, error } = await supabase.functions.invoke<GenerateReportSummaryResponse>('generate-report-summary', {
         body: {
-          company_name: normalizedCompany,
-          report_title: normalizedTitle || `${normalizedCompany} rapport`,
-          source_url: normalizedUrl || null,
-          source_content: reportDocumentInfo ? null : normalizedContent || null,
-          source_type: reportDocumentInfo ? 'document' : normalizedContent ? 'text' : 'url',
+          source_type: 'document',
           source_document_name: reportDocumentInfo?.name ?? null,
           source_document_id: reportDocumentInfo?.id ?? null,
           created_by: user?.id ?? null,
@@ -343,9 +313,6 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
         onReportGenerated(data.report);
       }
 
-      setReportTitle('');
-      setSourceUrl('');
-      setSourceContent('');
       setReportDocumentInfo(null);
     } catch (err) {
       console.error('Failed to generate report summary:', err);
@@ -428,34 +395,11 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
             Generera rapportanalys
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="company-name" className="text-sm font-medium text-foreground">
-              Bolag
-            </Label>
-            <Input
-              id="company-name"
-              placeholder="Volvo, Investor, etc."
-              value={companyName}
-              onChange={(event) => setCompanyName(event.target.value)}
-              disabled={isGeneratingReport}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="report-title" className="text-sm font-medium text-foreground">
-              Rubrik (valfritt)
-            </Label>
-            <Input
-              id="report-title"
-              placeholder="Q2-rapport 2024"
-              value={reportTitle}
-              onChange={(event) => setReportTitle(event.target.value)}
-              disabled={isGeneratingReport}
-            />
-          </div>
-
           <div className="space-y-3">
             <Label className="text-sm font-medium text-foreground">Rapportunderlag</Label>
+            <p className="text-xs text-muted-foreground">
+              Ladda upp rapporten så extraherar AI:n bolagsnamn, titel och övriga detaljer automatiskt från innehållet.
+            </p>
             <div className="rounded-2xl border border-dashed border-border/70 bg-background/60 p-4">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -521,51 +465,13 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
                     <Badge variant="secondary" className="rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
                       {reportDocumentInfo.pageCount} sidor
                     </Badge>
-                    {sourceContent.length > 0 && (
-                      <Badge variant="outline" className="rounded-full">
-                        {`${sourceContent.length.toLocaleString('sv-SE')} tecken`}
-                      </Badge>
-                    )}
+                    <Badge variant="outline" className="rounded-full">
+                      {`${reportDocumentInfo.characterCount.toLocaleString('sv-SE')} tecken`}
+                    </Badge>
                   </div>
                 </div>
               )}
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="source-url" className="text-sm font-medium text-foreground">
-              Käll-länk (valfritt)
-            </Label>
-            <Input
-              id="source-url"
-              placeholder="https://..."
-              value={sourceUrl}
-              onChange={(event) => setSourceUrl(event.target.value)}
-              disabled={isGeneratingReport}
-            />
-            <p className="text-xs text-muted-foreground">
-              Om du anger en länk används den som komplement till det uppladdade underlaget.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="source-content" className="text-sm font-medium text-foreground">
-              Extraherad rapporttext
-            </Label>
-            <Textarea
-              id="source-content"
-              placeholder="Texten från rapporten visas här och kan justeras vid behov."
-              value={sourceContent}
-              onChange={(event) => setSourceContent(event.target.value)}
-              disabled={isGeneratingReport}
-              readOnly={!!reportDocumentInfo}
-              className="h-40 resize-y rounded-2xl"
-            />
-            <p className="text-xs text-muted-foreground">
-              {reportDocumentInfo
-                ? 'Texten visas som förhandsgranskning. Analysen använder den bearbetade dokumentuppladdningen.'
-                : 'Justera texten om något saknas eller behöver förtydligas innan sammanfattningen skapas.'}
-            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -574,8 +480,7 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
               disabled={
                 isGeneratingReport ||
                 isProcessingFile ||
-                !companyName.trim() ||
-                (!reportDocumentInfo && !sourceContent.trim() && !sourceUrl.trim())
+                !reportDocumentInfo
               }
               className="rounded-xl"
             >

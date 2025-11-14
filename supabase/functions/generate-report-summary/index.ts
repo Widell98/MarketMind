@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 type GenerateReportSummaryPayload = {
-  company_name: string;
+  company_name?: string | null;
   report_title?: string | null;
   source_url?: string | null;
   source_content?: string | null;
@@ -134,15 +134,31 @@ const truncateContent = (content: string, limit = 12000) => {
 };
 
 const buildPrompt = (
-  companyName: string,
-  reportTitle: string,
   reportContent: string,
   sourceDescriptor: string,
-) => `Du är en erfaren finansanalytiker som sammanfattar rapporter.
+  options: { companyHint?: string | null; reportTitleHint?: string | null } = {},
+) => {
+  const hints: string[] = [];
 
-Skapa en svensk rapportanalys för bolaget "${companyName}" baserad på underlaget nedan.
+  if (options.companyHint) {
+    hints.push(`Föreslaget bolagsnamn: ${options.companyHint}`);
+  }
 
-Fokusera på att:
+  if (options.reportTitleHint) {
+    hints.push(`Föreslagen rapporttitel: ${options.reportTitleHint}`);
+  }
+
+  const hintsBlock = hints.length
+    ? `Du kan använda följande ledtrådar om de verkar rimliga:\n${hints
+        .map((hint) => `- ${hint}`)
+        .join("\n")}\n\n`
+    : "";
+
+  return `Du är en erfaren finansanalytiker som sammanfattar rapporter.
+
+Identifiera vilket bolag och vilken rapport underlaget gäller, och skapa en svensk rapportanalys baserat på texten.
+
+${hintsBlock}Fokusera på att:
 - ge en kort bakgrund till rapporten och dess viktigaste budskap
 - lyfta fram minst tre centrala nyckelsiffror med tydliga värden och trender
 - sammanfatta VD:ns viktigaste kommentarer eller guidning
@@ -150,6 +166,8 @@ Fokusera på att:
 
 Returnera svaret som giltig JSON med följande struktur:
 {
+  "company_name": "identifierat bolagsnamn",
+  "report_title": "identifierad rapporttitel",
   "summary": "3-4 meningar som sammanfattar rapporten",
   "key_metrics": [
     { "label": "Omsättning Q2", "value": "123 MSEK", "trend": "+8 % y/y" }
@@ -164,6 +182,7 @@ Underlag (${sourceDescriptor}):
 """
 ${reportContent}
 """`;
+};
 
 const createServiceRoleClient = () => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -276,18 +295,11 @@ serve(async (req) => {
     });
   }
 
-  const companyName = payload?.company_name?.trim();
-  const reportTitle = payload?.report_title?.trim();
+  const companyHint = payload?.company_name?.trim() || null;
+  const reportTitleHint = payload?.report_title?.trim() || null;
   const sourceUrl = payload?.source_url?.trim() || null;
   let sourceContent = payload?.source_content?.trim() || null;
   let resolvedDocumentName = payload?.source_document_name?.trim() || null;
-
-  if (!companyName) {
-    return new Response(JSON.stringify({ success: false, error: "company_name krävs" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
 
   if (!sourceContent && sourceUrl) {
     sourceContent = await fetchSourceContent(sourceUrl);
@@ -325,12 +337,10 @@ serve(async (req) => {
         ? "från det uppladdade dokumentet"
         : "inklistrad text";
 
-  const prompt = buildPrompt(
-    companyName,
-    reportTitle ?? `${companyName} rapport`,
-    truncateContent(sourceContent),
-    sourceDescriptor,
-  );
+  const prompt = buildPrompt(truncateContent(sourceContent), sourceDescriptor, {
+    companyHint,
+    reportTitleHint,
+  });
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -377,12 +387,21 @@ serve(async (req) => {
     }
 
     const parsed = parseOpenAIResponse(content);
+    const parsedCompanyName = typeof parsed?.company_name === "string"
+      ? parsed.company_name.trim()
+      : "";
+    const parsedReportTitle = typeof parsed?.report_title === "string"
+      ? parsed.report_title.trim()
+      : "";
     const summary = typeof parsed?.summary === "string" ? parsed.summary.trim() : "";
     const keyPoints = normalizeKeyPoints(parsed?.key_points);
     const keyMetrics = normalizeKeyMetrics(parsed?.key_metrics);
     const ceoCommentary = typeof parsed?.ceo_commentary === "string"
       ? parsed.ceo_commentary.trim()
       : "";
+
+    const companyName = parsedCompanyName || companyHint || "Okänt bolag";
+    const reportTitle = parsedReportTitle || reportTitleHint || `${companyName} rapport`;
 
     if (!summary) {
       return new Response(JSON.stringify({ success: false, error: "Sammanfattningen kunde inte skapas" }), {
@@ -409,7 +428,7 @@ serve(async (req) => {
       .insert({
         id: reportId,
         company_name: companyName,
-        report_title: reportTitle ?? `${companyName} rapport`,
+        report_title: reportTitle,
         summary,
         key_points: keyPoints,
         key_metrics: keyMetrics,
