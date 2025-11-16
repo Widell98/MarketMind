@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowUpRight, Flame, Newspaper, Radar, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, Flame, Newspaper, Radar, Sparkles } from 'lucide-react';
 
 import Layout from '@/components/Layout';
 import GeneratedReportsSection from '@/components/GeneratedReportsSection';
