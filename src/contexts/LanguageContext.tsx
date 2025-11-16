@@ -15,6 +15,7 @@ const translations = {
     // Navigation
     'nav.home': 'Hem',
     'nav.discover': 'Upptäck',
+    'nav.news': 'Nyheter',
     'nav.profile': 'Profil',
     'nav.portfolio': 'Smart Portfölj',
     'nav.aiChat': 'AI-Assistent',
@@ -143,6 +144,7 @@ const translations = {
     // Navigation
     'nav.home': 'Home',
     'nav.discover': 'Discover',
+    'nav.news': 'News',
     'nav.profile': 'Profile',
     'nav.portfolio': 'Smart Portfolio',
     'nav.aiChat': 'AI Assistant',
