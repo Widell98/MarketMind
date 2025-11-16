@@ -10,6 +10,7 @@ import {
   Lock,
   Brain,
   Sparkles,
+  Newspaper,
   Menu,
   User
 } from 'lucide-react';
@@ -38,6 +39,7 @@ const MobileNavigation = () => {
   const mainNavigation: NavigationItem[] = [
     { name: t('nav.home'), href: '/', icon: Home },
     { name: t('nav.discover'), href: '/discover', icon: Sparkles },
+    { name: t('nav.news'), href: '/news', icon: Newspaper },
   ];
 
   const aiNavigation: NavigationItem[] = [

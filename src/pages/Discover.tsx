@@ -19,7 +19,7 @@ const Discover = () => {
   const { stockCases: allStockCases, loading: stockCasesLoading } = useStockCases(false);
   const { toast } = useToast();
   const { isAdmin } = useUserRole();
-  const { reports: generatedReports } = useDiscoverReportSummaries(REPORT_SUMMARY_LIMIT);
+  const { reports: generatedReports, loading: reportsLoading } = useDiscoverReportSummaries(REPORT_SUMMARY_LIMIT);
 
   const [caseSearchTerm, setCaseSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('');
@@ -143,7 +143,7 @@ const Discover = () => {
             </p>
           </section>
 
-          <GeneratedReportsSection reports={generatedReports} />
+          <GeneratedReportsSection reports={generatedReports} isLoading={reportsLoading} />
 
           <div className="w-full space-y-6 sm:space-y-8">
             <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">
