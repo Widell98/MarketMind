@@ -585,6 +585,62 @@ export type Database = {
           },
         ]
       }
+      polymarket_positions: {
+        Row: {
+          close_time: string | null
+          created_at: string | null
+          entry_odds: number
+          id: string
+          market_id: string
+          market_question: string | null
+          market_url: string | null
+          outcome_id: string | null
+          outcome_name: string | null
+          stake: number
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          close_time?: string | null
+          created_at?: string | null
+          entry_odds: number
+          id?: string
+          market_id: string
+          market_question?: string | null
+          market_url?: string | null
+          outcome_id?: string | null
+          outcome_name?: string | null
+          stake?: number
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          close_time?: string | null
+          created_at?: string | null
+          entry_odds?: number
+          id?: string
+          market_id?: string
+          market_question?: string | null
+          market_url?: string | null
+          outcome_id?: string | null
+          outcome_name?: string | null
+          stake?: number
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "polymarket_positions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_comments: {
         Row: {
           content: string

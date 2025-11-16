@@ -37,6 +37,8 @@ import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAIInsights } from '@/hooks/useAIInsights';
 import { useFinancialProgress } from '@/hooks/useFinancialProgress';
+import { featureFlags } from '@/config/features';
+import PolymarketFeed from '@/components/polymarket/PolymarketFeed';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 
@@ -486,6 +488,12 @@ const Index = () => {
                 </div>
               </div>
             </div>}
+
+          {featureFlags.polymarket.enabled && (
+            <div className="mb-12 sm:mb-16">
+              <PolymarketFeed />
+            </div>
+          )}
 
           {/* Enhanced personal welcome for users without portfolio */}
           {user && !hasPortfolio && !loading && <div className="mb-12 sm:mb-16">
