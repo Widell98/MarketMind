@@ -95,47 +95,6 @@ const DiscoverNews = () => {
             </div>
           </section>
 
-          <section className="grid gap-4 sm:grid-cols-3">
-            <Card className="border-border/60 bg-card/80">
-              <CardHeader className="flex flex-row items-center gap-3 pb-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                  <Newspaper className="h-5 w-5" />
-                </div>
-                <CardTitle className="text-lg">Snabböversikt</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm text-muted-foreground">
-                <p>Hitta AI-kurerade nedslag i bolagsrapporter utan att läsa hela årsredovisningen.</p>
-                <p>Få en snabb bild av vad som händer via nyckelmetrik och höjdpunkter.</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/60 bg-card/80">
-              <CardHeader className="flex flex-row items-center gap-3 pb-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300">
-                  <Flame className="h-5 w-5" />
-                </div>
-                <CardTitle className="text-lg">Färska signaler</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm text-muted-foreground">
-                <p>Identifiera var AI ser momentum, risker och nya tendenser.</p>
-                <p>Perfekt för dig som vill agera snabbt på senaste siffrorna.</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/60 bg-card/80">
-              <CardHeader className="flex flex-row items-center gap-3 pb-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
-                  <Radar className="h-5 w-5" />
-                </div>
-                <CardTitle className="text-lg">Fördjupning</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm text-muted-foreground">
-                <p>Öppna en rapport för att se VD-kommentarer, nyckelpunkter och källhänvisningar.</p>
-                <p>Allt i ett gränssnitt optimerat för fokus.</p>
-              </CardContent>
-            </Card>
-          </section>
-
           {latestReport && (
             <section className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm sm:p-8">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
