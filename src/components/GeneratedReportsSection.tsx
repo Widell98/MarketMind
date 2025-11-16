@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FileText, ArrowUpRight, Calendar, LineChart } from 'lucide-react';
+import { FileText, ArrowUpRight, Calendar, LineChart, Sparkles, Link2, UploadCloud } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 
@@ -16,6 +16,35 @@ interface GeneratedReportsSectionProps {
   reports: GeneratedReport[];
   isLoading?: boolean;
 }
+
+type SourceTypeMeta = {
+  label: string;
+  icon: React.ElementType;
+  accentClassName: string;
+};
+
+const sourceTypeMeta: Record<NonNullable<GeneratedReport['sourceType']>, SourceTypeMeta> = {
+  text: {
+    label: 'Textkälla',
+    icon: FileText,
+    accentClassName: 'border-amber-200/60 bg-amber-500/10 text-amber-900 dark:text-amber-100',
+  },
+  url: {
+    label: 'Länk',
+    icon: Link2,
+    accentClassName: 'border-sky-200/60 bg-sky-500/10 text-sky-900 dark:text-sky-100',
+  },
+  document: {
+    label: 'Dokument',
+    icon: UploadCloud,
+    accentClassName: 'border-emerald-200/60 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100',
+  },
+};
+
+const getSourceMeta = (sourceType?: GeneratedReport['sourceType']) => {
+  if (!sourceType) return null;
+  return sourceTypeMeta[sourceType];
+};
 
 const ReportSkeleton = () => (
   <Card className="h-full border-border/60 bg-background/70 shadow-sm">
@@ -44,15 +73,35 @@ const ReportSkeleton = () => (
 
 const GeneratedReportsSection: React.FC<GeneratedReportsSectionProps> = ({ reports, isLoading = false }) => {
   const hasReports = reports.length > 0;
+  const latestReportTime = hasReports
+    ? formatDistanceToNow(
+        new Date(
+          reports.reduce((latest, current) => {
+            const currentTime = new Date(current.createdAt).getTime();
+            return currentTime > latest ? currentTime : latest;
+          }, 0),
+        ),
+        { addSuffix: true, locale: sv },
+      )
+    : null;
 
   return (
-    <section className="rounded-3xl border border-border/60 bg-card/70 p-5 shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:p-6 lg:p-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <section className="relative overflow-hidden rounded-3xl border border-border/60 bg-card/70 p-5 shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:p-6 lg:p-8">
+      <div className="pointer-events-none absolute inset-0 opacity-70">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.08),transparent_28%),radial-gradient(circle_at_80%_10%,rgba(14,165,233,0.07),transparent_26%),radial-gradient(circle_at_20%_80%,rgba(52,211,153,0.06),transparent_26%)]" />
+        <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-border/70 to-transparent" />
+      </div>
+
+      <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 sm:h-12 sm:w-12">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 shadow-sm sm:h-12 sm:w-12">
             <FileText className="h-5 w-5 text-primary" />
           </div>
           <div className="space-y-1">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+              AI-insikter
+            </div>
             <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Rapportspaning</h2>
             <p className="text-sm text-muted-foreground sm:text-base">
               Senaste AI-genererade rapporterna med viktiga höjdpunkter.
@@ -62,14 +111,19 @@ const GeneratedReportsSection: React.FC<GeneratedReportsSectionProps> = ({ repor
 
         {hasReports && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground sm:text-sm">
-            <div className="flex h-9 items-center rounded-full border border-border/70 bg-background/60 px-3 font-medium">
+            {latestReportTime && (
+              <div className="flex h-9 items-center rounded-full border border-border/70 bg-background/70 px-3 font-medium shadow-sm">
+                Senast uppdaterad {latestReportTime}
+              </div>
+            )}
+            <div className="flex h-9 items-center rounded-full border border-border/70 bg-background/70 px-3 font-semibold text-foreground shadow-sm">
               {reports.length} rapporter
             </div>
           </div>
         )}
       </div>
 
-      <div className="mt-5 grid gap-4 sm:mt-6 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
+      <div className="relative mt-5 grid gap-4 sm:mt-6 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
         {isLoading &&
           Array.from({ length: 3 }).map((_, index) => <ReportSkeleton key={`report-skeleton-${index}`} />)}
 
@@ -79,6 +133,8 @@ const GeneratedReportsSection: React.FC<GeneratedReportsSectionProps> = ({ repor
             const generatedAt = formatDistanceToNow(new Date(report.createdAt), { addSuffix: true, locale: sv });
             const highlightedMetrics = (report.keyMetrics ?? []).slice(0, 3);
             const previewKeyPoints = (report.keyPoints ?? []).slice(0, 2);
+            const sourceMeta = getSourceMeta(report.sourceType);
+            const SourceIcon = sourceMeta?.icon;
 
             return (
               <Dialog key={report.id}>
@@ -115,6 +171,24 @@ const GeneratedReportsSection: React.FC<GeneratedReportsSectionProps> = ({ repor
                           </Badge>
                         )}
                       </div>
+                      {(sourceMeta || report.sourceType) && (
+                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                          {sourceMeta && (
+                            <Badge
+                              variant="outline"
+                              className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-semibold uppercase tracking-wide shadow-sm ${sourceMeta.accentClassName}`}
+                            >
+                              {SourceIcon && <SourceIcon className="h-3.5 w-3.5" />}
+                              {sourceMeta.label}
+                            </Badge>
+                          )}
+                          {!sourceMeta && report.sourceType && (
+                            <Badge variant="outline" className="rounded-full border-dashed px-2.5 py-1 text-[11px]">
+                              {report.sourceType}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
                       <p
                         className="line-clamp-3 text-sm leading-relaxed text-foreground/90"
                         title={report.summary}
