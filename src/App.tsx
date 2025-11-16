@@ -26,6 +26,7 @@ import SocialIndex from "./pages/SocialIndex";
 import AdminStockCases from "./pages/AdminStockCases";
 import AdvancedFeatures from "./pages/AdvancedFeatures";
 import Discover from "./pages/Discover";
+import News from "./pages/News";
 import MarketAnalyses from "./pages/MarketAnalyses";
 import Watchlist from "./pages/Watchlist";
 import NotFound from "./pages/NotFound";
@@ -67,6 +68,7 @@ function App() {
                     <Route path="/admin/stock-cases" element={<AdminStockCases />} />
                     <Route path="/advanced-features" element={<AdvancedFeatures />} />
                     <Route path="/discover" element={<Discover />} />
+                    <Route path="/news" element={<News />} />
                     {/* Legacy routes for backwards compatibility */}
                     <Route path="/discover-opportunities" element={<Discover />} />
                     <Route path="/market-analyses" element={<Discover />} />
