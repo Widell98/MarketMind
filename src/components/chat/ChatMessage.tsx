@@ -177,7 +177,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     const lines = content.split('\n');
     const elements: React.ReactNode[] = [];
     let keyCounter = 0;
-    let currentList: { type: 'ol' | 'ul'; marker?: 'disc' | 'dash'; items: string[] } | null = null;
+    let currentList: { type: 'ol' | 'ul'; items: string[]; start?: number } | null = null;
 
     const getKey = () => `message-fragment-${keyCounter++}`;
 
@@ -185,33 +185,28 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       if (!currentList) return;
 
       const listKey = getKey();
-      const ListTag = currentList.type === 'ol' ? 'ol' : 'ul';
-      const isDashList = currentList.type === 'ul' && currentList.marker === 'dash';
-      const listClassName = `ml-4 ${
-        currentList.type === 'ol'
-          ? 'list-decimal'
-          : isDashList
-            ? 'list-none'
-            : 'list-disc'
-      } space-y-1.5 text-[13px] leading-[1.6] text-foreground`;
 
-      elements.push(
-        <ListTag key={listKey} className={listClassName}>
-          {currentList.items.map((item, index) => {
-            const sanitizedContent = parseMarkdownSafely(item);
-
-            return (
-              <li key={`${listKey}-item-${index}`} className={isDashList ? 'flex items-start gap-2' : undefined}>
-                {isDashList && <span className="select-none text-[13px] text-foreground">-</span>}
-                <span
-                  className={isDashList ? 'flex-1 text-[13px] leading-[1.6] text-foreground' : undefined}
-                  dangerouslySetInnerHTML={{ __html: sanitizedContent }}
-                />
-              </li>
-            );
-          })}
-        </ListTag>,
-      );
+      if (currentList.type === 'ol') {
+        elements.push(
+          <ol
+            key={listKey}
+            className="ml-4 list-decimal space-y-1.5 text-[13px] leading-[1.6] text-foreground"
+            start={currentList.start && currentList.start > 1 ? currentList.start : undefined}
+          >
+            {currentList.items.map((item, index) => (
+              <li key={`${listKey}-item-${index}`} dangerouslySetInnerHTML={{ __html: parseMarkdownSafely(item) }} />
+            ))}
+          </ol>,
+        );
+      } else {
+        elements.push(
+          <ul className="ml-4 list-disc space-y-1.5 text-[13px] leading-[1.6] text-foreground" key={listKey}>
+            {currentList.items.map((item, index) => (
+              <li key={`${listKey}-item-${index}`} dangerouslySetInnerHTML={{ __html: parseMarkdownSafely(item) }} />
+            ))}
+          </ul>,
+        );
+      }
 
       currentList = null;
     };
@@ -231,55 +226,60 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         return;
       }
 
-      if (trimmedLine.startsWith('###')) {
+      const headingMatch = trimmedLine.match(/^(#{1,6})\s*(.+)$/);
+      if (headingMatch) {
         flushList();
+        const [, hashes, title] = headingMatch;
+        const level = hashes.length;
+        const headingClass =
+          level <= 1
+            ? 'mt-3.5 text-[15px] font-semibold text-foreground first:mt-0'
+            : level === 2
+              ? 'mt-3 text-sm font-semibold text-foreground first:mt-0'
+              : 'mt-2.5 text-[13px] font-semibold text-foreground first:mt-0';
+
         elements.push(
-          <h3
-            key={getKey()}
-            className="mt-2.5 text-[13px] font-semibold text-foreground first:mt-0"
-            dangerouslySetInnerHTML={{
-              __html: parseMarkdownSafely(trimmedLine.replace(/^###\s*/, '').trim()),
-            }}
-          />,
+          React.createElement('h' + Math.min(level, 6), {
+            key: getKey(),
+            className: headingClass,
+            dangerouslySetInnerHTML: { __html: parseMarkdownSafely(title.trim()) },
+          }),
         );
         return;
       }
 
-      if (trimmedLine.startsWith('##')) {
-        flushList();
-        elements.push(
-          <h2
-            key={getKey()}
-            className="mt-3 text-sm font-semibold text-foreground first:mt-0"
-            dangerouslySetInnerHTML={{
-              __html: parseMarkdownSafely(trimmedLine.replace(/^##\s*/, '').trim()),
-            }}
-          />,
-        );
-        return;
-      }
+      if (/^[-*•]\s+/.test(trimmedLine)) {
+        const contentWithoutMarker = trimmedLine.replace(/^[-*•]\s+/, '').trim();
+        if (!contentWithoutMarker) {
+          return;
+        }
 
-      if (trimmedLine.startsWith('-') || trimmedLine.startsWith('•')) {
-        const contentWithoutMarker = trimmedLine.replace(/^[-•]\s*/, '').trim();
-
-        if (!currentList || currentList.type !== 'ul' || currentList.marker !== 'disc') {
+        if (!currentList || currentList.type !== 'ul') {
           flushList();
-          currentList = { type: 'ul', marker: 'disc', items: [] };
+          currentList = { type: 'ul', items: [] };
         }
 
         currentList.items.push(contentWithoutMarker);
         return;
       }
 
-      if (/^\d+\./.test(trimmedLine)) {
-        const contentWithoutNumber = trimmedLine.replace(/^\d+\.\s*/, '').trim();
-
-        if (!currentList || currentList.type !== 'ul' || currentList.marker !== 'dash') {
-          flushList();
-          currentList = { type: 'ul', marker: 'dash', items: [] };
+      const orderedMatch = trimmedLine.match(/^(\d+)\.\s+(.*)$/);
+      if (orderedMatch) {
+        const [, numberString, contentWithoutNumber] = orderedMatch;
+        if (!contentWithoutNumber.trim()) {
+          return;
         }
 
-        currentList.items.push(contentWithoutNumber);
+        if (!currentList || currentList.type !== 'ol') {
+          flushList();
+          currentList = { type: 'ol', items: [], start: Number(numberString) };
+        }
+
+        if (currentList.items.length === 0 && currentList.start === undefined) {
+          currentList.start = Number(numberString);
+        }
+
+        currentList.items.push(contentWithoutNumber.trim());
         return;
       }
 
@@ -321,8 +321,9 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     lines.forEach((line) => {
       const trimmed = line.trim();
 
-      if (trimmed.startsWith('##')) {
-        const headingText = trimmed.replace(/^#+\s*/, '').trim();
+      const headingMatch = trimmed.match(/^(#{1,6})\s*(.+)$/);
+      if (headingMatch) {
+        const headingText = headingMatch[2].trim();
         if (headingText && headings.length < 3) {
           headings.push(headingText);
         }
