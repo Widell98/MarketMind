@@ -40,10 +40,11 @@ const DiscoverNews = () => {
     <Layout>
       <div className="w-full pb-12">
         <div className="mx-auto w-full max-w-6xl space-y-8 px-1 sm:px-4 lg:px-0">
-          <section className="rounded-3xl border border-border/60 bg-gradient-to-br from-primary/10 via-background to-background p-6 shadow-sm supports-[backdrop-filter]:backdrop-blur sm:p-10">
-            <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+          <section className="relative overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-[#0b1b3a]/70 via-background to-background p-6 shadow-sm supports-[backdrop-filter]:backdrop-blur sm:p-10">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.2),transparent_35%),radial-gradient(circle_at_80%_20%,rgba(59,130,246,0.12),transparent_30%)]" />
+            <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-3">
-                <Badge variant="secondary" className="bg-primary/10 text-primary">
+                <Badge variant="secondary" className="border-none bg-white/10 text-primary backdrop-blur">
                   <Sparkles className="mr-2 h-4 w-4" />
                   Nyhetssvep
                 </Badge>
@@ -56,14 +57,14 @@ const DiscoverNews = () => {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  <Button size="lg" className="rounded-xl" onClick={() => navigate('/discover')}>
+                  <Button size="lg" className="rounded-xl bg-white text-foreground shadow-sm hover:bg-muted" onClick={() => navigate('/discover')}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Tillbaka till upptäck
                   </Button>
                   <Button
                     variant="outline"
                     size="lg"
-                    className="rounded-xl border-border/70"
+                    className="rounded-xl border-white/40 bg-white/10 text-white backdrop-blur hover:border-white/60 hover:bg-white/20"
                     onClick={() => navigate('/ai-chatt')}
                   >
                     Prata med AI om nyheterna
@@ -71,22 +72,22 @@ const DiscoverNews = () => {
                   </Button>
                 </div>
               </div>
-              <div className="flex w-full flex-col gap-4 rounded-2xl border border-border/70 bg-card/80 p-4 sm:max-w-xs">
+              <div className="relative flex w-full flex-col gap-4 rounded-2xl border border-white/30 bg-white/10 p-4 shadow-lg backdrop-blur sm:max-w-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-muted-foreground">Rapporter</span>
-                  <Badge variant="outline" className="rounded-full text-xs">
+                  <Badge variant="outline" className="rounded-full border-white/40 text-[11px] text-foreground">
                     Live
                   </Badge>
                 </div>
                 <div className="text-4xl font-semibold text-foreground">{reports.length}</div>
                 <p className="text-sm text-muted-foreground">Sammanfattningar uppdateras automatiskt när nya källor publiceras.</p>
-                <Separator className="bg-border/60" />
+                <Separator className="bg-border/40" />
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-xl bg-muted/40 p-3">
+                  <div className="rounded-xl border border-white/40 bg-white/10 p-3 backdrop-blur">
                     <p className="text-xs text-muted-foreground">Bolag</p>
                     <p className="text-lg font-semibold text-foreground">{companyCount}</p>
                   </div>
-                  <div className="rounded-xl bg-muted/40 p-3">
+                  <div className="rounded-xl border border-white/40 bg-white/10 p-3 backdrop-blur">
                     <p className="text-xs text-muted-foreground">Källor</p>
                     <p className="text-lg font-semibold text-foreground">{sourceCount}</p>
                   </div>
@@ -108,33 +109,38 @@ const DiscoverNews = () => {
                   {highlightedTopics.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {highlightedTopics.map((topic) => (
-                        <Badge key={topic} variant="outline" className="rounded-full border-border/60 text-xs">
+                        <Badge
+                          key={topic}
+                          variant="outline"
+                          className="rounded-full border-border/60 bg-muted/40 text-xs text-foreground"
+                        >
                           {topic}
                         </Badge>
                       ))}
                     </div>
                   )}
                 </div>
-                <div className="flex flex-col gap-3 rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground">
+                <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-gradient-to-br from-white/70 via-white/50 to-white/30 p-4 text-sm text-muted-foreground shadow-sm">
                   <div className="flex items-center justify-between">
-                    <span>Baserad på</span>
-                    <Badge variant="secondary" className="rounded-full">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Baserad på</span>
+                    <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary">
                       {latestReport.companyName}
                     </Badge>
                   </div>
                   {latestReport.sourceDocumentName && (
-                    <div className="flex items-center justify-between text-xs">
+                    <div className="flex flex-col gap-1 text-xs">
                       <span className="text-muted-foreground">Källa</span>
                       <span className="font-medium text-foreground">{latestReport.sourceDocumentName}</span>
                     </div>
                   )}
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className="rounded-xl border-border"
+                    className="justify-between rounded-xl bg-white text-foreground shadow-sm hover:bg-muted"
                     onClick={() => navigate('#rapporter')}
                   >
                     Läs rapporterna
+                    <ArrowRight className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
