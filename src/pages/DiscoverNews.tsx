@@ -317,11 +317,7 @@ const DiscoverNews = () => {
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.5fr)]">
             <Card ref={reportsSectionRef} id="rapporter" className="border-border/60 bg-card/80">
               <CardContent className="space-y-4 p-4 sm:p-6">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rapportspaning</p>
-                    <h3 className="text-xl font-semibold text-foreground">Utforska aktiecase</h3>
-                  </div>
+                <div className="flex justify-end">
                   <Button variant="ghost" className="rounded-xl" onClick={() => navigate('/discover')}>
                     Till hela biblioteket
                     <ArrowRight className="ml-2 h-4 w-4" />
