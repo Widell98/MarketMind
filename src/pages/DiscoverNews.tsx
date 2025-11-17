@@ -1,32 +1,16 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  ArrowDownLeft,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUpRight,
-  ChevronDown,
-  Clock,
-  Loader2,
-  RefreshCw,
-  Sparkles,
-} from 'lucide-react';
+import { ArrowDownLeft, ArrowLeft, ArrowUpRight, Clock, Loader2, Sparkles } from 'lucide-react';
 
 import Layout from '@/components/Layout';
-import GeneratedReportsSection from '@/components/GeneratedReportsSection';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useDiscoverReportSummaries } from '@/hooks/useDiscoverReportSummaries';
 import { useMarketData } from '@/hooks/useMarketData';
 import { useNewsData } from '@/hooks/useNewsData';
 import { useMarketOverviewInsights, type MarketOverviewInsight } from '@/hooks/useMarketOverviewInsights';
-import ReportHighlightCard from '@/components/ReportHighlightCard';
-import FlashBriefs from '@/components/FlashBriefs';
-import MarketMomentum from '@/components/MarketMomentum';
-import FinancialCalendar from '@/components/FinancialCalendar';
-import MarketPulse from '@/components/MarketPulse';
 
 type Sentiment = 'bullish' | 'bearish' | 'neutral';
 
@@ -64,17 +48,10 @@ const MAX_INDEX_TILES = 4;
 
 const DiscoverNews = () => {
   const navigate = useNavigate();
-  const { reports, loading } = useDiscoverReportSummaries(24);
-  const {
-    marketData,
-    loading: marketLoading,
-    error: marketError,
-    refetch: refetchMarketData,
-  } = useMarketData();
-  const { newsData, loading: newsLoading, error: newsError, refetch: refetchNews } = useNewsData();
+  const { reports } = useDiscoverReportSummaries(24);
+  const { marketData, loading: marketLoading } = useMarketData();
+  const { newsData, loading: newsLoading, error: newsError } = useNewsData();
   const { data: overviewInsights = [], isLoading: insightsLoading } = useMarketOverviewInsights();
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [showPulse, setShowPulse] = useState(false);
 
   const companyCount = useMemo(
     () => new Set(reports.map((report) => report.companyName?.trim())).size,
@@ -86,18 +63,6 @@ const DiscoverNews = () => {
     [reports]
   );
 
-  const highlightedTopics = useMemo(() => {
-    const metrics = reports.flatMap((report) => report.keyMetrics ?? []);
-    const topics = metrics
-      .map((metric) => metric.label)
-      .filter((label, index, arr) => label && arr.indexOf(label) === index)
-      .slice(0, 6);
-
-    return topics;
-  }, [reports]);
-
-  const latestReport = reports[0];
-  const highlightReports = useMemo(() => reports.slice(0, 3), [reports]);
   const heroInsight = overviewInsights[0];
   const heroSentiment = deriveSentimentFromInsight(heroInsight);
   const heroIndices = marketData?.marketIndices ?? [];
@@ -158,26 +123,6 @@ const DiscoverNews = () => {
       .slice(0, 4)
       .map(([category, count]) => ({ category, count }));
   }, [newsData]);
-
-  const filteredNewsItems = useMemo(() => {
-    if (!selectedCategory) return newsData;
-    return newsData.filter((item) => (item.category?.trim() || 'Övrigt') === selectedCategory);
-  }, [newsData, selectedCategory]);
-
-  const handleCategoryToggle = useCallback((category: string) => {
-    setSelectedCategory((prev) => (prev === category ? null : category));
-  }, []);
-
-  const handleScrollToReports = useCallback(() => {
-    const target = document.getElementById('rapporter');
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, []);
-
-  const handlePulseToggle = useCallback(() => {
-    setShowPulse((prev) => !prev);
-  }, []);
 
   return (
     <Layout>
@@ -329,216 +274,8 @@ const DiscoverNews = () => {
             </div>
           </section>
 
-          {highlightReports.length > 0 && (
-            <section className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm sm:p-8">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Utvalda sammanfattningar
-                  </p>
-                  <h2 className="text-2xl font-semibold text-foreground">Senaste AI-genererade rapporterna</h2>
-                </div>
-                <Button variant="ghost" className="justify-start rounded-xl sm:justify-end" onClick={handleScrollToReports}>
-                  Läs alla rapporter
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
 
-              <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {highlightReports.map((report) => (
-                  <ReportHighlightCard
-                    key={report.id}
-                    report={report}
-                    ctaHref="#rapporter"
-                    onCTAClick={handleScrollToReports}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
 
-          {latestReport && (
-            <section className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm sm:p-8">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary/80">
-                    <Sparkles className="h-4 w-4" />
-                    Aktuellt just nu
-                  </div>
-                  <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">{latestReport.reportTitle}</h2>
-                  <p className="text-sm text-muted-foreground sm:text-base">{latestReport.summary}</p>
-                  {highlightedTopics.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {highlightedTopics.map((topic) => (
-                        <Badge key={topic} variant="outline" className="rounded-full border-border/60 text-xs">
-                          {topic}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col gap-3 rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground">
-                  <div className="flex items-center justify-between">
-                    <span>Baserad på</span>
-                    <Badge variant="secondary" className="rounded-full">
-                      {latestReport.companyName}
-                    </Badge>
-                  </div>
-                  {latestReport.sourceDocumentName && (
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Källa</span>
-                      <span className="font-medium text-foreground">{latestReport.sourceDocumentName}</span>
-                    </div>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded-xl border-border"
-                    onClick={() => navigate('#rapporter')}
-                  >
-                    Läs rapporterna
-                  </Button>
-                </div>
-              </div>
-            </section>
-          )}
-
-          <section className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)] xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)_minmax(260px,0.6fr)]">
-            <Card id="rapporter" className="border-border/60 bg-card/80">
-              <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sammanställningar</p>
-                  <CardTitle className="text-2xl">Rapportspaning</CardTitle>
-                </div>
-                <Button variant="ghost" className="rounded-xl" onClick={() => navigate('/discover')}>
-                  Utforska aktiecase
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {loading && reports.length === 0 ? (
-                  <div className="rounded-3xl border border-dashed border-border/70 bg-muted/20 px-6 py-12 text-center text-sm text-muted-foreground">
-                    Laddar rapporter...
-                  </div>
-                ) : (
-                  <GeneratedReportsSection reports={reports} />
-                )}
-              </CardContent>
-            </Card>
-
-            <div className="space-y-6">
-              <Card className="border-border/60 bg-card/80">
-                <CardHeader className="space-y-4">
-                  <div className="flex flex-col gap-2">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nyhetsläge</p>
-                        <CardTitle className="text-2xl">Senaste marknadsnyheterna</CardTitle>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-full border-border/70"
-                        onClick={refetchNews}
-                        disabled={newsLoading}
-                      >
-                        <RefreshCw className={`mr-2 h-4 w-4 ${newsLoading ? 'animate-spin' : ''}`} />
-                        Uppdatera
-                      </Button>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Utforska trender genom att filtrera nyhetsflödet på de hetaste kategorierna just nu.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {trendingCategories.map((category) => {
-                      const isActive = selectedCategory === category.category;
-                      return (
-                        <button
-                          key={category.category}
-                          type="button"
-                          onClick={() => handleCategoryToggle(category.category)}
-                          className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
-                            isActive
-                              ? 'border-primary/40 bg-primary/10 text-primary'
-                              : 'border-border/60 bg-muted/40 text-muted-foreground hover:border-border'
-                          }`}
-                        >
-                          #{category.category} · {category.count}
-                        </button>
-                      );
-                    })}
-                    {!trendingCategories.length && !newsLoading && (
-                      <span className="text-xs text-muted-foreground">Inga trender tillgängliga</span>
-                    )}
-                    {newsLoading && (
-                      <Badge variant="outline" className="rounded-full border-dashed border-border/70 text-xs">
-                        Laddar kategorier…
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <FlashBriefs
-                    manual
-                    newsItems={filteredNewsItems}
-                    loading={newsLoading}
-                    error={newsError}
-                    refetch={refetchNews}
-                    showHeader={false}
-                  />
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="space-y-6 lg:col-span-2 xl:col-span-1">
-              <MarketMomentum />
-              <FinancialCalendar />
-              <Card className="border-border/60 bg-card/80">
-                <CardHeader className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Live-data</p>
-                      <CardTitle className="text-xl">Market Pulse</CardTitle>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="rounded-full"
-                      onClick={handlePulseToggle}
-                    >
-                      {showPulse ? 'Dölj' : 'Visa'}
-                      <ChevronDown className={`ml-2 h-4 w-4 transition ${showPulse ? 'rotate-180' : ''}`} />
-                    </Button>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Se realtidsindex, vinnare och förlorare med samma data som driver hjältesektionen.
-                  </p>
-                  {marketError && !marketLoading && (
-                    <Badge variant="destructive" className="w-fit text-xs">
-                      Kunde inte ladda marknadsdata just nu
-                    </Badge>
-                  )}
-                </CardHeader>
-                {showPulse && (
-                  <CardContent>
-                    <MarketPulse
-                      useExternalData
-                      marketData={marketData}
-                      loading={marketLoading}
-                      error={marketError}
-                      refetch={refetchMarketData}
-                    />
-                  </CardContent>
-                )}
-                {!showPulse && (
-                  <CardContent className="text-sm text-muted-foreground">
-                    Håll dig uppdaterad på indexrörelser genom att expandera Market Pulse.
-                  </CardContent>
-                )}
-              </Card>
-            </div>
-          </section>
         </div>
       </div>
     </Layout>
