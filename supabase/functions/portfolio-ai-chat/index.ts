@@ -917,7 +917,7 @@ const evaluateNewsIntentWithOpenAI = async ({
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-5.1',
         temperature: 0,
         response_format: { type: 'json_schema', json_schema: NEWS_INTENT_SCHEMA },
         messages,
@@ -1028,7 +1028,7 @@ const evaluateStockIntentWithOpenAI = async ({
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-5.1',
         temperature: 0,
         response_format: { type: 'json_schema', json_schema: STOCK_INTENT_SCHEMA },
         messages: [
@@ -3375,8 +3375,8 @@ ${importantLines.join('\n')}
 `;
 
 
-    // Force using gpt-4o to avoid streaming restrictions and reduce cost
-    const model = 'gpt-4o';
+    // Force using gpt-5.1 to avoid streaming restrictions and reduce cost
+    const model = 'gpt-5.1';
 
     console.log('Selected model:', model, 'for request type:', {
       isStockAnalysis: isStockAnalysisRequest,
