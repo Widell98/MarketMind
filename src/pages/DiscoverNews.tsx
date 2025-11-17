@@ -307,7 +307,7 @@ const DiscoverNews = () => {
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {reportHighlights.map((report) => (
-                    <ReportHighlightCard key={report.id} report={report} onCTAClick={handleScrollToReports} />
+                    <ReportHighlightCard key={report.id} report={report} />
                   ))}
                 </div>
               )}
@@ -315,14 +315,18 @@ const DiscoverNews = () => {
           )}
 
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.5fr)]">
-            <Card ref={reportsSectionRef} id="rapporter" className="border-border/60 bg-card/80">
-              <CardContent className="space-y-4 p-4 sm:p-6">
-                <div className="flex justify-end">
-                  <Button variant="ghost" className="rounded-xl" onClick={() => navigate('/discover')}>
-                    Till hela biblioteket
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
+            <section
+              ref={reportsSectionRef}
+              id="rapporter"
+              className="rounded-3xl border border-border/60 bg-card/80 px-4 py-6 shadow-sm sm:px-8 sm:py-8"
+            >
+              <div className="flex justify-end">
+                <Button variant="ghost" className="rounded-xl" onClick={() => navigate('/discover')}>
+                  Till hela biblioteket
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+              <div className="mt-4">
                 {reportsLoading && reports.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-6 py-10 text-center text-sm text-muted-foreground">
                     Laddar rapporter…
@@ -330,8 +334,8 @@ const DiscoverNews = () => {
                 ) : (
                   <GeneratedReportsSection reports={reports} />
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </section>
 
             <Card className="border-border/60 bg-card/80">
               <CardContent className="p-4 sm:p-6">
