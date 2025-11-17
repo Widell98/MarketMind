@@ -222,7 +222,7 @@ const DiscoverNews = () => {
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Tillbaka till upptäck
                   </Button>
-                  <Button size="lg" variant="secondary" className="rounded-xl" onClick={handleScrollToReports}>
+                  <Button size="lg" variant="secondary" className="rounded-xl" onClick={() => navigate('/discover')}>
                     Visa rapporterna
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
