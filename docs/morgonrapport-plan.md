@@ -15,6 +15,11 @@ Den dagliga morgonrapporten ska fungera som en kuraterad start på handelsdagen 
 - `useMarketData` / `fetch-market-data` för indexrörelser, topp/värsta movers och tidsstämplar.
 - Kalendern i `FinancialCalendar` för att lyfta dagens viktigaste möten/rapporter.
 
+## Uppdateringsfrekvens
+- `useMarketData` uppdaterar via `fetch-market-data` var 5:e minut (synkat med Edge Functionens cachefönster) för att hålla index och topp-/bottenlistor färska.
+- `useNewsData` använder `useSupabaseNewsFeed('news')` med 10 minuters intervall för att matcha `fetch-news-data`-funktionens cacheade nyhetsflöde.
+- När båda tidsstämplarna visas i UI:t samlas de under en gemensam "Senast uppdaterad"-indikator så att förändringar i dessa intervall lättare kan härledas.
+
 ## Arkitektur
 1. **Edge Function `ai-morning-brief`:**
    - Autentiseras via service role key.

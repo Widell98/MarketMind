@@ -5,6 +5,9 @@ import { ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight, Clock, Loader2, Spa
 import Layout from '@/components/Layout';
 import ReportHighlightCard from '@/components/ReportHighlightCard';
 import MarketPulse from '@/components/MarketPulse';
+import FlashBriefs from '@/components/FlashBriefs';
+import MarketMomentum from '@/components/MarketMomentum';
+import FinancialCalendar from '@/components/FinancialCalendar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,6 +16,7 @@ import { useDiscoverReportSummaries } from '@/hooks/useDiscoverReportSummaries';
 import { useMarketData } from '@/hooks/useMarketData';
 import { useNewsData } from '@/hooks/useNewsData';
 import { useMarketOverviewInsights, type MarketOverviewInsight } from '@/hooks/useMarketOverviewInsights';
+import { useSupabaseNewsFeed } from '@/hooks/useSupabaseNewsFeed';
 
 type Sentiment = 'bullish' | 'bearish' | 'neutral';
 
@@ -52,8 +56,40 @@ const DiscoverNews = () => {
   const navigate = useNavigate();
   const { reports, loading: reportsLoading } = useDiscoverReportSummaries(24);
   const { marketData, loading: marketLoading, error: marketError, refetch: refetchMarketData } = useMarketData();
-  const { newsData, loading: newsLoading, error: newsError } = useNewsData();
+  const {
+    newsData,
+    loading: newsLoading,
+    error: newsError,
+    refetch: refetchNews,
+    lastUpdated: newsLastUpdated,
+  } = useNewsData();
+  const {
+    data: momentumData,
+    loading: momentumLoading,
+    error: momentumError,
+    refetch: refetchMomentum,
+  } = useSupabaseNewsFeed('momentum');
+  const {
+    data: calendarEvents,
+    loading: calendarLoading,
+    error: calendarError,
+    refetch: refetchCalendar,
+  } = useSupabaseNewsFeed('calendar');
   const { data: overviewInsights = [], isLoading: insightsLoading } = useMarketOverviewInsights();
+  const newsSectionId = 'senaste-rubriker';
+  const momentumSectionId = 'marknadsmomentum';
+  const calendarSectionId = 'finansiell-kalender';
+
+  const refreshSupportingFeeds = () => {
+    refetchNews();
+    refetchMomentum();
+    refetchCalendar();
+  };
+
+  const handleAiChatClick = () => {
+    refreshSupportingFeeds();
+    navigate('/ai-chatt');
+  };
 
   const companyCount = useMemo(
     () => new Set(reports.map((report) => report.companyName?.trim())).size,
@@ -68,8 +104,28 @@ const DiscoverNews = () => {
   const heroInsight = overviewInsights[0];
   const heroSentiment = deriveSentimentFromInsight(heroInsight);
   const heroIndices = marketData?.marketIndices ?? [];
-  const lastUpdated = marketData?.lastUpdated ? new Date(marketData.lastUpdated) : null;
+  const marketLastUpdatedIso = marketData?.lastUpdated ?? null;
+  const newsLastUpdatedIso = newsLastUpdated ?? null;
+  const marketLastUpdatedDate = marketLastUpdatedIso ? new Date(marketLastUpdatedIso) : null;
   const reportHighlights = useMemo(() => reports.slice(0, 3), [reports]);
+  const combinedLastUpdatedLabel = useMemo(() => {
+    if (!marketLastUpdatedIso && !newsLastUpdatedIso) {
+      return null;
+    }
+
+    const formatTime = (isoString: string) =>
+      new Date(isoString).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+
+    const parts: string[] = [];
+    if (marketLastUpdatedIso) {
+      parts.push(`Marknad ${formatTime(marketLastUpdatedIso)}`);
+    }
+    if (newsLastUpdatedIso) {
+      parts.push(`Nyheter ${formatTime(newsLastUpdatedIso)}`);
+    }
+
+    return `Senast uppdaterad ${parts.join(' · ')}`;
+  }, [marketLastUpdatedIso, newsLastUpdatedIso]);
   
   const normalizedIndices = useMemo<IndexTile[]>(() => {
     return heroIndices.map((index) => ({
@@ -127,7 +183,7 @@ const DiscoverNews = () => {
       .map(([category, count]) => ({ category, count }));
   }, [newsData]);
 
-  const topNewsHighlights = useMemo(() => (newsData ?? []).slice(0, 3), [newsData]);
+  const newsHighlights = useMemo(() => (newsData ?? []).slice(0, 3), [newsData]);
 
   const focusAreas = useMemo(() => {
     if (heroInsight?.key_factors?.length) {
@@ -161,12 +217,6 @@ const DiscoverNews = () => {
                     <Sparkles className="mr-2 h-4 w-4" />
                     AI-genererad insikt
                   </Badge>
-                  {lastUpdated && (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Clock className="h-3.5 w-3.5" />
-                      Uppdaterad {lastUpdated.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  )}
                 </div>
                 <div className="space-y-2">
                   <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
@@ -182,9 +232,6 @@ const DiscoverNews = () => {
                       {heroInsight?.content ??
                         'Utforska färska bolagsanalyser, viktiga händelser och korta sammanfattningar producerade av Market Minds AI.'}
                     </p>
-                  )}
-                  {lastUpdated && (
-                    <p className="text-xs text-muted-foreground">Senast uppdaterad {lastUpdated.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}</p>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -217,24 +264,34 @@ const DiscoverNews = () => {
                     </Badge>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-3">
-                  <Button size="lg" className="rounded-xl" onClick={() => navigate('/discover')}>
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Tillbaka till upptäck
-                  </Button>
-                  <Button size="lg" variant="secondary" className="rounded-xl" onClick={() => navigate('/discover')}>
-                    Visa rapporterna
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="rounded-xl border-border/70"
-                    onClick={() => navigate('/ai-chatt')}
-                  >
-                    Prata med AI om nyheterna
-                    <ArrowUpRight className="ml-2 h-4 w-4" />
-                  </Button>
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-3">
+                    <Button size="lg" className="rounded-xl" onClick={() => navigate('/discover')}>
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Tillbaka till upptäck
+                    </Button>
+                    <Button size="lg" variant="secondary" className="rounded-xl" asChild>
+                      <a href={`#${newsSectionId}`}>
+                        Visa rapporterna
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </a>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="rounded-xl border-border/70"
+                      onClick={handleAiChatClick}
+                    >
+                      Prata med AI om nyheterna
+                      <ArrowUpRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                  {combinedLastUpdatedLabel && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5" />
+                      {combinedLastUpdatedLabel}
+                    </div>
+                  )}
                 </div>
               </div>
               <Card className="border-border/70 bg-card/80">
@@ -301,6 +358,30 @@ const DiscoverNews = () => {
                   })}
             </div>
           </section>
+          <section
+            id={newsSectionId}
+            className="space-y-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm sm:p-8"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Senaste nyheterna</p>
+                <h2 className="text-2xl font-semibold text-foreground">Senaste rubriker</h2>
+              </div>
+              <Badge variant="secondary" className="rounded-full bg-primary/10 text-xs text-primary">
+                Uppdateras löpande
+              </Badge>
+            </div>
+            <FlashBriefs
+              manual
+              newsItems={newsData}
+              loading={newsLoading}
+              error={newsError}
+              refetch={refetchNews}
+              title="Senaste rubriker"
+              showHeader={false}
+            />
+          </section>
+
           {(reportHighlights.length > 0 || reportsLoading) && (
             <section className="space-y-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm sm:p-8">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -329,7 +410,7 @@ const DiscoverNews = () => {
             </section>
           )}
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6 lg:grid-cols-3">
             <Card id="morgonrapport" className="border-border/60 bg-card/80">
               <CardContent className="space-y-5 p-4 sm:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -352,9 +433,21 @@ const DiscoverNews = () => {
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Gårdagens höjdpunkter
                     </p>
-                    {topNewsHighlights.length ? (
+                    {newsLoading ? (
+                      <div className="mt-3 flex items-center gap-2 rounded-2xl border border-dashed border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Laddar dagens höjdpunkter…
+                      </div>
+                    ) : newsError ? (
+                      <div className="mt-3 space-y-3 rounded-2xl border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+                        <p>Kunde inte hämta nyhetsflödet just nu.</p>
+                        <Button variant="outline" size="sm" className="border-border/60" onClick={refetchNews}>
+                          Försök igen
+                        </Button>
+                      </div>
+                    ) : newsHighlights.length ? (
                       <ul className="mt-2 space-y-3">
-                        {topNewsHighlights.map((item) => (
+                        {newsHighlights.map((item) => (
                           <li key={item.id} className="rounded-2xl border border-border/60 bg-muted/20 p-3">
                             <p className="text-sm font-semibold text-foreground">{item.headline}</p>
                             <p className="text-xs text-muted-foreground">
@@ -385,8 +478,8 @@ const DiscoverNews = () => {
                       Händelser att bevaka
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      {lastUpdated
-                        ? `Marknadspulsen uppdaterades ${lastUpdated.toLocaleTimeString('sv-SE', {
+                      {marketLastUpdatedDate
+                        ? `Marknadspulsen uppdaterades ${marketLastUpdatedDate.toLocaleTimeString('sv-SE', {
                             hour: '2-digit',
                             minute: '2-digit',
                           })}. Håll ett extra öga på indexrörelserna och dagens rapportflöde.`
@@ -395,11 +488,13 @@ const DiscoverNews = () => {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  <Button className="rounded-xl" variant="default" onClick={() => navigate('/news#morgonrapport')}>
-                    Läs hela morgonrapporten
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                  <Button className="rounded-xl" variant="default" asChild>
+                    <a href={`#${newsSectionId}`}>
+                      Läs hela morgonrapporten
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </a>
                   </Button>
-                  <Button variant="outline" className="rounded-xl border-border/70">
+                  <Button variant="outline" className="rounded-xl border-border/70" onClick={refreshSupportingFeeds}>
                     Prenumerera på utskick
                   </Button>
                 </div>
@@ -417,6 +512,22 @@ const DiscoverNews = () => {
                 />
               </CardContent>
             </Card>
+            <div className="space-y-6">
+              <MarketMomentum
+                sectionId={momentumSectionId}
+                items={momentumData}
+                loading={momentumLoading}
+                error={momentumError}
+                onRefetch={refetchMomentum}
+              />
+              <FinancialCalendar
+                sectionId={calendarSectionId}
+                events={calendarEvents}
+                loading={calendarLoading}
+                error={calendarError}
+                onRefetch={refetchCalendar}
+              />
+            </div>
           </div>
         </div>
       </div>

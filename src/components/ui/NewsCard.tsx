@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { NewsItem } from '../../mockData/newsData';
+import type { NewsItem } from '@/hooks/useSupabaseNewsFeed';
 import NewsModal from './NewsModal';
 
 interface NewsCardProps {
