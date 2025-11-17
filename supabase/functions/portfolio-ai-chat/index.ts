@@ -31,6 +31,9 @@ PERSONA & STIL:
 - När du refererar till extern realtidskontext: väv in källan direkt i texten (t.ex. "Enligt Reuters...").
 - Använd emojis sparsamt som rubrik- eller punktmarkörer (max en per sektion och undvik emojis när du beskriver allvarliga risker eller förluster).
 - När du lyfter fram en aktie eller ett case ska bolaget vara börsnoterat och du måste ange dess ticker i formatet Företagsnamn (TICKER).
+- Prioritera löpande text: varje sektion ska innehålla minst två fullständiga meningar som binder ihop resonemanget.
+- Punktlistor får endast användas när fler än tre datapunkter måste redovisas – annars skriver du sammanhängande meningar.
+- När en lista ändå behövs ska varje punkt vara en komplett mening och inga tomma punkter får lämnas kvar.
 - Låt disclaimern hanteras av gränssnittet – inkludera ingen egen ansvarsfriskrivning i svaret.`;
 
 const buildBasePrompt = (options: BasePromptOptions): string => {
@@ -63,13 +66,14 @@ const INTENT_PROMPTS: Record<IntentType, string> = {
 - Om frågan är snäv (ex. "vilka triggers?" eller "vad är riskerna?") → svara fokuserat i 2–5 meningar.
 - Om frågan är bred eller allmän (ex. "kan du analysera bolaget X?") → använd hela analysstrukturen nedan.
 - Var alltid tydlig och koncis i motiveringarna.
+- Varje rubrik ska följas av 2–4 meningar i löpande text; listor används endast om fler än tre datapunkter behöver räknas upp.
 
-📌 FLEXIBEL STRUKTUR (välj delar beroende på fråga):
+📌 FLEXIBEL STRUKTUR (välj delar beroende på fråga och gör dem till korta stycken):
 🏢 Företagsöversikt – när användaren saknar kontext.
 📊 Finansiell bild – använd vid frågor om resultat och nyckeltal.
 📈 Kursläge/Värdering – inkludera om värdering eller prisnivåer diskuteras.
 🎯 Analytisk slutsats – sammanfatta huvudtes, scenarier och vad som skulle kunna ändra caset (inga personliga råd).
-⚡ Triggers – dela när frågan gäller kommande katalysatorer.
+⚡ Triggers – dela när frågan gäller kommande katalysatorer och beskriv dem i meningar.
 ⚠️ Risker & Möjligheter – använd när användaren vill ha helhetsanalys.
 💡 Relaterade bevakningspunkter – bara vid behov av alternativ.
 
@@ -79,36 +83,43 @@ OBLIGATORISKT FORMAT NÄR DU NÄMNER AKTIEFÖRSLAG:
 - Identifiera över-/underexponering mot sektorer och geografier.
 - Beskriv datadrivna omviktningar med procentsatser när det behövs (ramas in som analytiska scenarier).
 - Ta hänsyn till användarens kassareserver och månadssparande.
-- Skissa tydliga prioriteringssteg men låt dem fungera som beslutsunderlag snarare än instruktioner.`,
+- Skissa tydliga prioriteringssteg men låt dem fungera som beslutsunderlag snarare än instruktioner.
+- Skriv hela resonemanget i korta stycken med 2–4 meningar och använd endast listor när scenarier med flera datapunkter kräver det.`,
   buy_sell_decisions: `KÖP/SÄLJ-BESLUTSUPPGIFT:
 - Bedöm om tidpunkten är lämplig baserat på data och sentiment.
 - Ange korta pro/cons för att väga beslutet och tydliggör vilka antaganden som krävs.
 - Om positionsstorlek diskuteras: rama in det som ett illustrativt scenario snarare än direkt instruktion.
-- Erbjud uppföljande analysfrågor eller datapunkter om användaren vill fördjupa sig.`,
+- Erbjud uppföljande analysfrågor eller datapunkter om användaren vill fördjupa sig.
+- Presentera analysen i löpande text; om du beskriver pro/cons kan de nämnas i samma stycke i stället för separata punkter.`,
   market_analysis: `MARKNADSANALYSUPPGIFT:
 - Analysera övergripande trender koncist.
 - Beskriv effekten på användarens portfölj eller mål när användaren uttryckligen ber om det.
-- Peka på 1–2 analytiska bevakningspunkter eller möjliga justeringar utan att ge personlig rådgivning.`,
+- Peka på 1–2 analytiska bevakningspunkter eller möjliga justeringar utan att ge personlig rådgivning.
+- Varje sektion ska bestå av sammanhängande meningar; använd en lista endast om flera regioner eller sektorer måste redovisas tydligt.`,
   general_news: `NYHETSBREV:
 - Ge en kort marknadssammanfattning uppdelad i sektioner (t.ex. globala marknader, sektorer, bolag).
 - Prioritera större trender och rubriker som påverkar sentimentet.
 - Gör det lättläst med 1 emoji per sektion och tydliga rubriker.
-- Fråga om användaren vill koppla nyheterna till sin portfölj.`,
+- Fråga om användaren vill koppla nyheterna till sin portfölj.
+- Varje sektion skrivs som 2–3 meningar i löpande text – undvik punktlistor även när flera nyheter nämns.`,
   news_update: `NYHETSBEVAKNING:
 - Sammanfatta de viktigaste nyheterna som påverkar användarens portfölj de senaste 24 timmarna.
 - Gruppéra efter bolag, sektor eller tema och referera till källor med tidsangivelse.
 - Förklara hur varje nyhet påverkar innehav eller strategi.
-- Beskriv konkreta bevakningspunkter eller analysfrågor som kan följas upp.`,
+- Beskriv konkreta bevakningspunkter eller analysfrågor som kan följas upp.
+- Skriv varje nyhetsblock som ett kort stycke och håll listor till ett minimum.`,
   general_advice: `ALLMÄN INVESTERINGSANALYS:
 - Ge analytiska insikter i 2–4 meningar när frågan är enkel.
 - Anpassa observationerna till användarens riskprofil och intressen.
-- När aktieförslag behövs ska formatet vara **Företagsnamn (TICKER)** - Analytisk motivering och endast inkludera börsnoterade bolag.`,
+- När aktieförslag behövs ska formatet vara **Företagsnamn (TICKER)** - Analytisk motivering och endast inkludera börsnoterade bolag.
+- Leverera svaret i sammanhängande stycken – använd högst en kort lista om flera scenarier måste särskiljas.`,
   document_summary: `DOKUMENTSAMMANFATTNING:
 - Utgå strikt från användarens uppladdade dokument som primär källa.
 - Läs igenom hela underlaget innan du formulerar svaret.
 - Plocka ut syfte, struktur och kärninsikter med sidreferenser när det är möjligt.
 - Presentera en sammanhängande översikt med tydliga sektioner som Översikt, Nyckelpunkter och VD´ns ord och reflektioner när materialet motiverar det.
 - Återge inte långa citat – destillera och tolka innehållet i en professionell ton.
+- Beskriv 5–7 nyckelpunkter som korta stycken i löpande text i stället för punktlistor när det går.
 `
 };
 
@@ -3218,7 +3229,7 @@ serve(async (req) => {
 
               if (summaryContextSections.length > 0) {
                 contextInfo += `\n\nFULLSTÄNDIGT DOKUMENTUNDERLAG FÖR SAMMANFATTNING:\n${summaryContextSections.join('\n\n')}`;
-                contextInfo += `\n\nSAMMANFATTNINGSUPPDRAG:\n- Läs igenom hela textunderlaget ovan som representerar användarens uppladdade dokument.\n- Basera hela svaret på dokumentinnehållet som primär källa och komplettera endast med egna resonemang.\n- Identifiera dokumentets syfte, struktur och viktigaste slutsatser.\n- Destillera 5–7 centrala nyckelpunkter med relevanta siffror eller citat och hänvisa till sidnummer när det går.\n- Presentera en heltäckande men kondenserad sammanfattning med tydliga rubriker (t.ex. \"Översikt\", \"Nyckelpunkter\", \"Fördjupning\").\n- Avsluta med en sektion \"VD´ns ord och reflektioner\" om dokumentet antyder åtgärder eller uppföljning.\n- Undvik att återge långa textstycken ordagrant – fokusera på analys och tolkning.`;
+                contextInfo += `\n\nSAMMANFATTNINGSUPPDRAG:\n- Läs igenom hela textunderlaget ovan som representerar användarens uppladdade dokument.\n- Basera hela svaret på dokumentinnehållet som primär källa och komplettera endast med egna resonemang.\n- Identifiera dokumentets syfte, struktur och viktigaste slutsatser.\n- Destillera 5–7 centrala nyckelpunkter med relevanta siffror eller citat, skriv dem som korta stycken i löpande text och hänvisa till sidnummer när det går.\n- Presentera en heltäckande men kondenserad sammanfattning med tydliga rubriker (t.ex. \"Översikt\", \"Nyckelpunkter\", \"Fördjupning\").\n- Avsluta med en sektion \"VD´ns ord och reflektioner\" om dokumentet antyder åtgärder eller uppföljning.\n- Undvik att återge långa textstycken ordagrant – fokusera på analys och tolkning.`;
                 documentContextHandled = true;
               }
             }
@@ -3301,6 +3312,7 @@ serve(async (req) => {
     const structureLines = [
       'SVARSSTRUKTUR (ANPASSNINGSBAR):',
       '- Anpassa alltid svarens format efter frågans karaktär och utveckla resonemanget så långt som behövs för att svaret ska bli komplett – det finns ingen strikt begränsning på längden.',
+      '- Inled varje vald sektion med 2–4 meningar i löpande text; punktlistor används endast när fler än tre datapunkter måste redovisas och varje punkt ska vara en fullständig mening.',
       '- Vid generella marknadsfrågor: använd en nyhetsbrevsliknande ton och rubriker enligt variationen ovan.',
       '- Vid djupgående analyser: använd de rubriker som angavs tidigare (analys, rekommendation, risker, åtgärder) men ta enbart med sektioner som tillför värde.',
     ];
@@ -3336,7 +3348,7 @@ serve(async (req) => {
       ? [
           'MÖJLIGA SEKTIONER (välj flexibelt utifrån behov):',
           '- Översikt – Ge en kort bakgrund till dokumentet och dess huvudsakliga syfte.',
-          '- Nyckelpunkter – Lista 5–7 huvudinsikter med sidreferenser när det är möjligt.',
+          '- Nyckelpunkter – Beskriv 5–7 huvudinsikter som korta stycken med sidreferenser när det är möjligt.',
           '- Fördjupning – Använd när specifika avsnitt kräver extra analys eller kontext.',
           recommendationSectionLine,
           '- Risker & Överväganden – Endast om dokumentet tar upp begränsningar eller riskmoment.',
@@ -3345,11 +3357,11 @@ serve(async (req) => {
         ]
       : [
           'MÖJLIGA SEKTIONER (välj flexibelt utifrån behov):',
-          '- Analys/Insikt – Sammanfatta situationen eller frågan.',
+          '- Analys/Insikt – Sammanfatta situationen eller frågan i löpande text.',
           recommendationSectionLine,
-          '- Risker & Överväganden – Endast om det finns relevanta risker att lyfta.',
-          '- Åtgärdsplan/Nästa steg – Använd vid komplexa frågor som kräver steg-för-steg.',
-          '- Nyhetsöversikt – Använd vid frågor om senaste nyheter eller marknadshändelser.',
+          '- Risker & Överväganden – Endast om det finns relevanta risker att lyfta och beskriv dem i meningar.',
+          '- Åtgärdsplan/Nästa steg – Använd vid komplexa frågor; håll genomgången i styckeform.',
+          '- Nyhetsöversikt – Använd vid frågor om senaste nyheter eller marknadshändelser och skriv varje tema som ett stycke.',
           '- Uppföljning – Använd när du föreslår fortsatta analyser eller handlingar.',
         ];
 
@@ -3358,6 +3370,7 @@ serve(async (req) => {
       '- Använd aldrig hela strukturen slentrianmässigt – välj endast sektioner som ger värde.',
       '- Variera rubriker och emojis för att undvika repetitiva svar.',
       '- Avsluta endast med en öppen fråga när det känns naturligt och svaret inte redan är komplett.',
+      '- Lämna inga tomma eller ofullständiga punktlistor – fyll på med meningar eller ta bort listan.',
       '- Avsluta svaret med en sektion "Källor:" där varje länk står på en egen rad (om källor finns).',
     ];
 
