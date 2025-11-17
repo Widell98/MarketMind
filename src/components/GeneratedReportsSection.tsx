@@ -30,17 +30,6 @@ const GeneratedReportsSection: React.FC<GeneratedReportsSectionProps> = ({ repor
 
   return (
     <section className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:p-6">
-      <div className="mb-4 flex items-center gap-2">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
-          <FileText className="h-5 w-5 text-primary" />
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold text-foreground sm:text-xl">Rapportspaning</h2>
-          <p className="text-xs text-muted-foreground sm:text-sm">
-            Senaste AI-genererade rapporterna med viktiga höjdpunkter.
-          </p>
-        </div>
-      </div>
       <div className="grid gap-4 lg:grid-cols-2">
         {reports.map((report) => {
           const generatedAt = formatDistanceToNow(new Date(report.createdAt), { addSuffix: true, locale: sv });
