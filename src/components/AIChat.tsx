@@ -10,6 +10,9 @@ import ChatFolderSidebar from './chat/ChatFolderSidebar';
 import ChatDocumentManager from './chat/ChatDocumentManager';
 import { useChatDocuments } from '@/hooks/useChatDocuments';
 import { useToast } from '@/hooks/use-toast';
+import { polymarketClient } from '@/lib/api/polymarket';
+import type { PolymarketMarket } from '@/types/polymarket';
+import PolymarketChatPanel from './polymarket/PolymarketChatPanel';
 
 import { LogIn, MessageSquare, Brain, Lock, Sparkles, Menu, PanelLeftClose, PanelLeft, Crown, Infinity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -79,6 +82,7 @@ const AIChat = ({
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [isGuideSession, setIsGuideSession] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
+  const [polymarketContext, setPolymarketContext] = useState<PolymarketMarket | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -202,6 +206,7 @@ const AIChat = ({
       createNewSession?: boolean;
       sessionName?: string;
       initialMessage?: string;
+      polymarketMarket?: PolymarketMarket;
     } | undefined;
 
     if (navigationState?.createNewSession) {
@@ -213,7 +218,8 @@ const AIChat = ({
 
       const {
         sessionName,
-        initialMessage
+        initialMessage,
+        polymarketMarket
       } = navigationState;
       const startNewSession = async () => {
         await createNewSession(sessionName);
@@ -223,6 +229,10 @@ const AIChat = ({
           setTimeout(() => {
             inputRef.current?.focus();
           }, 100);
+        }
+
+        if (polymarketMarket) {
+          setPolymarketContext(polymarketMarket);
         }
 
         const currentUrl = `${location.pathname}${location.search}${location.hash ?? ''}`;
@@ -241,6 +251,33 @@ const AIChat = ({
     createNewSession,
     navigate
   ]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const refreshPolymarketContext = async () => {
+      if (!polymarketContext?.id) return;
+
+      const latest = await polymarketClient.fetchMarketById(polymarketContext.id);
+      if (latest && isMounted) {
+        setPolymarketContext((prev) =>
+          prev
+            ? {
+                ...prev,
+                ...latest,
+                outcomes: latest.outcomes?.length ? latest.outcomes : prev.outcomes,
+              }
+            : latest
+        );
+      }
+    };
+
+    void refreshPolymarketContext();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [polymarketContext?.id]);
   useEffect(() => {
     const handleCreateStockChat = (event: CustomEvent) => {
       const {
@@ -294,6 +331,7 @@ const AIChat = ({
     const wasSent = await sendMessage(trimmedInput, {
       documentIds: selectedDocumentIds,
       documents: attachedDocuments.map((doc) => ({ id: doc.id, name: doc.name })),
+      polymarketContext: polymarketContext || undefined,
     });
 
     if (!wasSent) {
@@ -304,6 +342,7 @@ const AIChat = ({
     if (!user) return;
     setIsGuideSession(false);
     await createNewSession();
+    setPolymarketContext(null);
     setInput('');
     setHasProcessedInitialMessage(false); // Reset for new session
     if (isMobile) {
@@ -312,6 +351,7 @@ const AIChat = ({
   }, [user, createNewSession, isMobile]);
   const handleLoadSession = useCallback(async (sessionId: string) => {
     await loadSession(sessionId);
+    setPolymarketContext(null);
     if (isMobile) {
       setSidebarOpen(false);
     }
@@ -439,63 +479,77 @@ const AIChat = ({
             </header>
 
             <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
-              <ChatMessages
-                messages={messages}
-                isLoading={isLoading}
-                isLoadingSession={isLoadingSession}
-                messagesEndRef={messagesEndRef}
-                onExamplePrompt={showExamplePrompts ? handleExamplePrompt : undefined}
-                showGuideBot={isGuideSession}
-              />
+              <div
+                className={
+                  polymarketContext
+                    ? 'grid flex-1 min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px]'
+                    : 'flex flex-1 min-h-0 flex-col'
+                }
+              >
+                <div className="flex min-h-0 flex-col overflow-hidden">
+                  <ChatMessages
+                    messages={messages}
+                    isLoading={isLoading}
+                    isLoadingSession={isLoadingSession}
+                    messagesEndRef={messagesEndRef}
+                    onExamplePrompt={showExamplePrompts ? handleExamplePrompt : undefined}
+                    showGuideBot={isGuideSession}
+                  />
+
+                  {user && !isGuideSession && (
+                    <ChatDocumentManager
+                      documents={uploadedDocuments}
+                      selectedDocumentIds={selectedDocumentIds}
+                      onToggleDocument={handleToggleDocument}
+                      onUpload={handleUploadDocument}
+                      onDelete={handleDeleteDocument}
+                      isLoading={isLoadingDocuments}
+                      isUploading={isUploadingDocument}
+                    />
+                  )}
+
+                  {messages.map((message) => {
+                    const profileUpdates = message.context?.profileUpdates;
+
+                    if (!message.context?.requiresConfirmation || !profileUpdates) {
+                      return null;
+                    }
+
+                    return (
+                      <ProfileUpdateConfirmation
+                        key={`${message.id}_confirmation`}
+                        profileUpdates={profileUpdates}
+                        summary={typeof message.context?.detectedSummary === 'string' ? message.context?.detectedSummary : undefined}
+                        onConfirm={() => updateUserProfile(profileUpdates, message.id)}
+                        onReject={() => dismissProfileUpdatePrompt(message.id)}
+                      />
+                    );
+                  })}
+                </div>
+
+                {polymarketContext && (
+                  <PolymarketChatPanel market={polymarketContext} onClear={() => setPolymarketContext(null)} />
+                )}
+              </div>
 
               {user && !isGuideSession && (
-                <ChatDocumentManager
-                  documents={uploadedDocuments}
-                  selectedDocumentIds={selectedDocumentIds}
-                  onToggleDocument={handleToggleDocument}
-                  onUpload={handleUploadDocument}
-                  onDelete={handleDeleteDocument}
-                  isLoading={isLoadingDocuments}
-                  isUploading={isUploadingDocument}
+                <ChatInput
+                  input={input}
+                  setInput={setInput}
+                  onSubmit={handleSubmit}
+                  isLoading={isLoading}
+                  quotaExceeded={quotaExceeded}
+                  inputRef={inputRef}
+                  attachedDocuments={attachedDocuments.map((doc) => ({
+                    id: doc.id,
+                    name: doc.name,
+                    status: doc.status,
+                  }))}
+                  onRemoveDocument={handleRemoveDocument}
+                  isAttachDisabled={isUploadingDocument || quotaExceeded}
                 />
               )}
-
-              {messages.map((message) => {
-                const profileUpdates = message.context?.profileUpdates;
-
-                if (!message.context?.requiresConfirmation || !profileUpdates) {
-                  return null;
-                }
-
-                return (
-                  <ProfileUpdateConfirmation
-                    key={`${message.id}_confirmation`}
-                    profileUpdates={profileUpdates}
-                    summary={typeof message.context?.detectedSummary === 'string' ? message.context?.detectedSummary : undefined}
-                    onConfirm={() => updateUserProfile(profileUpdates, message.id)}
-                    onReject={() => dismissProfileUpdatePrompt(message.id)}
-                  />
-                );
-              })}
             </div>
-
-            {user && !isGuideSession && (
-              <ChatInput
-                input={input}
-                setInput={setInput}
-                onSubmit={handleSubmit}
-                isLoading={isLoading}
-                quotaExceeded={quotaExceeded}
-                inputRef={inputRef}
-                attachedDocuments={attachedDocuments.map((doc) => ({
-                  id: doc.id,
-                  name: doc.name,
-                  status: doc.status,
-                }))}
-                onRemoveDocument={handleRemoveDocument}
-                isAttachDisabled={isUploadingDocument || quotaExceeded}
-              />
-            )}
           </div>
         </>
       ) : (

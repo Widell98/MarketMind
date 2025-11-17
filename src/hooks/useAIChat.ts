@@ -4,6 +4,7 @@ import { useChatSessions } from '@/contexts/ChatSessionsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
+import type { PolymarketMarket } from '@/types/polymarket';
 
 const DAILY_MESSAGE_CREDITS = 10;
 const FREE_DAILY_DOCUMENT_MESSAGE_LIMIT = 1;
@@ -813,6 +814,29 @@ export const useAIChat = (portfolioId?: string) => {
   type SendMessageOptions = {
     documentIds?: string[];
     documents?: Array<{ id: string; name: string }>;
+    polymarketContext?: PolymarketMarket;
+  };
+
+  const sanitizePolymarketContext = (market?: PolymarketMarket) => {
+    if (!market?.id) return undefined;
+
+    return {
+      id: market.id,
+      question: market.question,
+      description: market.description,
+      categories: market.categories?.slice(0, 5) ?? [],
+      liquidity: market.liquidity,
+      volume24h: market.volume24h,
+      closeTime: market.closeTime,
+      url: market.url,
+      outcomes: (market.outcomes ?? []).slice(0, 5).map((outcome) => ({
+        id: outcome.id,
+        name: outcome.name,
+        price: outcome.price,
+        probability: outcome.probability,
+        volume24h: outcome.volume24h,
+      })),
+    } satisfies PolymarketMarket;
   };
 
   const sendMessage = useCallback(async (content: string, options?: SendMessageOptions): Promise<boolean> => {
@@ -874,7 +898,11 @@ export const useAIChat = (portfolioId?: string) => {
     }
 
     const normalizedOptions: SendMessageOptions | undefined = (options || hasDocumentAttachments)
-      ? { ...(options ?? {}), documentIds: sanitizedDocumentIds }
+      ? {
+          ...(options ?? {}),
+          documentIds: sanitizedDocumentIds,
+          polymarketContext: sanitizePolymarketContext(options?.polymarketContext),
+        }
       : undefined;
 
     // Check usage limit with better error handling
@@ -1070,6 +1098,10 @@ export const useAIChat = (portfolioId?: string) => {
 
       if (sanitizedDocumentIds.length > 0) {
         requestPayload.documentIds = sanitizedDocumentIds;
+      }
+
+      if (normalizedOptions?.polymarketContext) {
+        requestPayload.polymarketContext = normalizedOptions.polymarketContext;
       }
 
       const streamResponse = await fetch(`${supabaseUrl}/functions/v1/portfolio-ai-chat`, {

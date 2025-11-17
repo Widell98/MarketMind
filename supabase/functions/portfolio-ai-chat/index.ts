@@ -8,6 +8,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+type PolymarketOutcomeContext = {
+  id: string;
+  name: string;
+  price: number;
+  probability: number;
+  volume24h?: number;
+};
+
+type PolymarketContext = {
+  id: string;
+  question: string;
+  description?: string;
+  categories: string[];
+  liquidity?: number;
+  volume24h?: number;
+  closeTime?: string;
+  url?: string;
+  outcomes: PolymarketOutcomeContext[];
+};
+
 type BasePromptOptions = {
   shouldOfferFollowUp: boolean;
   expertiseLevel?: 'beginner' | 'intermediate' | 'advanced' | null;
@@ -151,6 +171,76 @@ const pickRandom = (values: string[]): string => {
   if (values.length === 0) return '';
   const index = Math.floor(Math.random() * values.length);
   return values[index];
+};
+
+const normalizePolymarketContext = (input: unknown): PolymarketContext | null => {
+  if (!input || typeof input !== 'object') return null;
+  const value = input as Record<string, unknown>;
+  const id = typeof value.id === 'string' ? value.id : null;
+  const question = typeof value.question === 'string' ? value.question : null;
+
+  if (!id || !question) return null;
+
+  const outcomes = Array.isArray(value.outcomes)
+    ? value.outcomes
+        .map((outcome) => {
+          if (!outcome || typeof outcome !== 'object') return null;
+          const outcomeValue = outcome as Record<string, unknown>;
+          if (typeof outcomeValue.id !== 'string' || typeof outcomeValue.name !== 'string') return null;
+
+          return {
+            id: outcomeValue.id,
+            name: outcomeValue.name,
+            price: typeof outcomeValue.price === 'number' ? outcomeValue.price : 0,
+            probability: typeof outcomeValue.probability === 'number' ? outcomeValue.probability : 0,
+            volume24h: typeof outcomeValue.volume24h === 'number' ? outcomeValue.volume24h : undefined,
+          } satisfies PolymarketOutcomeContext;
+        })
+        .filter((item): item is PolymarketOutcomeContext => Boolean(item))
+    : [];
+
+  return {
+    id,
+    question,
+    description: typeof value.description === 'string' ? value.description : undefined,
+    categories: Array.isArray(value.categories)
+      ? (value.categories.filter((cat): cat is string => typeof cat === 'string') as string[]).slice(0, 5)
+      : [],
+    liquidity: typeof value.liquidity === 'number' ? value.liquidity : undefined,
+    volume24h: typeof value.volume24h === 'number' ? value.volume24h : undefined,
+    closeTime: typeof value.closeTime === 'string' ? value.closeTime : undefined,
+    url: typeof value.url === 'string' ? value.url : undefined,
+    outcomes: outcomes.slice(0, 5),
+  };
+};
+
+const fetchPolymarketContextById = async (marketId: string): Promise<PolymarketContext | null> => {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  if (!supabaseUrl || !marketId) return null;
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (serviceKey) {
+    headers['Authorization'] = `Bearer ${serviceKey}`;
+  }
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/polymarket-markets`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ filters: { marketIds: [marketId], limit: 1 } }),
+  });
+
+  if (!response.ok) {
+    console.error('Failed to fetch Polymarket market by ID', { status: response.status, statusText: response.statusText });
+    return null;
+  }
+
+  const data = await response.json();
+  const market = Array.isArray(data?.markets) ? data.markets[0] : null;
+  return normalizePolymarketContext(market);
 };
 
 const buildHeadingDirectives = ({ intent }: HeadingDirectiveInput): string => {
@@ -1684,7 +1774,7 @@ serve(async (req) => {
     const requestBody = await req.json();
     console.log('Request body received:', JSON.stringify(requestBody, null, 2));
     
-    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData, stream, documentIds } = requestBody;
+    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData, stream, documentIds, polymarketContext: rawPolymarketContext } = requestBody;
 
     const filteredDocumentIds: string[] = Array.isArray(documentIds)
       ? documentIds.filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0)
@@ -1700,6 +1790,19 @@ serve(async (req) => {
       DOCUMENT_SUMMARY_PATTERNS.some((pattern) => pattern.test(message)) ||
       DOCUMENT_SUMMARY_PATTERNS.some((pattern) => pattern.test(normalizedSummaryCheckValue));
     let isDocumentSummaryRequest = hasUploadedDocuments && summaryPatternTriggered;
+
+    let polymarketContext = normalizePolymarketContext(rawPolymarketContext);
+    if (!polymarketContext && rawPolymarketContext && typeof rawPolymarketContext === 'object') {
+      const maybeId = (rawPolymarketContext as Record<string, unknown>).id;
+      if (typeof maybeId === 'string') {
+        polymarketContext = await fetchPolymarketContextById(maybeId);
+      }
+    } else if (polymarketContext?.id && (!polymarketContext.outcomes || polymarketContext.outcomes.length === 0)) {
+      const refreshed = await fetchPolymarketContextById(polymarketContext.id);
+      if (refreshed) {
+        polymarketContext = refreshed;
+      }
+    }
 
     console.log('Portfolio AI Chat function called with:', {
       message: message?.substring(0, 50) + '...',
@@ -2972,6 +3075,19 @@ serve(async (req) => {
       }
     }
 
+    if (polymarketContext) {
+      const formattedOutcomes = (polymarketContext.outcomes || [])
+        .slice(0, 3)
+        .map((outcome) => `${outcome.name}: ${(outcome.probability * 100).toFixed(0)}% @ ${outcome.price.toFixed(2)}`)
+        .join('\n  - ');
+
+      const closingText = polymarketContext.closeTime
+        ? new Date(polymarketContext.closeTime).toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' })
+        : 'Okänt';
+
+      contextInfo += `\n\nPOLYMARKET-KONTEXT (ENDAST ANALYS, INGEN ORDERLÄGGNING):\n- Marknad: ${polymarketContext.question}\n- Stänger: ${closingText}\n- Likviditet: ${polymarketContext.liquidity ? Math.round(polymarketContext.liquidity).toLocaleString() + ' $' : 'Okänd'}\n- Volym 24h: ${polymarketContext.volume24h ? Math.round(polymarketContext.volume24h).toLocaleString() + ' $' : 'Okänd'}\n- Utfall:\n  - ${formattedOutcomes || 'Ej angivet'}\nInstruktion: Gör endast research och risk-/reward-analys. Beskriv potentiella scenarier men utför aldrig riktiga bets eller order. Logga användarens preferenser för ev. sparning i portföljen.`;
+    }
+
     // Add current portfolio context with latest valuations
     if (shouldIncludePersonalContext && holdings && holdings.length > 0) {
       const actualHoldings: HoldingRecord[] = (holdings as HoldingRecord[]).filter((h) => h.holding_type !== 'recommendation');
@@ -3411,6 +3527,7 @@ ${importantLines.join('\n')}
       model,
       timestamp: new Date().toISOString(),
       hasMarketData,
+      hasPolymarketContext: Boolean(polymarketContext),
       isPremium
     };
 
@@ -3427,6 +3544,10 @@ ${importantLines.join('\n')}
 
         if (filteredDocumentIds.length > 0) {
           userMessageContext.documentIds = filteredDocumentIds;
+        }
+
+        if (polymarketContext) {
+          userMessageContext.polymarketContext = polymarketContext;
         }
 
         await supabase
