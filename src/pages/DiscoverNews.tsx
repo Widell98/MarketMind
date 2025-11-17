@@ -72,7 +72,7 @@ const DiscoverNews = () => {
   const heroIndices = marketData?.marketIndices ?? [];
   const lastUpdated = marketData?.lastUpdated ? new Date(marketData.lastUpdated) : null;
   const reportHighlights = useMemo(() => reports.slice(0, 3), [reports]);
-
+  
   const normalizedIndices = useMemo<IndexTile[]>(() => {
     return heroIndices.map((index) => ({
       symbol: index.symbol,
@@ -128,6 +128,27 @@ const DiscoverNews = () => {
       .slice(0, 4)
       .map(([category, count]) => ({ category, count }));
   }, [newsData]);
+
+  const topNewsHighlights = useMemo(() => (newsData ?? []).slice(0, 3), [newsData]);
+
+  const focusAreas = useMemo(() => {
+    if (heroInsight?.key_factors?.length) {
+      return heroInsight.key_factors.slice(0, 3);
+    }
+
+    if (trendingCategories.length) {
+      return trendingCategories.map((item) => item.category).slice(0, 3);
+    }
+
+    return ['Marknadspuls', 'Rapporter', 'Nyheter'];
+  }, [heroInsight, trendingCategories]);
+
+  const formatPublishedLabel = (isoString?: string) => {
+    if (!isoString) return 'Okänd tid';
+    const date = new Date(isoString);
+    if (Number.isNaN(date.getTime())) return 'Okänd tid';
+    return date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+  };
 
   const handleScrollToReports = () => {
     reportsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -314,28 +335,104 @@ const DiscoverNews = () => {
             </section>
           )}
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.5fr)]">
-            <section
-              ref={reportsSectionRef}
-              id="rapporter"
-              className="rounded-3xl border border-border/60 bg-card/80 px-4 py-6 shadow-sm sm:px-8 sm:py-8"
-            >
-              <div className="flex justify-end">
-                <Button variant="ghost" className="rounded-xl" onClick={() => navigate('/discover')}>
-                  Till hela biblioteket
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-              <div className="mt-4">
-                {reportsLoading && reports.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-6 py-10 text-center text-sm text-muted-foreground">
-                    Laddar rapporter…
+          <section
+            ref={reportsSectionRef}
+            id="rapporter"
+            className="rounded-3xl border border-border/60 bg-card/80 px-4 py-6 shadow-sm sm:px-8 sm:py-8"
+          >
+            <div className="flex justify-end">
+              <Button variant="ghost" className="rounded-xl" onClick={() => navigate('/discover')}>
+                Till hela biblioteket
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+            <div className="mt-4">
+              {reportsLoading && reports.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-6 py-10 text-center text-sm text-muted-foreground">
+                  Laddar rapporter…
+                </div>
+              ) : (
+                <GeneratedReportsSection reports={reports} />
+              )}
+            </div>
+          </section>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card id="morgonrapport" className="border-border/60 bg-card/80">
+              <CardContent className="space-y-5 p-4 sm:p-6">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      AI-genererat nyhetsbrev
+                    </p>
+                    <h3 className="text-2xl font-semibold text-foreground">Morgonrapporten</h3>
                   </div>
-                ) : (
-                  <GeneratedReportsSection reports={reports} />
-                )}
-              </div>
-            </section>
+                  <Badge variant="secondary" className="rounded-full bg-primary/10 text-xs text-primary">
+                    Genererad kl 07:00
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {heroInsight?.content ??
+                    'AI sammanfattar gårdagens marknadsrörelser och vad som väntar i dag. Följ höjdpunkterna och få ett par snabba fokusområden innan börsen öppnar.'}
+                </p>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Gårdagens höjdpunkter
+                    </p>
+                    {topNewsHighlights.length ? (
+                      <ul className="mt-2 space-y-3">
+                        {topNewsHighlights.map((item) => (
+                          <li key={item.id} className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                            <p className="text-sm font-semibold text-foreground">{item.headline}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {item.source} · {formatPublishedLabel(item.publishedAt)}
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{item.summary}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="mt-3 rounded-2xl border border-dashed border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
+                        Nyhetsflödet är lugnt just nu. Vi uppdaterar morgonrapporten när nya artiklar finns tillgängliga.
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fokus idag</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {focusAreas.map((area) => (
+                        <Badge key={area} variant="outline" className="rounded-full border-border/60 text-xs">
+                          {area}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Händelser att bevaka
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {lastUpdated
+                        ? `Marknadspulsen uppdaterades ${lastUpdated.toLocaleTimeString('sv-SE', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}. Håll ett extra öga på indexrörelserna och dagens rapportflöde.`
+                        : 'Håll koll på viktiga makrobesked och kommande rapportsläpp under dagen.'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <Button className="rounded-xl" variant="default" onClick={() => navigate('/discover/news#morgonrapport')}>
+                    Läs hela morgonrapporten
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" className="rounded-xl border-border/70">
+                    Prenumerera på utskick
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
             <Card className="border-border/60 bg-card/80">
               <CardContent className="p-4 sm:p-6">
