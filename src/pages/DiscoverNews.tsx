@@ -360,13 +360,9 @@ const DiscoverNews = () => {
           </section>
           <section
             id={newsSectionId}
-            className="space-y-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm sm:p-8"
+            className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm sm:p-8"
           >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Senaste nyheterna</p>
-                <h2 className="text-2xl font-semibold text-foreground">Senaste rubriker</h2>
-              </div>
+            <div className="mb-4 flex justify-end">
               <Badge variant="secondary" className="rounded-full bg-primary/10 text-xs text-primary">
                 Uppdateras löpande
               </Badge>
