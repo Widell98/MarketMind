@@ -1,8 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowDownLeft, ArrowLeft, ArrowUpRight, Clock, Loader2, Sparkles } from 'lucide-react';
+import { ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight, Clock, Loader2, Sparkles } from 'lucide-react';
 
 import Layout from '@/components/Layout';
+import GeneratedReportsSection from '@/components/GeneratedReportsSection';
+import ReportHighlightCard from '@/components/ReportHighlightCard';
+import MarketPulse from '@/components/MarketPulse';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -48,10 +51,11 @@ const MAX_INDEX_TILES = 4;
 
 const DiscoverNews = () => {
   const navigate = useNavigate();
-  const { reports } = useDiscoverReportSummaries(24);
-  const { marketData, loading: marketLoading } = useMarketData();
+  const { reports, loading: reportsLoading } = useDiscoverReportSummaries(24);
+  const { marketData, loading: marketLoading, error: marketError, refetch: refetchMarketData } = useMarketData();
   const { newsData, loading: newsLoading, error: newsError } = useNewsData();
   const { data: overviewInsights = [], isLoading: insightsLoading } = useMarketOverviewInsights();
+  const reportsSectionRef = useRef<HTMLDivElement | null>(null);
 
   const companyCount = useMemo(
     () => new Set(reports.map((report) => report.companyName?.trim())).size,
@@ -67,6 +71,7 @@ const DiscoverNews = () => {
   const heroSentiment = deriveSentimentFromInsight(heroInsight);
   const heroIndices = marketData?.marketIndices ?? [];
   const lastUpdated = marketData?.lastUpdated ? new Date(marketData.lastUpdated) : null;
+  const reportHighlights = useMemo(() => reports.slice(0, 3), [reports]);
 
   const normalizedIndices = useMemo<IndexTile[]>(() => {
     return heroIndices.map((index) => ({
@@ -123,6 +128,10 @@ const DiscoverNews = () => {
       .slice(0, 4)
       .map(([category, count]) => ({ category, count }));
   }, [newsData]);
+
+  const handleScrollToReports = () => {
+    reportsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   return (
     <Layout>
@@ -197,6 +206,10 @@ const DiscoverNews = () => {
                   <Button size="lg" className="rounded-xl" onClick={() => navigate('/discover')}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Tillbaka till upptäck
+                  </Button>
+                  <Button size="lg" variant="secondary" className="rounded-xl" onClick={handleScrollToReports}>
+                    Visa rapporterna
+                    <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                   <Button
                     variant="outline"
@@ -273,9 +286,69 @@ const DiscoverNews = () => {
                   })}
             </div>
           </section>
+          {(reportHighlights.length > 0 || reportsLoading) && (
+            <section className="space-y-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm sm:p-8">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Senaste AI-genererade rapporterna
+                  </p>
+                  <h2 className="text-2xl font-semibold text-foreground">Viktiga höjdpunkter</h2>
+                </div>
+                <Button variant="ghost" className="rounded-xl" onClick={handleScrollToReports}>
+                  Visa alla rapporter
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+              {reportsLoading && reportHighlights.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-6 py-10 text-center text-sm text-muted-foreground">
+                  Laddar rapporter…
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {reportHighlights.map((report) => (
+                    <ReportHighlightCard key={report.id} report={report} onCTAClick={handleScrollToReports} />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.5fr)]">
+            <Card ref={reportsSectionRef} id="rapporter" className="border-border/60 bg-card/80">
+              <CardContent className="space-y-4 p-4 sm:p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rapportspaning</p>
+                    <h3 className="text-xl font-semibold text-foreground">Utforska aktiecase</h3>
+                  </div>
+                  <Button variant="ghost" className="rounded-xl" onClick={() => navigate('/discover')}>
+                    Till hela biblioteket
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+                {reportsLoading && reports.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-6 py-10 text-center text-sm text-muted-foreground">
+                    Laddar rapporter…
+                  </div>
+                ) : (
+                  <GeneratedReportsSection reports={reports} />
+                )}
+              </CardContent>
+            </Card>
 
-
+            <Card className="border-border/60 bg-card/80">
+              <CardContent className="p-4 sm:p-6">
+                <MarketPulse
+                  useExternalData
+                  marketData={marketData}
+                  loading={marketLoading}
+                  error={marketError}
+                  refetch={refetchMarketData}
+                />
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </Layout>
