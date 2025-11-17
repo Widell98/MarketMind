@@ -38,7 +38,7 @@ const MobileNavigation = () => {
   const mainNavigation: NavigationItem[] = [
     { name: t('nav.home'), href: '/', icon: Home },
     { name: t('nav.discover'), href: '/discover', icon: Sparkles },
-    { name: t('nav.news'), href: '/discover/news', icon: Sparkles },
+    { name: t('nav.news'), href: '/news', icon: Sparkles },
   ];
 
   const aiNavigation: NavigationItem[] = [

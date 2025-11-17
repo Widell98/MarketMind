@@ -395,7 +395,7 @@ const DiscoverNews = () => {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  <Button className="rounded-xl" variant="default" onClick={() => navigate('/discover/news#morgonrapport')}>
+                  <Button className="rounded-xl" variant="default" onClick={() => navigate('/news#morgonrapport')}>
                     Läs hela morgonrapporten
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>

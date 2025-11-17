@@ -156,7 +156,7 @@ const Discover = () => {
               <Button
                 size="lg"
                 className="group rounded-xl px-5"
-                onClick={() => navigate('/discover/news')}
+                onClick={() => navigate('/news')}
               >
                 <span>Öppna nyhetssidan</span>
                 <ArrowRight className="ml-2 h-4 w-4 transition group-hover:translate-x-1" />

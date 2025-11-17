@@ -7,7 +7,7 @@ Den dagliga morgonrapporten ska fungera som en kuraterad start på handelsdagen 
 1. Skapa en ny Edge Function (`ai-morning-brief`) som körs varje vardagsmorgon kl. 07:00 CET via Vercels cron scheduler.
 2. Sammanfatta gårdagens marknadsnyheter, AI-genererade rapporter och marknadspulsen i 3–4 sektioner ("Gårdagens höjdpunkter", "Nyckeltal", "Fokus idag", "Händelser att bevaka").
 3. Lagra både rådata och den genererade texten i Supabase för historik, delning och personalisering.
-4. Visa den senaste morgonrapporten på `/discover/news`, samt distribuera den via notifieringar (mail/push) till prenumeranter.
+4. Visa den senaste morgonrapporten på `/news`, samt distribuera den via notifieringar (mail/push) till prenumeranter.
 
 ## Datakällor
 - `fetch-news-data` Edge Function (via `useNewsData`) för gårdagens artiklar, kategorier och sentiment.
