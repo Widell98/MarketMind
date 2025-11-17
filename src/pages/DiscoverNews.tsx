@@ -17,6 +17,7 @@ import { useNewsData } from '@/hooks/useNewsData';
 import { useMarketOverviewInsights, type MarketOverviewInsight } from '@/hooks/useMarketOverviewInsights';
 import { useSupabaseNewsFeed } from '@/hooks/useSupabaseNewsFeed';
 import { useMorningBrief } from '@/hooks/useMorningBrief';
+import { useUserRole } from '@/hooks/useUserRole';
 
 type Sentiment = 'bullish' | 'bearish' | 'neutral';
 
@@ -82,6 +83,7 @@ const DiscoverNews = () => {
     refetch: refetchCalendar,
   } = useSupabaseNewsFeed('calendar');
   const { data: overviewInsights = [], isLoading: insightsLoading } = useMarketOverviewInsights();
+  const { isAdmin } = useUserRole();
   const momentumSectionId = 'marknadsmomentum';
   const calendarSectionId = 'finansiell-kalender';
   const reportHighlightsSectionId = 'rapport-hojdpunkter';
@@ -91,7 +93,11 @@ const DiscoverNews = () => {
     refetchNews();
     refetchMomentum();
     refetchCalendar();
-    refetchMorningBrief({ forceRefresh: true });
+    if (isAdmin) {
+      refetchMorningBrief({ forceRefresh: true });
+    } else {
+      refetchMorningBrief();
+    }
   };
 
   const handleAiChatClick = () => {
@@ -441,7 +447,9 @@ const DiscoverNews = () => {
                           variant="outline"
                           size="sm"
                           className="border-border/60"
-                          onClick={() => refetchMorningBrief({ forceRefresh: true })}
+                          onClick={() =>
+                            isAdmin ? refetchMorningBrief({ forceRefresh: true }) : refetchMorningBrief()
+                          }
                         >
                           Försök igen
                         </Button>
@@ -509,6 +517,16 @@ const DiscoverNews = () => {
                   <Button variant="outline" className="rounded-xl border-border/70" onClick={refreshSupportingFeeds}>
                     Prenumerera på utskick
                   </Button>
+                  {isAdmin && (
+                    <Button
+                      variant="secondary"
+                      className="rounded-xl border border-border/70 bg-secondary/70"
+                      onClick={() => refetchMorningBrief({ forceRefresh: true })}
+                    >
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Generera dagens rapport
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

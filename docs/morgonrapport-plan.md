@@ -20,6 +20,11 @@ Den dagliga morgonrapporten ska fungera som en kuraterad start på handelsdagen 
 - `useNewsData` använder `useSupabaseNewsFeed('news')` med 10 minuters intervall för att matcha `fetch-news-data`-funktionens cacheade nyhetsflöde.
 - När båda tidsstämplarna visas i UI:t samlas de under en gemensam "Senast uppdaterad"-indikator så att förändringar i dessa intervall lättare kan härledas.
 
+## Åtkomstkontroll
+- Endast administratörer (användare med `app_role = 'admin'`) får trigga ny generering från edge-funktionen. Detta verifieras i `ai-morning-brief` via RPC:t `has_role` och kräver giltig Supabase-session i `Authorization`-headern.
+- Övriga besökare kan anonymt hämta den senaste cachade morgonrapporten. Om datan är äldre än ett dygn returneras den med flaggan `stale-admin-refresh-required` tills en admin kör en ny generering.
+- Frontend visar en "Generera dagens rapport"-knapp endast för admin-konton och faller tillbaka till standardhämtning för alla andra CTA:er.
+
 ## Arkitektur
 1. **Edge Function `ai-morning-brief`:**
    - Autentiseras via service role key.

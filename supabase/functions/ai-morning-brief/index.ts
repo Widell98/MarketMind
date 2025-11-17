@@ -14,6 +14,11 @@ const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const functionsUrl = Deno.env.get("SUPABASE_FUNCTIONS_URL") ?? `${supabaseUrl}/functions/v1`;
 
+interface RequestContext {
+  userId: string | null;
+  isAdmin: boolean;
+}
+
 interface NewsItem {
   id?: string;
   headline?: string;
@@ -68,10 +73,35 @@ serve(async (req) => {
   try {
     const body = await safeParseJson(req);
     const forceRefresh = Boolean(body?.forceRefresh);
+    const requester = await getRequestContext(req);
+
+    if (forceRefresh && !requester.isAdmin) {
+      return new Response(
+        JSON.stringify({ error: "Endast administratörer kan generera en ny morgonrapport" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     const latestBrief = await getLatestBrief();
-    if (latestBrief && !forceRefresh && isFresh(latestBrief.generated_at)) {
+    const needsGeneration = !latestBrief || !isFresh(latestBrief.generated_at) || forceRefresh;
+
+    if (!needsGeneration && latestBrief) {
       return respondWithBrief(latestBrief, { fromCache: true });
+    }
+
+    if (needsGeneration && !requester.isAdmin) {
+      if (latestBrief) {
+        return respondWithBrief(latestBrief, {
+          fromCache: true,
+          status: "stale-admin-refresh-required",
+          error: "Morgonrapporten uppdateras när en administratör triggar en ny körning.",
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ error: "Ingen morgonrapport har genererats ännu. Kontakta en administratör." }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     const contextSnapshot = await buildContextSnapshot();
@@ -102,6 +132,46 @@ async function safeParseJson(req: Request) {
     return await req.json();
   } catch (_err) {
     return {};
+  }
+}
+
+async function getRequestContext(req: Request): Promise<RequestContext> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) {
+    return { userId: null, isAdmin: false };
+  }
+
+  try {
+    const authClient = createClient(supabaseUrl, supabaseServiceKey, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+          apikey: supabaseServiceKey,
+        },
+      },
+    });
+
+    const {
+      data: { user },
+      error,
+    } = await authClient.auth.getUser();
+
+    if (error || !user) {
+      return { userId: null, isAdmin: false };
+    }
+
+    const { data: hasAdminRole } = await supabase.rpc("has_role", {
+      _user_id: user.id,
+      _role: "admin",
+    });
+
+    return {
+      userId: user.id,
+      isAdmin: Boolean(hasAdminRole),
+    };
+  } catch (err) {
+    console.error("Failed to validate requester context", err);
+    return { userId: null, isAdmin: false };
   }
 }
 
