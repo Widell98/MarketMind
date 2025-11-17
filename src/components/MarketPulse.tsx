@@ -1,17 +1,30 @@
 
 import React from 'react';
-import { useMarketData } from '../hooks/useMarketData';
+import { useMarketData, type MarketDataResponse } from '../hooks/useMarketData';
 import Sparkline from './ui/Sparkline';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
 
-const MarketPulse = () => {
-  const { marketData, loading, error, refetch } = useMarketData();
+type MarketPulseBaseProps = {
+  marketData: MarketDataResponse | null;
+  loading: boolean;
+  error: string | null;
+  refetch?: () => void;
+};
+
+const MarketPulseBase: React.FC<MarketPulseBaseProps> = ({ marketData, loading, error, refetch }) => {
+  const data =
+    marketData || {
+      marketIndices: [],
+      topStocks: [],
+      bottomStocks: [],
+      lastUpdated: new Date().toISOString(),
+    };
 
   const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString('sv-SE', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return new Date(timestamp).toLocaleTimeString('sv-SE', {
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -44,8 +57,6 @@ const MarketPulse = () => {
       </div>
     );
   }
-
-  const data = marketData || { marketIndices: [], topStocks: [], bottomStocks: [], lastUpdated: new Date().toISOString() };
 
   return (
     <div className="w-full">
@@ -136,6 +147,36 @@ const MarketPulse = () => {
         </div>
       )}
     </div>
+  );
+};
+
+type MarketPulseProps = {
+  marketData?: MarketDataResponse | null;
+  loading?: boolean;
+  error?: string | null;
+  refetch?: () => void;
+  useExternalData?: boolean;
+};
+
+const MarketPulse: React.FC<MarketPulseProps> = ({
+  marketData = null,
+  loading = false,
+  error = null,
+  refetch,
+  useExternalData = false,
+}) => {
+  if (useExternalData) {
+    return <MarketPulseBase marketData={marketData} loading={loading} error={error} refetch={refetch} />;
+  }
+
+  const hookResult = useMarketData();
+  return (
+    <MarketPulseBase
+      marketData={hookResult.marketData}
+      loading={hookResult.loading}
+      error={hookResult.error}
+      refetch={hookResult.refetch}
+    />
   );
 };
 
