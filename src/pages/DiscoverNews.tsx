@@ -78,6 +78,7 @@ const DiscoverNews = () => {
   const momentumSectionId = 'marknadsmomentum';
   const calendarSectionId = 'finansiell-kalender';
   const reportHighlightsSectionId = 'rapport-hojdpunkter';
+  const morningReportSectionId = 'morgonrapport';
 
   const refreshSupportingFeeds = () => {
     refetchNews();
@@ -389,7 +390,7 @@ const DiscoverNews = () => {
           )}
 
           <div className="grid gap-6 lg:grid-cols-3">
-            <Card id="morgonrapport" className="border-border/60 bg-card/80">
+            <Card id={morningReportSectionId} className="border-border/60 bg-card/80">
               <CardContent className="space-y-5 p-4 sm:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
@@ -467,7 +468,7 @@ const DiscoverNews = () => {
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <Button className="rounded-xl" variant="default" asChild>
-                    <a href={`#${newsSectionId}`}>
+                    <a href={`#${morningReportSectionId}`}>
                       Läs hela morgonrapporten
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </a>
