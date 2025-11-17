@@ -5,7 +5,6 @@ import { ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight, Clock, Loader2, Spa
 import Layout from '@/components/Layout';
 import ReportHighlightCard from '@/components/ReportHighlightCard';
 import MarketPulse from '@/components/MarketPulse';
-import FlashBriefs from '@/components/FlashBriefs';
 import MarketMomentum from '@/components/MarketMomentum';
 import FinancialCalendar from '@/components/FinancialCalendar';
 import { Button } from '@/components/ui/button';
@@ -76,9 +75,9 @@ const DiscoverNews = () => {
     refetch: refetchCalendar,
   } = useSupabaseNewsFeed('calendar');
   const { data: overviewInsights = [], isLoading: insightsLoading } = useMarketOverviewInsights();
-  const newsSectionId = 'senaste-rubriker';
   const momentumSectionId = 'marknadsmomentum';
   const calendarSectionId = 'finansiell-kalender';
+  const reportHighlightsSectionId = 'rapport-hojdpunkter';
 
   const refreshSupportingFeeds = () => {
     refetchNews();
@@ -271,7 +270,7 @@ const DiscoverNews = () => {
                       Tillbaka till upptäck
                     </Button>
                     <Button size="lg" variant="secondary" className="rounded-xl" asChild>
-                      <a href={`#${newsSectionId}`}>
+                      <a href={`#${reportHighlightsSectionId}`}>
                         Visa rapporterna
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </a>
@@ -358,28 +357,11 @@ const DiscoverNews = () => {
                   })}
             </div>
           </section>
-          <section
-            id={newsSectionId}
-            className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm sm:p-8"
-          >
-            <div className="mb-4 flex justify-end">
-              <Badge variant="secondary" className="rounded-full bg-primary/10 text-xs text-primary">
-                Uppdateras löpande
-              </Badge>
-            </div>
-            <FlashBriefs
-              manual
-              newsItems={newsData}
-              loading={newsLoading}
-              error={newsError}
-              refetch={refetchNews}
-              title="Senaste rubriker"
-              showHeader={false}
-            />
-          </section>
-
           {(reportHighlights.length > 0 || reportsLoading) && (
-            <section className="space-y-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm sm:p-8">
+            <section
+              id={reportHighlightsSectionId}
+              className="space-y-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm sm:p-8"
+            >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
