@@ -1,9 +1,8 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight, Clock, Loader2, Sparkles } from 'lucide-react';
 
 import Layout from '@/components/Layout';
-import GeneratedReportsSection from '@/components/GeneratedReportsSection';
 import ReportHighlightCard from '@/components/ReportHighlightCard';
 import MarketPulse from '@/components/MarketPulse';
 import { Button } from '@/components/ui/button';
@@ -55,7 +54,6 @@ const DiscoverNews = () => {
   const { marketData, loading: marketLoading, error: marketError, refetch: refetchMarketData } = useMarketData();
   const { newsData, loading: newsLoading, error: newsError } = useNewsData();
   const { data: overviewInsights = [], isLoading: insightsLoading } = useMarketOverviewInsights();
-  const reportsSectionRef = useRef<HTMLDivElement | null>(null);
 
   const companyCount = useMemo(
     () => new Set(reports.map((report) => report.companyName?.trim())).size,
@@ -148,10 +146,6 @@ const DiscoverNews = () => {
     const date = new Date(isoString);
     if (Number.isNaN(date.getTime())) return 'Okänd tid';
     return date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const handleScrollToReports = () => {
-    reportsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   return (
@@ -316,7 +310,7 @@ const DiscoverNews = () => {
                   </p>
                   <h2 className="text-2xl font-semibold text-foreground">Viktiga höjdpunkter</h2>
                 </div>
-                <Button variant="ghost" className="rounded-xl" onClick={handleScrollToReports}>
+                <Button variant="ghost" className="rounded-xl" onClick={() => navigate('/discover')}>
                   Visa alla rapporter
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -334,28 +328,6 @@ const DiscoverNews = () => {
               )}
             </section>
           )}
-
-          <section
-            ref={reportsSectionRef}
-            id="rapporter"
-            className="rounded-3xl border border-border/60 bg-card/80 px-4 py-6 shadow-sm sm:px-8 sm:py-8"
-          >
-            <div className="flex justify-end">
-              <Button variant="ghost" className="rounded-xl" onClick={() => navigate('/discover')}>
-                Till hela biblioteket
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-            <div className="mt-4">
-              {reportsLoading && reports.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-6 py-10 text-center text-sm text-muted-foreground">
-                  Laddar rapporter…
-                </div>
-              ) : (
-                <GeneratedReportsSection reports={reports} />
-              )}
-            </div>
-          </section>
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Card id="morgonrapport" className="border-border/60 bg-card/80">
