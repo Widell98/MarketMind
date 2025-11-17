@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { Analytics } from "@vercel/analytics/next";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -68,7 +68,8 @@ function App() {
                     <Route path="/admin/stock-cases" element={<AdminStockCases />} />
                     <Route path="/advanced-features" element={<AdvancedFeatures />} />
                     <Route path="/discover" element={<Discover />} />
-                    <Route path="/discover/news" element={<DiscoverNews />} />
+                    <Route path="/news" element={<DiscoverNews />} />
+                    <Route path="/discover/news" element={<Navigate to="/news" replace />} />
                     {/* Legacy routes for backwards compatibility */}
                     <Route path="/discover-opportunities" element={<Discover />} />
                     <Route path="/market-analyses" element={<Discover />} />

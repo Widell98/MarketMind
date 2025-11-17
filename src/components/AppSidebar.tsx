@@ -31,7 +31,7 @@ const AppSidebar = () => {
     icon: Sparkles
   }, {
     name: t('nav.news'),
-    href: '/discover/news',
+    href: '/news',
     icon: MessageSquare
   }];
   const userNavigation = [{
