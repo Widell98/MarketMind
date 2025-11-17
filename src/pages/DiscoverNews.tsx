@@ -16,6 +16,7 @@ import { useMarketData } from '@/hooks/useMarketData';
 import { useNewsData } from '@/hooks/useNewsData';
 import { useMarketOverviewInsights, type MarketOverviewInsight } from '@/hooks/useMarketOverviewInsights';
 import { useSupabaseNewsFeed } from '@/hooks/useSupabaseNewsFeed';
+import { useMorningBrief } from '@/hooks/useMorningBrief';
 
 type Sentiment = 'bullish' | 'bearish' | 'neutral';
 
@@ -63,6 +64,12 @@ const DiscoverNews = () => {
     lastUpdated: newsLastUpdated,
   } = useNewsData();
   const {
+    brief: morningBrief,
+    loading: morningBriefLoading,
+    error: morningBriefError,
+    refetch: refetchMorningBrief,
+  } = useMorningBrief();
+  const {
     data: momentumData,
     loading: momentumLoading,
     error: momentumError,
@@ -84,6 +91,7 @@ const DiscoverNews = () => {
     refetchNews();
     refetchMomentum();
     refetchCalendar();
+    refetchMorningBrief({ forceRefresh: true });
   };
 
   const handleAiChatClick = () => {
@@ -183,9 +191,11 @@ const DiscoverNews = () => {
       .map(([category, count]) => ({ category, count }));
   }, [newsData]);
 
-  const newsHighlights = useMemo(() => (newsData ?? []).slice(0, 3), [newsData]);
-
   const focusAreas = useMemo(() => {
+    if (morningBrief?.focusAreas?.length) {
+      return morningBrief.focusAreas;
+    }
+
     if (heroInsight?.key_factors?.length) {
       return heroInsight.key_factors.slice(0, 3);
     }
@@ -195,7 +205,7 @@ const DiscoverNews = () => {
     }
 
     return ['Marknadspuls', 'Rapporter', 'Nyheter'];
-  }, [heroInsight, trendingCategories]);
+  }, [heroInsight, morningBrief, trendingCategories]);
 
   const formatPublishedLabel = (isoString?: string) => {
     if (!isoString) return 'Okänd tid';
@@ -203,6 +213,9 @@ const DiscoverNews = () => {
     if (Number.isNaN(date.getTime())) return 'Okänd tid';
     return date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
   };
+  const morningBriefGeneratedTimeLabel = morningBrief?.generatedAt
+    ? new Date(morningBrief.generatedAt).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })
+    : null;
 
   return (
     <Layout>
@@ -399,12 +412,16 @@ const DiscoverNews = () => {
                     </p>
                     <h3 className="text-2xl font-semibold text-foreground">Morgonrapporten</h3>
                   </div>
-                  <Badge variant="secondary" className="rounded-full bg-primary/10 text-xs text-primary">
-                    Genererad kl 07:00
+                  <Badge
+                    variant="secondary"
+                    className={`rounded-full text-xs ${SENTIMENT_META[morningBrief?.sentiment ?? 'neutral'].badgeClass}`}
+                  >
+                    {morningBriefGeneratedTimeLabel ? `Genererad ${morningBriefGeneratedTimeLabel}` : 'Genereras dagligen'}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {heroInsight?.content ??
+                  {morningBrief?.summary ??
+                    heroInsight?.content ??
                     'AI sammanfattar gårdagens marknadsrörelser och vad som väntar i dag. Följ höjdpunkterna och få ett par snabba fokusområden innan börsen öppnar.'}
                 </p>
                 <div className="space-y-4">
@@ -412,25 +429,30 @@ const DiscoverNews = () => {
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Gårdagens höjdpunkter
                     </p>
-                    {newsLoading ? (
+                    {morningBriefLoading ? (
                       <div className="mt-3 flex items-center gap-2 rounded-2xl border border-dashed border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Laddar dagens höjdpunkter…
                       </div>
-                    ) : newsError ? (
+                    ) : morningBriefError ? (
                       <div className="mt-3 space-y-3 rounded-2xl border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
-                        <p>Kunde inte hämta nyhetsflödet just nu.</p>
-                        <Button variant="outline" size="sm" className="border-border/60" onClick={refetchNews}>
+                        <p>Kunde inte hämta morgonrapporten just nu.</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-border/60"
+                          onClick={() => refetchMorningBrief({ forceRefresh: true })}
+                        >
                           Försök igen
                         </Button>
                       </div>
-                    ) : newsHighlights.length ? (
+                    ) : morningBrief?.highlights?.length ? (
                       <ul className="mt-2 space-y-3">
-                        {newsHighlights.map((item) => (
-                          <li key={item.id} className="rounded-2xl border border-border/60 bg-muted/20 p-3">
-                            <p className="text-sm font-semibold text-foreground">{item.headline}</p>
+                        {morningBrief.highlights.map((item, index) => (
+                          <li key={`${item.title}-${index}`} className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                            <p className="text-sm font-semibold text-foreground">{item.title}</p>
                             <p className="text-xs text-muted-foreground">
-                              {item.source} · {formatPublishedLabel(item.publishedAt)}
+                              {item.source ?? 'Källa saknas'} · {formatPublishedLabel(item.publishedAt)}
                             </p>
                             <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{item.summary}</p>
                           </li>
@@ -456,14 +478,25 @@ const DiscoverNews = () => {
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Händelser att bevaka
                     </p>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {marketLastUpdatedDate
-                        ? `Marknadspulsen uppdaterades ${marketLastUpdatedDate.toLocaleTimeString('sv-SE', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}. Håll ett extra öga på indexrörelserna och dagens rapportflöde.`
-                        : 'Håll koll på viktiga makrobesked och kommande rapportsläpp under dagen.'}
-                    </p>
+                    {morningBrief?.eventsToWatch?.length ? (
+                      <ul className="mt-2 space-y-2 text-sm text-muted-foreground">
+                        {morningBrief.eventsToWatch.map((event, index) => (
+                          <li key={`${event}-${index}`} className="flex items-start gap-2">
+                            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />
+                            <span>{event}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {marketLastUpdatedDate
+                          ? `Marknadspulsen uppdaterades ${marketLastUpdatedDate.toLocaleTimeString('sv-SE', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}. Håll ett extra öga på indexrörelserna och dagens rapportflöde.`
+                          : 'Håll koll på viktiga makrobesked och kommande rapportsläpp under dagen.'}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3">
