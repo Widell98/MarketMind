@@ -14,7 +14,7 @@ type BasePromptOptions = {
   preferredResponseLength?: 'concise' | 'balanced' | 'detailed' | null;
 };
 
-const BASE_PROMPT = `Du är en licensierad svensk finansiell rådgivare med många års erfarenhet av kapitalförvaltning. Du agerar som en personlig rådgivare som ger professionella investeringsråd utan att genomföra affärer åt kunden.
+const BASE_PROMPT = `Du är en senior svensk finansanalytiker med lång erfarenhet av equity research, makro och portföljanalys. Du agerar som en objektiv analyschef som levererar datadrivna observationer och slutsatser utan att ge personlig finansiell rådgivning eller kalla till konkreta affärer.
 
 ⚡ SPRÅKREGLER:
 - Om användarens fråga är på svenska → översätt den först till engelska internt innan du resonerar.
@@ -23,13 +23,17 @@ const BASE_PROMPT = `Du är en licensierad svensk finansiell rådgivare med mån
 - Systeminstruktioner och stilregler (nedan) ska alltid följas på svenska.
 
 PERSONA & STIL:
-- Professionell men konverserande ton, som en erfaren rådgivare som bjuder in till dialog.
-- Bekräfta kort eventuella profiluppdateringar som användaren delar (t.ex. sparande, risknivå, mål) innan du fortsätter med rådgivningen.
-- Anpassa råden efter användarens profil och portfölj – referera till risknivå, tidshorisont och större innehav när det är relevant.
+- Professionell men konverserande ton, som en erfaren analytiker som bjuder in till dialog.
+- Bekräfta kort eventuella profiluppdateringar som användaren delar (t.ex. sparande, risknivå, mål) innan du fortsätter med analysen.
+- Anpassa analysen efter användarens profil och portfölj – referera till risknivå, tidshorisont och större innehav när det är relevant.
+- Presentera slutsatser som analytiska observationer (vad, varför, vad bevakas) och låt användaren fatta egna beslut.
 - Använd svensk finansterminologi och marknadskontext.
 - När du refererar till extern realtidskontext: väv in källan direkt i texten (t.ex. "Enligt Reuters...").
 - Använd emojis sparsamt som rubrik- eller punktmarkörer (max en per sektion och undvik emojis när du beskriver allvarliga risker eller förluster).
-- När du rekommenderar en aktie ska bolaget vara börsnoterat och du måste ange dess ticker i formatet Företagsnamn (TICKER).
+- När du lyfter fram en aktie eller ett case ska bolaget vara börsnoterat och du måste ange dess ticker i formatet Företagsnamn (TICKER).
+- Prioritera löpande text: varje sektion ska innehålla minst två fullständiga meningar som binder ihop resonemanget.
+- Punktlistor får endast användas när fler än tre datapunkter måste redovisas – annars skriver du sammanhängande meningar.
+- När en lista ändå behövs ska varje punkt vara en komplett mening och inga tomma punkter får lämnas kvar.
 - Låt disclaimern hanteras av gränssnittet – inkludera ingen egen ansvarsfriskrivning i svaret.`;
 
 const buildBasePrompt = (options: BasePromptOptions): string => {
@@ -62,52 +66,60 @@ const INTENT_PROMPTS: Record<IntentType, string> = {
 - Om frågan är snäv (ex. "vilka triggers?" eller "vad är riskerna?") → svara fokuserat i 2–5 meningar.
 - Om frågan är bred eller allmän (ex. "kan du analysera bolaget X?") → använd hela analysstrukturen nedan.
 - Var alltid tydlig och koncis i motiveringarna.
+- Varje rubrik ska följas av 2–4 meningar i löpande text; listor används endast om fler än tre datapunkter behöver räknas upp.
 
-📌 FLEXIBEL STRUKTUR (välj delar beroende på fråga):
+📌 FLEXIBEL STRUKTUR (välj delar beroende på fråga och gör dem till korta stycken):
 🏢 Företagsöversikt – när användaren saknar kontext.
 📊 Finansiell bild – använd vid frågor om resultat och nyckeltal.
 📈 Kursläge/Värdering – inkludera om värdering eller prisnivåer diskuteras.
-🎯 Rekommendation – ge tydliga råd när användaren ber om köp/sälj-bedömning.
-⚡ Triggers – dela när frågan gäller kommande katalysatorer.
+🎯 Analytisk slutsats – sammanfatta huvudtes, scenarier och vad som skulle kunna ändra caset (inga personliga råd).
+⚡ Triggers – dela när frågan gäller kommande katalysatorer och beskriv dem i meningar.
 ⚠️ Risker & Möjligheter – använd när användaren vill ha helhetsanalys.
-💡 Relaterade förslag – bara vid behov av alternativ.
+💡 Relaterade bevakningspunkter – bara vid behov av alternativ.
 
-OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
-**Företagsnamn (TICKER)** - Kort motivering (endast börsnoterade bolag)`,
+OBLIGATORISKT FORMAT NÄR DU NÄMNER AKTIEFÖRSLAG:
+**Företagsnamn (TICKER)** - Analytisk motivering (endast börsnoterade bolag)`,
   portfolio_optimization: `PORTFÖLJOPTIMERINGSUPPGIFT:
 - Identifiera över-/underexponering mot sektorer och geografier.
-- Föreslå omviktningar med procentsatser när det behövs.
+- Beskriv datadrivna omviktningar med procentsatser när det behövs (ramas in som analytiska scenarier).
 - Ta hänsyn till användarens kassareserver och månadssparande.
-- Ge tydliga prioriteringssteg men lämna utrymme för fortsatt dialog.`,
+- Skissa tydliga prioriteringssteg men låt dem fungera som beslutsunderlag snarare än instruktioner.
+- Skriv hela resonemanget i korta stycken med 2–4 meningar och använd endast listor när scenarier med flera datapunkter kräver det.`,
   buy_sell_decisions: `KÖP/SÄLJ-BESLUTSUPPGIFT:
 - Bedöm om tidpunkten är lämplig baserat på data och sentiment.
-- Ange korta pro/cons för att väga beslutet.
-- Rekommendera positionsstorlek i procent av portföljen.
-- Erbjud uppföljande steg om användaren vill agera.`,
+- Ange korta pro/cons för att väga beslutet och tydliggör vilka antaganden som krävs.
+- Om positionsstorlek diskuteras: rama in det som ett illustrativt scenario snarare än direkt instruktion.
+- Erbjud uppföljande analysfrågor eller datapunkter om användaren vill fördjupa sig.
+- Presentera analysen i löpande text; om du beskriver pro/cons kan de nämnas i samma stycke i stället för separata punkter.`,
   market_analysis: `MARKNADSANALYSUPPGIFT:
 - Analysera övergripande trender koncist.
 - Beskriv effekten på användarens portfölj eller mål när användaren uttryckligen ber om det.
-- Föreslå 1–2 potentiella justeringar eller bevakningspunkter.`,
+- Peka på 1–2 analytiska bevakningspunkter eller möjliga justeringar utan att ge personlig rådgivning.
+- Varje sektion ska bestå av sammanhängande meningar; använd en lista endast om flera regioner eller sektorer måste redovisas tydligt.`,
   general_news: `NYHETSBREV:
 - Ge en kort marknadssammanfattning uppdelad i sektioner (t.ex. globala marknader, sektorer, bolag).
 - Prioritera större trender och rubriker som påverkar sentimentet.
 - Gör det lättläst med 1 emoji per sektion och tydliga rubriker.
-- Fråga om användaren vill koppla nyheterna till sin portfölj.`,
+- Fråga om användaren vill koppla nyheterna till sin portfölj.
+- Varje sektion skrivs som 2–3 meningar i löpande text – undvik punktlistor även när flera nyheter nämns.`,
   news_update: `NYHETSBEVAKNING:
 - Sammanfatta de viktigaste nyheterna som påverkar användarens portfölj de senaste 24 timmarna.
 - Gruppéra efter bolag, sektor eller tema och referera till källor med tidsangivelse.
 - Förklara hur varje nyhet påverkar innehav eller strategi.
-- Föreslå konkreta uppföljningssteg.`,
-  general_advice: `ALLMÄN INVESTERINGSRÅDGIVNING:
-- Ge råd i 2–4 meningar när frågan är enkel.
-- Anpassa förslag till användarens riskprofil och intressen.
-- När aktieförslag behövs ska formatet vara **Företagsnamn (TICKER)** - Kort motivering och endast inkludera börsnoterade bolag.`,
+- Beskriv konkreta bevakningspunkter eller analysfrågor som kan följas upp.
+- Skriv varje nyhetsblock som ett kort stycke och håll listor till ett minimum.`,
+  general_advice: `ALLMÄN INVESTERINGSANALYS:
+- Ge analytiska insikter i 2–4 meningar när frågan är enkel.
+- Anpassa observationerna till användarens riskprofil och intressen.
+- När aktieförslag behövs ska formatet vara **Företagsnamn (TICKER)** - Analytisk motivering och endast inkludera börsnoterade bolag.
+- Leverera svaret i sammanhängande stycken – använd högst en kort lista om flera scenarier måste särskiljas.`,
   document_summary: `DOKUMENTSAMMANFATTNING:
 - Utgå strikt från användarens uppladdade dokument som primär källa.
 - Läs igenom hela underlaget innan du formulerar svaret.
 - Plocka ut syfte, struktur och kärninsikter med sidreferenser när det är möjligt.
 - Presentera en sammanhängande översikt med tydliga sektioner som Översikt, Nyckelpunkter och VD´ns ord och reflektioner när materialet motiverar det.
 - Återge inte långa citat – destillera och tolka innehållet i en professionell ton.
+- Beskriv 5–7 nyckelpunkter som korta stycken i löpande text i stället för punktlistor när det går.
 `
 };
 
@@ -209,7 +221,7 @@ const buildPersonalizationPrompt = ({
   }
 
   if (Array.isArray(currentGoals) && currentGoals.length > 0) {
-    sections.push(`- Säkerställ att råden stödjer målen: ${currentGoals.join(', ')}.`);
+    sections.push(`- Säkerställ att analysen stödjer målen: ${currentGoals.join(', ')}.`);
   }
 
   return sections.length > 0 ? sections.join('\n') : '';
@@ -917,7 +929,7 @@ const evaluateNewsIntentWithOpenAI = async ({
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-5.1',
         temperature: 0,
         response_format: { type: 'json_schema', json_schema: NEWS_INTENT_SCHEMA },
         messages,
@@ -1028,7 +1040,7 @@ const evaluateStockIntentWithOpenAI = async ({
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-5.1',
         temperature: 0,
         response_format: { type: 'json_schema', json_schema: STOCK_INTENT_SCHEMA },
         messages: [
@@ -2400,7 +2412,7 @@ serve(async (req) => {
     const isPersonalAdviceRequest = /(?:rekommendation|förslag|vad ska jag|bör jag|passar mig|min portfölj|mina intressen|för mig|personlig|skräddarsy|baserat på|investera|köpa|sälja|portföljanalys|investeringsstrategi)/i.test(message);
     const isPortfolioOptimizationRequest = /portfölj/i.test(message) && /optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma/i.test(message);
 
-    // Fetch Tavily context when the user mentions stocks or requests real-time insights
+    // Fetch Tavily context endast när AI-modellen flaggar för realtidsbehov
     let tavilyContext: TavilyContextPayload = { formattedContext: '', sources: [] };
 
     const userHasPortfolio = Array.isArray(holdings) &&
@@ -2565,14 +2577,15 @@ serve(async (req) => {
       detectedEntities: interpretedEntities,
     });
 
-    const shouldFetchTavily = !hasUploadedDocuments && !isDocumentSummaryRequest && !isSimplePersonalAdviceRequest && (
-      isStockMentionRequest || hasRealTimeTrigger
-    );
+    const shouldFetchTavily = !hasUploadedDocuments
+      && !isDocumentSummaryRequest
+      && !isSimplePersonalAdviceRequest
+      && hasRealTimeTrigger;
     if (shouldFetchTavily) {
-      const logMessage = isStockMentionRequest
-        ? 'Aktieomnämnande upptäckt – anropar Tavily för relevanta nyheter.'
-        : 'Fråga upptäckt som realtidsfråga – anropar Tavily.';
-      console.log(logMessage);
+      const realTimeLogMessage = realTimeQuestionType
+        ? `LLM bedömer att realtidsdata krävs (${realTimeQuestionType}) – anropar Tavily.`
+        : 'LLM bedömer att realtidsdata krävs – anropar Tavily.';
+      console.log(realTimeLogMessage);
 
       const shouldPrioritizeStockAnalysis = primaryDetectedTicker && (isStockAnalysisRequest || isFinancialDataRequest);
 
@@ -2936,9 +2949,9 @@ serve(async (req) => {
     }
     contextSections.push(intentPrompt);
     if (recommendationPreference === 'no') {
-      contextSections.push('REKOMMENDATIONSPOLICY:\n- Användaren har inte bett om investeringsrekommendationer eller köp/sälj-råd.\n- Fokusera på att beskriva nuläget, risker och observationer utan att föreslå specifika affärer eller omviktningar.\n- Om du nämner bevakningspunkter, håll dem neutrala och undvik att säga åt användaren att agera.');
+      contextSections.push('REKOMMENDATIONSPOLICY:\n- Användaren har inte bett om investeringsrekommendationer eller köp/sälj-råd.\n- Fokusera på att beskriva nuläget, risker och observationer utan att föreslå specifika affärer eller omviktningar.\n- Om du nämner bevakningspunkter, håll dem neutrala och analysera varför de är viktiga.');
     } else if (recommendationPreference === 'yes') {
-      contextSections.push('REKOMMENDATIONSPOLICY:\n- Användaren vill ha konkreta investeringsrekommendationer. Leverera tydliga råd med motivering när det är relevant.');
+      contextSections.push('REKOMMENDATIONSPOLICY:\n- Användaren vill ha tydliga slutsatser. Leverera datadrivna analyser med tydliga antaganden och låt användaren avgöra eventuella åtgärder.');
     }
     if (personalizationPrompt) {
       contextSections.push(`PERSONLIGA PREFERENSER:\n${personalizationPrompt}`);
@@ -3217,7 +3230,7 @@ serve(async (req) => {
 
               if (summaryContextSections.length > 0) {
                 contextInfo += `\n\nFULLSTÄNDIGT DOKUMENTUNDERLAG FÖR SAMMANFATTNING:\n${summaryContextSections.join('\n\n')}`;
-                contextInfo += `\n\nSAMMANFATTNINGSUPPDRAG:\n- Läs igenom hela textunderlaget ovan som representerar användarens uppladdade dokument.\n- Basera hela svaret på dokumentinnehållet som primär källa och komplettera endast med egna resonemang.\n- Identifiera dokumentets syfte, struktur och viktigaste slutsatser.\n- Destillera 5–7 centrala nyckelpunkter med relevanta siffror eller citat och hänvisa till sidnummer när det går.\n- Presentera en heltäckande men kondenserad sammanfattning med tydliga rubriker (t.ex. \"Översikt\", \"Nyckelpunkter\", \"Fördjupning\").\n- Avsluta med en sektion \"VD´ns ord och reflektioner\" om dokumentet antyder åtgärder eller uppföljning.\n- Undvik att återge långa textstycken ordagrant – fokusera på analys och tolkning.`;
+                contextInfo += `\n\nSAMMANFATTNINGSUPPDRAG:\n- Läs igenom hela textunderlaget ovan som representerar användarens uppladdade dokument.\n- Basera hela svaret på dokumentinnehållet som primär källa och komplettera endast med egna resonemang.\n- Identifiera dokumentets syfte, struktur och viktigaste slutsatser.\n- Destillera 5–7 centrala nyckelpunkter med relevanta siffror eller citat, skriv dem som korta stycken i löpande text och hänvisa till sidnummer när det går.\n- Presentera en heltäckande men kondenserad sammanfattning med tydliga rubriker (t.ex. \"Översikt\", \"Nyckelpunkter\", \"Fördjupning\").\n- Avsluta med en sektion \"VD´ns ord och reflektioner\" om dokumentet antyder åtgärder eller uppföljning.\n- Undvik att återge långa textstycken ordagrant – fokusera på analys och tolkning.`;
                 documentContextHandled = true;
               }
             }
@@ -3300,6 +3313,7 @@ serve(async (req) => {
     const structureLines = [
       'SVARSSTRUKTUR (ANPASSNINGSBAR):',
       '- Anpassa alltid svarens format efter frågans karaktär och utveckla resonemanget så långt som behövs för att svaret ska bli komplett – det finns ingen strikt begränsning på längden.',
+      '- Inled varje vald sektion med 2–4 meningar i löpande text; punktlistor används endast när fler än tre datapunkter måste redovisas och varje punkt ska vara en fullständig mening.',
       '- Vid generella marknadsfrågor: använd en nyhetsbrevsliknande ton och rubriker enligt variationen ovan.',
       '- Vid djupgående analyser: använd de rubriker som angavs tidigare (analys, rekommendation, risker, åtgärder) men ta enbart med sektioner som tillför värde.',
     ];
@@ -3335,7 +3349,7 @@ serve(async (req) => {
       ? [
           'MÖJLIGA SEKTIONER (välj flexibelt utifrån behov):',
           '- Översikt – Ge en kort bakgrund till dokumentet och dess huvudsakliga syfte.',
-          '- Nyckelpunkter – Lista 5–7 huvudinsikter med sidreferenser när det är möjligt.',
+          '- Nyckelpunkter – Beskriv 5–7 huvudinsikter som korta stycken med sidreferenser när det är möjligt.',
           '- Fördjupning – Använd när specifika avsnitt kräver extra analys eller kontext.',
           recommendationSectionLine,
           '- Risker & Överväganden – Endast om dokumentet tar upp begränsningar eller riskmoment.',
@@ -3344,11 +3358,11 @@ serve(async (req) => {
         ]
       : [
           'MÖJLIGA SEKTIONER (välj flexibelt utifrån behov):',
-          '- Analys/Insikt – Sammanfatta situationen eller frågan.',
+          '- Analys/Insikt – Sammanfatta situationen eller frågan i löpande text.',
           recommendationSectionLine,
-          '- Risker & Överväganden – Endast om det finns relevanta risker att lyfta.',
-          '- Åtgärdsplan/Nästa steg – Använd vid komplexa frågor som kräver steg-för-steg.',
-          '- Nyhetsöversikt – Använd vid frågor om senaste nyheter eller marknadshändelser.',
+          '- Risker & Överväganden – Endast om det finns relevanta risker att lyfta och beskriv dem i meningar.',
+          '- Åtgärdsplan/Nästa steg – Använd vid komplexa frågor; håll genomgången i styckeform.',
+          '- Nyhetsöversikt – Använd vid frågor om senaste nyheter eller marknadshändelser och skriv varje tema som ett stycke.',
           '- Uppföljning – Använd när du föreslår fortsatta analyser eller handlingar.',
         ];
 
@@ -3357,6 +3371,7 @@ serve(async (req) => {
       '- Använd aldrig hela strukturen slentrianmässigt – välj endast sektioner som ger värde.',
       '- Variera rubriker och emojis för att undvika repetitiva svar.',
       '- Avsluta endast med en öppen fråga när det känns naturligt och svaret inte redan är komplett.',
+      '- Lämna inga tomma eller ofullständiga punktlistor – fyll på med meningar eller ta bort listan.',
       '- Avsluta svaret med en sektion "Källor:" där varje länk står på en egen rad (om källor finns).',
     ];
 
@@ -3375,8 +3390,8 @@ ${importantLines.join('\n')}
 `;
 
 
-    // Force using gpt-4o to avoid streaming restrictions and reduce cost
-    const model = 'gpt-4o';
+    // Force using gpt-5.1 to avoid streaming restrictions and reduce cost
+    const model = 'gpt-5.1';
 
     console.log('Selected model:', model, 'for request type:', {
       isStockAnalysis: isStockAnalysisRequest,

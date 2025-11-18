@@ -205,7 +205,7 @@ const AIRecommendations = () => {
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
             <div className="flex items-center justify-center gap-2">
-              <Brain className="w-4 h-4 animate-pulse" />
+              <Brain className="w-4 h-4" />
               <span>Laddar AI-rekommendationer...</span>
             </div>
           </div>
@@ -323,7 +323,7 @@ const AIRecommendations = () => {
                       disabled={isClearingRecommendations}
                     >
                       {isClearingRecommendations ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        <Loader2 className="w-4 h-4 mr-2" />
                       ) : (
                         <Trash2 className="w-4 h-4 mr-2" />
                       )}
@@ -428,7 +428,7 @@ const AIRecommendations = () => {
               disabled={isDeletingRecommendation}
             >
               {isDeletingRecommendation ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="w-4 h-4 mr-2" />
               ) : (
                 <Trash2 className="w-4 h-4 mr-2" />
               )}

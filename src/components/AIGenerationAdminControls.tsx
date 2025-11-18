@@ -388,7 +388,7 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
           size="sm"
           className="self-start"
         >
-          {isBatchGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          {isBatchGenerating ? <Loader2 className="mr-2 h-4 w-4" /> : null}
           Generera AI-case
         </Button>
       </div>
@@ -439,7 +439,7 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
                   >
                     {isProcessingFile ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <Loader2 className="mr-2 h-4 w-4" />
                         Läser in...
                       </>
                     ) : (
@@ -498,7 +498,7 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
             >
               {isGeneratingReport ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4" />
                   Genererar rapport...
                 </>
               ) : (

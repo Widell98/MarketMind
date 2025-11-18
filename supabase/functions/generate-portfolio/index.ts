@@ -755,7 +755,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och s√§kerst√
       }
     }
 
-    console.log('Calling OpenAI API with gpt-4o...');
+    console.log('Calling OpenAI API with gpt-5.1...');
 
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -764,7 +764,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och s√§kerst√
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-5.1',
         messages,
         temperature: 0.85,
         max_tokens: 2500,

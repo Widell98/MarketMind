@@ -188,7 +188,7 @@ KRITISKA REGLER:
                       <div className="flex gap-2">
                         <Bot className="w-6 h-6 p-1 bg-green-100 text-green-600 rounded-full" />
                         <div className="bg-white dark:bg-gray-800 border rounded-lg p-3 text-sm">
-                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <Loader2 className="w-4 h-4" />
                         </div>
                       </div>
                     </div>
@@ -213,7 +213,7 @@ KRITISKA REGLER:
                 size="sm"
               >
                 {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4" />
                 ) : (
                   <Send className="w-4 h-4" />
                 )}

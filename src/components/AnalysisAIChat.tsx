@@ -202,7 +202,7 @@ const AnalysisAIChat: React.FC<AnalysisAIChatProps> = ({ analysis }) => {
                   <div className="flex gap-2">
                     <Bot className="w-6 h-6 p-1 bg-purple-100 text-purple-600 rounded-full" />
                     <div className="bg-white dark:bg-gray-800 border rounded-lg p-3 text-sm">
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-4 h-4" />
                     </div>
                   </div>
                 </div>
@@ -227,7 +227,7 @@ const AnalysisAIChat: React.FC<AnalysisAIChatProps> = ({ analysis }) => {
             size="sm"
           >
             {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-4 h-4" />
             ) : (
               <Send className="w-4 h-4" />
             )}

@@ -82,7 +82,7 @@ const AIRiskAssessment = () => {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
-            <RefreshCw className="w-6 h-6 animate-spin text-orange-500" />
+            <RefreshCw className="w-6 h-6 text-orange-500" aria-hidden="true" />
             <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Analyserar risker...</span>
           </div>
         </CardContent>
@@ -123,12 +123,12 @@ const AIRiskAssessment = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={fetchRiskAssessment}
-            className="text-xs px-2 py-1"
-            disabled={loading}
-          >
-            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
+          onClick={fetchRiskAssessment}
+          className="text-xs px-2 py-1"
+          disabled={loading}
+        >
+          <RefreshCw className={`w-3 h-3 ${loading ? 'opacity-60' : ''}`} aria-hidden="true" />
+        </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
