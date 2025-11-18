@@ -8,6 +8,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const REPORT_MODEL = Deno.env.get('OPENAI_REPORT_MODEL')
+  || Deno.env.get('OPENAI_MODEL')
+  || 'gpt-5.1';
+
 type GenerateReportSummaryPayload = {
   company_name?: string | null;
   report_title?: string | null;
@@ -58,6 +62,40 @@ const normalizeKeyPoints = (value: unknown): string[] => {
 
   return [];
 };
+
+const REPORT_RESPONSE_FORMAT = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'report_summary_response',
+    schema: {
+      type: 'object',
+      additionalProperties: true,
+      properties: {
+        company_name: { type: 'string' },
+        report_title: { type: 'string' },
+        summary: { type: 'string' },
+        key_points: {
+          type: 'array',
+          items: { type: 'string' },
+        },
+        key_metrics: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              label: { type: 'string' },
+              value: { type: 'string' },
+              trend: { type: 'string' },
+            },
+            required: ['label', 'value'],
+          },
+        },
+        ceo_commentary: { type: 'string' },
+      },
+      required: ['summary', 'key_points'],
+    },
+  },
+} as const;
 
 const normalizeKeyMetrics = (value: unknown): ParsedMetric[] => {
   if (Array.isArray(value)) {
@@ -373,9 +411,10 @@ serve(async (req) => {
         "Authorization": `Bearer ${openAIApiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: REPORT_MODEL,
         temperature: 0.6,
-        max_tokens: 600,
+        max_completion_tokens: 600,
+        response_format: REPORT_RESPONSE_FORMAT,
         messages: [
           {
             role: "system",
