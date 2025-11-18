@@ -636,7 +636,7 @@ const classifyIntentWithLLM = async (
       body: JSON.stringify({
         model: INLINE_INTENT_MODEL,
         temperature: 0,
-        max_tokens: 5,
+        max_completion_tokens: 5,
         messages: [
           {
             role: 'system',
@@ -1182,7 +1182,7 @@ const askLLMIfRealtimeNeeded = async ({
       body: JSON.stringify({
         model: INLINE_INTENT_MODEL,
         temperature: 0,
-        max_tokens: 60,
+        max_completion_tokens: 60,
         messages: [
           {
             role: 'system',
@@ -1439,7 +1439,7 @@ const planRealtimeSearchWithLLM = async ({
       body: JSON.stringify({
         model: INLINE_INTENT_MODEL,
         temperature: 0,
-        max_tokens: 180,
+        max_completion_tokens: 180,
         tool_choice: 'auto',
         tools: [TAVILY_ROUTER_TOOL],
         messages: [

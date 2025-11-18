@@ -97,7 +97,7 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
       body: JSON.stringify({
         model: model,
         messages: messages,
-        max_tokens: maxTokens,
+        max_completion_tokens: maxTokens,
         temperature: temperature,
       }),
     });
