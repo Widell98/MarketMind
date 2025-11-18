@@ -35,7 +35,8 @@ PERSONA & STIL:
 - Bekräfta kort eventuella profiluppdateringar som användaren delar (t.ex. sparande eller mål) innan du fortsätter med rådgivningen.
 - Anpassa råden efter användarens profil och portfölj. Ta endast hänsyn till riskprofilen om användaren uttryckligen ber om det i sin senaste fråga.
 - Använd svensk finansterminologi och marknadskontext.
-- När du refererar till extern realtidskontext: väv in källan direkt i texten (t.ex. "Enligt Reuters...").
+ - När du refererar till extern realtidskontext via Tavily: väv in källan direkt i texten (t.ex. "Enligt Reuters...").
+ - Skippa helt källhänvisningar när du inte har hämtat realtidsdata – dokument- och bakgrundskunskap behöver ingen separat källsektion.
 - Använd emojis sparsamt som rubrik- eller punktmarkörer (max en per sektion och undvik emojis när du beskriver allvarliga risker eller förluster).
 - När du rekommenderar en aktie ska bolaget vara börsnoterat och du måste ange dess ticker i formatet Företagsnamn (TICKER).
 - Låt disclaimern hanteras av gränssnittet – inkludera ingen egen ansvarsfriskrivning i svaret.
@@ -125,7 +126,7 @@ OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
 - Nämn aldrig sektioner som du inte direkt fyller med text.`,
   news_update: `NYHETSBEVAKNING:
 - Sammanfatta de viktigaste nyheterna som påverkar användarens portfölj de senaste 24 timmarna.
-- Gruppéra efter bolag, sektor eller tema och referera till källor med tidsangivelse.
+- Gruppéra efter bolag, sektor eller tema och referera till Tavily-källor med tidsangivelse endast om du faktiskt körde en realtidssökning.
 - Förklara hur varje nyhet påverkar innehav eller strategi.
 - Föreslå konkreta uppföljningssteg.
 - Var selektiv med punktlistor och växla gärna till korta stycken när du beskriver konsekvenserna.
@@ -3629,7 +3630,7 @@ serve(async (req) => {
       '- Använd aldrig hela strukturen slentrianmässigt – välj endast sektioner som ger värde.',
       '- Variera rubriker och emojis för att undvika repetitiva svar.',
       '- Avsluta endast med en öppen fråga när det känns naturligt och svaret inte redan är komplett.',
-      '- Avsluta svaret med en sektion "Källor:" där varje länk står på en egen rad (om källor finns).',
+      '- Lägg endast till en sektion "Källor:" när du fick realtidsdata via Tavily, och lista då länkarna exakt i den ordning du fick dem. I alla andra fall ska ingen källsektion eller källa nämnas.',
     ];
 
     if (isDocumentSummaryRequest) {
@@ -3663,7 +3664,7 @@ ${importantLines.join('\n')}
       const formattedSourcesList = tavilyContext.sources
         .map((url, index) => `${index + 1}. ${url}`)
         .join('\n');
-      tavilySourceInstruction = `\n\nKÄLLHÄNVISNINGAR FÖR AGENTEN:\n${formattedSourcesList}\n\nINSTRUKTION: Avsluta alltid ditt svar med en sektion "Källor:" som listar dessa länkar i samma ordning och med en länk per rad.`;
+      tavilySourceInstruction = `\n\nKÄLLHÄNVISNINGAR FÖR AGENTEN:\n${formattedSourcesList}\n\nINSTRUKTION: Dessa länkar kommer från din realtidssökning – väv in dem i resonemanget när du hänvisar till faktan och avsluta svaret med en sektion "Källor:" som listar exakt samma länkar i samma ordning, en per rad. Ange inga andra källor.`;
     }
 
     // Build messages array with enhanced context
