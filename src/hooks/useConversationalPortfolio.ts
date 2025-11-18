@@ -11,6 +11,11 @@ export interface ConversationData {
   monthlyAmount?: string;
   monthlyAmountNumeric?: number;
   hasCurrentPortfolio?: boolean;
+  analysisFocus?: 'macro' | 'fundamental' | 'technical' | 'mixed';
+  analysisDepth?: 'light' | 'normal' | 'deep';
+  analysisTimeframe?: 'short' | 'medium' | 'long';
+  outputFormat?: 'bullets' | 'paragraphs' | 'equity_report' | 'highlights';
+  modelPortfolioStyle?: 'defensive' | 'balanced' | 'growth' | 'thematic' | 'broad';
   tradingFrequency?: string;
   currentHoldings?: Array<{
     id: string;
@@ -48,7 +53,7 @@ export interface ConversationData {
   volatilityComfort?: number;
   marketExperience?: string;
   investmentExperienceLevel?: 'beginner' | 'intermediate' | 'advanced';
-  preferredAssets?: string;
+  preferredAssets?: string | string[];
   currentAllocation?: string | Record<string, any>;
   currentPortfolioValue?: string;
   previousPerformance?: string;
@@ -470,12 +475,25 @@ export const useConversationalPortfolio = () => {
       very_large: 'Mycket stor portfölj',
     }) ?? conversationData.portfolioSize;
 
-    const preferredAssetsText = mapValue(conversationData.preferredAssets, {
-      stocks: 'Aktier',
-      investment_companies: 'Investmentbolag',
-      crypto: 'Kryptovalutor',
-      commodities: 'Råvaror (t.ex. guld, olja)',
-    }) ?? conversationData.preferredAssets;
+    const preferredAssetsValues = Array.isArray(conversationData.preferredAssets)
+      ? conversationData.preferredAssets
+      : conversationData.preferredAssets
+        ? [conversationData.preferredAssets]
+        : undefined;
+    const preferredAssetsText = preferredAssetsValues && preferredAssetsValues.length > 0
+      ? preferredAssetsValues
+          .map(asset =>
+            mapValue(asset, {
+              stocks: 'Aktier',
+              investment_companies: 'Investmentbolag',
+              crypto: 'Kryptovalutor',
+              commodities: 'Råvaror (t.ex. guld, olja)',
+              'investment companies': 'Investmentbolag',
+              etfs: 'ETF:er',
+            }) ?? asset
+          )
+          .join(', ')
+      : undefined;
 
     const optimizationGoalsText = mapArrayValues(conversationData.optimizationGoals, {
       risk_balance: 'Balansera risken bättre',
@@ -1610,6 +1628,31 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         normalized.investmentStyle = stylePreference;
       }
 
+      const existingAnalysisFocus = ensureString(profile.analysis_focus);
+      if (existingAnalysisFocus) {
+        normalized.analysisFocus = existingAnalysisFocus as ConversationData['analysisFocus'];
+      }
+
+      const existingAnalysisDepth = ensureString(profile.analysis_depth);
+      if (existingAnalysisDepth) {
+        normalized.analysisDepth = existingAnalysisDepth as ConversationData['analysisDepth'];
+      }
+
+      const existingAnalysisTimeframe = ensureString(profile.analysis_timeframe);
+      if (existingAnalysisTimeframe) {
+        normalized.analysisTimeframe = existingAnalysisTimeframe as ConversationData['analysisTimeframe'];
+      }
+
+      const existingOutputFormat = ensureString(profile.output_format);
+      if (existingOutputFormat) {
+        normalized.outputFormat = existingOutputFormat as ConversationData['outputFormat'];
+      }
+
+      const existingModelPortfolioStyle = ensureString(profile.model_portfolio_style);
+      if (existingModelPortfolioStyle) {
+        normalized.modelPortfolioStyle = existingModelPortfolioStyle as ConversationData['modelPortfolioStyle'];
+      }
+
       const investmentExperience = ensureString(profile.investment_experience) as ConversationData['investmentExperienceLevel'] | undefined;
       if (investmentExperience) {
         normalized.investmentExperienceLevel = investmentExperience;
@@ -2210,6 +2253,14 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         sector_interests: sectorInterestsForProfile,
         current_holdings: mergedConversationData.currentHoldings || [],
         current_allocation: currentAllocationValue,
+        analysis_focus: mergedConversationData.analysisFocus || existingProfileData.analysisFocus || null,
+        analysis_depth: mergedConversationData.analysisDepth || existingProfileData.analysisDepth || null,
+        analysis_timeframe: mergedConversationData.analysisTimeframe || existingProfileData.analysisTimeframe || null,
+        output_format: mergedConversationData.outputFormat || existingProfileData.outputFormat || null,
+        model_portfolio_style: mergedConversationData.modelPortfolioStyle || existingProfileData.modelPortfolioStyle || null,
+        has_current_portfolio: typeof mergedConversationData.hasCurrentPortfolio === 'boolean'
+          ? mergedConversationData.hasCurrentPortfolio
+          : existingProfileData.hasCurrentPortfolio ?? null,
         housing_situation: mergedConversationData.housingSituation || null,
         has_loans: hasLoans,
         loan_details: loanDetails,

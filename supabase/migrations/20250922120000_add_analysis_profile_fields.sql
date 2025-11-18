@@ -4,4 +4,5 @@ alter table if exists public.user_risk_profiles
   add column if not exists analysis_timeframe text,
   add column if not exists output_format text,
   add column if not exists preferred_assets text[],
-  add column if not exists has_current_portfolio boolean;
+  add column if not exists has_current_portfolio boolean,
+  add column if not exists model_portfolio_style text;

@@ -39,6 +39,13 @@ const outputFormatOptions = [
 
 const sectorOptions = ['Teknik', 'Hälsovård', 'Industri', 'Energi', 'Finans', 'Fastigheter', 'Konsument', 'Råvaror'];
 const assetOptions = ['Aktier', 'Investmentbolag', 'Råvaror', 'Krypto', 'Räntor', 'ETF:er'];
+const modelPortfolioStyleOptions = [
+  { value: 'defensive', title: 'Defensiv', description: 'Fokus på stabila, lågvolatila scenarier.' },
+  { value: 'balanced', title: 'Balanserad', description: 'Mix av stabilitet och tillväxt.' },
+  { value: 'growth', title: 'Tillväxt', description: 'Scenarier som prioriterar offensiv potential.' },
+  { value: 'thematic', title: 'Tematisk', description: 'Case kopplade till tydliga teman eller megatrender.' },
+  { value: 'broad', title: 'Breddad', description: 'Visa hur en bred marknadsexponering kan se ut.' },
+];
 const experienceOptions = [
   { value: 'beginner', label: 'Nybörjare' },
   { value: 'intermediate', label: 'Erfaren' },
@@ -59,6 +66,7 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
     has_current_portfolio: null as boolean | null,
     investment_experience: '',
     age: '',
+    model_portfolio_style: '',
   });
 
   const steps = [
@@ -104,6 +112,7 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
         preferred_assets: formData.preferred_assets,
         has_current_portfolio: formData.has_current_portfolio,
         investment_experience: formData.investment_experience as 'beginner' | 'intermediate' | 'advanced',
+        model_portfolio_style: formData.model_portfolio_style || null,
         age: formData.age ? parseInt(formData.age, 10) : null,
       };
 
@@ -229,6 +238,15 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
                   onChange={event => updateField('age', event.target.value)}
                 />
               </div>
+            </div>
+            <div>
+              <h3 className="mb-2 text-base font-semibold text-finance-navy">Vilken stil ska modellportföljerna ha?</h3>
+              {renderOptionGrid(
+                modelPortfolioStyleOptions,
+                formData.model_portfolio_style,
+                value => updateField('model_portfolio_style', value)
+              )}
+              <p className="mt-2 text-sm text-finance-gray">Valfritt men hjälper MarketMind att välja rätt ton i sina exempel.</p>
             </div>
           </div>
         );

@@ -1918,6 +1918,18 @@ serve(async (req) => {
         setUpdate('output_format', 'highlights');
       }
 
+      if (/(defensiv|försiktig|skyddad)/i.test(lowerMessage)) {
+        setUpdate('model_portfolio_style', 'defensive');
+      } else if (/(balanserad|mixad|mix|lagom)/i.test(lowerMessage)) {
+        setUpdate('model_portfolio_style', 'balanced');
+      } else if (/(tillväxt|aggressiv|offensiv)/i.test(lowerMessage)) {
+        setUpdate('model_portfolio_style', 'growth');
+      } else if (/(tematisk|tema|megatrend|trendcase)/i.test(lowerMessage)) {
+        setUpdate('model_portfolio_style', 'thematic');
+      } else if (/(breddad|allokering överallt|helhetsbild)/i.test(lowerMessage)) {
+        setUpdate('model_portfolio_style', 'broad');
+      }
+
       if (/(ingen portfölj|har ingen portfölj|börja från noll|startar utan)/i.test(lowerMessage)) {
         setUpdate('has_current_portfolio', false);
       } else if (/(min portfölj|basera på portföljen|min portfo|ta hänsyn till portföljen)/i.test(lowerMessage)) {
@@ -2873,13 +2885,24 @@ serve(async (req) => {
           ? 'Nej, fokusera på generella scenarier'
           : 'Ej angivet';
 
+      const modelPortfolioStyleText = (
+        {
+          defensive: 'Defensiva exempel',
+          balanced: 'Balanserade case',
+          growth: 'Tillväxtorienterade scenarier',
+          thematic: 'Tematiska portföljer',
+          broad: 'Breddade marknadsportföljer',
+        } as Record<string, string>
+      )[analysisProfile.model_portfolio_style ?? ''] || 'Ej angivet';
+
       contextInfo += `\n\nANALYSPROFIL (använd denna info, fråga ALDRIG efter den igen):
 - Analysfokus: ${analysisFocusText}
 - Analysdjup: ${depthText}
 - Tidsram för analys: ${timeframeText}
 - Önskat format: ${outputText}
 - Erfarenhetsnivå: ${experienceText}
-- Har portfölj att utgå från: ${hasPortfolioText}`;
+- Har portfölj att utgå från: ${hasPortfolioText}
+- Modellportfölj-stil: ${modelPortfolioStyleText}`;
 
       if (analysisProfile.sector_interests && analysisProfile.sector_interests.length > 0) {
         contextInfo += `\n- Sektorintressen: ${analysisProfile.sector_interests.join(', ')}`;

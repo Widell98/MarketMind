@@ -1672,6 +1672,7 @@ export type Database = {
           investment_style_preference: string | null
           liquid_capital: number | null
           loan_details: string | null
+          model_portfolio_style: string | null
           market_crash_reaction: string | null
           monthly_investment_amount: number | null
           output_format: string | null
@@ -1713,6 +1714,7 @@ export type Database = {
           investment_style_preference?: string | null
           liquid_capital?: number | null
           loan_details?: string | null
+          model_portfolio_style?: string | null
           market_crash_reaction?: string | null
           monthly_investment_amount?: number | null
           output_format?: string | null
@@ -1754,6 +1756,7 @@ export type Database = {
           investment_style_preference?: string | null
           liquid_capital?: number | null
           loan_details?: string | null
+          model_portfolio_style?: string | null
           market_crash_reaction?: string | null
           monthly_investment_amount?: number | null
           output_format?: string | null

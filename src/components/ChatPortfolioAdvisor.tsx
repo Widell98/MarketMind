@@ -832,55 +832,122 @@ const ChatPortfolioAdvisor = () => {
     }
   }, [portfolioResult, structuredResponse]);
 
-  const hasImportedHoldings = Array.isArray(conversationData.currentHoldings)
-    ? conversationData.currentHoldings.length > 0
-    : false;
-
-  const shouldCollectAvailableCapitalForNewInvestor =
-    conversationData.hasCurrentPortfolio !== true &&
-    conversationData.isBeginnerInvestor === false &&
-    !hasImportedHoldings;
-
   const questions: Question[] = [
     {
       id: 'experienceLevel',
-      question: 'Hur länge har du investerat på börsen?',
+      question: 'Hur skulle du beskriva din erfarenhetsnivå när det gäller investeringar och marknadsanalys?',
       key: 'investmentExperienceLevel',
       hasOptions: true,
       options: [
-        { value: 'beginner', label: 'Nybörjare (<1 år)' },
-        { value: 'intermediate', label: 'Några år (1–3 år)' },
-        { value: 'advanced', label: 'Erfaren (3+ år)' }
+        { value: 'beginner', label: 'Nybörjare' },
+        { value: 'intermediate', label: 'Mellannivå' },
+        { value: 'advanced', label: 'Avancerad' }
       ]
     },
     {
-      id: 'age',
-      question: 'Hur gammal är du?',
-      key: 'age',
-      hasOptions: false,
+      id: 'analysisFocus',
+      question: 'Vilken typ av analyser vill du att MarketMind ska fokusera på?',
+      key: 'analysisFocus',
+      hasOptions: true,
+      options: [
+        { value: 'macro', label: 'Makro & cykler' },
+        { value: 'fundamental', label: 'Fundamental bolagsanalys' },
+        { value: 'technical', label: 'Teknisk/momentum' },
+        { value: 'mixed', label: 'En mix av flera perspektiv' }
+      ]
+    },
+    {
+      id: 'analysisDepth',
+      question: 'Hur detaljerad ska analysen vara?',
+      key: 'analysisDepth',
+      hasOptions: true,
+      options: [
+        { value: 'light', label: 'Översiktlig (snabba highlights)' },
+        { value: 'normal', label: 'Normal detaljnivå' },
+        { value: 'deep', label: 'Djupgående research' }
+      ]
+    },
+    {
+      id: 'analysisTimeframe',
+      question: 'Vilken tidsram ska analyserna fokusera på?',
+      key: 'analysisTimeframe',
+      hasOptions: true,
+      options: [
+        { value: 'short', label: 'Kort sikt (dagar–veckor)' },
+        { value: 'medium', label: 'Medellång (månader)' },
+        { value: 'long', label: 'Lång sikt (år)' }
+      ]
+    },
+    {
+      id: 'outputFormat',
+      question: 'Hur vill du att AI presenterar sina analyser?',
+      key: 'outputFormat',
+      hasOptions: true,
+      options: [
+        { value: 'bullets', label: 'Punktlistor' },
+        { value: 'paragraphs', label: 'Kortare textstycken' },
+        { value: 'equity_report', label: 'Equity report-stil' },
+        { value: 'highlights', label: 'Snabba highlights' }
+      ]
+    },
+    {
+      id: 'sectorInterests',
+      question: 'Vilka sektorer eller teman ska analyserna prioritera? Välj gärna flera.',
+      key: 'sectorInterests',
+      hasOptions: true,
+      multiSelect: true,
+      options: [
+        { value: 'technology', label: 'Teknik & digitalisering' },
+        { value: 'healthcare', label: 'Hälsa & Life Science' },
+        { value: 'industry', label: 'Industri & produktion' },
+        { value: 'finance', label: 'Finans & banker' },
+        { value: 'energy', label: 'Energi & råvaror' },
+        { value: 'consumer', label: 'Konsument & handel' },
+        { value: 'real_estate', label: 'Fastigheter' },
+        { value: 'green_transition', label: 'Grön omställning' }
+      ],
       processAnswer: (answer: string | string[]) => {
-        const value = Array.isArray(answer) ? answer[0] ?? '' : answer;
-        const digitsOnly = value.replace(/[^0-9]/g, '');
-        if (digitsOnly.length === 0) {
-          return conversationData.age;
-        }
-
-        const parsedAge = parseInt(digitsOnly, 10);
-        if (Number.isFinite(parsedAge) && parsedAge >= 18 && parsedAge <= 100) {
-          return parsedAge;
-        }
-
-        return conversationData.age;
+        const values = Array.isArray(answer)
+          ? answer
+          : answer
+              .split(',')
+              .map(item => item.trim())
+              .filter(item => item.length > 0);
+        return values.filter((item, index) => values.indexOf(item) === index);
+      }
+    },
+    {
+      id: 'preferredAssets',
+      question: 'Vilka typer av tillgångar vill du få analyser om?',
+      key: 'preferredAssets',
+      hasOptions: true,
+      multiSelect: true,
+      options: [
+        { value: 'stocks', label: 'Aktier' },
+        { value: 'investment_companies', label: 'Investmentbolag' },
+        { value: 'etfs', label: 'ETF:er & indexfonder' },
+        { value: 'commodities', label: 'Råvaror' },
+        { value: 'crypto', label: 'Krypto' },
+        { value: 'bonds', label: 'Räntebärande tillgångar' }
+      ],
+      processAnswer: (answer: string | string[]) => {
+        const values = Array.isArray(answer)
+          ? answer
+          : answer
+              .split(',')
+              .map(item => item.trim())
+              .filter(item => item.length > 0);
+        return values.filter((item, index) => values.indexOf(item) === index);
       }
     },
     {
       id: 'hasPortfolio',
-      question: 'Har du redan några investeringar som du vill optimera?',
+      question: 'Vill du att analyserna ska utgå från din befintliga portfölj?',
       key: 'hasCurrentPortfolio',
       hasOptions: true,
       options: [
-        { value: 'yes', label: 'Ja, jag har befintliga investeringar' },
-        { value: 'no', label: 'Nej, jag börjar från början' }
+        { value: 'yes', label: 'Ja, utgå från mina nuvarande innehav' },
+        { value: 'no', label: 'Nej, håll det generellt' }
       ],
       processAnswer: (answer: string | string[]) => {
         const value = Array.isArray(answer) ? answer[0] ?? '' : answer;
@@ -888,318 +955,17 @@ const ChatPortfolioAdvisor = () => {
       }
     },
     {
-      id: 'currentPortfolioStrategy',
-      question: 'Hur skulle du beskriva din nuvarande portföljstrategi?',
-      key: 'currentPortfolioStrategy',
+      id: 'modelPortfolioStyle',
+      question: 'Vilken stil på modellportföljer vill du se oftast?',
+      key: 'modelPortfolioStyle',
       hasOptions: true,
-      showIf: () => conversationData.hasCurrentPortfolio === true,
       options: [
-        { value: 'passive_index', label: 'Passiv – indexfonder och bred exponering' },
-        { value: 'dividend_focus', label: 'Utdelningsfokus' },
-        { value: 'growth_focus', label: 'Tillväxt och innovation' },
-        { value: 'mixed', label: 'Blandad strategi' },
-        { value: 'unsure', label: 'Osäker / ingen tydlig strategi' }
+        { value: 'defensive', label: 'Defensiv' },
+        { value: 'balanced', label: 'Balanserad' },
+        { value: 'growth', label: 'Tillväxt' },
+        { value: 'thematic', label: 'Tematiska case' },
+        { value: 'broad', label: 'Breddade exempel' }
       ]
-    },
-    {
-      id: 'optimizationGoals',
-      question: 'Vad vill du främst förbättra i din nuvarande portfölj?',
-      key: 'optimizationGoals',
-      hasOptions: true,
-      showIf: () => conversationData.hasCurrentPortfolio === true,
-      multiSelect: true,
-      options: [
-        { value: 'risk_balance', label: 'Balansera risk och avkastning bättre' },
-        { value: 'diversify', label: 'Öka diversifieringen' },
-        { value: 'reduce_fees', label: 'Minska avgifter' },
-        { value: 'add_growth', label: 'Hitta nya tillväxtmöjligheter' },
-        { value: 'income_focus', label: 'Stärka utdelningsflödet' },
-        { value: 'sustainability', label: 'Öka hållbarhetsprofilen' }
-      ],
-      processAnswer: (answer: string | string[]) => {
-        const values = Array.isArray(answer)
-          ? answer
-          : answer
-              .split(',')
-              .map(item => item.trim())
-              .filter(item => item.length > 0);
-        return values.filter((item, index) => values.indexOf(item) === index);
-      }
-    },
-    {
-      id: 'optimizationRiskFocus',
-      question: 'Vilka risker oroar dig mest i portföljen idag?',
-      key: 'optimizationRiskFocus',
-      hasOptions: true,
-      showIf: () =>
-        conversationData.hasCurrentPortfolio === true &&
-        Array.isArray(conversationData.optimizationGoals) &&
-        conversationData.optimizationGoals.includes('risk_balance'),
-      options: [
-        { value: 'drawdown', label: 'Stora svängningar / drawdowns' },
-        { value: 'concentration', label: 'Hög koncentration i få innehav' },
-        { value: 'market', label: 'Känslighet mot marknadsrisk' },
-        { value: 'currency', label: 'Valutarisk' },
-        { value: 'liquidity', label: 'Likviditetsrisk' }
-      ]
-    },
-    {
-      id: 'optimizationDiversification',
-      question: 'Vilka områden vill du sprida risken mot?',
-      key: 'optimizationDiversificationFocus',
-      hasOptions: true,
-      multiSelect: true,
-      showIf: () =>
-        conversationData.hasCurrentPortfolio === true &&
-        Array.isArray(conversationData.optimizationGoals) &&
-        conversationData.optimizationGoals.includes('diversify'),
-      options: [
-        { value: 'nordics', label: 'Mer mot Norden' },
-        { value: 'global', label: 'Global exponering' },
-        { value: 'sectors', label: 'Fler olika sektorer' },
-        { value: 'small_caps', label: 'Småbolag och tillväxt' },
-        { value: 'thematic', label: 'Tematiska investeringar / fonder' }
-      ],
-      processAnswer: (answer: string | string[]) => {
-        const values = Array.isArray(answer)
-          ? answer
-          : answer
-              .split(',')
-              .map(item => item.trim())
-              .filter(item => item.length > 0);
-        return values.filter((item, index) => values.indexOf(item) === index);
-      }
-    },
-    {
-      id: 'optimizationPreference',
-      question: 'Hur vill du att jag ska arbeta med dina befintliga innehav?',
-      key: 'optimizationPreference',
-      hasOptions: true,
-      showIf: () => conversationData.hasCurrentPortfolio === true,
-      options: [
-        { value: 'analyze_only', label: 'Analysera och förbättra utan nya köp' },
-        { value: 'improve_with_new_ideas', label: 'Behåll kärnan men komplettera med nya idéer' },
-        { value: 'rebalance', label: 'Ge konkreta rebalanseringsförslag inklusive köp/sälj' }
-      ]
-    },
-    {
-      id: 'optimizationTimeline',
-      question: 'När vill du ha förändringar genomförda?',
-      key: 'optimizationTimeline',
-      hasOptions: true,
-      showIf: () => conversationData.hasCurrentPortfolio === true,
-      options: [
-        { value: 'immediate', label: 'Snarast möjligt' },
-        { value: 'short_term', label: 'Inom de kommande 3 månaderna' },
-        { value: 'medium_term', label: 'Under det kommande året' },
-        { value: 'long_term', label: 'Löpande över flera år' }
-      ]
-    },
-    {
-      id: 'tradingFrequency',
-      question: 'Hur ofta handlar du aktier eller andra tillgångar?',
-      key: 'tradingFrequency',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio === true,
-      options: [
-        { value: 'rarely', label: 'Sällan (några gånger per år)' },
-        { value: 'monthly', label: 'Någon gång i månaden' },
-        { value: 'weekly', label: 'Varje vecka eller oftare' }
-      ]
-    },
-    {
-      id: 'investedCapital',
-      question: shouldCollectAvailableCapitalForNewInvestor
-        ? 'Hur mycket kapital har du tillgängligt att investera just nu?'
-        : 'Hur mycket kapital har du ungefär investerat hittills?',
-      key: shouldCollectAvailableCapitalForNewInvestor ? 'availableCapital' : 'portfolioSize',
-      hasOptions: true,
-      showIf: () =>
-        conversationData.hasCurrentPortfolio !== true &&
-        conversationData.isBeginnerInvestor === false,
-      options: [
-        { value: 'under_10000', label: 'Under 10 000 kr' },
-        { value: '10000_50000', label: '10 000 – 50 000 kr' },
-        { value: '50000_200000', label: '50 000 – 200 000 kr' },
-        { value: 'over_200000', label: 'Mer än 200 000 kr' }
-      ]
-    },
-    {
-      id: 'beginnerStartCapital',
-      question: 'Hur mycket är du beredd att börja investera med?',
-      key: 'availableCapital',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true && conversationData.hasCurrentPortfolio !== true,
-      options: [
-        { value: 'under_1000', label: 'Mindre än 1 000 kr' },
-        { value: '1000_10000', label: '1 000 – 10 000 kr' },
-        { value: '10000_50000', label: '10 000 – 50 000 kr' },
-        { value: 'over_50000', label: 'Mer än 50 000 kr' }
-      ]
-    },
-    {
-      id: 'investmentGoalBeginner',
-      question: 'Vad är ditt främsta mål med att börja investera?',
-      key: 'investmentGoal',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true && conversationData.hasCurrentPortfolio !== true,
-      options: [
-        { value: 'long_term_savings', label: 'Bygga ett långsiktigt sparande' },
-        { value: 'learn_and_test', label: 'Lära mig mer och testa på' },
-        { value: 'specific_goal', label: 'Spara till något specifikt (t.ex. bostad, resa)' },
-        { value: 'quick_return', label: 'Snabb avkastning' }
-      ]
-    },
-    {
-      id: 'investmentGoalExperienced',
-      question: 'Vad är ditt främsta mål med investeringarna?',
-      key: 'investmentGoal',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio !== true,
-      options: [
-        { value: 'quick_return', label: 'Snabb avkastning / trading' },
-        { value: 'long_term_growth', label: 'Bygga långsiktigt sparande' },
-        { value: 'dividend_income', label: 'Extra inkomst via utdelningar' },
-        { value: 'other', label: 'Annat' }
-      ]
-    },
-    {
-      id: 'timeHorizonBeginner',
-      question: 'Hur lång tidshorisont har du för ditt sparande?',
-      key: 'timeHorizon',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true && conversationData.hasCurrentPortfolio !== true,
-      options: [
-        { value: 'short', label: 'Kortsiktigt (0–2 år)' },
-        { value: 'medium', label: 'Medellång sikt (3–5 år)' },
-        { value: 'long', label: 'Långsiktigt (5+ år)' },
-        { value: 'unknown', label: 'Vet inte än' }
-      ]
-    },
-    {
-      id: 'timeHorizonExperienced',
-      question: 'Hur lång tidshorisont har du på ditt sparande?',
-      key: 'timeHorizon',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio !== true,
-      options: [
-        { value: 'short', label: 'Kortsiktigt (0–2 år)' },
-        { value: 'medium', label: 'Medellång sikt (3–5 år)' },
-        { value: 'long', label: 'Långsiktigt (5+ år)' }
-      ]
-    },
-    {
-      id: 'preferredAssets',
-      question: 'Vilka tillgångar är du mest intresserad av?',
-      key: 'preferredAssets',
-      hasOptions: true,
-      options: [
-        { value: 'stocks', label: 'Aktier' },
-        { value: 'investment_companies', label: 'Investmentbolag' },
-        { value: 'crypto', label: 'Kryptovalutor' },
-        { value: 'commodities', label: 'Råvaror (t.ex. guld, olja)' }
-      ]
-    },
-    {
-      id: 'riskBeginner',
-      question: 'Hur ser du på risk?',
-      key: 'riskTolerance',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true,
-      options: [
-        { value: 'conservative', label: 'Vill undvika risk – hellre stabilt och tryggt' },
-        { value: 'balanced', label: 'Kan ta viss risk för chans till högre avkastning' },
-        { value: 'aggressive', label: 'Gillar risk – vill ha möjlighet till riktigt hög avkastning' }
-      ]
-    },
-    {
-      id: 'riskExperienced',
-      question: 'Vilken risknivå känns rimlig för dig?',
-      key: 'riskTolerance',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false,
-      options: [
-        { value: 'conservative', label: 'Låg risk' },
-        { value: 'balanced', label: 'Medelrisk' },
-        { value: 'aggressive', label: 'Hög risk' }
-      ]
-    },
-    {
-      id: 'monthlyInvestment',
-      question: 'Hur mycket planerar du att investera varje månad?',
-      key: 'monthlyAmount',
-      hasOptions: false,
-      processAnswer: (answer: string | string[]) => {
-        const value = Array.isArray(answer) ? answer.join(', ') : answer;
-        return value.trim();
-      }
-    },
-    {
-      id: 'marketReaction',
-      question: 'Hur reagerar du när portföljen tappar i värde?',
-      key: 'marketCrashReaction',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio === true,
-      options: [
-        { value: 'sell', label: 'Jag blir orolig och vill sälja' },
-        { value: 'wait', label: 'Jag försöker avvakta' },
-        { value: 'buy_more', label: 'Jag ser det som ett köptillfälle' }
-      ]
-    },
-    {
-      id: 'aiSupportExperienced',
-      question: 'Vad vill du främst att AI:n ska hjälpa dig med?',
-      key: 'portfolioHelp',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false,
-      options: [
-        { value: 'long_term_portfolio', label: 'Bygga en långsiktig portfölj' },
-        { value: 'analyze_holdings', label: 'Ge analyser på mina aktier' },
-        { value: 'find_new_investments', label: 'Hitta nya intressanta investeringar' },
-        { value: 'learn_more', label: 'Lära mig mer om investeringar' }
-      ]
-    },
-    {
-      id: 'aiSupportBeginner',
-      question: 'Vad vill du främst att AI:n ska hjälpa dig med?',
-      key: 'portfolioHelp',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true,
-      options: [
-        { value: 'step_by_step', label: 'Komma igång steg-för-steg' },
-        { value: 'learn_basics', label: 'Lära mig grunderna om aktier & investmentbolag' },
-        { value: 'starter_portfolio', label: 'Få förslag på en enkel startportfölj' },
-        { value: 'investment_inspiration', label: 'Inspiration till olika investeringstyper (aktier, investmentbolag, krypto m.m.)' }
-      ]
-    },
-    {
-      id: 'sectorInterests',
-      question: 'Vilka branscher intresserar dig mest? Du kan klicka på alternativen nedan eller ange egna.',
-      key: 'sectors',
-      hasOptions: true,
-      multiSelect: true,
-      options: [
-        { value: 'Tech & IT', label: 'Tech & IT' },
-        { value: 'Hälsa & Life Science', label: 'Hälsa & Life Science' },
-        { value: 'Energi', label: 'Energi' },
-        { value: 'Konsument & Handel', label: 'Konsument & Handel' },
-        { value: 'Fordon & Transport', label: 'Fordon & Transport' },
-        { value: 'Finans', label: 'Finans' },
-        { value: 'Industri', label: 'Industri' },
-        { value: 'Fastigheter', label: 'Fastigheter' },
-        { value: 'Grön Energi & Hållbarhet', label: 'Grön Energi & Hållbarhet' },
-        { value: 'Spel & Underhållning', label: 'Spel & Underhållning' },
-        { value: 'Annat', label: 'Annat' }
-      ],
-      processAnswer: (answer: string | string[]) => {
-        const values = Array.isArray(answer)
-          ? answer
-          : answer
-              .split(',')
-              .map(item => item.trim())
-              .filter(item => item.length > 0);
-        return values.filter((item, index) => values.indexOf(item) === index);
-      }
     }
   ];
 
@@ -1798,27 +1564,10 @@ const ChatPortfolioAdvisor = () => {
       updatedData.isBeginnerInvestor = processedAnswer === 'beginner';
     }
 
-    if (currentQuestion.key === 'monthlyAmount') {
-      let numericAnswer: number | null = null;
-
-      if (typeof processedAnswer === 'string') {
-        const cleaned = processedAnswer.replace(/[^0-9.,-]/g, '').replace(',', '.');
-        if (cleaned.length > 0) {
-          const parsed = Number(cleaned);
-          if (!Number.isNaN(parsed)) {
-            numericAnswer = parsed;
-          }
-        }
-      } else if (typeof processedAnswer === 'number' && Number.isFinite(processedAnswer)) {
-        numericAnswer = processedAnswer;
-      }
-
-      if (numericAnswer !== null) {
-        (updatedData as ConversationData).monthlyAmountNumeric = Math.round(numericAnswer);
-      } else {
-        delete (updatedData as ConversationData).monthlyAmountNumeric;
-      }
+    if (currentQuestion.id === 'sectorInterests' && Array.isArray(processedAnswer)) {
+      (updatedData as ConversationData).sectors = processedAnswer;
     }
+
     setConversationData(updatedData);
 
     // Move to next question

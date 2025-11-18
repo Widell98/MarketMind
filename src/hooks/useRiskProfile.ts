@@ -56,6 +56,7 @@ export interface RiskProfile {
   analysis_timeframe: 'short' | 'medium' | 'long' | null;
   output_format: 'bullets' | 'paragraphs' | 'equity_report' | 'highlights' | null;
   has_current_portfolio: boolean | null;
+  model_portfolio_style: 'defensive' | 'balanced' | 'growth' | 'thematic' | 'broad' | null;
 
   // Nuvarande innehav
   current_portfolio_value: number | null;
@@ -158,6 +159,7 @@ export const useRiskProfile = () => {
           has_current_portfolio: typeof data.has_current_portfolio === 'boolean'
             ? data.has_current_portfolio
             : null,
+          model_portfolio_style: data.model_portfolio_style as RiskProfile['model_portfolio_style'],
         };
         setRiskProfile(typedData);
         return typedData;
@@ -217,6 +219,7 @@ export const useRiskProfile = () => {
           has_current_portfolio: typeof data.has_current_portfolio === 'boolean'
             ? data.has_current_portfolio
             : null,
+          model_portfolio_style: data.model_portfolio_style as RiskProfile['model_portfolio_style'],
         };
         setRiskProfile(typedData);
         
