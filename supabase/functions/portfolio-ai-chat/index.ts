@@ -19,6 +19,7 @@ type BasePromptOptions = {
   shouldOfferFollowUp: boolean;
   expertiseLevel?: 'beginner' | 'intermediate' | 'advanced' | null;
   preferredResponseLength?: 'concise' | 'balanced' | 'detailed' | null;
+  respectRiskProfile?: boolean;
 };
 
 const BASE_PROMPT = `Du är en licensierad svensk finansiell rådgivare med många års erfarenhet av kapitalförvaltning. Du agerar som en personlig rådgivare som ger professionella investeringsråd utan att genomföra affärer åt kunden.
@@ -31,8 +32,8 @@ const BASE_PROMPT = `Du är en licensierad svensk finansiell rådgivare med mån
 
 PERSONA & STIL:
 - Professionell men konverserande ton, som en erfaren rådgivare som bjuder in till dialog.
-- Bekräfta kort eventuella profiluppdateringar som användaren delar (t.ex. sparande, risknivå, mål) innan du fortsätter med rådgivningen.
-- Anpassa råden efter användarens profil och portfölj – referera till risknivå, tidshorisont och större innehav när det är relevant.
+- Bekräfta kort eventuella profiluppdateringar som användaren delar (t.ex. sparande eller mål) innan du fortsätter med rådgivningen.
+- Anpassa råden efter användarens profil och portfölj. Ta endast hänsyn till riskprofilen om användaren uttryckligen ber om det i sin senaste fråga.
 - Använd svensk finansterminologi och marknadskontext.
 - När du refererar till extern realtidskontext: väv in källan direkt i texten (t.ex. "Enligt Reuters...").
 - Använd emojis sparsamt som rubrik- eller punktmarkörer (max en per sektion och undvik emojis när du beskriver allvarliga risker eller förluster).
@@ -58,6 +59,12 @@ const buildBasePrompt = (options: BasePromptOptions): string => {
     personalizationLines.push('- Avsluta med en naturlig, öppen följdfråga när det passar kontexten.');
   } else {
     personalizationLines.push('- Hoppa över avslutande följdfrågor om de inte tillför något i just detta svar.');
+  }
+
+  if (options.respectRiskProfile === true) {
+    personalizationLines.push('- Använd riskprofilen denna gång eftersom användaren bad om riskanpassade råd.');
+  } else if (options.respectRiskProfile === false) {
+    personalizationLines.push('- Låt riskprofilen vara åt sidan tills användaren uttryckligen ber om risknivå eller riskhantering.');
   }
 
   return `${BASE_PROMPT}\n${personalizationLines.join('\n')}`;
@@ -107,7 +114,7 @@ OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
 - Föreslå konkreta uppföljningssteg.`,
   general_advice: `ALLMÄN INVESTERINGSRÅDGIVNING:
 - Ge råd i 2–4 meningar när frågan är enkel.
-- Anpassa förslag till användarens riskprofil och intressen.
+- Anpassa förslag till användarens mål och intressen. Ta bara upp riskprofilen om användaren uttryckligen efterfrågar det.
 - När aktieförslag behövs ska formatet vara **Företagsnamn (TICKER)** - Kort motivering och endast inkludera börsnoterade bolag.`,
   document_summary: `DOKUMENTSAMMANFATTNING:
 - Utgå strikt från användarens uppladdade dokument som primär källa.
@@ -1290,6 +1297,26 @@ type TavilyContextPayload = {
 
 type TavilySearchDepth = 'basic' | 'advanced';
 
+type TavilyLocalePreference = 'se' | 'global';
+
+type TavilyLLMPlanInput = {
+  message: string;
+  entityAwareQuery?: string | null;
+  userIntent?: IntentType;
+  recentMessages?: string[];
+  openAIApiKey: string;
+};
+
+type TavilyLLMPlan = {
+  shouldSearch: boolean;
+  query?: string;
+  topic?: TavilyTopic;
+  depth?: TavilySearchDepth;
+  freshnessDays?: number;
+  preferredLocales?: TavilyLocalePreference[];
+  reason?: string;
+};
+
 type TavilySearchOptions = {
   query?: string;
   includeDomains?: string[];
@@ -1303,6 +1330,177 @@ type TavilySearchOptions = {
   timeoutMs?: number;
   requireRecentDays?: number;
   allowUndatedFromDomains?: string[];
+};
+
+const TAVILY_ROUTER_TOOL = {
+  type: 'function',
+  function: {
+    name: 'tavily_search',
+    description: 'Planera en Tavily-sökning för dagsaktuell finans- eller marknadskontext innan rådgivaren svarar användaren.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Kortfattad sökfras som hjälper Tavily att hitta relevanta nyheter eller rapporter.'
+        },
+        topic: {
+          type: 'string',
+          enum: ['general', 'news', 'finance'],
+          description: 'Välj "news" för rubriker, "finance" för bolagsspecifika uppdateringar eller "general" vid osäkerhet.'
+        },
+        depth: {
+          type: 'string',
+          enum: ['basic', 'advanced'],
+          description: 'Ange "advanced" när du behöver längre utdrag eller råinnehåll.'
+        },
+        freshnessDays: {
+          type: 'integer',
+          minimum: 1,
+          maximum: 30,
+          description: 'Maximalt antal dagar bakåt som källorna får vara.'
+        },
+        preferredLocales: {
+          type: 'array',
+          items: {
+            type: 'string',
+            enum: ['se', 'global'],
+          },
+          description: 'Prioriterade geografiska marknader, t.ex. Sverige (se) eller globalt.'
+        },
+        reason: {
+          type: 'string',
+          description: 'Kort svensk motivering till varför realtidsdata behövs.'
+        }
+      },
+      required: ['query'],
+    },
+  },
+} as const;
+
+const planRealtimeSearchWithLLM = async ({
+  message,
+  entityAwareQuery,
+  userIntent,
+  recentMessages,
+  openAIApiKey,
+}: TavilyLLMPlanInput): Promise<TavilyLLMPlan> => {
+  try {
+    const routerContext: string[] = [];
+    if (userIntent) {
+      routerContext.push(`Identifierad intent: ${userIntent}.`);
+    }
+    if (entityAwareQuery && entityAwareQuery.trim().length > 0) {
+      routerContext.push(`Föreslagen sökfras: ${entityAwareQuery.trim()}`);
+    }
+    if (recentMessages && recentMessages.length > 0) {
+      routerContext.push('Tidigare relaterade frågor:\n' + recentMessages.map((entry, index) => `${index + 1}. ${entry}`).join('\n'));
+    }
+
+    const routerPrompt = [
+      'Du avgör om nästa svar behöver dagsaktuella källor innan rådgivaren svarar kunden.',
+      'Om färska nyheter, intradagspris eller senaste rapporter krävs → anropa tavily_search exakt en gång.',
+      'Om äldre kunskap räcker → svara med JSON på formatet {"decision":"skip","reason":"kort svensk motivering"}.',
+      'Ange alltid en motivering (på svenska) antingen i JSON:et eller i fältet reason när du anropar verktyget.',
+      routerContext.join('\n\n'),
+      `Användarens fråga:\n"""${message}"""`,
+    ].filter(Boolean).join('\n\n');
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${openAIApiKey}`,
+      },
+      body: JSON.stringify({
+        model: INLINE_INTENT_MODEL,
+        temperature: 0,
+        max_tokens: 180,
+        tool_choice: 'auto',
+        tools: [TAVILY_ROUTER_TOOL],
+        messages: [
+          {
+            role: 'system',
+            content: 'Du är en researchplanerare som bara ska trigga Tavily vid behov av realtidsdata och annars förklara varför det inte behövs.',
+          },
+          { role: 'user', content: routerPrompt },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('LLM Tavily-router misslyckades med status', response.status);
+      return { shouldSearch: false };
+    }
+
+    const data = await response.json();
+    const choice = data?.choices?.[0]?.message;
+
+    const toolCall = choice?.tool_calls?.find((call: any) => call?.function?.name === 'tavily_search');
+    if (toolCall) {
+      try {
+        const argsRaw = toolCall.function?.arguments ?? '{}';
+        const args = JSON.parse(argsRaw);
+        const locales = Array.isArray(args?.preferredLocales)
+          ? args.preferredLocales
+            .map((value: string) => (value === 'se' || value === 'global') ? value : null)
+            .filter(Boolean) as TavilyLocalePreference[]
+          : undefined;
+        const depth = args?.depth === 'advanced' || args?.depth === 'basic'
+          ? args.depth
+          : undefined;
+        const topic = args?.topic === 'news' || args?.topic === 'finance' || args?.topic === 'general'
+          ? args.topic
+          : undefined;
+        const freshnessDaysRaw = typeof args?.freshnessDays === 'number'
+          ? args.freshnessDays
+          : typeof args?.freshnessDays === 'string'
+            ? Number(args.freshnessDays)
+            : undefined;
+        const freshnessDays = Number.isFinite(freshnessDaysRaw)
+          ? Math.min(30, Math.max(1, Math.round(Number(freshnessDaysRaw))))
+          : undefined;
+        return {
+          shouldSearch: true,
+          query: typeof args?.query === 'string' ? args.query.trim() : undefined,
+          topic,
+          depth,
+          freshnessDays,
+          preferredLocales: locales,
+          reason: typeof args?.reason === 'string' ? args.reason.trim() : undefined,
+        };
+      } catch (error) {
+        console.warn('Kunde inte tolka Tavily-verktygsargument:', error);
+        return { shouldSearch: true };
+      }
+    }
+
+    const fallbackContent = typeof choice?.content === 'string' ? choice.content.trim() : '';
+    if (fallbackContent) {
+      try {
+        const parsed = JSON.parse(fallbackContent);
+        const normalizedDecision = typeof parsed?.decision === 'string'
+          ? parsed.decision.toLowerCase()
+          : '';
+        const shouldSearch = normalizedDecision === 'search' || normalizedDecision === 'ja' || normalizedDecision === 'yes';
+        return {
+          shouldSearch,
+          reason: typeof parsed?.reason === 'string' ? parsed.reason.trim() : undefined,
+        };
+      } catch (error) {
+        const normalized = fallbackContent.toLowerCase();
+        if (normalized.includes('search') || normalized.includes('realtid') || normalized.includes('tavily')) {
+          return { shouldSearch: true, reason: fallbackContent };
+        }
+        return { shouldSearch: false, reason: fallbackContent };
+      }
+    }
+
+    return { shouldSearch: false };
+  } catch (error) {
+    console.warn('Fel i LLM-planeringen för Tavily:', error);
+    return { shouldSearch: false };
+  }
 };
 
 type StockDetectionPattern = {
@@ -1722,6 +1920,10 @@ serve(async (req) => {
         .map(entry => entry.content as string)
         .slice(-3)
       : [];
+
+    const riskKeywordPattern = /(riskprofil|risktolerans|riskniv[åa]|risktagande|riskjusterad|riskhantering|risknivån|risknivaan|risknivor|risk)/i;
+    const mentionsRisk = (value?: string): boolean => typeof value === 'string' && riskKeywordPattern.test(value);
+    const userExplicitRiskFocus = mentionsRisk(message) || recentUserMessages.some(mentionsRisk);
 
     if (!message || !userId) {
       console.error('Missing required fields:', { message: !!message, userId: !!userId });
@@ -2572,18 +2774,30 @@ serve(async (req) => {
       detectedEntities: interpretedEntities,
     });
 
-    const shouldFetchTavily = !hasUploadedDocuments && !isDocumentSummaryRequest && !isSimplePersonalAdviceRequest && (
-      isStockMentionRequest || hasRealTimeTrigger
-    );
+    const llmTavilyPlan = await planRealtimeSearchWithLLM({
+      message,
+      entityAwareQuery,
+      userIntent,
+      recentMessages: recentUserMessages,
+      openAIApiKey,
+    });
+    if (llmTavilyPlan.reason) {
+      console.log('LLM Tavily-plan:', llmTavilyPlan.reason);
+    }
+
+    const shouldFetchTavily = !hasUploadedDocuments && !isDocumentSummaryRequest && !isSimplePersonalAdviceRequest && llmTavilyPlan.shouldSearch;
     if (shouldFetchTavily) {
-      const logMessage = isStockMentionRequest
-        ? 'Aktieomnämnande upptäckt – anropar Tavily för relevanta nyheter.'
-        : 'Fråga upptäckt som realtidsfråga – anropar Tavily.';
+      const logMessage = llmTavilyPlan.reason
+        ? `LLM begärde Tavily-sökning: ${llmTavilyPlan.reason}`
+        : 'LLM begärde Tavily-sökning – hämtar realtidskällor.';
       console.log(logMessage);
 
       const shouldPrioritizeStockAnalysis = primaryDetectedTicker && (isStockAnalysisRequest || isFinancialDataRequest);
 
       const determineTavilyTopic = (): TavilyTopic => {
+        if (llmTavilyPlan.topic) {
+          return llmTavilyPlan.topic;
+        }
         if (hasRealTimeTrigger || userIntent === 'general_news' || userIntent === 'news_update' || userIntent === 'market_analysis') {
           return 'news';
         }
@@ -2593,11 +2807,13 @@ serve(async (req) => {
         return 'finance';
       };
 
-      const shouldUseAdvancedDepth = shouldPrioritizeStockAnalysis
+      const shouldUseAdvancedDepthFallback = shouldPrioritizeStockAnalysis
         || isFinancialDataRequest
         || userIntent === 'news_update'
         || userIntent === 'market_analysis'
         || hasRealTimeTrigger;
+      const selectedDepth: TavilySearchDepth = llmTavilyPlan.depth ?? (shouldUseAdvancedDepthFallback ? 'advanced' : 'basic');
+      const shouldUseAdvancedDepth = selectedDepth === 'advanced';
 
       const normalizeTickerToken = (value: string | null | undefined): string => {
         if (!value) return '';
@@ -2678,6 +2894,20 @@ serve(async (req) => {
       }
 
       const determineIncludeDomains = (): string[] => {
+        if (Array.isArray(llmTavilyPlan.preferredLocales) && llmTavilyPlan.preferredLocales.length > 0) {
+          const wantsSE = llmTavilyPlan.preferredLocales.includes('se');
+          const wantsGlobal = llmTavilyPlan.preferredLocales.includes('global');
+          if (wantsSE && !wantsGlobal) {
+            return SWEDISH_PRIORITY_TAVILY_DOMAINS;
+          }
+          if (wantsGlobal && !wantsSE) {
+            return INTERNATIONAL_PRIORITY_TAVILY_DOMAINS;
+          }
+          if (wantsSE && wantsGlobal) {
+            return TRUSTED_TAVILY_DOMAINS;
+          }
+        }
+
         if (swedishScore === 0 && internationalScore === 0) {
           return TRUSTED_TAVILY_DOMAINS;
         }
@@ -2698,17 +2928,23 @@ serve(async (req) => {
 
       const buildDefaultTavilyOptions = (): TavilySearchOptions => {
         const options: TavilySearchOptions = {
-          query: entityAwareQuery ?? undefined,
+          query: (llmTavilyPlan.query && llmTavilyPlan.query.length > 2)
+            ? llmTavilyPlan.query
+            : entityAwareQuery ?? undefined,
           includeDomains: prioritizedIncludeDomains,
           excludeDomains: DEFAULT_EXCLUDED_TAVILY_DOMAINS,
           includeRawContent: shouldUseAdvancedDepth,
           topic: determineTavilyTopic(),
-          searchDepth: shouldUseAdvancedDepth ? 'advanced' : 'basic',
+          searchDepth: selectedDepth,
           maxResults: 6,
           timeoutMs: hasRealTimeTrigger ? 5000 : 6500,
         };
 
-        if (hasRealTimeTrigger || userIntent === 'news_update') {
+        if (typeof llmTavilyPlan.freshnessDays === 'number' && llmTavilyPlan.freshnessDays > 0) {
+          options.requireRecentDays = llmTavilyPlan.freshnessDays;
+          options.days = llmTavilyPlan.freshnessDays;
+          options.timeRange = llmTavilyPlan.freshnessDays <= 3 ? 'day' : 'week';
+        } else if (hasRealTimeTrigger || userIntent === 'news_update') {
           options.timeRange = 'day';
           if (options.topic === 'news' && options.days === undefined) {
             options.days = 3;
@@ -2910,6 +3146,7 @@ serve(async (req) => {
       shouldOfferFollowUp,
       expertiseLevel: expertiseFromMemory ?? expertiseFromProfile ?? null,
       preferredResponseLength: preferredLength,
+      respectRiskProfile: userExplicitRiskFocus,
     });
 
     const headingDirective = buildHeadingDirectives({ intent: userIntent });
@@ -3095,9 +3332,9 @@ serve(async (req) => {
         }
 
         contextInfo += `\n\nNUVARANDE PORTFÖLJ:
-- Totalt värde: ${totalValueFormatted} SEK
-- Antal innehav: ${actualHoldings.length}
-- Största positioner: ${holdingsSummary || 'Inga registrerade innehav'}`;
+  - Totalt värde: ${totalValueFormatted} SEK
+  - Antal innehav: ${actualHoldings.length}
+  - Största positioner: ${holdingsSummary || 'Inga registrerade innehav'}`;
 
         if (portfolio) {
           if (recommendedAllocationEntries.length > 0) {
@@ -3110,8 +3347,13 @@ serve(async (req) => {
             });
           }
 
-          contextInfo += `\n- Portföljens riskpoäng: ${portfolio.risk_score || 'Ej beräknad'}
-- Förväntad årlig avkastning: ${portfolio.expected_return || 'Ej beräknad'}%`;
+          if (userExplicitRiskFocus && portfolio.risk_score) {
+            contextInfo += `\n- Portföljens riskpoäng: ${portfolio.risk_score}`;
+          } else if (!userExplicitRiskFocus && portfolio.risk_score) {
+            contextInfo += `\n- Riskprofil: Finns sparad men ska endast användas om användaren efterfrågar riskanalys.`;
+          }
+
+          contextInfo += `\n- Förväntad årlig avkastning: ${portfolio.expected_return || 'Ej beräknad'}%`;
         }
       }
     }

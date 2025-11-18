@@ -717,7 +717,7 @@ Tillgänglig klientinformation:
 ${contextInfo}
 
 Rådgivningsregler:
-- Basera alltid rekommendationerna på användarens riskprofil, mål, tidsram, likvida medel och intressen.
+- Basera rekommendationerna på användarens mål, tidsram, likvida medel och intressen. Använd endast riskprofilen om användaren uttryckligen efterfrågar riskanpassade råd i sin senaste instruktion.
 - Säkerställ att portföljen är diversifierad och att varje innehav har en tydlig roll (Bas, Tillväxt, Skydd eller Kassaflöde).
 - Justera antalet tillgångar efter kundens önskemål (normalt 3–8 poster) och undvik dubletter mot befintliga innehav.
 - Alla förslag ska vara tillgängliga via svenska handelsplattformar (Avanza, Nordnet) och lämpa sig för ISK/KF när det är relevant.
