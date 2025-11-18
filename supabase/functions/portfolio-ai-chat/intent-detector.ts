@@ -130,7 +130,9 @@ export const detectUserIntentWithOpenAI = async (
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-5.1',
+        reasoning: { effort: 'medium' },
+        verbosity: 'low',
         temperature: 0.2,
         response_format: { type: 'json_schema', json_schema: INTENT_SCHEMA },
         messages,

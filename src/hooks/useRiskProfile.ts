@@ -49,7 +49,14 @@ export interface RiskProfile {
   activity_preference: string | null;
   investment_style_preference: string | null;
   investment_experience: 'beginner' | 'intermediate' | 'advanced' | null;
-  
+
+  // Analysprofil
+  analysis_focus: 'macro' | 'fundamental' | 'technical' | 'mixed' | null;
+  analysis_depth: 'light' | 'normal' | 'deep' | null;
+  analysis_timeframe: 'short' | 'medium' | 'long' | null;
+  output_format: 'bullets' | 'paragraphs' | 'equity_report' | 'highlights' | null;
+  has_current_portfolio: boolean | null;
+
   // Nuvarande innehav
   current_portfolio_value: number | null;
   overexposure_awareness: string | null;
@@ -143,7 +150,14 @@ export const useRiskProfile = () => {
           investment_horizon: data.investment_horizon as RiskProfile['investment_horizon'],
           investment_goal: data.investment_goal as RiskProfile['investment_goal'],
           risk_tolerance: data.risk_tolerance as RiskProfile['risk_tolerance'],
-          investment_experience: data.investment_experience as RiskProfile['investment_experience']
+          investment_experience: data.investment_experience as RiskProfile['investment_experience'],
+          analysis_focus: data.analysis_focus as RiskProfile['analysis_focus'],
+          analysis_depth: data.analysis_depth as RiskProfile['analysis_depth'],
+          analysis_timeframe: data.analysis_timeframe as RiskProfile['analysis_timeframe'],
+          output_format: data.output_format as RiskProfile['output_format'],
+          has_current_portfolio: typeof data.has_current_portfolio === 'boolean'
+            ? data.has_current_portfolio
+            : null,
         };
         setRiskProfile(typedData);
         return typedData;
@@ -160,7 +174,7 @@ export const useRiskProfile = () => {
     }
   };
 
-  const saveRiskProfile = async (profileData: Omit<RiskProfile, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+  const saveRiskProfile = async (profileData: Partial<RiskProfile>) => {
     if (!user) return false;
 
     try {
@@ -176,10 +190,10 @@ export const useRiskProfile = () => {
         .single();
 
       if (error) {
-        console.error('Error saving risk profile:', error);
+        console.error('Error saving analysis profile:', error);
         toast({
           title: "Error",
-          description: "Failed to save risk profile",
+          description: "Failed to save analysis profile",
           variant: "destructive",
         });
         return false;
@@ -191,26 +205,34 @@ export const useRiskProfile = () => {
           sector_interests: jsonToStringArray(data.sector_interests),
           investment_purpose: jsonToStringArray(data.investment_purpose),
           current_holdings: jsonToArray(data.current_holdings),
+          preferred_assets: jsonToStringArray(data.preferred_assets),
           investment_horizon: data.investment_horizon as RiskProfile['investment_horizon'],
           investment_goal: data.investment_goal as RiskProfile['investment_goal'],
           risk_tolerance: data.risk_tolerance as RiskProfile['risk_tolerance'],
-          investment_experience: data.investment_experience as RiskProfile['investment_experience']
+          investment_experience: data.investment_experience as RiskProfile['investment_experience'],
+          analysis_focus: data.analysis_focus as RiskProfile['analysis_focus'],
+          analysis_depth: data.analysis_depth as RiskProfile['analysis_depth'],
+          analysis_timeframe: data.analysis_timeframe as RiskProfile['analysis_timeframe'],
+          output_format: data.output_format as RiskProfile['output_format'],
+          has_current_portfolio: typeof data.has_current_portfolio === 'boolean'
+            ? data.has_current_portfolio
+            : null,
         };
         setRiskProfile(typedData);
         
         toast({
-          title: "Success",
-          description: "Risk profile saved successfully",
+          title: "Profil sparad",
+          description: "Din analysprofil har uppdaterats",
         });
         return typedData;
       }
       
       return false;
     } catch (error) {
-      console.error('Error saving risk profile:', error);
+      console.error('Error saving analysis profile:', error);
       toast({
         title: "Error",
-        description: "Failed to save risk profile",
+        description: "Failed to save analysis profile",
         variant: "destructive",
       });
       return false;
@@ -231,28 +253,28 @@ export const useRiskProfile = () => {
         .eq('user_id', user.id);
 
       if (error) {
-        console.error('Error clearing risk profile:', error);
+        console.error('Error clearing analysis profile:', error);
         toast({
           title: "Fel",
-          description: "Kunde inte radera riskprofilen",
+          description: "Kunde inte radera analysprofilen",
           variant: "destructive",
         });
         return false;
       }
 
       setRiskProfile(null);
-      
+
       toast({
         title: "Profil raderad",
-        description: "Din riskprofil har raderats framgångsrikt",
+        description: "Din analysprofil har raderats framgångsrikt",
       });
       
       return true;
     } catch (error) {
-      console.error('Error clearing risk profile:', error);
+      console.error('Error clearing analysis profile:', error);
       toast({
         title: "Fel",
-        description: "Kunde inte radera riskprofilen",
+        description: "Kunde inte radera analysprofilen",
         variant: "destructive",
       });
       return false;
