@@ -413,7 +413,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: REPORT_MODEL,
         temperature: 0.6,
-        max_tokens: 600,
+        max_completion_tokens: 600,
         response_format: REPORT_RESPONSE_FORMAT,
         messages: [
           {

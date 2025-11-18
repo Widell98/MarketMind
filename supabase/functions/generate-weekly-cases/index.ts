@@ -1024,7 +1024,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
             { role: 'user', content: prompt }
           ],
           temperature: 0.7,
-          max_tokens: 500,
+          max_completion_tokens: 500,
           response_format: WEEKLY_CASE_RESPONSE_FORMAT,
         }),
       });
