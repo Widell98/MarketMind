@@ -1025,8 +1025,6 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
           ],
           temperature: 0.7,
           max_tokens: 500,
-          reasoning: { effort: 'medium' },
-          modalities: ['text'],
           response_format: WEEKLY_CASE_RESPONSE_FORMAT,
         }),
       });

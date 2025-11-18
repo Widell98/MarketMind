@@ -31,7 +31,6 @@ serve(async (req) => {
       model = defaultModel,
       maxTokens = 50,
       temperature = 0.3,
-      reasoningEffort = 'medium'
     } = requestBody;
 
     console.log('Quick AI Assistant called with:', { 
@@ -100,8 +99,6 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
         messages: messages,
         max_tokens: maxTokens,
         temperature: temperature,
-        reasoning: { effort: reasoningEffort },
-        modalities: ['text'],
       }),
     });
 

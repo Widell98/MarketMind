@@ -602,12 +602,11 @@ const classifyIntentWithLLM = async (
         'Content-Type': 'application/json',
         Authorization: `Bearer ${openAIApiKey}`,
       },
-        body: JSON.stringify({
-          model: INLINE_INTENT_MODEL,
-          temperature: 0,
-          max_tokens: 5,
-          reasoning: { effort: 'low' },
-          messages: [
+      body: JSON.stringify({
+        model: INLINE_INTENT_MODEL,
+        temperature: 0,
+        max_tokens: 5,
+        messages: [
           {
             role: 'system',
             content: 'Klassificera användarens fråga som en av följande kategorier: stock_analysis, news_update, general_news, market_analysis, portfolio_optimization, buy_sell_decisions, general_advice. Svara endast med etiketten.',
@@ -928,7 +927,6 @@ const evaluateNewsIntentWithOpenAI = async ({
         model: INLINE_INTENT_MODEL,
         temperature: 0,
         response_format: { type: 'json_schema', json_schema: NEWS_INTENT_SCHEMA },
-        reasoning: { effort: 'low' },
         messages,
       }),
     });
@@ -1040,7 +1038,6 @@ const evaluateStockIntentWithOpenAI = async ({
         model: INLINE_INTENT_MODEL,
         temperature: 0,
         response_format: { type: 'json_schema', json_schema: STOCK_INTENT_SCHEMA },
-        reasoning: { effort: 'low' },
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userContent },
@@ -1155,7 +1152,6 @@ const askLLMIfRealtimeNeeded = async ({
         model: INLINE_INTENT_MODEL,
         temperature: 0,
         max_tokens: 60,
-        reasoning: { effort: 'low' },
         messages: [
           {
             role: 'system',
@@ -3463,14 +3459,12 @@ ${importantLines.join('\n')}
           'Authorization': `Bearer ${openAIApiKey}`,
           'Content-Type': 'application/json',
         },
-      body: JSON.stringify({
-        model,
-        messages,
-        stream: false,
-        reasoning: { effort: isPersonalAdviceRequest ? 'high' : 'medium' },
-        modalities: ['text'],
-      }),
-    });
+        body: JSON.stringify({
+          model,
+          messages,
+          stream: false,
+        }),
+      });
 
       if (!nonStreamResp.ok) {
         const errorBody = await nonStreamResp.text();
@@ -3527,8 +3521,6 @@ ${importantLines.join('\n')}
         model,
         messages,
         stream: true,
-        reasoning: { effort: isPersonalAdviceRequest ? 'high' : 'medium' },
-        modalities: ['text'],
       }),
     });
 
