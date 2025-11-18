@@ -14,6 +14,7 @@ interface ChatMessage {
   type: 'user' | 'ai';
   content: string;
   timestamp: Date;
+  reasoning?: string | null;
 }
 
 interface StockCaseAIChatProps {
@@ -77,9 +78,10 @@ KRITISKA REGLER:
           message: inputMessage.trim(),
           userId: user.id,
           systemPrompt,
-          model: 'gpt-4o-mini',
+          model: 'gpt-5.1',
           maxTokens: 50,
-          temperature: 0.3
+          temperature: 0.3,
+          reasoningEffort: 'low'
         }
       });
 
@@ -89,7 +91,8 @@ KRITISKA REGLER:
         id: (Date.now() + 1).toString(),
         type: 'ai',
         content: data.response || 'Jag kunde inte generera ett svar just nu.',
-        timestamp: new Date()
+        timestamp: new Date(),
+        reasoning: data.reasoning ?? null
       };
 
       setMessages(prev => [...prev, aiMessage]);
@@ -178,7 +181,13 @@ KRITISKA REGLER:
                               : 'bg-white dark:bg-gray-800 border'
                           }`}
                         >
-                          {message.content}
+                          <p>{message.content}</p>
+                          {message.type === 'ai' && message.reasoning && (
+                            <div className="mt-2 border-t pt-2 text-xs text-muted-foreground">
+                              <p className="font-medium mb-1">Resonemang</p>
+                              <p>{message.reasoning}</p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
