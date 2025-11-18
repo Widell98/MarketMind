@@ -8,6 +8,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const PRIMARY_CHAT_MODEL = Deno.env.get('OPENAI_PORTFOLIO_MODEL')
+  || Deno.env.get('OPENAI_MODEL')
+  || 'gpt-5.1';
+
+const INLINE_INTENT_MODEL = Deno.env.get('OPENAI_INTENT_MODEL')
+  || PRIMARY_CHAT_MODEL;
+
 type BasePromptOptions = {
   shouldOfferFollowUp: boolean;
   expertiseLevel?: 'beginner' | 'intermediate' | 'advanced' | null;
@@ -595,11 +602,12 @@ const classifyIntentWithLLM = async (
         'Content-Type': 'application/json',
         Authorization: `Bearer ${openAIApiKey}`,
       },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        temperature: 0,
-        max_tokens: 5,
-        messages: [
+        body: JSON.stringify({
+          model: INLINE_INTENT_MODEL,
+          temperature: 0,
+          max_tokens: 5,
+          reasoning: { effort: 'low' },
+          messages: [
           {
             role: 'system',
             content: 'Klassificera användarens fråga som en av följande kategorier: stock_analysis, news_update, general_news, market_analysis, portfolio_optimization, buy_sell_decisions, general_advice. Svara endast med etiketten.',
@@ -917,9 +925,10 @@ const evaluateNewsIntentWithOpenAI = async ({
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: INLINE_INTENT_MODEL,
         temperature: 0,
         response_format: { type: 'json_schema', json_schema: NEWS_INTENT_SCHEMA },
+        reasoning: { effort: 'low' },
         messages,
       }),
     });
@@ -1028,9 +1037,10 @@ const evaluateStockIntentWithOpenAI = async ({
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: INLINE_INTENT_MODEL,
         temperature: 0,
         response_format: { type: 'json_schema', json_schema: STOCK_INTENT_SCHEMA },
+        reasoning: { effort: 'low' },
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userContent },
@@ -1142,9 +1152,10 @@ const askLLMIfRealtimeNeeded = async ({
         Authorization: `Bearer ${openAIApiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: INLINE_INTENT_MODEL,
         temperature: 0,
         max_tokens: 60,
+        reasoning: { effort: 'low' },
         messages: [
           {
             role: 'system',
@@ -3375,8 +3386,8 @@ ${importantLines.join('\n')}
 `;
 
 
-    // Force using gpt-4o to avoid streaming restrictions and reduce cost
-    const model = 'gpt-4o';
+    // Force using gpt-5.1 with reasoning-enabled features for consistent behavior
+    const model = PRIMARY_CHAT_MODEL;
 
     console.log('Selected model:', model, 'for request type:', {
       isStockAnalysis: isStockAnalysisRequest,
@@ -3452,12 +3463,14 @@ ${importantLines.join('\n')}
           'Authorization': `Bearer ${openAIApiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model,
-          messages,
-          stream: false,
-        }),
-      });
+      body: JSON.stringify({
+        model,
+        messages,
+        stream: false,
+        reasoning: { effort: isPersonalAdviceRequest ? 'high' : 'medium' },
+        modalities: ['text'],
+      }),
+    });
 
       if (!nonStreamResp.ok) {
         const errorBody = await nonStreamResp.text();
@@ -3514,6 +3527,8 @@ ${importantLines.join('\n')}
         model,
         messages,
         stream: true,
+        reasoning: { effort: isPersonalAdviceRequest ? 'high' : 'medium' },
+        modalities: ['text'],
       }),
     });
 

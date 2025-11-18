@@ -6,6 +6,9 @@ import { jsonrepair } from 'https://esm.sh/jsonrepair@3.6.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const CASE_MODEL = Deno.env.get('OPENAI_CASE_MODEL')
+  || Deno.env.get('OPENAI_MODEL')
+  || 'gpt-5.1';
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
@@ -17,6 +20,28 @@ const corsHeaders = {
 const CASE_COUNT = 1;
 const SHEET_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRJZtyoepzQZSQw-LXTp0vmnpPVMqluTiPZJkPp61g5KsfEp08CA6LZ7CNoTfIgYe-E7lvCZ_ToMuF4/pub?gid=2130484499&single=true&output=csv";
+
+const WEEKLY_CASE_RESPONSE_FORMAT = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'weekly_stock_case',
+    schema: {
+      type: 'object',
+      additionalProperties: true,
+      properties: {
+        title: { type: 'string' },
+        company_name: { type: 'string' },
+        description: { type: 'string' },
+        long_description: { type: 'string' },
+        sector: { type: 'string' },
+        market_cap: { type: 'string' },
+        pe_ratio: { type: 'string' },
+        dividend_yield: { type: 'string' },
+      },
+      required: ['title', 'company_name', 'description', 'long_description'],
+    },
+  },
+} as const;
 
 const normalizeSheetValue = (value?: string | null) => {
   if (!value) return null;
@@ -990,7 +1015,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: CASE_MODEL,
           messages: [
             {
               role: 'system',
@@ -1000,6 +1025,9 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
           ],
           temperature: 0.7,
           max_tokens: 500,
+          reasoning: { effort: 'medium' },
+          modalities: ['text'],
+          response_format: WEEKLY_CASE_RESPONSE_FORMAT,
         }),
       });
 

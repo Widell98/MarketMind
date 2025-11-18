@@ -2465,8 +2465,10 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
           created_at: new Date().toISOString(),
           prompt_length: enhancedPrompt.length,
           response_length: aiRecommendationText?.length || 0,
-          ai_model: 'gpt-4o',
-          analysis_type: 'comprehensive_portfolio_strategy'
+          ai_model: 'gpt-5.1',
+          analysis_type: 'comprehensive_portfolio_strategy',
+          reasoning_effort: 'medium',
+          structured_output: 'json_schema'
         }
       };
 

@@ -20,7 +20,19 @@ serve(async (req) => {
     const requestBody = await req.json();
     console.log('Request body received:', JSON.stringify(requestBody, null, 2));
     
-    const { message, userId, systemPrompt, model = 'gpt-4o-mini', maxTokens = 50, temperature = 0.3 } = requestBody;
+    const defaultModel = Deno.env.get('OPENAI_REASONING_MODEL')
+      || Deno.env.get('OPENAI_MODEL')
+      || 'gpt-5.1';
+
+    const {
+      message,
+      userId,
+      systemPrompt,
+      model = defaultModel,
+      maxTokens = 50,
+      temperature = 0.3,
+      reasoningEffort = 'medium'
+    } = requestBody;
 
     console.log('Quick AI Assistant called with:', { 
       message: message?.substring(0, 50) + '...', 
@@ -88,6 +100,8 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
         messages: messages,
         max_tokens: maxTokens,
         temperature: temperature,
+        reasoning: { effort: reasoningEffort },
+        modalities: ['text'],
       }),
     });
 
@@ -121,7 +135,15 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
     const data = await response.json();
     console.log('OpenAI response received, choices:', data.choices?.length);
     
-    const aiResponse = data.choices[0].message.content;
+    const aiChoice = data.choices?.[0]?.message ?? {};
+    const aiResponse = aiChoice?.content ?? '';
+    const reasoningSegments = Array.isArray((aiChoice as any).reasoning_content)
+      ? (aiChoice as any).reasoning_content
+      : [];
+    const reasoningText = reasoningSegments
+      .map((segment: { type?: string; text?: string }) => segment?.text?.trim?.())
+      .filter(Boolean)
+      .join('\n');
     console.log('AI response length:', aiResponse?.length);
     console.log('AI response:', aiResponse);
 
@@ -144,11 +166,14 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
     console.log('=== FUNCTION COMPLETED SUCCESSFULLY ===');
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         response: aiResponse,
+        reasoning: reasoningText || null,
         success: true,
         model: model,
-        tokens_used: maxTokens
+        tokens_used: data?.usage?.completion_tokens ?? maxTokens,
+        usage: data?.usage ?? null,
+        response_id: data?.id ?? null
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
