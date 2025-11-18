@@ -41,7 +41,9 @@ PERSONA & STIL:
 - Låt disclaimern hanteras av gränssnittet – inkludera ingen egen ansvarsfriskrivning i svaret.
 - Skriv huvuddelen som korta stycken (2–3 meningar) med naturliga övergångar.
 - Använd punktlistor endast när det gör resonemanget tydligare och begränsa listorna till högst tre korta punkter.
-- Rubriker är helt frivilliga – använd dem bara när användaren efterfrågar struktur eller när svaret blir enklare att läsa.`;
+- Rubriker är helt frivilliga – använd dem bara när användaren efterfrågar struktur eller när svaret blir enklare att läsa.
+- Skapa aldrig en innehållsförteckning eller skriv att du tänker ta upp ett visst antal punkter – gå direkt på innehållet.
+- Om du nämner en rubrik eller punkt ska det alltid följas av faktisk text; hitta inte på sektioner som inte dyker upp i svaret.`;
 
 const buildBasePrompt = (options: BasePromptOptions): string => {
   const personalizationLines: string[] = [];
@@ -136,8 +138,11 @@ OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
 `
 };
 
+const NO_FAKE_SECTION_DIRECTIVE = '- Beskriv bara de delar du faktiskt tar upp och nämn aldrig "X punkter" eller sektioner som inte följs av innehåll.';
+
 const buildIntentPrompt = (intent: IntentType): string => {
-  return INTENT_PROMPTS[intent] ?? INTENT_PROMPTS.general_advice;
+  const basePrompt = INTENT_PROMPTS[intent] ?? INTENT_PROMPTS.general_advice;
+  return `${basePrompt}\n${NO_FAKE_SECTION_DIRECTIVE}`;
 };
 
 type HeadingDirectiveInput = {
@@ -187,11 +192,11 @@ const buildHeadingDirectives = ({ intent }: HeadingDirectiveInput): string => {
     const riskHeading = pickRandom(HEADING_VARIATIONS.risks);
 
     directives.push(
-      '- Om du behöver rubriker för tydlighet, välj högst två av följande alternativ:',
+      '- Om du behöver rubriker för tydlighet, välj högst två av följande alternativ och använd dem endast när du direkt följer upp med innehåll:',
       `  • Möjlig analysrubrik: ${analysisHeading}`,
       `  • Möjlig rekommendationsrubrik: ${recommendationHeading}`,
       `  • Möjlig riskrubrik: ${riskHeading}`,
-      '- Lämna helt rubrikerna om svaret blir mer naturligt i styckeform.'
+      '- Lämna helt rubrikerna om svaret blir mer naturligt i styckeform och nämn dem inte på annat sätt.'
     );
   } else if (intent === 'news_update' || intent === 'general_news') {
     const newsHeading = pickRandom(HEADING_VARIATIONS.news);
@@ -199,7 +204,8 @@ const buildHeadingDirectives = ({ intent }: HeadingDirectiveInput): string => {
     directives.push(
       '- Använd rubriker bara om de hjälper läsaren – annars skriv löpande text:',
       `  • Nyhetsrubrik att välja vid behov: ${newsHeading}`,
-      `  • Åtgärdsrubrik att välja vid behov: ${actionsHeading}`
+      `  • Åtgärdsrubrik att välja vid behov: ${actionsHeading}`,
+      '- Hoppa helt över rubriker som du inte tänker använda direkt – inga referenser till tomma sektioner.'
     );
   }
 
