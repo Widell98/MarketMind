@@ -43,7 +43,9 @@ PERSONA & STIL:
 - Använd punktlistor endast när det gör resonemanget tydligare och begränsa listorna till högst tre korta punkter.
 - Rubriker är helt frivilliga – använd dem bara när användaren efterfrågar struktur eller när svaret blir enklare att läsa.
 - Skapa aldrig en innehållsförteckning eller skriv att du tänker ta upp ett visst antal punkter – gå direkt på innehållet.
-- Om du nämner en rubrik eller punkt ska det alltid följas av faktisk text; hitta inte på sektioner som inte dyker upp i svaret.`;
+- Om du nämner en rubrik eller punkt ska det alltid följas av faktisk text; hitta inte på sektioner som inte dyker upp i svaret.
+- Undvik att rada upp många namngivna sektioner; två välskrivna stycken eller sektioner räcker normalt.
+- Varje rubrik eller punkt ska följas direkt av minst en fullständig mening så att inget block lämnas tomt.`;
 
 const buildBasePrompt = (options: BasePromptOptions): string => {
   const personalizationLines: string[] = [];
@@ -111,19 +113,23 @@ OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
 - Analysera övergripande trender koncist.
 - Beskriv effekten på användarens portfölj eller mål när användaren uttryckligen ber om det.
 - Föreslå 1–2 potentiella justeringar eller bevakningspunkter.
-- Fokusera på flytande stycken och begränsa listor till korta höjdpunkter.`,
+- Fokusera på flytande stycken och begränsa listor till korta höjdpunkter.
+- Håll dig till högst två sektioner och låt varje del bestå av 2–3 meningar i löpande text.`,
   general_news: `NYHETSBREV:
-- Ge en kort marknadssammanfattning uppdelad i sektioner (t.ex. globala marknader, sektorer, bolag).
-- Prioritera större trender och rubriker som påverkar sentimentet.
-- Gör det lättläst med 1 emoji per sektion och tydliga rubriker.
+- Ge en kort marknadssammanfattning i 1–2 sektioner (t.ex. globala marknader + sektorer).
+- Varje sektion ska ha en rubrik följt av 2–3 meningar – inga separata punktlistor.
+- Prioritera större trender som påverkar sentimentet.
+- Om svaret är kort kan du hoppa över rubriker och emojis helt.
 - Fråga om användaren vill koppla nyheterna till sin portfölj.
-- Begränsa listor till de viktigaste punkterna och låt stycken bära resten av resonemanget.`,
+- Begränsa listor till de viktigaste punkterna och låt stycken bära resten av resonemanget.
+- Nämn aldrig sektioner som du inte direkt fyller med text.`,
   news_update: `NYHETSBEVAKNING:
 - Sammanfatta de viktigaste nyheterna som påverkar användarens portfölj de senaste 24 timmarna.
 - Gruppéra efter bolag, sektor eller tema och referera till källor med tidsangivelse.
 - Förklara hur varje nyhet påverkar innehav eller strategi.
 - Föreslå konkreta uppföljningssteg.
-- Var selektiv med punktlistor och växla gärna till korta stycken när du beskriver konsekvenserna.`,
+- Var selektiv med punktlistor och växla gärna till korta stycken när du beskriver konsekvenserna.
+- Stanna vid högst två sektioner och se till att varje rubrik följs av ett komplett stycke innan eventuella punktlistor.`,
   general_advice: `ALLMÄN INVESTERINGSRÅDGIVNING:
 - Ge råd i 2–4 meningar när frågan är enkel.
 - Anpassa förslag till användarens mål och intressen. Ta bara upp riskprofilen om användaren uttryckligen efterfrågar det.
