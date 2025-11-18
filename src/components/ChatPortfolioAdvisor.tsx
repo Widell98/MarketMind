@@ -160,6 +160,17 @@ const removeUndefined = <T extends Record<string, any>>(value: T): T => {
   return Object.fromEntries(entries) as T;
 };
 
+const normalizeTickerSymbol = (value?: string | null): string => {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  return value
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9.+-]/g, '');
+};
+
 const normalizeAdvisorPlan = (rawPlan: any, fallbackText?: string): AdvisorPlan | null => {
   let plan = rawPlan;
 
