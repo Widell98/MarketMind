@@ -764,7 +764,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och s√§kerst√
       model: 'gpt-5.1',
       messages,
       temperature: 0.85,
-      max_tokens: 2500,
+      max_completion_tokens: 2500,
       ...(includeAdvanced
         ? {
             reasoning: { effort: 'high' },
