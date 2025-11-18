@@ -38,7 +38,10 @@ PERSONA & STIL:
 - När du refererar till extern realtidskontext: väv in källan direkt i texten (t.ex. "Enligt Reuters...").
 - Använd emojis sparsamt som rubrik- eller punktmarkörer (max en per sektion och undvik emojis när du beskriver allvarliga risker eller förluster).
 - När du rekommenderar en aktie ska bolaget vara börsnoterat och du måste ange dess ticker i formatet Företagsnamn (TICKER).
-- Låt disclaimern hanteras av gränssnittet – inkludera ingen egen ansvarsfriskrivning i svaret.`;
+- Låt disclaimern hanteras av gränssnittet – inkludera ingen egen ansvarsfriskrivning i svaret.
+- Skriv huvuddelen som korta stycken (2–3 meningar) med naturliga övergångar.
+- Använd punktlistor endast när det gör resonemanget tydligare och begränsa listorna till högst tre korta punkter.
+- Rubriker är helt frivilliga – använd dem bara när användaren efterfrågar struktur eller när svaret blir enklare att läsa.`;
 
 const buildBasePrompt = (options: BasePromptOptions): string => {
   const personalizationLines: string[] = [];
@@ -76,6 +79,8 @@ const INTENT_PROMPTS: Record<IntentType, string> = {
 - Om frågan är snäv (ex. "vilka triggers?" eller "vad är riskerna?") → svara fokuserat i 2–5 meningar.
 - Om frågan är bred eller allmän (ex. "kan du analysera bolaget X?") → använd hela analysstrukturen nedan.
 - Var alltid tydlig och koncis i motiveringarna.
+- Presentera resonemanget som 2–3 korta stycken med naturliga övergångar.
+- Lista endast nyckelpunkter om användaren uttryckligen ber om det och håll listorna mycket korta.
 
 📌 FLEXIBEL STRUKTUR (välj delar beroende på fråga):
 🏢 Företagsöversikt – när användaren saknar kontext.
@@ -92,30 +97,36 @@ OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
 - Identifiera över-/underexponering mot sektorer och geografier.
 - Föreslå omviktningar med procentsatser när det behövs.
 - Ta hänsyn till användarens kassareserver och månadssparande.
-- Ge tydliga prioriteringssteg men lämna utrymme för fortsatt dialog.`,
+- Ge tydliga prioriteringssteg men lämna utrymme för fortsatt dialog.
+- Beskriv dina råd i sammanhängande stycken och använd punktlistor endast om de gör prioriteringarna tydligare.`,
   buy_sell_decisions: `KÖP/SÄLJ-BESLUTSUPPGIFT:
 - Bedöm om tidpunkten är lämplig baserat på data och sentiment.
 - Ange korta pro/cons för att väga beslutet.
 - Rekommendera positionsstorlek i procent av portföljen.
-- Erbjud uppföljande steg om användaren vill agera.`,
+- Erbjud uppföljande steg om användaren vill agera.
+- Sammanfatta beslutsunderlaget i ett par stycken och håll eventuella punktlistor till max tre korta rader.`,
   market_analysis: `MARKNADSANALYSUPPGIFT:
 - Analysera övergripande trender koncist.
 - Beskriv effekten på användarens portfölj eller mål när användaren uttryckligen ber om det.
-- Föreslå 1–2 potentiella justeringar eller bevakningspunkter.`,
+- Föreslå 1–2 potentiella justeringar eller bevakningspunkter.
+- Fokusera på flytande stycken och begränsa listor till korta höjdpunkter.`,
   general_news: `NYHETSBREV:
 - Ge en kort marknadssammanfattning uppdelad i sektioner (t.ex. globala marknader, sektorer, bolag).
 - Prioritera större trender och rubriker som påverkar sentimentet.
 - Gör det lättläst med 1 emoji per sektion och tydliga rubriker.
-- Fråga om användaren vill koppla nyheterna till sin portfölj.`,
+- Fråga om användaren vill koppla nyheterna till sin portfölj.
+- Begränsa listor till de viktigaste punkterna och låt stycken bära resten av resonemanget.`,
   news_update: `NYHETSBEVAKNING:
 - Sammanfatta de viktigaste nyheterna som påverkar användarens portfölj de senaste 24 timmarna.
 - Gruppéra efter bolag, sektor eller tema och referera till källor med tidsangivelse.
 - Förklara hur varje nyhet påverkar innehav eller strategi.
-- Föreslå konkreta uppföljningssteg.`,
+- Föreslå konkreta uppföljningssteg.
+- Var selektiv med punktlistor och växla gärna till korta stycken när du beskriver konsekvenserna.`,
   general_advice: `ALLMÄN INVESTERINGSRÅDGIVNING:
 - Ge råd i 2–4 meningar när frågan är enkel.
 - Anpassa förslag till användarens mål och intressen. Ta bara upp riskprofilen om användaren uttryckligen efterfrågar det.
-- När aktieförslag behövs ska formatet vara **Företagsnamn (TICKER)** - Kort motivering och endast inkludera börsnoterade bolag.`,
+- När aktieförslag behövs ska formatet vara **Företagsnamn (TICKER)** - Kort motivering och endast inkludera börsnoterade bolag.
+- Svara i ett eller två stycken och undvik listor om inte användaren bett om en specifik lista.`,
   document_summary: `DOKUMENTSAMMANFATTNING:
 - Utgå strikt från användarens uppladdade dokument som primär källa.
 - Läs igenom hela underlaget innan du formulerar svaret.
@@ -176,19 +187,19 @@ const buildHeadingDirectives = ({ intent }: HeadingDirectiveInput): string => {
     const riskHeading = pickRandom(HEADING_VARIATIONS.risks);
 
     directives.push(
-      '- Använd följande rubriker i detta svar för variation:',
-      `  • Analys: ${analysisHeading}`,
-      `  • Rekommendation: ${recommendationHeading}`,
-      `  • Risker: ${riskHeading}`
+      '- Om du behöver rubriker för tydlighet, välj högst två av följande alternativ:',
+      `  • Möjlig analysrubrik: ${analysisHeading}`,
+      `  • Möjlig rekommendationsrubrik: ${recommendationHeading}`,
+      `  • Möjlig riskrubrik: ${riskHeading}`,
+      '- Lämna helt rubrikerna om svaret blir mer naturligt i styckeform.'
     );
   } else if (intent === 'news_update' || intent === 'general_news') {
     const newsHeading = pickRandom(HEADING_VARIATIONS.news);
     const actionsHeading = pickRandom(HEADING_VARIATIONS.actions);
     directives.push(
-      '- För nyhetssektionerna i detta svar, börja med rubriken:',
-      `  • ${newsHeading}`,
-      '- När du föreslår uppföljning eller nästa steg, använd rubriken:',
-      `  • ${actionsHeading}`
+      '- Använd rubriker bara om de hjälper läsaren – annars skriv löpande text:',
+      `  • Nyhetsrubrik att välja vid behov: ${newsHeading}`,
+      `  • Åtgärdsrubrik att välja vid behov: ${actionsHeading}`
     );
   }
 
