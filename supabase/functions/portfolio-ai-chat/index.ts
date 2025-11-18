@@ -14,6 +14,87 @@ type BasePromptOptions = {
   preferredResponseLength?: 'concise' | 'balanced' | 'detailed' | null;
 };
 
+type AnalysisPreferenceProfile = {
+  analysis_depth?: 'light' | 'normal' | 'deep' | null;
+  analysis_focus?: 'macro' | 'fundamental' | 'technical' | 'mixed' | null;
+  analysis_timeframe?: 'short' | 'medium' | 'long' | null;
+  investment_experience?: 'beginner' | 'intermediate' | 'advanced' | null;
+  output_format?: 'bullets' | 'paragraphs' | 'equity_report' | 'highlights' | null;
+};
+
+type ReasoningEffortLevel = 'low' | 'medium' | 'high';
+type VerbosityLevel = 'low' | 'medium' | 'high';
+
+const pickReasoningEffortFromProfile = (
+  profile: AnalysisPreferenceProfile | null | undefined,
+  fallback: ReasoningEffortLevel
+): ReasoningEffortLevel => {
+  if (!profile) {
+    return fallback;
+  }
+
+  if (profile.analysis_depth === 'deep') {
+    return 'high';
+  }
+
+  if (profile.analysis_depth === 'light') {
+    return 'low';
+  }
+
+  if (profile.investment_experience === 'advanced') {
+    return 'high';
+  }
+
+  if (profile.investment_experience === 'beginner') {
+    return 'low';
+  }
+
+  if (profile.analysis_focus === 'technical' || profile.analysis_focus === 'macro') {
+    return 'medium';
+  }
+
+  return fallback;
+};
+
+const pickVerbosityFromProfile = (
+  profile: AnalysisPreferenceProfile | null | undefined,
+  fallback: VerbosityLevel
+): VerbosityLevel => {
+  if (!profile) {
+    return fallback;
+  }
+
+  if (profile.output_format === 'equity_report') {
+    return 'high';
+  }
+
+  if (profile.output_format === 'bullets' || profile.output_format === 'highlights') {
+    return 'low';
+  }
+
+  if (profile.output_format === 'paragraphs') {
+    return profile.analysis_depth === 'deep' ? 'high' : 'medium';
+  }
+
+  if (profile.analysis_depth === 'deep') {
+    return 'high';
+  }
+
+  if (profile.analysis_depth === 'light') {
+    return 'low';
+  }
+
+  if (profile.analysis_timeframe === 'long') {
+    return 'high';
+  }
+
+  if (profile.analysis_timeframe === 'short') {
+    return 'low';
+  }
+
+  return fallback;
+};
+
 const BASE_PROMPT = `Du är en oberoende professionell marknadsanalytiker som levererar datadrivna insikter, scenarier och slutsatser. Du ger inte placeringsråd eller personliga rekommendationer utan hjälper användaren att förstå marknadsläge, bolag och drivkrafter genom avancerad analys.
 
 ⚡ SPRÅKREGLER:
@@ -3322,10 +3403,13 @@ ${importantLines.join('\n')}
 
     // Force using gpt-5.1 so we can leverage the updated reasoning and verbosity controls
     const model = 'gpt-5.1';
-    const reasoningEffort: 'low' | 'medium' | 'high' =
+    const analysisPreferenceProfile = (analysisProfile ?? null) as AnalysisPreferenceProfile | null;
+    const reasoningFallback: ReasoningEffortLevel =
       isStockAnalysisRequest || isPortfolioOptimizationRequest || isDocumentSummaryRequest ? 'high' : 'medium';
-    const verbositySetting: 'low' | 'medium' | 'high' =
+    const verbosityFallback: VerbosityLevel =
       isDocumentSummaryRequest || isStockAnalysisRequest ? 'high' : 'medium';
+    const reasoningEffort = pickReasoningEffortFromProfile(analysisPreferenceProfile, reasoningFallback);
+    const verbositySetting = pickVerbosityFromProfile(analysisPreferenceProfile, verbosityFallback);
 
     console.log('Selected model:', model, 'for request type:', {
       isStockAnalysis: isStockAnalysisRequest,
