@@ -2412,7 +2412,7 @@ serve(async (req) => {
     const isPersonalAdviceRequest = /(?:rekommendation|förslag|vad ska jag|bör jag|passar mig|min portfölj|mina intressen|för mig|personlig|skräddarsy|baserat på|investera|köpa|sälja|portföljanalys|investeringsstrategi)/i.test(message);
     const isPortfolioOptimizationRequest = /portfölj/i.test(message) && /optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma/i.test(message);
 
-    // Fetch Tavily context when the user mentions stocks or requests real-time insights
+    // Fetch Tavily context endast när AI-modellen flaggar för realtidsbehov
     let tavilyContext: TavilyContextPayload = { formattedContext: '', sources: [] };
 
     const userHasPortfolio = Array.isArray(holdings) &&
@@ -2577,14 +2577,15 @@ serve(async (req) => {
       detectedEntities: interpretedEntities,
     });
 
-    const shouldFetchTavily = !hasUploadedDocuments && !isDocumentSummaryRequest && !isSimplePersonalAdviceRequest && (
-      isStockMentionRequest || hasRealTimeTrigger
-    );
+    const shouldFetchTavily = !hasUploadedDocuments
+      && !isDocumentSummaryRequest
+      && !isSimplePersonalAdviceRequest
+      && hasRealTimeTrigger;
     if (shouldFetchTavily) {
-      const logMessage = isStockMentionRequest
-        ? 'Aktieomnämnande upptäckt – anropar Tavily för relevanta nyheter.'
-        : 'Fråga upptäckt som realtidsfråga – anropar Tavily.';
-      console.log(logMessage);
+      const realTimeLogMessage = realTimeQuestionType
+        ? `LLM bedömer att realtidsdata krävs (${realTimeQuestionType}) – anropar Tavily.`
+        : 'LLM bedömer att realtidsdata krävs – anropar Tavily.';
+      console.log(realTimeLogMessage);
 
       const shouldPrioritizeStockAnalysis = primaryDetectedTicker && (isStockAnalysisRequest || isFinancialDataRequest);
 
