@@ -3411,6 +3411,59 @@ ${importantLines.join('\n')}
     const reasoningEffort = pickReasoningEffortFromProfile(analysisPreferenceProfile, reasoningFallback);
     const verbositySetting = pickVerbosityFromProfile(analysisPreferenceProfile, verbosityFallback);
 
+    const callOpenAIWithFallback = async (streaming: boolean): Promise<Response> => {
+      let includeAdvancedControls = true;
+
+      while (true) {
+        const payload: Record<string, unknown> = {
+          model,
+          messages,
+          stream: streaming,
+        };
+
+        if (!streaming) {
+          payload.stream = false;
+        }
+
+        if (includeAdvancedControls) {
+          payload.reasoning = { effort: reasoningEffort };
+          payload.verbosity = verbositySetting;
+        }
+
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (response.ok) {
+          if (!includeAdvancedControls) {
+            console.warn('OpenAI reasoning/verbosity controls disabled for this request due to unsupported parameters.');
+          }
+          return response;
+        }
+
+        const errorBody = await response.text();
+        if (
+          includeAdvancedControls &&
+          response.status === 400 &&
+          /Unknown parameter/i.test(errorBody) &&
+          (errorBody.includes('reasoning') || errorBody.includes('verbosity'))
+        ) {
+          console.warn('OpenAI API rejected reasoning/verbosity controls – retrying without them.');
+          includeAdvancedControls = false;
+          continue;
+        }
+
+        console.error('OpenAI API error response:', errorBody);
+        console.error('TELEMETRY ERROR:', { ...telemetryData, error: errorBody });
+        throw new Error(`OpenAI API error: ${response.status} - ${errorBody}`);
+      }
+    };
+
     console.log('Selected model:', model, 'for request type:', {
       isStockAnalysis: isStockAnalysisRequest,
       isPortfolioOptimization: isPortfolioOptimizationRequest,
@@ -3479,28 +3532,7 @@ ${importantLines.join('\n')}
 
     // If the client requests non-streaming, return JSON instead of SSE
     if (stream === false) {
-      const nonStreamResp = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          reasoning: { effort: reasoningEffort },
-          verbosity: verbositySetting,
-          stream: false,
-        }),
-      });
-
-      if (!nonStreamResp.ok) {
-        const errorBody = await nonStreamResp.text();
-        console.error('OpenAI API error response:', errorBody);
-        console.error('TELEMETRY ERROR:', { ...telemetryData, error: errorBody });
-        throw new Error(`OpenAI API error: ${nonStreamResp.status} - ${errorBody}`);
-      }
-
+      const nonStreamResp = await callOpenAIWithFallback(false);
       const nonStreamData = await nonStreamResp.json();
       const aiMessage = nonStreamData.choices?.[0]?.message?.content || '';
 
@@ -3539,27 +3571,7 @@ ${importantLines.join('\n')}
     }
 
     // Default: streaming SSE response
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        reasoning: { effort: reasoningEffort },
-        verbosity: verbositySetting,
-        stream: true,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error('OpenAI API error response:', errorBody);
-      console.error('TELEMETRY ERROR:', { ...telemetryData, error: errorBody });
-      throw new Error(`OpenAI API error: ${response.status} - ${errorBody}`);
-    }
+    const response = await callOpenAIWithFallback(true);
 
     // Return streaming response
     const encoder = new TextEncoder();

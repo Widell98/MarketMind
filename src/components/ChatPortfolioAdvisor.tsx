@@ -1468,6 +1468,7 @@ const ChatPortfolioAdvisor = () => {
     // Update conversation data
     const updatedData = {
       ...conversationData,
+      hasCurrentPortfolio: true,
       currentHoldings: conversationHoldings
     };
     setConversationData(updatedData);
@@ -2107,7 +2108,9 @@ const ChatPortfolioAdvisor = () => {
       await saveUserHoldings(conversationData.currentHoldings);
     }
     
-    const result = await generatePortfolioFromConversation(conversationData);
+    const result = await generatePortfolioFromConversation(conversationData, {
+      mode: isOptimizationFlow ? 'optimize' : 'new'
+    });
 
     if (result) {
       setPortfolioResult(result);
@@ -2148,6 +2151,68 @@ const ChatPortfolioAdvisor = () => {
     }
     setIsGenerating(false);
   };
+
+  const buildOptimizationChatPrompt = useCallback(() => {
+    const holdings = Array.isArray(conversationData.currentHoldings)
+      ? conversationData.currentHoldings
+      : [];
+
+    const holdingsSummary = holdings
+      .map(holding => {
+        if (!holding || !holding.name) {
+          return null;
+        }
+
+        const symbol = holding.symbol?.trim() ? ` (${holding.symbol.trim()})` : '';
+        const quantity = typeof holding.quantity === 'number' && Number.isFinite(holding.quantity)
+          ? `${holding.quantity} st`
+          : '';
+        const price = typeof holding.purchasePrice === 'number' && Number.isFinite(holding.purchasePrice)
+          ? `à ${priceFormatter.format(holding.purchasePrice)} ${(holding.currency || 'SEK').toUpperCase()}`
+          : '';
+
+        return [holding.name, symbol, quantity, price]
+          .filter(Boolean)
+          .join(' ')
+          .trim();
+      })
+      .filter((entry): entry is string => Boolean(entry))
+      .join('; ');
+
+    const plan = structuredResponse;
+    const planSummary = plan?.actionSummary || '';
+    const nextSteps = Array.isArray(plan?.nextSteps)
+      ? plan.nextSteps.slice(0, 2).join('; ')
+      : '';
+    const highlightedAssets = Array.isArray(plan?.assets)
+      ? plan.assets
+          .slice(0, 3)
+          .map(asset => {
+            const ticker = asset.ticker ? ` (${asset.ticker})` : '';
+            const action = asset.actionType ? ` – ${asset.actionType}` : '';
+            return `${asset.name}${ticker}${action}`.trim();
+          })
+          .filter(Boolean)
+          .join('; ')
+      : '';
+
+    return [
+      holdingsSummary
+        ? `Jag har en portfölj bestående av ${holdingsSummary}.`
+        : 'Jag vill få fler analytikertips för min befintliga portfölj.',
+      planSummary ? `AI-analysen sammanfattas så här: ${planSummary}` : '',
+      nextSteps ? `Prioriterade steg: ${nextSteps}` : '',
+      highlightedAssets ? `Nyckelidéer: ${highlightedAssets}` : '',
+      'Hjälp mig att fördjupa analysen och ge fler portföljinsikter utan direkta köp- eller säljordrar.'
+    ]
+      .filter(Boolean)
+      .join(' ');
+  }, [conversationData.currentHoldings, priceFormatter, structuredResponse]);
+
+  const handleContinueInChat = useCallback(() => {
+    const prompt = buildOptimizationChatPrompt();
+    startAiChatSession('Portföljanalys', prompt);
+  }, [buildOptimizationChatPrompt, startAiChatSession]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -3090,8 +3155,22 @@ const ChatPortfolioAdvisor = () => {
                   </div>
                   
                   {portfolioResult?.mode === 'optimize' ? (
-                    <div className="mt-4 pt-4 border-t border-primary/20 text-sm text-muted-foreground">
-                      Använd rekommendationerna för att justera dina nuvarande innehav i din portföljöversikt.
+                    <div className="mt-4 pt-4 border-t border-primary/20 space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        Använd rekommendationerna för att finjustera dina befintliga innehav – inga nya portföljer skapades.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          onClick={handleContinueInChat}
+                          className="bg-primary text-primary-foreground hover:bg-primary/90"
+                        >
+                          <MessageSquare className="w-4 h-4 mr-2" />
+                          Fortsätt i AI-chatten
+                        </Button>
+                        <p className="text-xs text-muted-foreground max-w-xs">
+                          Starta en fokuserad konversation för att få fler analystips om din nuvarande portfölj.
+                        </p>
+                      </div>
                     </div>
                   ) : (
                     <div className="mt-4 pt-4 border-t border-primary/20">

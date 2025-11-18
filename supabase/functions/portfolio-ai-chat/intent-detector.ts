@@ -123,24 +123,57 @@ export const detectUserIntentWithOpenAI = async (
       { role: 'user', content: message.trim() },
     ];
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
+    let includeAdvancedControls = true;
+    let response: Response | null = null;
+
+    while (true) {
+      const body: Record<string, unknown> = {
         model: 'gpt-5.1',
-        reasoning: { effort: 'medium' },
-        verbosity: 'low',
         temperature: 0.2,
         response_format: { type: 'json_schema', json_schema: INTENT_SCHEMA },
         messages,
-      }),
-    });
+      };
 
-    if (!response.ok) {
-      console.warn('Intent interpreter request failed', response.status, await response.text());
+      if (includeAdvancedControls) {
+        body.reasoning = { effort: 'medium' };
+        body.verbosity = 'low';
+      }
+
+      const attempt = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (attempt.ok) {
+        response = attempt;
+        if (!includeAdvancedControls) {
+          console.warn('Intent detector is running without reasoning/verbosity controls due to unsupported parameters.');
+        }
+        break;
+      }
+
+      const errorBody = await attempt.text();
+      if (
+        includeAdvancedControls &&
+        attempt.status === 400 &&
+        /Unknown parameter/i.test(errorBody) &&
+        (errorBody.includes('reasoning') || errorBody.includes('verbosity'))
+      ) {
+        includeAdvancedControls = false;
+        console.warn('Intent detector retrying without reasoning/verbosity controls.');
+        continue;
+      }
+
+      console.warn('Intent interpreter request failed', attempt.status, errorBody);
+      return null;
+    }
+
+    if (!response) {
+      console.warn('Intent interpreter did not return a response');
       return null;
     }
 

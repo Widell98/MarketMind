@@ -271,13 +271,16 @@ serve(async (req) => {
   }
 
   try {
-    const { riskProfileId, userId, conversationPrompt, conversationData } = await req.json();
+    const { riskProfileId, userId, conversationPrompt, conversationData, mode } = await req.json();
+    const requestedMode = typeof mode === 'string' ? mode.toLowerCase() : null;
+    const generationMode = requestedMode === 'optimize' ? 'optimize' : 'new';
 
     console.log('Generate portfolio request:', {
       riskProfileId,
       userId,
       hasConversationPrompt: Boolean(conversationPrompt),
-      hasConversationData: conversationData && typeof conversationData === 'object'
+      hasConversationData: conversationData && typeof conversationData === 'object',
+      generationMode
     });
 
     if (!riskProfileId || !userId) {
@@ -757,32 +760,63 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
 
     console.log('Calling OpenAI API with gpt-5.1...');
 
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-5.1',
-        messages,
-        temperature: 0.85,
-        max_tokens: 2500,
-        reasoning: { effort: 'high' },
-        verbosity: 'high',
-      }),
+    const buildOpenAIPayload = (includeAdvanced: boolean) => ({
+      model: 'gpt-5.1',
+      messages,
+      temperature: 0.85,
+      max_tokens: 2500,
+      ...(includeAdvanced
+        ? {
+            reasoning: { effort: 'high' },
+            verbosity: 'high',
+          }
+        : {}),
     });
 
-    if (!openAIResponse.ok) {
-      const errorText = await openAIResponse.text();
+    let includeAdvancedControls = true;
+    let openAIResponse: Response | null = null;
+
+    while (true) {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(buildOpenAIPayload(includeAdvancedControls)),
+      });
+
+      if (response.ok) {
+        openAIResponse = response;
+        if (!includeAdvancedControls) {
+          console.warn('OpenAI reasoning/verbosity controls disabled for this request due to unsupported parameters.');
+        }
+        break;
+      }
+
+      const errorText = await response.text();
+      if (
+        includeAdvancedControls &&
+        response.status === 400 &&
+        /Unknown parameter/i.test(errorText) &&
+        (errorText.includes('reasoning') || errorText.includes('verbosity'))
+      ) {
+        console.warn('OpenAI API rejected reasoning/verbosity controls – retrying without them.');
+        includeAdvancedControls = false;
+        continue;
+      }
+
       console.error('OpenAI API error:', errorText);
 
-      // Handle specific quota exceeded error
-      if (openAIResponse.status === 429) {
+      if (response.status === 429) {
         return quotaExceededResponse();
       }
 
-      throw new Error(`OpenAI API error: ${openAIResponse.status}`);
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    if (!openAIResponse) {
+      throw new Error('OpenAI API error: No response received');
     }
 
     const openAIData = await openAIResponse.json();
