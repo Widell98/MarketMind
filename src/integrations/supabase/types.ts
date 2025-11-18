@@ -1648,6 +1648,9 @@ export type Database = {
       }
       user_risk_profiles: {
         Row: {
+          analysis_depth: string | null
+          analysis_focus: string | null
+          analysis_timeframe: string | null
           activity_preference: string | null
           age: number | null
           annual_income: number | null
@@ -1657,6 +1660,7 @@ export type Database = {
           current_holdings: Json | null
           current_portfolio_value: number | null
           emergency_buffer_months: number | null
+          has_current_portfolio: boolean | null
           has_children: boolean | null
           has_loans: boolean | null
           housing_situation: string | null
@@ -1668,11 +1672,14 @@ export type Database = {
           investment_style_preference: string | null
           liquid_capital: number | null
           loan_details: string | null
+          model_portfolio_style: string | null
           market_crash_reaction: string | null
           monthly_investment_amount: number | null
+          output_format: string | null
           overexposure_awareness: string | null
           panic_selling_history: boolean | null
           portfolio_change_frequency: string | null
+          preferred_assets: string[] | null
           preferred_stock_count: number | null
           risk_comfort_level: number | null
           risk_tolerance: string | null
@@ -1683,6 +1690,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          analysis_depth?: string | null
+          analysis_focus?: string | null
+          analysis_timeframe?: string | null
           activity_preference?: string | null
           age?: number | null
           annual_income?: number | null
@@ -1692,6 +1702,7 @@ export type Database = {
           current_holdings?: Json | null
           current_portfolio_value?: number | null
           emergency_buffer_months?: number | null
+          has_current_portfolio?: boolean | null
           has_children?: boolean | null
           has_loans?: boolean | null
           housing_situation?: string | null
@@ -1703,11 +1714,14 @@ export type Database = {
           investment_style_preference?: string | null
           liquid_capital?: number | null
           loan_details?: string | null
+          model_portfolio_style?: string | null
           market_crash_reaction?: string | null
           monthly_investment_amount?: number | null
+          output_format?: string | null
           overexposure_awareness?: string | null
           panic_selling_history?: boolean | null
           portfolio_change_frequency?: string | null
+          preferred_assets?: string[] | null
           preferred_stock_count?: number | null
           risk_comfort_level?: number | null
           risk_tolerance?: string | null
@@ -1718,6 +1732,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          analysis_depth?: string | null
+          analysis_focus?: string | null
+          analysis_timeframe?: string | null
           activity_preference?: string | null
           age?: number | null
           annual_income?: number | null
@@ -1727,6 +1744,7 @@ export type Database = {
           current_holdings?: Json | null
           current_portfolio_value?: number | null
           emergency_buffer_months?: number | null
+          has_current_portfolio?: boolean | null
           has_children?: boolean | null
           has_loans?: boolean | null
           housing_situation?: string | null
@@ -1738,11 +1756,14 @@ export type Database = {
           investment_style_preference?: string | null
           liquid_capital?: number | null
           loan_details?: string | null
+          model_portfolio_style?: string | null
           market_crash_reaction?: string | null
           monthly_investment_amount?: number | null
+          output_format?: string | null
           overexposure_awareness?: string | null
           panic_selling_history?: boolean | null
           portfolio_change_frequency?: string | null
+          preferred_assets?: string[] | null
           preferred_stock_count?: number | null
           risk_comfort_level?: number | null
           risk_tolerance?: string | null

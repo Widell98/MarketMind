@@ -29,15 +29,15 @@ const ResetProfileConfirmDialog: React.FC<ResetProfileConfirmDialogProps> = ({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-amber-500" />
-            Varning - Radera Riskprofil
+            Varning – Radera Analysprofil
           </AlertDialogTitle>
           <AlertDialogDescription className="text-base">
             <div className="space-y-3">
               <p>
-                <strong>Detta kommer att permanent radera din nuvarande riskprofil och all relaterad data.</strong>
+                <strong>Detta kommer att permanent radera din nuvarande analysprofil och all relaterad data.</strong>
               </p>
               <p>
-                Du kommer att behöva fylla i hela riskbedömningsformuläret igen från början.
+                Du kommer att behöva svara på hela analysformuläret igen från början.
               </p>
               <p className="text-amber-600 dark:text-amber-400 font-medium">
                 Är du säker på att du vill fortsätta?

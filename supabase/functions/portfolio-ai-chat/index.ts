@@ -14,7 +14,88 @@ type BasePromptOptions = {
   preferredResponseLength?: 'concise' | 'balanced' | 'detailed' | null;
 };
 
-const BASE_PROMPT = `Du är en licensierad svensk finansiell rådgivare med många års erfarenhet av kapitalförvaltning. Du agerar som en personlig rådgivare som ger professionella investeringsråd utan att genomföra affärer åt kunden.
+type AnalysisPreferenceProfile = {
+  analysis_depth?: 'light' | 'normal' | 'deep' | null;
+  analysis_focus?: 'macro' | 'fundamental' | 'technical' | 'mixed' | null;
+  analysis_timeframe?: 'short' | 'medium' | 'long' | null;
+  investment_experience?: 'beginner' | 'intermediate' | 'advanced' | null;
+  output_format?: 'bullets' | 'paragraphs' | 'equity_report' | 'highlights' | null;
+};
+
+type ReasoningEffortLevel = 'low' | 'medium' | 'high';
+type VerbosityLevel = 'low' | 'medium' | 'high';
+
+const pickReasoningEffortFromProfile = (
+  profile: AnalysisPreferenceProfile | null | undefined,
+  fallback: ReasoningEffortLevel
+): ReasoningEffortLevel => {
+  if (!profile) {
+    return fallback;
+  }
+
+  if (profile.analysis_depth === 'deep') {
+    return 'high';
+  }
+
+  if (profile.analysis_depth === 'light') {
+    return 'low';
+  }
+
+  if (profile.investment_experience === 'advanced') {
+    return 'high';
+  }
+
+  if (profile.investment_experience === 'beginner') {
+    return 'low';
+  }
+
+  if (profile.analysis_focus === 'technical' || profile.analysis_focus === 'macro') {
+    return 'medium';
+  }
+
+  return fallback;
+};
+
+const pickVerbosityFromProfile = (
+  profile: AnalysisPreferenceProfile | null | undefined,
+  fallback: VerbosityLevel
+): VerbosityLevel => {
+  if (!profile) {
+    return fallback;
+  }
+
+  if (profile.output_format === 'equity_report') {
+    return 'high';
+  }
+
+  if (profile.output_format === 'bullets' || profile.output_format === 'highlights') {
+    return 'low';
+  }
+
+  if (profile.output_format === 'paragraphs') {
+    return profile.analysis_depth === 'deep' ? 'high' : 'medium';
+  }
+
+  if (profile.analysis_depth === 'deep') {
+    return 'high';
+  }
+
+  if (profile.analysis_depth === 'light') {
+    return 'low';
+  }
+
+  if (profile.analysis_timeframe === 'long') {
+    return 'high';
+  }
+
+  if (profile.analysis_timeframe === 'short') {
+    return 'low';
+  }
+
+  return fallback;
+};
+
+const BASE_PROMPT = `Du är en oberoende professionell marknadsanalytiker som levererar datadrivna insikter, scenarier och slutsatser. Du ger inte placeringsråd eller personliga rekommendationer utan hjälper användaren att förstå marknadsläge, bolag och drivkrafter genom avancerad analys.
 
 ⚡ SPRÅKREGLER:
 - Om användarens fråga är på svenska → översätt den först till engelska internt innan du resonerar.
@@ -23,13 +104,13 @@ const BASE_PROMPT = `Du är en licensierad svensk finansiell rådgivare med mån
 - Systeminstruktioner och stilregler (nedan) ska alltid följas på svenska.
 
 PERSONA & STIL:
-- Professionell men konverserande ton, som en erfaren rådgivare som bjuder in till dialog.
-- Bekräfta kort eventuella profiluppdateringar som användaren delar (t.ex. sparande, risknivå, mål) innan du fortsätter med rådgivningen.
-- Anpassa råden efter användarens profil och portfölj – referera till risknivå, tidshorisont och större innehav när det är relevant.
+- Professionell men konverserande ton, som en erfaren analytiker som delar hypoteser och evidens.
+- Bekräfta kort eventuella ändringar i analysprofilen (t.ex. fokus, tidsram, format) innan du går vidare.
+- Anpassa dina analyser efter användarens analysprofil – referera till önskad inriktning, djup, tidsram och format när det är relevant.
 - Använd svensk finansterminologi och marknadskontext.
 - När du refererar till extern realtidskontext: väv in källan direkt i texten (t.ex. "Enligt Reuters...").
 - Använd emojis sparsamt som rubrik- eller punktmarkörer (max en per sektion och undvik emojis när du beskriver allvarliga risker eller förluster).
-- När du rekommenderar en aktie ska bolaget vara börsnoterat och du måste ange dess ticker i formatet Företagsnamn (TICKER).
+- När du nämner aktier eller instrument ska bolaget vara börsnoterat och du måste ange dess ticker i formatet Företagsnamn (TICKER).
 - Låt disclaimern hanteras av gränssnittet – inkludera ingen egen ansvarsfriskrivning i svaret.`;
 
 const buildBasePrompt = (options: BasePromptOptions): string => {
@@ -98,9 +179,9 @@ OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
 - Gruppéra efter bolag, sektor eller tema och referera till källor med tidsangivelse.
 - Förklara hur varje nyhet påverkar innehav eller strategi.
 - Föreslå konkreta uppföljningssteg.`,
-  general_advice: `ALLMÄN INVESTERINGSRÅDGIVNING:
-- Ge råd i 2–4 meningar när frågan är enkel.
-- Anpassa förslag till användarens riskprofil och intressen.
+  general_advice: `ALLMÄN MARKNADSANALYS:
+- Ge analyser i 2–4 meningar när frågan är enkel.
+- Anpassa vinkeln till användarens analysprofil och intressen.
 - När aktieförslag behövs ska formatet vara **Företagsnamn (TICKER)** - Kort motivering och endast inkludera börsnoterade bolag.`,
   document_summary: `DOKUMENTSAMMANFATTNING:
 - Utgå strikt från användarens uppladdade dokument som primär källa.
@@ -917,7 +998,9 @@ const evaluateNewsIntentWithOpenAI = async ({
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-5.1',
+        reasoning: { effort: 'low' },
+        verbosity: 'low',
         temperature: 0,
         response_format: { type: 'json_schema', json_schema: NEWS_INTENT_SCHEMA },
         messages,
@@ -1028,7 +1111,9 @@ const evaluateStockIntentWithOpenAI = async ({
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-5.1',
+        reasoning: { effort: 'low' },
+        verbosity: 'low',
         temperature: 0,
         response_format: { type: 'json_schema', json_schema: STOCK_INTENT_SCHEMA },
         messages: [
@@ -1740,7 +1825,7 @@ serve(async (req) => {
     // Fetch all user data in parallel for better performance
     const [
       { data: aiMemory },
-      { data: riskProfile },
+      { data: analysisProfile },
       { data: portfolio },
       { data: holdings },
       { data: subscriber }
@@ -1860,207 +1945,101 @@ serve(async (req) => {
       console.error('Unexpected error when loading Google Sheets tickers:', error);
     }
 
-    // ENHANCED INTENT DETECTION FOR PROFILE UPDATES
+    // ANALYSIS PROFILE UPDATE DETECTION
     const detectProfileUpdates = (message: string) => {
-      const updates: any = {};
+      const updates: Record<string, unknown> = {};
       let requiresConfirmation = false;
       const lowerMessage = message.toLowerCase();
 
-      const parseNumber = (value: string) => {
-        const numeric = value.replace(/[^\d]/g, '');
-        return numeric ? parseInt(numeric, 10) : NaN;
+      const setUpdate = (field: string, value: unknown) => {
+        if (analysisProfile && (analysisProfile as any)[field] === value) {
+          return;
+        }
+        updates[field] = value;
+        requiresConfirmation = true;
       };
 
-      // Parse monthly savings changes - more comprehensive
-      const monthlySavingsPattern = /(öka|höja|minska|sänka|ändra).*(?:månad|månads).*(?:sparande|spara|investera).*?(\d+[\s,]*\d*)\s*(?:kr|sek|kronor)/i;
-      const monthlySavingsMatch = message.match(monthlySavingsPattern);
-      
-      if (monthlySavingsMatch) {
-        const action = monthlySavingsMatch[1].toLowerCase();
-        const amount = parseInt(monthlySavingsMatch[2].replace(/[\s,]/g, ''));
-        const currentAmount = riskProfile?.monthly_investment_amount || 0;
-        
-        let newAmount = amount;
-        if (action.includes('öka') || action.includes('höja')) {
-          newAmount = currentAmount + amount;
-        } else if (action.includes('minska') || action.includes('sänka')) {
-          newAmount = Math.max(0, currentAmount - amount);
-        }
-
-        if (newAmount !== currentAmount) {
-          updates.monthly_investment_amount = newAmount;
-          requiresConfirmation = true;
-        }
-      }
-
-      // Direct monthly investment amount
-      const directMonthlyMatch = message.match(/(?:spara|investera|satsa|lägga)\s+(\d+(?:\s?\d{3})*)\s*(?:kr|kronor|SEK).*(?:månad|månads)/i);
-      if (directMonthlyMatch) {
-        const amount = parseInt(directMonthlyMatch[1].replace(/\s/g, ''));
-        if (amount > 0 && amount !== riskProfile?.monthly_investment_amount) {
-          updates.monthly_investment_amount = amount;
-          requiresConfirmation = true;
-        }
-      }
-
-      // Parse liquid capital / savings on accounts
-      const liquidCapitalPatterns = [
-        /(?:likvidt? kapital|tillgängligt kapital|kassa|sparkonto|kontanter|på kontot|i banken).*?(\d[\d\s.,]*)\s*(?:kr|kronor|sek)?/i,
-        /(\d[\d\s.,]*)\s*(?:kr|kronor|sek)?.*?(?:likvidt? kapital|tillgängligt kapital|kassa|sparkonto|kontanter|på kontot|i banken)/i
+      const focusPatterns: { pattern: RegExp; value: 'macro' | 'fundamental' | 'technical' | 'mixed' }[] = [
+        { pattern: /(makro|macro|ränt|geopolitik|konjunktur)/i, value: 'macro' },
+        { pattern: /(fundamental|kassaflöde|värdering|bolagsanalys)/i, value: 'fundamental' },
+        { pattern: /(teknisk|chart|diagram|candlestick|momentum)/i, value: 'technical' },
+        { pattern: /(blanda|hybrid|mix|kombinera)/i, value: 'mixed' },
       ];
 
-      for (const pattern of liquidCapitalPatterns) {
-        const match = message.match(pattern);
-        if (match) {
-          const amount = parseNumber(match[1]);
-          if (!Number.isNaN(amount) && amount > 0 && amount !== riskProfile?.liquid_capital) {
-            updates.liquid_capital = amount;
-            requiresConfirmation = true;
-          }
+      for (const focus of focusPatterns) {
+        if (focus.pattern.test(lowerMessage)) {
+          setUpdate('analysis_focus', focus.value);
           break;
         }
       }
 
-      // Parse emergency buffer in months
-      const emergencyBufferPatterns = [
-        /(?:buffert|nödfond|akutfond|trygghetsbuffert).*?(\d+(?:[.,]\d+)?)\s*(?:månader|mån|months?)/i,
-        /(\d+(?:[.,]\d+)?)\s*(?:månader|mån)\s*(?:buffert|nödfond|akutfond)/i
-      ];
-
-      for (const pattern of emergencyBufferPatterns) {
-        const match = message.match(pattern);
-        if (match) {
-          const bufferMonths = Math.round(parseFloat(match[1].replace(',', '.')));
-          if (!Number.isNaN(bufferMonths) && bufferMonths > 0 && bufferMonths !== riskProfile?.emergency_buffer_months) {
-            updates.emergency_buffer_months = bufferMonths;
-            requiresConfirmation = true;
-          }
-          break;
-        }
+      if (/(djup|detalj|gå.*på djupet|ingående)/i.test(lowerMessage)) {
+        setUpdate('analysis_depth', 'deep');
+      } else if (/(snabb|hög nivå|översikt|kortfattat)/i.test(lowerMessage)) {
+        setUpdate('analysis_depth', 'light');
+      } else if (/(lagom|normal|balanserad detalj)/i.test(lowerMessage)) {
+        setUpdate('analysis_depth', 'normal');
       }
 
-      // Parse preferred number of stocks/holdings
-      const preferredStockMatch = message.match(/(?:vill|önskar|föredrar|siktar på|tänker|ska|max|högst|upp till|äga|ha)\s*(?:ha|ägna|äga)?\s*(?:max|högst|upp till)?\s*(\d+(?:[.,]\d+)?)\s*(?:aktier|bolag|innehav)/i);
-      if (preferredStockMatch) {
-        const preferredCount = Math.round(parseFloat(preferredStockMatch[1].replace(',', '.')));
-        if (!Number.isNaN(preferredCount) && preferredCount > 0 && preferredCount !== riskProfile?.preferred_stock_count) {
-          updates.preferred_stock_count = preferredCount;
-          requiresConfirmation = true;
-        }
+      if (/(kort sikt|nästa vecka|trading|swing|just nu)/i.test(lowerMessage)) {
+        setUpdate('analysis_timeframe', 'short');
+      } else if (/(medellång|kommande månader|kvartal)/i.test(lowerMessage)) {
+        setUpdate('analysis_timeframe', 'medium');
+      } else if (/(lång sikt|multiår|strategisk|5\+ år)/i.test(lowerMessage)) {
+        setUpdate('analysis_timeframe', 'long');
       }
 
-      // Parse age updates
-      const agePattern = /(?:är|age|ålder).*?(\d{2,3})\s*(?:år|years|old)/i;
-      const ageMatch = message.match(agePattern);
+      if (/(punkt|bullet|lista|key takeaways)/i.test(lowerMessage)) {
+        setUpdate('output_format', 'bullets');
+      } else if (/(rapport|rubrik|strukturera)/i.test(lowerMessage)) {
+        setUpdate('output_format', 'equity_report');
+      } else if (/(berätta|paragraf|resonemang)/i.test(lowerMessage)) {
+        setUpdate('output_format', 'paragraphs');
+      } else if (/(kortare|highlights|sammanfatta)/i.test(lowerMessage)) {
+        setUpdate('output_format', 'highlights');
+      }
 
+      if (/(defensiv|försiktig|skyddad)/i.test(lowerMessage)) {
+        setUpdate('model_portfolio_style', 'defensive');
+      } else if (/(balanserad|mixad|mix|lagom)/i.test(lowerMessage)) {
+        setUpdate('model_portfolio_style', 'balanced');
+      } else if (/(tillväxt|aggressiv|offensiv)/i.test(lowerMessage)) {
+        setUpdate('model_portfolio_style', 'growth');
+      } else if (/(tematisk|tema|megatrend|trendcase)/i.test(lowerMessage)) {
+        setUpdate('model_portfolio_style', 'thematic');
+      } else if (/(breddad|allokering överallt|helhetsbild)/i.test(lowerMessage)) {
+        setUpdate('model_portfolio_style', 'broad');
+      }
+
+      if (/(ingen portfölj|har ingen portfölj|börja från noll|startar utan)/i.test(lowerMessage)) {
+        setUpdate('has_current_portfolio', false);
+      } else if (/(min portfölj|basera på portföljen|min portfo|ta hänsyn till portföljen)/i.test(lowerMessage)) {
+        setUpdate('has_current_portfolio', true);
+      }
+
+      if (/(jag är ny|ny på det här|börjar precis)/i.test(lowerMessage)) {
+        setUpdate('investment_experience', 'beginner');
+      } else if (/(ganska erfaren|medelnivå|har hållit på ett tag)/i.test(lowerMessage)) {
+        setUpdate('investment_experience', 'intermediate');
+      } else if (/(väldigt erfaren|professionell|jobbat med det här)/i.test(lowerMessage)) {
+        setUpdate('investment_experience', 'advanced');
+      }
+
+      const ageMatch = lowerMessage.match(/(?:jag är|är jag)\s+(\d{2})\b/);
       if (ageMatch) {
-        const newAge = parseInt(ageMatch[1]);
-        if (newAge >= 18 && newAge <= 100 && newAge !== riskProfile?.age) {
-          updates.age = newAge;
-          requiresConfirmation = true;
+        const newAge = parseInt(ageMatch[1], 10);
+        if (!Number.isNaN(newAge)) {
+          setUpdate('age', newAge);
         }
       }
 
-      // Parse income updates
-      const incomePattern = /(årsinkomst|lön|income).*?(\d+[\s,]*\d*)\s*(?:kr|sek|kronor)/i;
-      const incomeMatch = message.match(incomePattern);
-      
-      if (incomeMatch) {
-        const newIncome = parseInt(incomeMatch[2].replace(/[\s,]/g, ''));
-        if (newIncome !== riskProfile?.annual_income) {
-          updates.annual_income = newIncome;
-          requiresConfirmation = true;
-        }
-      }
-
-      // Risk tolerance updates - enhanced patterns
-      const riskPatterns = [
-        { pattern: /(konservativ|låg risk|säker|försiktig)/i, value: 'conservative' },
-        { pattern: /(måttlig|medel|balanserad|moderate)/i, value: 'moderate' },
-        { pattern: /(aggressiv|hög risk|riskabel|risktagande)/i, value: 'aggressive' }
-      ];
-
-      for (const riskPattern of riskPatterns) {
-        if (lowerMessage.match(riskPattern.pattern) &&
-            (lowerMessage.includes('risk') || lowerMessage.includes('inställning') ||
-            lowerMessage.includes('tolerans')) &&
-            riskPattern.value !== riskProfile?.risk_tolerance) {
-          updates.risk_tolerance = riskPattern.value;
-          requiresConfirmation = true;
-          break;
-        }
-      }
-
-      // Investment horizon updates - enhanced patterns
-      const horizonPatterns = [
-        { pattern: /(kort|0[-–]2|kortsiktig)/i, value: 'short' },
-        { pattern: /(medel|3[-–]5|mellanlång)/i, value: 'medium' },
-        { pattern: /(lång|5\+|långsiktig|över 5)/i, value: 'long' }
-      ];
-
-      for (const horizonPattern of horizonPatterns) {
-        if (lowerMessage.match(horizonPattern.pattern) &&
-            (lowerMessage.includes('horisont') || lowerMessage.includes('sikt') ||
-            lowerMessage.includes('tidshorisont')) &&
-            horizonPattern.value !== riskProfile?.investment_horizon) {
-          updates.investment_horizon = horizonPattern.value;
-          requiresConfirmation = true;
-          break;
-        }
-      }
-
-      // Housing situation detection with loan status cues
-      let detectedHousing: string | null = null;
-
-      const mentionsNoLoan = lowerMessage.includes('utan lån') || lowerMessage.includes('skuldfri') ||
-        lowerMessage.includes('utan bolån') || lowerMessage.includes('inget bolån');
-
-      if (/(?:hyr|hyresrätt)/.test(lowerMessage)) {
-        detectedHousing = 'rents';
-      } else if (/bor hos (?:mina?|föräldrar)/.test(lowerMessage)) {
-        detectedHousing = 'lives_with_parents';
-      } else if (/(?:bostadsrätt|äg[er]?\s+(?:en\s+)?lägenhet|äg[er]?\s+(?:ett\s+)?hus|äg[er]?\s+(?:en\s+)?villa|äg[er]?\s+(?:ett\s+)?radhus|villa|radhus|egna hem)/.test(lowerMessage)) {
-        detectedHousing = mentionsNoLoan ? 'owns_no_loan' : 'owns_with_loan';
-      } else if (/bolån/.test(lowerMessage) && /(villa|hus|radhus|bostad|bostadsrätt)/.test(lowerMessage)) {
-        detectedHousing = mentionsNoLoan ? 'owns_no_loan' : 'owns_with_loan';
-      }
-
-      if (detectedHousing && detectedHousing !== riskProfile?.housing_situation) {
-        updates.housing_situation = detectedHousing;
-        requiresConfirmation = true;
-      }
-
-      // Loan detection (true/false)
-      const loanIndicators = [/bolån/, /studielån/, /privatlån/, /billån/, /låneskulder/, /har lån/, /lån på huset/, /lånet/, /lån kvar/];
-      const loanNegativeIndicators = [/utan lån/, /skuldfri/, /inga lån/, /lånefri/, /helt skuldfri/, /utan bolån/, /inget lån/, /inget bolån/];
-
-      const sanitizedLoanMessage = lowerMessage
-        .replace(/utan\s+bolån/g, '')
-        .replace(/utan\s+lån/g, '')
-        .replace(/inga\s+lån/g, '')
-        .replace(/inget\s+lån/g, '')
-        .replace(/inget\s+bolån/g, '')
-        .replace(/skuldfri/g, '')
-        .replace(/lånefri/g, '');
-
-      const hasPositiveLoan = loanIndicators.some(pattern => pattern.test(sanitizedLoanMessage));
-      const hasNegativeLoan = loanNegativeIndicators.some(pattern => pattern.test(lowerMessage));
-
-      if (hasPositiveLoan) {
-        if (riskProfile?.has_loans !== true) {
-          updates.has_loans = true;
-          requiresConfirmation = true;
-        }
-      } else if (hasNegativeLoan) {
-        if (riskProfile?.has_loans !== false) {
-          updates.has_loans = false;
-          requiresConfirmation = true;
-        }
+      if (/(fokusera på kortare svar|mindre text)/i.test(lowerMessage)) {
+        setUpdate('analysis_depth', 'light');
+        setUpdate('output_format', 'highlights');
       }
 
       return { updates, requiresConfirmation };
     };
-
     const profileChangeDetection = detectProfileUpdates(message);
 
     const isPremium = subscriber?.subscribed || false;
@@ -2817,8 +2796,8 @@ serve(async (req) => {
         const updatedFavoriteCompanies = Array.from(new Set([...(existingMemory?.favorite_companies || []), ...companies])).slice(0, 6);
 
         let expertiseLevel: 'beginner' | 'intermediate' | 'advanced' = (existingMemory?.expertise_level as 'beginner' | 'intermediate' | 'advanced') || 'beginner';
-        if (riskProfile?.investment_experience && ['beginner', 'intermediate', 'advanced'].includes(riskProfile.investment_experience)) {
-          expertiseLevel = riskProfile.investment_experience as 'beginner' | 'intermediate' | 'advanced';
+        if (analysisProfile?.investment_experience && ['beginner', 'intermediate', 'advanced'].includes(analysisProfile.investment_experience)) {
+          expertiseLevel = analysisProfile.investment_experience as 'beginner' | 'intermediate' | 'advanced';
         }
         if ((isStockAnalysisRequest || isPortfolioOptimizationRequest) && expertiseLevel !== 'advanced') {
           expertiseLevel = expertiseLevel === 'beginner' ? 'intermediate' : 'advanced';
@@ -2877,9 +2856,9 @@ serve(async (req) => {
       && ['beginner', 'intermediate', 'advanced'].includes(aiMemory.expertise_level)
       ? aiMemory.expertise_level as 'beginner' | 'intermediate' | 'advanced'
       : null;
-    const expertiseFromProfile = typeof riskProfile?.investment_experience === 'string'
-      && ['beginner', 'intermediate', 'advanced'].includes(riskProfile.investment_experience)
-      ? riskProfile.investment_experience as 'beginner' | 'intermediate' | 'advanced'
+    const expertiseFromProfile = typeof analysisProfile?.investment_experience === 'string'
+      && ['beginner', 'intermediate', 'advanced'].includes(analysisProfile.investment_experience)
+      ? analysisProfile.investment_experience as 'beginner' | 'intermediate' | 'advanced'
       : null;
 
     let preferredLength = normalizePreference(aiMemory?.preferred_response_length);
@@ -2916,8 +2895,8 @@ serve(async (req) => {
         }
       });
     }
-    if (Array.isArray(riskProfile?.sector_interests)) {
-      riskProfile.sector_interests.forEach((sector: string) => {
+    if (Array.isArray(analysisProfile?.sector_interests)) {
+      analysisProfile.sector_interests.forEach((sector: string) => {
         if (typeof sector === 'string' && sector.trim()) {
           favoriteSectorCandidates.add(sector.trim());
         }
@@ -2948,27 +2927,74 @@ serve(async (req) => {
 
 
     // Enhanced user context with current holdings and performance
-    if (shouldIncludePersonalContext && riskProfile) {
-      contextInfo += `\n\nANVÄNDARPROFIL (använd denna info, fråga ALDRIG efter den igen):
-- Ålder: ${riskProfile.age || 'Ej angiven'}
-- Risktolerans: ${riskProfile.risk_tolerance === 'conservative' ? 'Konservativ' : riskProfile.risk_tolerance === 'moderate' ? 'Måttlig' : 'Aggressiv'}
-- Investeringshorisont: ${riskProfile.investment_horizon === 'short' ? 'Kort (0–2 år)' : riskProfile.investment_horizon === 'medium' ? 'Medellång (3–5 år)' : 'Lång (5+ år)'}
-- Erfarenhetsnivå: ${riskProfile.investment_experience === 'beginner' ? 'Nybörjare' : riskProfile.investment_experience === 'intermediate' ? 'Mellannivå' : 'Erfaren'}`;
-      
-      if (riskProfile.monthly_investment_amount) {
-        contextInfo += `\n- Månatligt sparande: ${riskProfile.monthly_investment_amount.toLocaleString()} SEK`;
+    if (shouldIncludePersonalContext && analysisProfile) {
+      const experienceText = analysisProfile.investment_experience === 'beginner'
+        ? 'Nybörjare'
+        : analysisProfile.investment_experience === 'advanced'
+          ? 'Avancerad'
+          : 'Mellannivå';
+
+      const analysisFocusText = (
+        {
+          macro: 'Makro och scenarier',
+          fundamental: 'Fundamental bolagsanalys',
+          technical: 'Teknisk analys',
+          mixed: 'Hybrid / kombinerad',
+        } as Record<string, string>
+      )[analysisProfile.analysis_focus ?? ''] || 'Ej angiven';
+
+      const depthText = (
+        { light: 'Översiktlig', normal: 'Balans', deep: 'Djupgående' } as Record<string, string>
+      )[analysisProfile.analysis_depth ?? ''] || 'Balans';
+
+      const timeframeText = (
+        { short: 'Kort sikt (0–3 mån)', medium: 'Medellång (3–12 mån)', long: 'Lång (12+ mån)' } as Record<string, string>
+      )[analysisProfile.analysis_timeframe ?? ''] || 'Ej angiven';
+
+      const outputText = (
+        {
+          bullets: 'Punktlistor',
+          paragraphs: 'Berättande text',
+          equity_report: 'Analysrapport',
+          highlights: 'Highlights och snabba slutsatser',
+        } as Record<string, string>
+      )[analysisProfile.output_format ?? ''] || 'Standard';
+
+      const hasPortfolioText = analysisProfile.has_current_portfolio === true
+        ? 'Ja, basera resonemang på befintlig portfölj'
+        : analysisProfile.has_current_portfolio === false
+          ? 'Nej, fokusera på generella scenarier'
+          : 'Ej angivet';
+
+      const modelPortfolioStyleText = (
+        {
+          defensive: 'Defensiva exempel',
+          balanced: 'Balanserade case',
+          growth: 'Tillväxtorienterade scenarier',
+          thematic: 'Tematiska portföljer',
+          broad: 'Breddade marknadsportföljer',
+        } as Record<string, string>
+      )[analysisProfile.model_portfolio_style ?? ''] || 'Ej angivet';
+
+      contextInfo += `\n\nANALYSPROFIL (använd denna info, fråga ALDRIG efter den igen):
+- Analysfokus: ${analysisFocusText}
+- Analysdjup: ${depthText}
+- Tidsram för analys: ${timeframeText}
+- Önskat format: ${outputText}
+- Erfarenhetsnivå: ${experienceText}
+- Har portfölj att utgå från: ${hasPortfolioText}
+- Modellportfölj-stil: ${modelPortfolioStyleText}`;
+
+      if (analysisProfile.sector_interests && analysisProfile.sector_interests.length > 0) {
+        contextInfo += `\n- Sektorintressen: ${analysisProfile.sector_interests.join(', ')}`;
       }
-      
-      if (riskProfile.annual_income) {
-        contextInfo += `\n- Årsinkomst: ${riskProfile.annual_income.toLocaleString()} SEK`;
+
+      if (analysisProfile.preferred_assets && analysisProfile.preferred_assets.length > 0) {
+        contextInfo += `\n- Tillgångstyper att täcka: ${analysisProfile.preferred_assets.join(', ')}`;
       }
-      
-      if (riskProfile.sector_interests && riskProfile.sector_interests.length > 0) {
-        contextInfo += `\n- Sektorintressen: ${riskProfile.sector_interests.join(', ')}`;
-      }
-      
-      if (riskProfile.investment_goal) {
-        contextInfo += `\n- Investeringsmål: ${riskProfile.investment_goal}`;
+
+      if (analysisProfile.age) {
+        contextInfo += `\n- Ålder: ${analysisProfile.age}`;
       }
     }
 
@@ -3375,8 +3401,68 @@ ${importantLines.join('\n')}
 `;
 
 
-    // Force using gpt-4o to avoid streaming restrictions and reduce cost
-    const model = 'gpt-4o';
+    // Force using gpt-5.1 so we can leverage the updated reasoning and verbosity controls
+    const model = 'gpt-5.1';
+    const analysisPreferenceProfile = (analysisProfile ?? null) as AnalysisPreferenceProfile | null;
+    const reasoningFallback: ReasoningEffortLevel =
+      isStockAnalysisRequest || isPortfolioOptimizationRequest || isDocumentSummaryRequest ? 'high' : 'medium';
+    const verbosityFallback: VerbosityLevel =
+      isDocumentSummaryRequest || isStockAnalysisRequest ? 'high' : 'medium';
+    const reasoningEffort = pickReasoningEffortFromProfile(analysisPreferenceProfile, reasoningFallback);
+    const verbositySetting = pickVerbosityFromProfile(analysisPreferenceProfile, verbosityFallback);
+
+    const callOpenAIWithFallback = async (streaming: boolean): Promise<Response> => {
+      let includeAdvancedControls = true;
+
+      while (true) {
+        const payload: Record<string, unknown> = {
+          model,
+          messages,
+          stream: streaming,
+        };
+
+        if (!streaming) {
+          payload.stream = false;
+        }
+
+        if (includeAdvancedControls) {
+          payload.reasoning = { effort: reasoningEffort };
+          payload.verbosity = verbositySetting;
+        }
+
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (response.ok) {
+          if (!includeAdvancedControls) {
+            console.warn('OpenAI reasoning/verbosity controls disabled for this request due to unsupported parameters.');
+          }
+          return response;
+        }
+
+        const errorBody = await response.text();
+        if (
+          includeAdvancedControls &&
+          response.status === 400 &&
+          /Unknown parameter/i.test(errorBody) &&
+          (errorBody.includes('reasoning') || errorBody.includes('verbosity'))
+        ) {
+          console.warn('OpenAI API rejected reasoning/verbosity controls – retrying without them.');
+          includeAdvancedControls = false;
+          continue;
+        }
+
+        console.error('OpenAI API error response:', errorBody);
+        console.error('TELEMETRY ERROR:', { ...telemetryData, error: errorBody });
+        throw new Error(`OpenAI API error: ${response.status} - ${errorBody}`);
+      }
+    };
 
     console.log('Selected model:', model, 'for request type:', {
       isStockAnalysis: isStockAnalysisRequest,
@@ -3446,26 +3532,7 @@ ${importantLines.join('\n')}
 
     // If the client requests non-streaming, return JSON instead of SSE
     if (stream === false) {
-      const nonStreamResp = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          stream: false,
-        }),
-      });
-
-      if (!nonStreamResp.ok) {
-        const errorBody = await nonStreamResp.text();
-        console.error('OpenAI API error response:', errorBody);
-        console.error('TELEMETRY ERROR:', { ...telemetryData, error: errorBody });
-        throw new Error(`OpenAI API error: ${nonStreamResp.status} - ${errorBody}`);
-      }
-
+      const nonStreamResp = await callOpenAIWithFallback(false);
       const nonStreamData = await nonStreamResp.json();
       const aiMessage = nonStreamData.choices?.[0]?.message?.content || '';
 
@@ -3504,25 +3571,7 @@ ${importantLines.join('\n')}
     }
 
     // Default: streaming SSE response
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        stream: true,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error('OpenAI API error response:', errorBody);
-      console.error('TELEMETRY ERROR:', { ...telemetryData, error: errorBody });
-      throw new Error(`OpenAI API error: ${response.status} - ${errorBody}`);
-    }
+    const response = await callOpenAIWithFallback(true);
 
     // Return streaming response
     const encoder = new TextEncoder();
