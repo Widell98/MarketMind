@@ -1,59 +1,34 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, TrendingUp, Building, Globe, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { Calendar, Clock, TrendingUp, Building, Globe, RefreshCw } from 'lucide-react';
+import { useSupabaseNewsFeed } from '@/hooks/useSupabaseNewsFeed';
+import type { FinancialEvent } from '@/hooks/useSupabaseNewsFeed';
 
-interface FinancialEvent {
-  id: string;
-  time: string;
-  title: string;
-  description: string;
-  importance: 'high' | 'medium' | 'low';
-  category: 'earnings' | 'economic' | 'dividend' | 'other';
-  company?: string;
-  date?: string;
-  dayOfWeek?: string;
+interface FinancialCalendarProps {
+  events?: FinancialEvent[];
+  loading?: boolean;
+  error?: string | null;
+  onRefetch?: () => void;
+  sectionId?: string;
 }
 
-const FinancialCalendar = () => {
+const FinancialCalendar: React.FC<FinancialCalendarProps> = ({ events, loading, error, onRefetch, sectionId }) => {
   const [viewMode, setViewMode] = useState<'day' | 'week'>('week');
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [events, setEvents] = useState<FinancialEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const shouldUseHook = events === undefined;
+  const {
+    data: hookEvents,
+    loading: hookLoading,
+    error: hookError,
+    refetch: hookRefetch,
+  } = useSupabaseNewsFeed('calendar', { enabled: shouldUseHook });
 
-  const fetchCalendarData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const { data, error } = await supabase.functions.invoke('fetch-news-data', {
-        body: { type: 'calendar' }
-      });
-
-      if (error) {
-        console.error('Error fetching calendar data:', error);
-        setError('Kunne inte ladda kalendern');
-        return;
-      }
-
-      if (data && Array.isArray(data)) {
-        setEvents(data);
-      }
-    } catch (err) {
-      console.error('Error:', err);
-      setError('Fel vid hämtning av kalenderdata');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCalendarData();
-  }, []);
+  const calendarEvents = events ?? hookEvents;
+  const isLoading = loading ?? hookLoading;
+  const errorMessage = error ?? hookError;
+  const refetchHandler = onRefetch ?? hookRefetch;
 
   const getImportanceColor = (importance: string) => {
     switch (importance) {
@@ -75,7 +50,7 @@ const FinancialCalendar = () => {
 
   const getTodayEvents = () => {
     const today = new Date().toISOString().split('T')[0];
-    return events.filter(event => 
+    return calendarEvents.filter(event =>
       event.date === today || 
       (!event.date && event.dayOfWeek === new Date().toLocaleDateString('sv', { weekday: 'long' }))
     );
@@ -86,7 +61,7 @@ const FinancialCalendar = () => {
     const eventsByDay: Record<string, FinancialEvent[]> = {};
     
     days.forEach(day => {
-      eventsByDay[day] = events.filter(event => 
+      eventsByDay[day] = calendarEvents.filter(event =>
         event.dayOfWeek === day || 
         (event.date && new Date(event.date).toLocaleDateString('sv', { weekday: 'long' }) === day)
       );
@@ -95,9 +70,9 @@ const FinancialCalendar = () => {
     return eventsByDay;
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <Card className="border-0 shadow-sm overflow-hidden">
+      <Card id={sectionId} className="border-0 shadow-sm overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
             <Calendar className="w-4 h-4 text-blue-500" />
@@ -114,9 +89,9 @@ const FinancialCalendar = () => {
     );
   }
 
-  if (error) {
+  if (errorMessage) {
     return (
-      <Card className="border-0 shadow-sm overflow-hidden">
+      <Card id={sectionId} className="border-0 shadow-sm overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
             <Calendar className="w-4 h-4 text-blue-500" />
@@ -125,8 +100,8 @@ const FinancialCalendar = () => {
         </CardHeader>
         <CardContent>
           <div className="text-center py-4">
-            <p className="text-sm text-red-600 dark:text-red-400 mb-2 break-words">{error}</p>
-            <Button size="sm" onClick={fetchCalendarData} variant="outline">
+            <p className="text-sm text-red-600 dark:text-red-400 mb-2 break-words">{errorMessage}</p>
+            <Button size="sm" onClick={refetchHandler} variant="outline">
               <RefreshCw className="w-4 h-4 mr-2" />
               Försök igen
             </Button>
@@ -137,7 +112,7 @@ const FinancialCalendar = () => {
   }
 
   return (
-    <Card className="border-0 shadow-sm overflow-hidden">
+    <Card id={sectionId} className="border-0 shadow-sm overflow-hidden">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2 min-w-0">
@@ -164,7 +139,7 @@ const FinancialCalendar = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={fetchCalendarData}
+              onClick={refetchHandler}
               className="text-xs px-2 py-1"
             >
               <RefreshCw className="w-3 h-3" />

@@ -1,56 +1,33 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, Activity, Target, RefreshCw } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { useSupabaseNewsFeed } from '@/hooks/useSupabaseNewsFeed';
+import type { MomentumItem } from '@/hooks/useSupabaseNewsFeed';
 
-interface MomentumItem {
-  id: string;
-  title: string;
-  description: string;
-  trend: 'up' | 'down' | 'neutral';
-  change: string;
-  timeframe: string;
-  sentiment?: string;
+interface MarketMomentumProps {
+  items?: MomentumItem[];
+  loading?: boolean;
+  error?: string | null;
+  onRefetch?: () => void;
+  sectionId?: string;
 }
 
-const MarketMomentum = () => {
-  const [momentumData, setMomentumData] = useState<MomentumItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const MarketMomentum: React.FC<MarketMomentumProps> = ({ items, loading, error, onRefetch, sectionId }) => {
+  const shouldUseHook = items === undefined;
+  const {
+    data: momentumData,
+    loading: hookLoading,
+    error: hookError,
+    refetch: hookRefetch,
+  } = useSupabaseNewsFeed('momentum', { enabled: shouldUseHook });
 
-  const fetchMomentumData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const { data, error } = await supabase.functions.invoke('fetch-news-data', {
-        body: { type: 'momentum' }
-      });
-
-      if (error) {
-        console.error('Error fetching momentum data:', error);
-        setError('Kunde inte ladda marknadsmomentum');
-        return;
-      }
-
-      if (data && Array.isArray(data)) {
-        // Limit to maximum 4 items
-        setMomentumData(data.slice(0, 4));
-      }
-    } catch (err) {
-      console.error('Error:', err);
-      setError('Fel vid hämtning av momentumdata');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchMomentumData();
-  }, []);
+  const visibleItems = (items ?? momentumData).slice(0, 4);
+  const isLoading = loading ?? hookLoading;
+  const errorMessage = error ?? hookError;
+  const refetchHandler = onRefetch ?? hookRefetch;
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
@@ -78,9 +55,9 @@ const MarketMomentum = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <Card className="border-0 shadow-sm overflow-hidden">
+      <Card id={sectionId} className="border-0 shadow-sm overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
             <Activity className="w-4 h-4 text-purple-500" />
@@ -97,9 +74,9 @@ const MarketMomentum = () => {
     );
   }
 
-  if (error) {
+  if (errorMessage) {
     return (
-      <Card className="border-0 shadow-sm overflow-hidden">
+      <Card id={sectionId} className="border-0 shadow-sm overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
             <Activity className="w-4 h-4 text-purple-500" />
@@ -108,8 +85,8 @@ const MarketMomentum = () => {
         </CardHeader>
         <CardContent>
           <div className="text-center py-4">
-            <p className="text-sm text-red-600 dark:text-red-400 mb-2 break-words">{error}</p>
-            <Button size="sm" onClick={fetchMomentumData} variant="outline">
+            <p className="text-sm text-red-600 dark:text-red-400 mb-2 break-words">{errorMessage}</p>
+            <Button size="sm" onClick={refetchHandler} variant="outline">
               <RefreshCw className="w-4 h-4 mr-2" />
               Försök igen
             </Button>
@@ -120,7 +97,7 @@ const MarketMomentum = () => {
   }
 
   return (
-    <Card className="border-0 shadow-sm overflow-hidden">
+    <Card id={sectionId} className="border-0 shadow-sm overflow-hidden">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
@@ -130,7 +107,7 @@ const MarketMomentum = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={fetchMomentumData}
+            onClick={refetchHandler}
             className="text-xs px-2 py-1 flex-shrink-0"
           >
             <RefreshCw className="w-3 h-3" />
@@ -138,7 +115,7 @@ const MarketMomentum = () => {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {momentumData.map((item) => (
+        {visibleItems.map((item) => (
           <div key={item.id} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg overflow-hidden">
             <div className="flex items-center gap-1 mt-0.5 flex-shrink-0">
               {getTrendIcon(item.trend)}

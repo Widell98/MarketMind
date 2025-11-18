@@ -4,7 +4,7 @@ import { useNewsData } from '../hooks/useNewsData';
 import NewsCard from './ui/NewsCard';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
-import type { NewsItem } from '@/mockData/newsData';
+import type { NewsItem } from '@/hooks/useSupabaseNewsFeed';
 
 type FlashBriefsContentProps = {
   newsData: NewsItem[];

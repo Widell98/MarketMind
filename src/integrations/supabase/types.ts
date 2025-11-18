@@ -392,6 +392,39 @@ export type Database = {
         }
         Relationships: []
       }
+      morning_briefs: {
+        Row: {
+          created_at: string
+          generated_at: string
+          hash: string
+          id: string
+          payload: Json
+          sentiment: string | null
+          source_snapshot: Json
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          generated_at: string
+          hash: string
+          id?: string
+          payload: Json
+          sentiment?: string | null
+          source_snapshot: Json
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          generated_at?: string
+          hash?: string
+          id?: string
+          payload?: Json
+          sentiment?: string | null
+          source_snapshot?: Json
+          status?: string
+        }
+        Relationships: []
+      }
       portfolio_chat_history: {
         Row: {
           ai_confidence_score: number | null

@@ -10,3 +10,9 @@ enabled = true
 
 [functions.generate-portfolio]
 verify_jwt = false
+
+[functions.fetch-news-data]
+verify_jwt = false
+
+[functions.ai-morning-brief]
+verify_jwt = false
