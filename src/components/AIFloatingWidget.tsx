@@ -220,9 +220,9 @@ Ge ett kortfattat, snabbt svar på investeringsfrågan.`;
                     <div className="flex justify-start">
                       <div className="bg-muted rounded-lg px-3 py-2">
                         <div className="flex space-x-1">
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full opacity-90" />
+                          <div className="w-2 h-2 bg-gray-400 rounded-full opacity-60" />
+                          <div className="w-2 h-2 bg-gray-400 rounded-full opacity-40" />
                         </div>
                       </div>
                     </div>

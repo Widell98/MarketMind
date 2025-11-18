@@ -101,7 +101,7 @@ const AIMarketAlerts = () => {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
-            <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
+            <RefreshCw className="w-6 h-6 text-blue-500" aria-hidden="true" />
             <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Analyserar marknaden...</span>
           </div>
         </CardContent>
@@ -151,7 +151,7 @@ const AIMarketAlerts = () => {
             className="text-xs px-2 py-1"
             disabled={loading}
           >
-            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3 h-3 ${loading ? 'opacity-60' : ''}`} aria-hidden="true" />
           </Button>
         </div>
       </CardHeader>

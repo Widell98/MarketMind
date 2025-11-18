@@ -3353,7 +3353,7 @@ const ChatPortfolioAdvisor = () => {
           {isGenerating && (
             <div className="flex gap-2 sm:gap-3 items-start">
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-primary border-t-transparent rounded-full"></div>
               </div>
               <div className="bg-muted/50 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border shadow-sm">
                 <div className="flex items-center gap-2 text-sm sm:text-base text-muted-foreground">

@@ -126,7 +126,7 @@ const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ portfolioId }
         <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
           {loading ? (
             <div className="text-center py-4 sm:py-6 md:py-8">
-              <Brain className="w-6 h-6 sm:w-8 sm:h-8 md:w-12 md:h-12 mx-auto mb-3 sm:mb-4 animate-pulse text-purple-600" />
+              <Brain className="w-6 h-6 sm:w-8 sm:h-8 md:w-12 md:h-12 mx-auto mb-3 sm:mb-4 text-purple-600" />
               <p className="text-xs sm:text-sm md:text-base">AI analyserar marknadsdata och genererar prognoser...</p>
             </div>
           ) : predictions ? (
