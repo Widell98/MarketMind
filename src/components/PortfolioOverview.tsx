@@ -297,7 +297,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                   AI-Rekommenderade Innehav
                 </CardTitle>
                 <CardDescription className="text-sm text-muted-foreground mt-1">
-                  Aktier som AI-advisorn rekommenderar för din portfölj
+                  Aktier som AI-analytikern identifierar för din portfölj
                 </CardDescription>
               </div>
             </div>

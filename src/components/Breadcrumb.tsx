@@ -9,7 +9,7 @@ const Breadcrumb = () => {
     'portfolio-implementation': 'Portfölj & Analys',
     'stock-cases': 'Aktiefall',
     'ai-chat': 'AI-Assistent',
-    'portfolio-advisor': 'Portföljrådgivare',
+    'portfolio-advisor': 'Portföljanalytiker',
     'auth': 'Inloggning',
     'profile': 'Profil'
   };

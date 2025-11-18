@@ -128,13 +128,13 @@ const GUIDE_FLOWS: Record<string, GuideMessage> = {
       <div className="space-y-4">
         <div className="space-y-2">
           <p>
-            🤖 <span className="font-semibold text-foreground">AI Portfolio Assistent</span> hjälper dig med:
+            🤖 <span className="font-semibold text-foreground">AI Portföljanalytiker</span> hjälper dig med:
           </p>
           <ul className="space-y-2">
             <li className="flex gap-2">
               <span className="select-none">•</span>
               <span>
-                <span className="font-semibold text-foreground">Personliga råd</span> baserat på din riskprofil
+                <span className="font-semibold text-foreground">Personliga insikter</span> baserat på din riskprofil
               </span>
             </li>
             <li className="flex gap-2">

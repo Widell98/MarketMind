@@ -47,12 +47,16 @@ interface QuestionOption {
 interface Question {
   id: string;
   question: string;
-  key: string;
+  key?: string;
   hasOptions: boolean;
   options?: QuestionOption[];
   showIf?: () => boolean;
   processAnswer?: (answer: string | string[]) => any;
   multiSelect?: boolean;
+  isMandatory?: boolean;
+  updatesMultipleFields?: boolean;
+  badgeLabel?: string;
+  badgeTone?: 'primary' | 'neutral';
 }
 
 interface Message {
@@ -158,6 +162,10 @@ const deepClone = <T,>(value: T): T => {
 const removeUndefined = <T extends Record<string, any>>(value: T): T => {
   const entries = Object.entries(value).filter(([, entryValue]) => entryValue !== undefined);
   return Object.fromEntries(entries) as T;
+};
+
+const isPlainObject = (value: unknown): value is Record<string, any> => {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 };
 
 const normalizeTickerSymbol = (value: string | null | undefined): string => {
@@ -851,372 +859,262 @@ const ChatPortfolioAdvisor = () => {
     ? conversationData.currentHoldings.length > 0
     : false;
 
-  const shouldCollectAvailableCapitalForNewInvestor =
-    conversationData.hasCurrentPortfolio !== true &&
-    conversationData.isBeginnerInvestor === false &&
-    !hasImportedHoldings;
-
-  const questions: Question[] = [
-    {
-      id: 'experienceLevel',
-      question: 'Hur länge har du investerat på börsen?',
-      key: 'investmentExperienceLevel',
-      hasOptions: true,
-      options: [
-        { value: 'beginner', label: 'Nybörjare (<1 år)' },
-        { value: 'intermediate', label: 'Några år (1–3 år)' },
-        { value: 'advanced', label: 'Erfaren (3+ år)' }
-      ]
-    },
-    {
-      id: 'age',
-      question: 'Hur gammal är du?',
-      key: 'age',
-      hasOptions: false,
-      processAnswer: (answer: string | string[]) => {
-        const value = Array.isArray(answer) ? answer[0] ?? '' : answer;
-        const digitsOnly = value.replace(/[^0-9]/g, '');
-        if (digitsOnly.length === 0) {
-          return conversationData.age;
+  const coreQuestions = useMemo<Question[]>(
+    () => [
+      {
+        id: 'experienceLevel',
+        question: 'Steg 1 av 5 (obligatorisk) – Hur länge har du investerat på börsen?',
+        key: 'investmentExperienceLevel',
+        hasOptions: true,
+        isMandatory: true,
+        options: [
+          { value: 'beginner', label: 'Nybörjare (<1 år)' },
+          { value: 'intermediate', label: 'Några år (1–3 år)' },
+          { value: 'advanced', label: 'Erfaren (3+ år)' }
+        ]
+      },
+      {
+        id: 'hasPortfolio',
+        question: 'Steg 2 av 5 (obligatorisk) – Har du redan några investeringar som du vill optimera?',
+        key: 'hasCurrentPortfolio',
+        hasOptions: true,
+        isMandatory: true,
+        options: [
+          { value: 'yes', label: 'Ja, jag har befintliga investeringar' },
+          { value: 'no', label: 'Nej, jag börjar från början' }
+        ],
+        processAnswer: (answer: string | string[]) => {
+          const value = Array.isArray(answer) ? answer[0] ?? '' : answer;
+          return value === 'yes';
         }
+      }
+    ],
+    []
+  );
 
-        const parsedAge = parseInt(digitsOnly, 10);
-        if (Number.isFinite(parsedAge) && parsedAge >= 18 && parsedAge <= 100) {
-          return parsedAge;
-        }
+  const analystIntakeQuestions = useMemo<Question[]>(() => {
+    const goalRiskOptions = [
+      {
+        value: 'growth_long_balanced',
+        label: 'Långsiktig tillväxt (5+ år) • Balanserad risk',
+        investmentGoal: 'long_term_growth',
+        timeHorizon: 'long',
+        riskTolerance: 'balanced',
+      },
+      {
+        value: 'income_medium_conservative',
+        label: 'Stabilt kassaflöde (3–5 år) • Låg risk',
+        investmentGoal: 'dividend_income',
+        timeHorizon: 'medium',
+        riskTolerance: 'conservative',
+      },
+      {
+        value: 'aggressive_short',
+        label: 'Hög potential (0–2 år) • Hög risk',
+        investmentGoal: 'quick_return',
+        timeHorizon: 'short',
+        riskTolerance: 'aggressive',
+      },
+      {
+        value: 'capital_guard',
+        label: 'Kapitalskydd (5+ år) • Trygg risknivå',
+        investmentGoal: 'long_term_savings',
+        timeHorizon: 'long',
+        riskTolerance: 'conservative',
+      },
+    ];
 
-        return conversationData.age;
-      }
-    },
-    {
-      id: 'hasPortfolio',
-      question: 'Har du redan några investeringar som du vill optimera?',
-      key: 'hasCurrentPortfolio',
-      hasOptions: true,
-      options: [
-        { value: 'yes', label: 'Ja, jag har befintliga investeringar' },
-        { value: 'no', label: 'Nej, jag börjar från början' }
-      ],
-      processAnswer: (answer: string | string[]) => {
-        const value = Array.isArray(answer) ? answer[0] ?? '' : answer;
-        return value === 'yes';
-      }
-    },
-    {
-      id: 'currentPortfolioStrategy',
-      question: 'Hur skulle du beskriva din nuvarande portföljstrategi?',
-      key: 'currentPortfolioStrategy',
-      hasOptions: true,
-      showIf: () => conversationData.hasCurrentPortfolio === true,
-      options: [
-        { value: 'passive_index', label: 'Passiv – indexfonder och bred exponering' },
-        { value: 'dividend_focus', label: 'Utdelningsfokus' },
-        { value: 'growth_focus', label: 'Tillväxt och innovation' },
-        { value: 'mixed', label: 'Blandad strategi' },
-        { value: 'unsure', label: 'Osäker / ingen tydlig strategi' }
-      ]
-    },
-    {
-      id: 'optimizationGoals',
-      question: 'Vad vill du främst förbättra i din nuvarande portfölj?',
-      key: 'optimizationGoals',
-      hasOptions: true,
-      showIf: () => conversationData.hasCurrentPortfolio === true,
-      multiSelect: true,
-      options: [
-        { value: 'risk_balance', label: 'Balansera risk och avkastning bättre' },
-        { value: 'diversify', label: 'Öka diversifieringen' },
-        { value: 'reduce_fees', label: 'Minska avgifter' },
-        { value: 'add_growth', label: 'Hitta nya tillväxtmöjligheter' },
-        { value: 'income_focus', label: 'Stärka utdelningsflödet' },
-        { value: 'sustainability', label: 'Öka hållbarhetsprofilen' }
-      ],
-      processAnswer: (answer: string | string[]) => {
-        const values = Array.isArray(answer)
-          ? answer
-          : answer
-              .split(',')
-              .map(item => item.trim())
-              .filter(item => item.length > 0);
-        return values.filter((item, index) => values.indexOf(item) === index);
-      }
-    },
-    {
-      id: 'optimizationRiskFocus',
-      question: 'Vilka risker oroar dig mest i portföljen idag?',
-      key: 'optimizationRiskFocus',
-      hasOptions: true,
-      showIf: () =>
-        conversationData.hasCurrentPortfolio === true &&
-        Array.isArray(conversationData.optimizationGoals) &&
-        conversationData.optimizationGoals.includes('risk_balance'),
-      options: [
-        { value: 'drawdown', label: 'Stora svängningar / drawdowns' },
-        { value: 'concentration', label: 'Hög koncentration i få innehav' },
-        { value: 'market', label: 'Känslighet mot marknadsrisk' },
-        { value: 'currency', label: 'Valutarisk' },
-        { value: 'liquidity', label: 'Likviditetsrisk' }
-      ]
-    },
-    {
-      id: 'optimizationDiversification',
-      question: 'Vilka områden vill du sprida risken mot?',
-      key: 'optimizationDiversificationFocus',
-      hasOptions: true,
-      multiSelect: true,
-      showIf: () =>
-        conversationData.hasCurrentPortfolio === true &&
-        Array.isArray(conversationData.optimizationGoals) &&
-        conversationData.optimizationGoals.includes('diversify'),
-      options: [
-        { value: 'nordics', label: 'Mer mot Norden' },
-        { value: 'global', label: 'Global exponering' },
-        { value: 'sectors', label: 'Fler olika sektorer' },
-        { value: 'small_caps', label: 'Småbolag och tillväxt' },
-        { value: 'thematic', label: 'Tematiska investeringar / fonder' }
-      ],
-      processAnswer: (answer: string | string[]) => {
-        const values = Array.isArray(answer)
-          ? answer
-          : answer
-              .split(',')
-              .map(item => item.trim())
-              .filter(item => item.length > 0);
-        return values.filter((item, index) => values.indexOf(item) === index);
-      }
-    },
-    {
-      id: 'optimizationPreference',
-      question: 'Hur vill du att jag ska arbeta med dina befintliga innehav?',
-      key: 'optimizationPreference',
-      hasOptions: true,
-      showIf: () => conversationData.hasCurrentPortfolio === true,
-      options: [
-        { value: 'analyze_only', label: 'Analysera och förbättra utan nya köp' },
-        { value: 'improve_with_new_ideas', label: 'Behåll kärnan men komplettera med nya idéer' },
-        { value: 'rebalance', label: 'Ge konkreta rebalanseringsförslag inklusive köp/sälj' }
-      ]
-    },
-    {
-      id: 'optimizationTimeline',
-      question: 'När vill du ha förändringar genomförda?',
-      key: 'optimizationTimeline',
-      hasOptions: true,
-      showIf: () => conversationData.hasCurrentPortfolio === true,
-      options: [
-        { value: 'immediate', label: 'Snarast möjligt' },
-        { value: 'short_term', label: 'Inom de kommande 3 månaderna' },
-        { value: 'medium_term', label: 'Under det kommande året' },
-        { value: 'long_term', label: 'Löpande över flera år' }
-      ]
-    },
-    {
-      id: 'tradingFrequency',
-      question: 'Hur ofta handlar du aktier eller andra tillgångar?',
-      key: 'tradingFrequency',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio === true,
-      options: [
-        { value: 'rarely', label: 'Sällan (några gånger per år)' },
-        { value: 'monthly', label: 'Någon gång i månaden' },
-        { value: 'weekly', label: 'Varje vecka eller oftare' }
-      ]
-    },
-    {
-      id: 'investedCapital',
-      question: shouldCollectAvailableCapitalForNewInvestor
-        ? 'Hur mycket kapital har du tillgängligt att investera just nu?'
-        : 'Hur mycket kapital har du ungefär investerat hittills?',
-      key: shouldCollectAvailableCapitalForNewInvestor ? 'availableCapital' : 'portfolioSize',
-      hasOptions: true,
-      showIf: () =>
-        conversationData.hasCurrentPortfolio !== true &&
-        conversationData.isBeginnerInvestor === false,
-      options: [
-        { value: 'under_10000', label: 'Under 10 000 kr' },
-        { value: '10000_50000', label: '10 000 – 50 000 kr' },
-        { value: '50000_200000', label: '50 000 – 200 000 kr' },
-        { value: 'over_200000', label: 'Mer än 200 000 kr' }
-      ]
-    },
-    {
-      id: 'beginnerStartCapital',
-      question: 'Hur mycket är du beredd att börja investera med?',
-      key: 'availableCapital',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true && conversationData.hasCurrentPortfolio !== true,
-      options: [
-        { value: 'under_1000', label: 'Mindre än 1 000 kr' },
-        { value: '1000_10000', label: '1 000 – 10 000 kr' },
-        { value: '10000_50000', label: '10 000 – 50 000 kr' },
-        { value: 'over_50000', label: 'Mer än 50 000 kr' }
-      ]
-    },
-    {
-      id: 'investmentGoalBeginner',
-      question: 'Vad är ditt främsta mål med att börja investera?',
-      key: 'investmentGoal',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true && conversationData.hasCurrentPortfolio !== true,
-      options: [
-        { value: 'long_term_savings', label: 'Bygga ett långsiktigt sparande' },
-        { value: 'learn_and_test', label: 'Lära mig mer och testa på' },
-        { value: 'specific_goal', label: 'Spara till något specifikt (t.ex. bostad, resa)' },
-        { value: 'quick_return', label: 'Snabb avkastning' }
-      ]
-    },
-    {
-      id: 'investmentGoalExperienced',
-      question: 'Vad är ditt främsta mål med investeringarna?',
-      key: 'investmentGoal',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio !== true,
-      options: [
-        { value: 'quick_return', label: 'Snabb avkastning / trading' },
-        { value: 'long_term_growth', label: 'Bygga långsiktigt sparande' },
-        { value: 'dividend_income', label: 'Extra inkomst via utdelningar' },
-        { value: 'other', label: 'Annat' }
-      ]
-    },
-    {
-      id: 'timeHorizonBeginner',
-      question: 'Hur lång tidshorisont har du för ditt sparande?',
-      key: 'timeHorizon',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true && conversationData.hasCurrentPortfolio !== true,
-      options: [
-        { value: 'short', label: 'Kortsiktigt (0–2 år)' },
-        { value: 'medium', label: 'Medellång sikt (3–5 år)' },
-        { value: 'long', label: 'Långsiktigt (5+ år)' },
-        { value: 'unknown', label: 'Vet inte än' }
-      ]
-    },
-    {
-      id: 'timeHorizonExperienced',
-      question: 'Hur lång tidshorisont har du på ditt sparande?',
-      key: 'timeHorizon',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio !== true,
-      options: [
-        { value: 'short', label: 'Kortsiktigt (0–2 år)' },
-        { value: 'medium', label: 'Medellång sikt (3–5 år)' },
-        { value: 'long', label: 'Långsiktigt (5+ år)' }
-      ]
-    },
-    {
-      id: 'preferredAssets',
-      question: 'Vilka tillgångar är du mest intresserad av?',
-      key: 'preferredAssets',
-      hasOptions: true,
-      options: [
-        { value: 'stocks', label: 'Aktier' },
-        { value: 'investment_companies', label: 'Investmentbolag' },
-        { value: 'crypto', label: 'Kryptovalutor' },
-        { value: 'commodities', label: 'Råvaror (t.ex. guld, olja)' }
-      ]
-    },
-    {
-      id: 'riskBeginner',
-      question: 'Hur ser du på risk?',
-      key: 'riskTolerance',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true,
-      options: [
-        { value: 'conservative', label: 'Vill undvika risk – hellre stabilt och tryggt' },
-        { value: 'balanced', label: 'Kan ta viss risk för chans till högre avkastning' },
-        { value: 'aggressive', label: 'Gillar risk – vill ha möjlighet till riktigt hög avkastning' }
-      ]
-    },
-    {
-      id: 'riskExperienced',
-      question: 'Vilken risknivå känns rimlig för dig?',
-      key: 'riskTolerance',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false,
-      options: [
-        { value: 'conservative', label: 'Låg risk' },
-        { value: 'balanced', label: 'Medelrisk' },
-        { value: 'aggressive', label: 'Hög risk' }
-      ]
-    },
-    {
-      id: 'monthlyInvestment',
-      question: 'Hur mycket planerar du att investera varje månad?',
-      key: 'monthlyAmount',
-      hasOptions: false,
-      processAnswer: (answer: string | string[]) => {
-        const value = Array.isArray(answer) ? answer.join(', ') : answer;
-        return value.trim();
-      }
-    },
-    {
-      id: 'marketReaction',
-      question: 'Hur reagerar du när portföljen tappar i värde?',
-      key: 'marketCrashReaction',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio === true,
-      options: [
-        { value: 'sell', label: 'Jag blir orolig och vill sälja' },
-        { value: 'wait', label: 'Jag försöker avvakta' },
-        { value: 'buy_more', label: 'Jag ser det som ett köptillfälle' }
-      ]
-    },
-    {
-      id: 'aiSupportExperienced',
-      question: 'Vad vill du främst att AI:n ska hjälpa dig med?',
-      key: 'portfolioHelp',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false,
-      options: [
-        { value: 'long_term_portfolio', label: 'Bygga en långsiktig portfölj' },
-        { value: 'analyze_holdings', label: 'Ge analyser på mina aktier' },
-        { value: 'find_new_investments', label: 'Hitta nya intressanta investeringar' },
-        { value: 'learn_more', label: 'Lära mig mer om investeringar' }
-      ]
-    },
-    {
-      id: 'aiSupportBeginner',
-      question: 'Vad vill du främst att AI:n ska hjälpa dig med?',
-      key: 'portfolioHelp',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true,
-      options: [
-        { value: 'step_by_step', label: 'Komma igång steg-för-steg' },
-        { value: 'learn_basics', label: 'Lära mig grunderna om aktier & investmentbolag' },
-        { value: 'starter_portfolio', label: 'Få förslag på en enkel startportfölj' },
-        { value: 'investment_inspiration', label: 'Inspiration till olika investeringstyper (aktier, investmentbolag, krypto m.m.)' }
-      ]
-    },
-    {
-      id: 'sectorInterests',
-      question: 'Vilka branscher intresserar dig mest? Du kan klicka på alternativen nedan eller ange egna.',
-      key: 'sectors',
-      hasOptions: true,
-      multiSelect: true,
-      options: [
-        { value: 'Tech & IT', label: 'Tech & IT' },
-        { value: 'Hälsa & Life Science', label: 'Hälsa & Life Science' },
-        { value: 'Energi', label: 'Energi' },
-        { value: 'Konsument & Handel', label: 'Konsument & Handel' },
-        { value: 'Fordon & Transport', label: 'Fordon & Transport' },
-        { value: 'Finans', label: 'Finans' },
-        { value: 'Industri', label: 'Industri' },
-        { value: 'Fastigheter', label: 'Fastigheter' },
-        { value: 'Grön Energi & Hållbarhet', label: 'Grön Energi & Hållbarhet' },
-        { value: 'Spel & Underhållning', label: 'Spel & Underhållning' },
-        { value: 'Annat', label: 'Annat' }
-      ],
-      processAnswer: (answer: string | string[]) => {
-        const values = Array.isArray(answer)
-          ? answer
-          : answer
-              .split(',')
-              .map(item => item.trim())
-              .filter(item => item.length > 0);
-        return values.filter((item, index) => values.indexOf(item) === index);
-      }
-    }
-  ];
+    const capitalOptions = [
+      { value: 'under_50k', label: 'Under 50 000 SEK' },
+      { value: '50k_200k', label: '50 000 – 200 000 SEK' },
+      { value: '200k_500k', label: '200 000 – 500 000 SEK' },
+      { value: '500k_plus', label: 'Över 500 000 SEK' },
+    ];
+
+    return [
+      {
+        id: 'analysisFocus',
+        question: 'Steg 3 av 5 (obligatorisk) – Vad vill du att analytikern ska fokusera på?',
+        hasOptions: true,
+        badgeLabel: 'Snabbprofil 1/3',
+        badgeTone: 'primary',
+        isMandatory: true,
+        updatesMultipleFields: true,
+        options: [
+          { value: 'build_new_strategy', label: 'Skapa en helt ny strategi från start' },
+          { value: 'optimize_existing', label: 'Finjustera min befintliga portfölj' },
+          { value: 'stress_test', label: 'Stress-testa scenarier och risker' },
+          { value: 'idea_generation', label: 'Upptäcka nya idéer och teman' },
+        ],
+        processAnswer: (answer: string | string[]) => {
+          const value = Array.isArray(answer) ? answer[0] ?? '' : answer;
+          const resolved = value || conversationData.analysisIntent || 'build_new_strategy';
+          return removeUndefined({
+            analysisIntent: resolved,
+            portfolioHelp: resolved,
+          });
+        },
+      },
+      {
+        id: 'goalRiskTime',
+        question: 'Steg 4 av 5 (obligatorisk) – Vilken målbild passar dig bäst?',
+        key: 'investmentGoal',
+        hasOptions: true,
+        badgeLabel: 'Snabbprofil 2/3',
+        badgeTone: 'primary',
+        isMandatory: true,
+        updatesMultipleFields: true,
+        options: goalRiskOptions.map(option => ({ value: option.value, label: option.label })),
+        processAnswer: (answer: string | string[]) => {
+          const value = Array.isArray(answer) ? answer[0] ?? '' : answer;
+          const selected = goalRiskOptions.find(option => option.value === value);
+          if (!selected) {
+            return removeUndefined({
+              investmentGoal: conversationData.investmentGoal,
+              timeHorizon: conversationData.timeHorizon,
+              riskTolerance: conversationData.riskTolerance,
+            });
+          }
+
+          return removeUndefined({
+            goalHorizonBundle: selected.value,
+            investmentGoal: selected.investmentGoal,
+            timeHorizon: selected.timeHorizon,
+            riskTolerance: selected.riskTolerance,
+          });
+        },
+      },
+      {
+        id: 'capitalCommitment',
+        question: 'Steg 5 av 5 (obligatorisk) – Hur stort kapital ska analysen utgå ifrån?',
+        key: 'availableCapital',
+        hasOptions: true,
+        badgeLabel: 'Snabbprofil 3/3',
+        badgeTone: 'primary',
+        isMandatory: true,
+        updatesMultipleFields: true,
+        options: capitalOptions,
+        processAnswer: (answer: string | string[]) => {
+          const value = Array.isArray(answer) ? answer[0] ?? '' : answer;
+          const selected = capitalOptions.find(option => option.value === value) ?? capitalOptions[1];
+          const updates: Partial<ConversationData> = {
+            availableCapital: selected.value,
+            capitalRangeCode: selected.value,
+          };
+
+          if (conversationData.hasCurrentPortfolio) {
+            updates.portfolioSize = selected.value;
+          }
+
+          return removeUndefined(updates);
+        },
+      },
+      {
+        id: 'sectorInterests',
+        question: 'Bonus (valfritt) – Vilka teman eller branscher vill du prioritera?',
+        key: 'sectors',
+        hasOptions: true,
+        multiSelect: true,
+        badgeLabel: 'Valfritt',
+        badgeTone: 'neutral',
+        options: [
+          { value: 'Tech & IT', label: 'Tech & IT' },
+          { value: 'Hälsa & Life Science', label: 'Hälsa & Life Science' },
+          { value: 'Energi', label: 'Energi' },
+          { value: 'Konsument & Handel', label: 'Konsument & Handel' },
+          { value: 'Fordon & Transport', label: 'Fordon & Transport' },
+          { value: 'Finans', label: 'Finans' },
+          { value: 'Industri', label: 'Industri' },
+          { value: 'Fastigheter', label: 'Fastigheter' },
+          { value: 'Grön Energi & Hållbarhet', label: 'Grön Energi & Hållbarhet' },
+          { value: 'Spel & Underhållning', label: 'Spel & Underhållning' },
+          { value: 'Annat', label: 'Annat' },
+        ],
+        processAnswer: (answer: string | string[]) => {
+          const values = Array.isArray(answer)
+            ? answer
+            : answer
+                .split(',')
+                .map(item => item.trim())
+                .filter(item => item.length > 0);
+          return values.filter((item, index) => values.indexOf(item) === index);
+        },
+      },
+    ];
+  }, [
+    conversationData.analysisIntent,
+    conversationData.hasCurrentPortfolio,
+    conversationData.investmentGoal,
+    conversationData.timeHorizon,
+    conversationData.riskTolerance,
+    conversationData.portfolioHelp,
+  ]);
+
+  const questions = useMemo(() => [...coreQuestions, ...analystIntakeQuestions], [coreQuestions, analystIntakeQuestions]);
+  const mandatoryQuestionIds = useMemo(
+    () => new Set(questions.filter(question => question.isMandatory).map(question => question.id)),
+    [questions]
+  );
+  const questionMetadataMap = useMemo(() => {
+    return new Map(questions.map(question => [question.id, question]));
+  }, [questions]);
+
+  const getMissingMandatoryQuestionId = useCallback((): string | null => {
+    const analysisIntentAnswer = conversationData.analysisIntent ?? conversationData.portfolioHelp;
+    const requirements = [
+      {
+        id: 'experienceLevel',
+        isComplete:
+          typeof conversationData.investmentExperienceLevel === 'string' &&
+          conversationData.investmentExperienceLevel.trim().length > 0,
+      },
+      {
+        id: 'hasPortfolio',
+        isComplete: typeof conversationData.hasCurrentPortfolio === 'boolean',
+      },
+      {
+        id: 'analysisFocus',
+        isComplete:
+          typeof analysisIntentAnswer === 'string' && analysisIntentAnswer.trim().length > 0,
+      },
+      {
+        id: 'goalRiskTime',
+        isComplete:
+          (typeof conversationData.goalHorizonBundle === 'string' &&
+            conversationData.goalHorizonBundle.trim().length > 0) ||
+          ((typeof conversationData.investmentGoal === 'string' &&
+            conversationData.investmentGoal.trim().length > 0) &&
+            (typeof conversationData.timeHorizon === 'string' &&
+              conversationData.timeHorizon.trim().length > 0) &&
+            (typeof conversationData.riskTolerance === 'string' &&
+              conversationData.riskTolerance.trim().length > 0)),
+      },
+      {
+        id: 'capitalCommitment',
+        isComplete:
+          (typeof conversationData.capitalRangeCode === 'string' &&
+            conversationData.capitalRangeCode.trim().length > 0) ||
+          (typeof conversationData.availableCapital === 'string' &&
+            conversationData.availableCapital.trim().length > 0) ||
+          (typeof conversationData.portfolioSize === 'string' && conversationData.portfolioSize.trim().length > 0),
+      },
+    ];
+
+    const missingRequirement = requirements.find(requirement => !requirement.isComplete);
+    return missingRequirement?.id ?? null;
+  }, [
+    conversationData.analysisIntent,
+    conversationData.availableCapital,
+    conversationData.capitalRangeCode,
+    conversationData.goalHorizonBundle,
+    conversationData.hasCurrentPortfolio,
+    conversationData.investmentExperienceLevel,
+    conversationData.investmentGoal,
+    conversationData.portfolioHelp,
+    conversationData.portfolioSize,
+    conversationData.riskTolerance,
+    conversationData.timeHorizon,
+  ]);
 
   const resetMultiSelectState = useCallback(() => {
     setPendingMultiSelect([]);
@@ -1750,10 +1648,15 @@ const ChatPortfolioAdvisor = () => {
       }
 
       // Update conversation data
-      const updatedData = {
-        ...conversationData,
-        [currentQuestion.key]: processedAnswer
+      const updatedData: ConversationData = {
+        ...conversationData
       };
+
+      if (currentQuestion.updatesMultipleFields && isPlainObject(processedAnswer)) {
+        Object.assign(updatedData, processedAnswer as Partial<ConversationData>);
+      } else if (currentQuestion.key) {
+        (updatedData as Record<string, any>)[currentQuestion.key] = processedAnswer;
+      }
       setConversationData(updatedData);
 
       // Show holdings input form
@@ -1804,10 +1707,15 @@ const ChatPortfolioAdvisor = () => {
     }
 
     // Update conversation data
-    const updatedData = {
-      ...conversationData,
-      [currentQuestion.key]: processedAnswer
+    const updatedData: ConversationData = {
+      ...conversationData
     };
+
+    if (currentQuestion.updatesMultipleFields && isPlainObject(processedAnswer)) {
+      Object.assign(updatedData, processedAnswer as Partial<ConversationData>);
+    } else if (currentQuestion.key) {
+      (updatedData as Record<string, any>)[currentQuestion.key] = processedAnswer;
+    }
 
     if (currentQuestion.id === 'experienceLevel') {
       updatedData.isBeginnerInvestor = processedAnswer === 'beginner';
@@ -1844,7 +1752,7 @@ const ChatPortfolioAdvisor = () => {
 
   const moveToNextQuestion = () => {
     let nextStep = currentStep + 1;
-    
+
     // Skip questions that shouldn't be shown
     while (nextStep < questions.length) {
       const nextQuestion = questions[nextStep];
@@ -1852,6 +1760,14 @@ const ChatPortfolioAdvisor = () => {
         break;
       }
       nextStep++;
+    }
+
+    const missingMandatoryQuestionId = getMissingMandatoryQuestionId();
+    if (missingMandatoryQuestionId) {
+      const requiredIndex = questions.findIndex(question => question.id === missingMandatoryQuestionId);
+      if (requiredIndex !== -1 && nextStep > requiredIndex) {
+        nextStep = requiredIndex;
+      }
     }
 
     if (nextStep >= questions.length) {
@@ -1875,6 +1791,44 @@ const ChatPortfolioAdvisor = () => {
         setWaitingForAnswer(true);
       }, 500);
     }
+  };
+
+  const promptForMandatoryQuestion = (questionId: string) => {
+    const questionIndex = questions.findIndex(question => question.id === questionId);
+    if (questionIndex === -1) {
+      return;
+    }
+
+    const question = questions[questionIndex];
+    const reminderMessages: Record<string, string> = {
+      experienceLevel: 'Steg 1 av 5 – För att komma vidare med analysen behöver jag veta hur erfaren du är som investerare.',
+      hasPortfolio: 'Steg 2 av 5 – Bekräfta om du har en befintlig portfölj så att jag kan välja rätt analysläge.',
+      analysisFocus: 'Steg 3 av 5 – Ange vilket fokus du vill att analytikern ska ha så att de fem snabba stegen blir träffsäkra.',
+      goalRiskTime:
+        'Steg 4 av 5 – Välj målbild och risknivå så att jag kan kalibrera rekommendationerna efter din horisont.',
+      capitalCommitment:
+        'Steg 5 av 5 – Berätta vilket kapital analysen ska baseras på så avslutar vi snabbprofilen.',
+    };
+
+    const reminderMessage =
+      reminderMessages[questionId] ||
+      'Vi behöver slutföra den korta snabbprofilen innan analysen kan genereras.';
+
+    addBotMessage(reminderMessage);
+    setCurrentStep(questionIndex);
+    prepareQuestionForAnswer(question);
+
+    setTimeout(() => {
+      addBotMessage(
+        question.question,
+        question.hasOptions,
+        question.options,
+        false,
+        question.id,
+        question.multiSelect
+      );
+      setWaitingForAnswer(true);
+    }, 600);
   };
 
   const confirmMultiSelectSelection = () => {
@@ -2347,6 +2301,12 @@ const ChatPortfolioAdvisor = () => {
   };
 
   const completeConversation = async () => {
+    const missingQuestionId = getMissingMandatoryQuestionId();
+    if (missingQuestionId) {
+      promptForMandatoryQuestion(missingQuestionId);
+      return;
+    }
+
     setIsGenerating(true);
     setRecommendedStocks([]);
     hasInitializedRecommendations.current = false;
@@ -3049,12 +3009,12 @@ const ChatPortfolioAdvisor = () => {
               <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-semibold text-sm sm:text-base">AI Portfolio Rådgivare</h3>
-              <p className="text-xs sm:text-sm text-muted-foreground">Personlig konsultation</p>
+              <h3 className="font-semibold text-sm sm:text-base">AI Portföljanalytiker</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground">Personlig analys</p>
             </div>
           </div>
           <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs sm:text-sm">
-            Konsultation
+            Analys
           </Badge>
         </div>
       </div>
@@ -3062,20 +3022,48 @@ const ChatPortfolioAdvisor = () => {
       {/* Messages Container - matching AIChat style */}
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto">
         <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-          {messages.map((message) => (
-            <div key={message.id} className="space-y-2">
-              {message.type === 'bot' ? (
-                <div className="flex gap-2 sm:gap-3 items-start">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="bg-muted/50 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border shadow-sm">
-                      <div className="prose prose-sm max-w-none text-foreground">
-                        <p className="text-sm sm:text-base leading-relaxed mb-0">{message.content}</p>
-                      </div>
-                      
-                      {/* Show predefined options if available */}
+          {messages.map((message) => {
+            const isMandatoryQuestion = Boolean(
+              message.questionId && mandatoryQuestionIds.has(message.questionId)
+            );
+            const questionMetadata = message.questionId
+              ? questionMetadataMap.get(message.questionId)
+              : undefined;
+            const showContextBadge = Boolean(questionMetadata?.badgeLabel);
+
+            return (
+              <div key={message.id} className="space-y-2">
+                {message.type === 'bot' ? (
+                  <div className="flex gap-2 sm:gap-3 items-start">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="bg-muted/50 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border shadow-sm">
+                        <div className="prose prose-sm max-w-none text-foreground">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm sm:text-base leading-relaxed mb-0">{message.content}</p>
+                            {isMandatoryQuestion && (
+                              <Badge className="text-[10px] tracking-wide uppercase bg-amber-100 text-amber-700 border-amber-200">
+                                Obligatorisk
+                              </Badge>
+                            )}
+                            {showContextBadge && (
+                              <Badge
+                                variant="outline"
+                                className={`text-[10px] tracking-wide uppercase ${
+                                  questionMetadata?.badgeTone === 'neutral'
+                                    ? 'bg-muted text-muted-foreground border-dashed border-border/60'
+                                    : 'bg-primary/10 text-primary border-primary/20'
+                                }`}
+                              >
+                                {questionMetadata?.badgeLabel}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Show predefined options if available */}
                       {message.hasOptions && message.options && waitingForAnswer && !showHoldingsInput && message.questionId === activeQuestion?.id && (
                         <div className="mt-3 sm:mt-4 space-y-3">
                           <div className="flex flex-wrap gap-1.5 sm:gap-2">
@@ -3330,7 +3318,8 @@ const ChatPortfolioAdvisor = () => {
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
 
           {/* Show AI response when complete */}
           {isComplete && portfolioResult && (

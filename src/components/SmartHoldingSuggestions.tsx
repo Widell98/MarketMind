@@ -132,7 +132,7 @@ const SmartHoldingSuggestions: React.FC<SmartHoldingSuggestionsProps> = ({
     } else if (action === 'follow') {
       toast({
         title: "Förslag följt",
-        description: "Du har valt att följa detta förslag. Läs mer i din portföljrådgivning.",
+        description: "Du har valt att följa detta förslag. Läs mer i din portföljanalys.",
         duration: 5000,
       });
       onSuggestionAction(suggestionId, action);

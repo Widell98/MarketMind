@@ -63,10 +63,10 @@ const ChatHeader = ({
             <Zap className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
           </div>
           <div>
-            <h2 className="text-xl sm:text-2xl xl:text-3xl font-bold text-slate-800 dark:text-slate-100">AI Portfolio Assistent</h2>
+            <h2 className="text-xl sm:text-2xl xl:text-3xl font-bold text-slate-800 dark:text-slate-100">AI Portföljanalytiker</h2>
             <div className="flex items-center gap-2">
               <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300">
-                {currentSession ? currentSession.session_name : 'Din intelligenta investeringsrådgivare'}
+                {currentSession ? currentSession.session_name : 'Din intelligenta investeringsanalytiker'}
               </p>
               {currentSession && (
                 <Button
