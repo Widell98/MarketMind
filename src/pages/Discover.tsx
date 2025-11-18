@@ -1,12 +1,11 @@
-import React, { useState, useMemo } from 'react';
-import { Button } from '@/components/ui/button';
-import { Sparkles, Camera } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Layout from '@/components/Layout';
+import { ArrowRight, Camera, Newspaper, Sparkles } from 'lucide-react';
 
+import Layout from '@/components/Layout';
 import StockCaseCard from '@/components/StockCaseCard';
+import { Button } from '@/components/ui/button';
 import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
-import AIGenerationAdminControls from '@/components/AIGenerationAdminControls';
 
 import { useStockCases } from '@/hooks/useStockCases';
 import { useToast } from '@/hooks/use-toast';
@@ -140,7 +139,30 @@ const Discover = () => {
             </p>
           </section>
 
-          <AIGenerationAdminControls />
+          <section className="rounded-3xl border border-border/60 bg-gradient-to-r from-primary/5 via-background to-background p-6 shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:p-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <Newspaper className="h-5 w-5" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary">Nyhet</p>
+                  <h2 className="text-xl font-semibold text-foreground sm:text-2xl">AI-rapporter har flyttat</h2>
+                  <p className="text-sm text-muted-foreground sm:text-base">
+                    Du hittar nu de genererade rapporterna och marknadsinsikterna på vår nya nyhetssida.
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="lg"
+                className="group rounded-xl px-5"
+                onClick={() => navigate('/news')}
+              >
+                <span>Öppna nyhetssidan</span>
+                <ArrowRight className="ml-2 h-4 w-4 transition group-hover:translate-x-1" />
+              </Button>
+            </div>
+          </section>
 
           <div className="w-full space-y-6 sm:space-y-8">
             <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">

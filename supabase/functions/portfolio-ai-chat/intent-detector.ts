@@ -1,5 +1,9 @@
 import { IntentDetectionResult, IntentType } from './intent-types.ts';
 
+const INTENT_MODEL = Deno.env.get('OPENAI_INTENT_MODEL')
+  || Deno.env.get('OPENAI_MODEL')
+  || 'gpt-5.1';
+
 const ALLOWED_INTENTS: IntentType[] = [
   'stock_analysis',
   'portfolio_optimization',
@@ -130,7 +134,7 @@ export const detectUserIntentWithOpenAI = async (
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: INTENT_MODEL,
         temperature: 0.2,
         response_format: { type: 'json_schema', json_schema: INTENT_SCHEMA },
         messages,

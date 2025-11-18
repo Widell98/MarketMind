@@ -26,6 +26,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  reasoning?: string | null;
 }
 
 const AIFloatingWidget = () => {
@@ -98,9 +99,10 @@ Ge ett kortfattat, snabbt svar på investeringsfrågan.`;
           message: input.trim(),
           userId: user.id,
           systemPrompt,
-          model: 'gpt-4o-mini',
+          model: 'gpt-5.1',
           maxTokens: 50,
-          temperature: 0.3
+          temperature: 0.3,
+          reasoningEffort: 'low'
         }
       });
 
@@ -113,7 +115,8 @@ Ge ett kortfattat, snabbt svar på investeringsfrågan.`;
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: data.response || 'Kunde inte generera svar. → Gå till AI-chatten för mer info',
-        timestamp: new Date()
+        timestamp: new Date(),
+        reasoning: data.reasoning ?? null
       };
 
       setMessages(prev => [...prev, aiResponse]);
@@ -213,7 +216,15 @@ Ge ett kortfattat, snabbt svar på investeringsfrågan.`;
                 <>
                   {messages.map(msg => (
                     <div key={msg.id} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
-                      <div className={cn('max-w-[85%] rounded-lg px-3 py-2 text-sm', msg.role === 'user' ? 'bg-primary text-white' : 'bg-muted')}>{msg.content}</div>
+                      <div className={cn('max-w-[85%] rounded-lg px-3 py-2 text-sm space-y-1.5', msg.role === 'user' ? 'bg-primary text-white' : 'bg-muted')}>
+                        <p>{msg.content}</p>
+                        {msg.role === 'assistant' && msg.reasoning && (
+                          <div className="text-[11px] text-muted-foreground border-t border-white/30 pt-1">
+                            <p className="font-semibold uppercase tracking-wide">Resonemang</p>
+                            <p>{msg.reasoning}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                   {isLoading && (
