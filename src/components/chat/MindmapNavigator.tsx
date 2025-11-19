@@ -212,14 +212,6 @@ function MindmapNavigator({
   }, [createFolder, onCreateNewSession, selectedEdgeId]);
 
   useEffect(() => {
-    setEdges((prev) =>
-      prev.filter((edge) =>
-        nodes.some((node) => node.id === edge.sourceId) && nodes.some((node) => node.id === edge.targetId)
-      )
-    );
-  }, [nodes]);
-
-  useEffect(() => {
     if (!layout && !hasHydratedLayoutRef.current) {
       hasHydratedLayoutRef.current = true;
     }
@@ -312,6 +304,14 @@ function MindmapNavigator({
       } satisfies MindmapNode;
     });
   }, [documentIds, groups, nodeMeta, sessionActivity, sessions]);
+
+  useEffect(() => {
+    setEdges((prev) =>
+      prev.filter((edge) =>
+        nodes.some((node) => node.id === edge.sourceId) && nodes.some((node) => node.id === edge.targetId)
+      )
+    );
+  }, [nodes]);
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
