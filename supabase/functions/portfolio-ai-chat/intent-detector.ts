@@ -4,6 +4,60 @@ const INTENT_MODEL = Deno.env.get('OPENAI_INTENT_MODEL')
   || Deno.env.get('OPENAI_MODEL')
   || 'gpt-5.1';
 
+type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
+const extractResponsesApiText = (data: any): string => {
+  if (Array.isArray(data?.output)) {
+    for (const item of data.output) {
+      if (!Array.isArray(item?.content)) {
+        continue;
+      }
+
+      for (const part of item.content) {
+        const parsedPayload = (part as any)?.parsed ?? (part as any)?.json;
+        if (parsedPayload !== undefined) {
+          if (typeof parsedPayload === 'string') {
+            const trimmed = parsedPayload.trim();
+            if (trimmed) {
+              return trimmed;
+            }
+          } else {
+            try {
+              const stringified = JSON.stringify(parsedPayload);
+              if (stringified) {
+                return stringified;
+              }
+            } catch {
+              // ignore and fall back to text handling
+            }
+          }
+        }
+      }
+    }
+
+    const flattenedText = data.output
+      ?.flatMap((item: any) => Array.isArray(item?.content) ? item.content : [])
+      ?.filter((contentPart: any) => typeof contentPart?.text === 'string')
+      ?.map((contentPart: any) => contentPart.text.trim())
+      ?.filter((textValue: string) => textValue.length > 0)
+      ?.join('\n')
+      ?.trim();
+
+    if (flattenedText) {
+      return flattenedText;
+    }
+  }
+
+  if (Array.isArray(data?.output_text) && data.output_text.length > 0) {
+    const text = data.output_text.join('\n').trim();
+    if (text) {
+      return text;
+    }
+  }
+
+  return data?.choices?.[0]?.message?.content?.trim?.() ?? '';
+};
+
 const ALLOWED_INTENTS: IntentType[] = [
   'stock_analysis',
   'portfolio_optimization',
@@ -118,7 +172,7 @@ export const detectUserIntentWithOpenAI = async (
   }
 
   try {
-    const messages = [
+    const messages: ResponsesApiMessage[] = [
       { role: 'system', content: SYSTEM_PROMPT },
       ...EXAMPLE_CLASSIFICATIONS.flatMap(example => [
         { role: 'user', content: example.user },
@@ -127,7 +181,7 @@ export const detectUserIntentWithOpenAI = async (
       { role: 'user', content: message.trim() },
     ];
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -135,9 +189,18 @@ export const detectUserIntentWithOpenAI = async (
       },
       body: JSON.stringify({
         model: INTENT_MODEL,
-        temperature: 0.2,
-        response_format: { type: 'json_schema', json_schema: INTENT_SCHEMA },
-        messages,
+        reasoning: {
+          effort: 'none',
+        },
+        text_format: {
+          type: 'json_schema',
+          name: INTENT_SCHEMA.name,
+          schema: INTENT_SCHEMA.schema,
+        },
+        text: {
+          verbosity: 'low',
+        },
+        input: messages,
       }),
     });
 
@@ -147,7 +210,7 @@ export const detectUserIntentWithOpenAI = async (
     }
 
     const data = await response.json();
-    const rawContent = data?.choices?.[0]?.message?.content;
+    const rawContent = extractResponsesApiText(data);
 
     if (!rawContent || typeof rawContent !== 'string') {
       return null;

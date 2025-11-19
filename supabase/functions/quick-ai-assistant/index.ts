@@ -8,6 +8,67 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const extractResponsesApiText = (data: any): string => {
+  if (Array.isArray(data?.output)) {
+    for (const item of data.output) {
+      if (!Array.isArray(item?.content)) {
+        continue;
+      }
+
+      for (const part of item.content) {
+        const parsedPayload = (part as any)?.parsed ?? (part as any)?.json;
+        if (parsedPayload !== undefined) {
+          if (typeof parsedPayload === 'string') {
+            const trimmed = parsedPayload.trim();
+            if (trimmed) {
+              return trimmed;
+            }
+          } else {
+            try {
+              const stringified = JSON.stringify(parsedPayload);
+              if (stringified) {
+                return stringified;
+              }
+            } catch {
+              // ignore serialization errors and continue to next part
+            }
+          }
+        }
+      }
+
+      const text = item.content
+        .map((part: { text?: string }) => part?.text?.trim?.())
+        .filter(Boolean)
+        .join('\n')
+        .trim();
+      if (text) {
+        return text;
+      }
+    }
+
+    const flattenedText = data.output
+      ?.flatMap((item: any) => Array.isArray(item?.content) ? item.content : [])
+      ?.filter((contentPart: any) => typeof contentPart?.text === 'string')
+      ?.map((contentPart: any) => contentPart.text.trim())
+      ?.filter((textValue: string) => textValue.length > 0)
+      ?.join('\n')
+      ?.trim();
+
+    if (flattenedText) {
+      return flattenedText;
+    }
+  }
+
+  if (Array.isArray(data?.output_text) && data.output_text.length > 0) {
+    const text = data.output_text.join('\n').trim();
+    if (text) {
+      return text;
+    }
+  }
+
+  return data?.choices?.[0]?.message?.content?.trim?.() ?? '';
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -85,10 +146,17 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
     console.log('=== CALLING OPENAI API ===');
     console.log('Model:', model);
     console.log('Max tokens:', maxTokens);
-    console.log('Temperature:', temperature);
+    console.log('Legacy temperature input (ignored for GPT-5 modeller):', temperature);
     console.log('System prompt length:', systemPrompt?.length);
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const reasoningEffort = maxTokens >= 150 ? 'medium' : 'low';
+    const verbosity: 'low' | 'medium' | 'high' = maxTokens <= 60
+      ? 'low'
+      : maxTokens >= 150
+        ? 'high'
+        : 'medium';
+
+    const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -96,9 +164,14 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
       },
       body: JSON.stringify({
         model: model,
-        messages: messages,
-        max_completion_tokens: maxTokens,
-        temperature: temperature,
+        input: messages,
+        max_output_tokens: maxTokens,
+        reasoning: {
+          effort: reasoningEffort,
+        },
+        text: {
+          verbosity,
+        },
       }),
     });
 
@@ -130,17 +203,37 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
     }
 
     const data = await response.json();
-    console.log('OpenAI response received, choices:', data.choices?.length);
-    
-    const aiChoice = data.choices?.[0]?.message ?? {};
-    const aiResponse = aiChoice?.content ?? '';
-    const reasoningSegments = Array.isArray((aiChoice as any).reasoning_content)
-      ? (aiChoice as any).reasoning_content
-      : [];
-    const reasoningText = reasoningSegments
-      .map((segment: { type?: string; text?: string }) => segment?.text?.trim?.())
-      .filter(Boolean)
-      .join('\n');
+    console.log('OpenAI response received');
+
+    const aiResponse = extractResponsesApiText(data);
+
+    const reasoningSegments: string[] = [];
+    if (Array.isArray(data?.output)) {
+      for (const item of data.output) {
+        const content = Array.isArray(item?.content) ? item.content : [];
+        for (const part of content) {
+          if (Array.isArray(part?.reasoning_content)) {
+            for (const reasoning of part.reasoning_content) {
+              if (typeof reasoning?.text === 'string' && reasoning.text.trim()) {
+                reasoningSegments.push(reasoning.text.trim());
+              }
+            }
+          }
+          if (typeof part?.text === 'string' && part?.type === 'reasoning' && part.text.trim()) {
+            reasoningSegments.push(part.text.trim());
+          }
+        }
+        if (Array.isArray(item?.reasoning_content)) {
+          for (const reasoning of item.reasoning_content) {
+            if (typeof reasoning?.text === 'string' && reasoning.text.trim()) {
+              reasoningSegments.push(reasoning.text.trim());
+            }
+          }
+        }
+      }
+    }
+
+    const reasoningText = reasoningSegments.join('\n');
     console.log('AI response length:', aiResponse?.length);
     console.log('AI response:', aiResponse);
 
@@ -168,7 +261,7 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
         reasoning: reasoningText || null,
         success: true,
         model: model,
-        tokens_used: data?.usage?.completion_tokens ?? maxTokens,
+        tokens_used: data?.usage?.output_tokens ?? data?.usage?.completion_tokens ?? maxTokens,
         usage: data?.usage ?? null,
         response_id: data?.id ?? null
       }),
