@@ -4,6 +4,32 @@ const INTENT_MODEL = Deno.env.get('OPENAI_INTENT_MODEL')
   || Deno.env.get('OPENAI_MODEL')
   || 'gpt-5.1';
 
+const extractResponsesApiText = (data: any): string => {
+  if (Array.isArray(data?.output)) {
+    for (const item of data.output) {
+      if (Array.isArray(item?.content)) {
+        const text = item.content
+          .map((part: { text?: string }) => part?.text?.trim?.())
+          .filter(Boolean)
+          .join('\n')
+          .trim();
+        if (text) {
+          return text;
+        }
+      }
+    }
+  }
+
+  if (Array.isArray(data?.output_text) && data.output_text.length > 0) {
+    const text = data.output_text.join('\n').trim();
+    if (text) {
+      return text;
+    }
+  }
+
+  return data?.choices?.[0]?.message?.content?.trim?.() ?? '';
+};
+
 const ALLOWED_INTENTS: IntentType[] = [
   'stock_analysis',
   'portfolio_optimization',
@@ -127,7 +153,7 @@ export const detectUserIntentWithOpenAI = async (
       { role: 'user', content: message.trim() },
     ];
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -137,7 +163,7 @@ export const detectUserIntentWithOpenAI = async (
         model: INTENT_MODEL,
         temperature: 0.2,
         response_format: { type: 'json_schema', json_schema: INTENT_SCHEMA },
-        messages,
+        input: messages,
       }),
     });
 
@@ -147,7 +173,7 @@ export const detectUserIntentWithOpenAI = async (
     }
 
     const data = await response.json();
-    const rawContent = data?.choices?.[0]?.message?.content;
+    const rawContent = extractResponsesApiText(data);
 
     if (!rawContent || typeof rawContent !== 'string') {
       return null;
