@@ -137,70 +137,13 @@ OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
 - När aktieförslag behövs ska formatet vara **Företagsnamn (TICKER)** - Kort motivering och endast inkludera börsnoterade bolag.
 - Svara i ett eller två stycken och undvik listor om inte användaren bett om en specifik lista.`,
   document_summary: `DOKUMENTSAMMANFATTNING:
-- Utgå strikt från användarens uppladdade dokument som primär källa.
-- Läs igenom hela underlaget innan du formulerar svaret.
-- Plocka ut syfte, struktur och kärninsikter med sidreferenser när det är möjligt.
-- Presentera en sammanhängande översikt med tydliga sektioner som Översikt, Nyckelpunkter och VD´ns ord och reflektioner när materialet motiverar det.
+- Utgå strikt från användarens uppladdade dokument som primär källa och läs igenom hela underlaget innan du svarar.
+- Identifiera dokumentets syfte, struktur och kärninsikter och väv in 3–4 centrala siffror direkt i texten.
+- Skriv sammanfattningen som 4–6 meningar i löpande styckeform: börja med en kontextmening, följ upp med vad som drev utfallet och använd övergångar som "Vidare" eller "Dessutom".
+- Avsluta med dokumentets slutsats, VD:ns budskap eller nästa steg – om inget finns ska du säga att ingen VD-kommentar identifierades.
+- Undvik punktlistor helt och använd rubriker endast om dokumentet självt kräver det och fyll dem då direkt med löpande text.
 - Återge inte långa citat – destillera och tolka innehållet i en professionell ton.
-`
-};
-
-const NO_FAKE_SECTION_DIRECTIVE = '- Beskriv bara de delar du faktiskt tar upp och nämn aldrig "X punkter" eller sektioner som inte följs av innehåll.';
-
-const buildIntentPrompt = (intent: IntentType): string => {
-  const basePrompt = INTENT_PROMPTS[intent] ?? INTENT_PROMPTS.general_advice;
-  return `${basePrompt}\n${NO_FAKE_SECTION_DIRECTIVE}`;
-};
-
-type HeadingDirectiveInput = {
-  intent: IntentType;
-};
-
-const HEADING_VARIATIONS: Record<string, string[]> = {
-  analysis: ['**Analys 🔍**', '**Grundlig analys 🔎**', '**Analys & Insikt 💡**'],
-  recommendation: ['**Håll koll på detta:**'],
-  risks: ['**Risker ⚠️**', '**Riskbild ⚡**', '**Risker & Bevaka 🔔**'],
-  news: ['**Nyheter 📰**', '**Marknadsnytt 🗞️**', '**Senaste nytt 📣**'],
-  actions: ['**Åtgärder ✅**', '**Nästa steg 🧭**', '**Föreslagna åtgärder 🛠️**']
-};
-
-const DOCUMENT_CONTEXT_MATCH_COUNT = 8;
-const DOCUMENT_SUMMARY_CONTEXT_MAX_CHARS_PER_DOCUMENT = 60000;
-const DOCUMENT_SUMMARY_PATTERNS: RegExp[] = [
-  /sammanfatta/i,
-  /sammanfattning/i,
-  /summering/i,
-  /sammanställ/i,
-  /sammanstall/i,
-  /summary/i,
-  /summarize/i,
-  /summarise/i,
-  /key points?/i,
-  /key takeaways?/i,
-  /nyckelpunkter/i,
-  /huvudpunkter/i,
-  /huvudinsikter/i,
-  /övergripande bild/i,
-  /helhetsbild/i,
-];
-
-const pickRandom = (values: string[]): string => {
-  if (values.length === 0) return '';
-  const index = Math.floor(Math.random() * values.length);
-  return values[index];
-};
-
-const buildHeadingDirectives = ({ intent }: HeadingDirectiveInput): string => {
-  const directives: string[] = [];
-
-  if (intent === 'stock_analysis') {
-    const analysisHeading = pickRandom(HEADING_VARIATIONS.analysis);
-    const recommendationHeading = pickRandom(HEADING_VARIATIONS.recommendation);
-    const riskHeading = pickRandom(HEADING_VARIATIONS.risks);
-
-    directives.push(
-      '- Om du behöver rubriker för tydlighet, välj högst två av följande alternativ och använd dem endast när du direkt följer upp med innehåll:',
-      `  • Möjlig analysrubrik: ${analysisHeading}`,
+`,
       `  • Möjlig rekommendationsrubrik: ${recommendationHeading}`,
       `  • Möjlig riskrubrik: ${riskHeading}`,
       '- Lämna helt rubrikerna om svaret blir mer naturligt i styckeform och nämn dem inte på annat sätt.'
@@ -3490,7 +3433,15 @@ serve(async (req) => {
 
               if (summaryContextSections.length > 0) {
                 contextInfo += `\n\nFULLSTÄNDIGT DOKUMENTUNDERLAG FÖR SAMMANFATTNING:\n${summaryContextSections.join('\n\n')}`;
-                contextInfo += `\n\nSAMMANFATTNINGSUPPDRAG:\n- Läs igenom hela textunderlaget ovan som representerar användarens uppladdade dokument.\n- Basera hela svaret på dokumentinnehållet som primär källa och komplettera endast med egna resonemang.\n- Identifiera dokumentets syfte, struktur och viktigaste slutsatser.\n- Destillera 5–7 centrala nyckelpunkter med relevanta siffror eller citat och hänvisa till sidnummer när det går.\n- Presentera en heltäckande men kondenserad sammanfattning med tydliga rubriker (t.ex. \"Översikt\", \"Nyckelpunkter\", \"Fördjupning\").\n- Avsluta med en sektion \"VD´ns ord och reflektioner\" om dokumentet antyder åtgärder eller uppföljning.\n- Undvik att återge långa textstycken ordagrant – fokusera på analys och tolkning.`;
+                contextInfo += `\n\nSAMMANFATTNINGSUPPDRAG:
+- Läs igenom hela textunderlaget ovan som representerar användarens uppladdade dokument.
+- Basera hela svaret på dokumentinnehållet som primär källa och komplettera endast med egna resonemang.
+- Identifiera dokumentets syfte, struktur och viktigaste slutsatser.
+- Väv in minst tre konkreta siffror eller citat direkt i texten och ange sidnummer eller källa när det går.
+- Skriv 2–3 stycken (totalt 4–6 meningar) i löpande form med övergångar som "Vidare" eller "Detta innebär att" så att resonemanget blir sammanhängande.
+- Inled med helhetsbilden, följ upp med drivkrafter/resultat och avsluta med VD:ns budskap eller nästa steg (ange tydligt om ingen VD-kommentar finns).
+- Undvik punktlistor helt; eventuella rubriker måste följas av minst två meningar i löpande text.
+- Undvik att återge långa textstycken ordagrant – fokusera på analys och tolkning.`;
                 documentContextHandled = true;
               }
             }
@@ -3578,7 +3529,7 @@ serve(async (req) => {
     ];
 
     if (isDocumentSummaryRequest) {
-      structureLines.push('- Vid dokumentsammanfattningar: läs igenom hela underlaget, leverera en strukturerad översikt och inkludera sektioner för Översikt, Nyckelpunkter samt VD´ns ord och reflektioner när materialet motiverar det.');
+      structureLines.push('- Vid dokumentsammanfattningar: skriv 2–3 löpande stycken (4–6 meningar) som binder samman kontext, siffror och VD-kommentarer med tydliga övergångar och helt utan punktlistor.');
     }
 
     if (recommendationPreference === 'no') {
@@ -3607,13 +3558,13 @@ serve(async (req) => {
     const optionalSections = isDocumentSummaryRequest
       ? [
           'MÖJLIGA SEKTIONER (välj flexibelt utifrån behov):',
-          '- Översikt – Ge en kort bakgrund till dokumentet och dess huvudsakliga syfte.',
-          '- Nyckelpunkter – Lista 5–7 huvudinsikter med sidreferenser när det är möjligt.',
-          '- Fördjupning – Använd när specifika avsnitt kräver extra analys eller kontext.',
+          '- Översikt – Ge 1–2 meningar som beskriver dokumentets syfte och tidsperiod.',
+          '- Nyckelpunkter – Beskriv 3–4 huvudinsikter i löpande text och väv in siffror samt sidreferenser vid behov.',
+          '- Fördjupning – Använd när specifika avsnitt kräver extra analys eller kontext men håll dig till hela meningar.',
           recommendationSectionLine,
-          '- Risker & Överväganden – Endast om dokumentet tar upp begränsningar eller riskmoment.',
-          '- VD´ns ord och reflektioner – Lyft sammanfattade budskap eller nästa steg som framgår av dokumentet.',
-          '- Uppföljning – Använd för att föreslå hur användaren kan arbeta vidare med materialet.',
+          '- Risker & Överväganden – Endast om dokumentet tar upp begränsningar eller riskmoment och beskriv dem i styckeform.',
+          '- VD´ns ord och reflektioner – Sammanfatta VD:ns budskap eller nästa steg i 1–2 meningar (ange om ingen kommentar finns).',
+          '- Uppföljning – Föreslå hur användaren kan arbeta vidare med materialet i löpande text.',
         ]
       : [
           'MÖJLIGA SEKTIONER (välj flexibelt utifrån behov):',
