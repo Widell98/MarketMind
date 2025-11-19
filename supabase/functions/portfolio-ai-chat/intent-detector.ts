@@ -1,3 +1,4 @@
+import { OPENAI_RESPONSES_URL, extractResponseText } from '../_shared/openai.ts';
 import { IntentDetectionResult, IntentType } from './intent-types.ts';
 
 const INTENT_MODEL = Deno.env.get('OPENAI_INTENT_MODEL')
@@ -127,7 +128,7 @@ export const detectUserIntentWithOpenAI = async (
       { role: 'user', content: message.trim() },
     ];
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(OPENAI_RESPONSES_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -137,7 +138,7 @@ export const detectUserIntentWithOpenAI = async (
         model: INTENT_MODEL,
         temperature: 0.2,
         response_format: { type: 'json_schema', json_schema: INTENT_SCHEMA },
-        messages,
+        input: messages,
       }),
     });
 
@@ -147,7 +148,7 @@ export const detectUserIntentWithOpenAI = async (
     }
 
     const data = await response.json();
-    const rawContent = data?.choices?.[0]?.message?.content;
+    const rawContent = extractResponseText(data);
 
     if (!rawContent || typeof rawContent !== 'string') {
       return null;

@@ -2,6 +2,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { OPENAI_RESPONSES_URL, extractReasoningFromResponse, extractResponseText } from '../_shared/openai.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -88,7 +89,7 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
     console.log('Temperature:', temperature);
     console.log('System prompt length:', systemPrompt?.length);
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(OPENAI_RESPONSES_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -96,8 +97,8 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
       },
       body: JSON.stringify({
         model: model,
-        messages: messages,
-        max_completion_tokens: maxTokens,
+        input: messages,
+        max_output_tokens: maxTokens,
         temperature: temperature,
       }),
     });
@@ -130,17 +131,8 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
     }
 
     const data = await response.json();
-    console.log('OpenAI response received, choices:', data.choices?.length);
-    
-    const aiChoice = data.choices?.[0]?.message ?? {};
-    const aiResponse = aiChoice?.content ?? '';
-    const reasoningSegments = Array.isArray((aiChoice as any).reasoning_content)
-      ? (aiChoice as any).reasoning_content
-      : [];
-    const reasoningText = reasoningSegments
-      .map((segment: { type?: string; text?: string }) => segment?.text?.trim?.())
-      .filter(Boolean)
-      .join('\n');
+    const aiResponse = extractResponseText(data);
+    const reasoningText = extractReasoningFromResponse(data);
     console.log('AI response length:', aiResponse?.length);
     console.log('AI response:', aiResponse);
 
@@ -168,7 +160,7 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
         reasoning: reasoningText || null,
         success: true,
         model: model,
-        tokens_used: data?.usage?.completion_tokens ?? maxTokens,
+        tokens_used: data?.usage?.output_tokens ?? data?.usage?.completion_tokens ?? maxTokens,
         usage: data?.usage ?? null,
         response_id: data?.id ?? null
       }),

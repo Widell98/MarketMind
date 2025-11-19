@@ -2,6 +2,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { OPENAI_RESPONSES_URL, extractResponseText } from '../_shared/openai.ts';
 
 const STRATEGY_MODEL = Deno.env.get('OPENAI_STRATEGY_MODEL')
   || Deno.env.get('OPENAI_MODEL')
@@ -818,7 +819,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och s√§kerst√
 
     console.log('Calling OpenAI API with', STRATEGY_MODEL, '...');
 
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    const openAIResponse = await fetch(OPENAI_RESPONSES_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -826,9 +827,9 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och s√§kerst√
       },
       body: JSON.stringify({
         model: STRATEGY_MODEL,
-        messages,
+        input: messages,
         temperature: 0.85,
-        max_completion_tokens: 2500,
+        max_output_tokens: 2500,
         response_format: PORTFOLIO_RESPONSE_FORMAT,
       }),
     });
@@ -846,7 +847,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och s√§kerst√
     }
 
     const openAIData = await openAIResponse.json();
-    const aiRecommendationsRaw = openAIData.choices?.[0]?.message?.content?.trim() || '';
+    const aiRecommendationsRaw = extractResponseText(openAIData);
 
     console.log('OpenAI full response:', JSON.stringify(openAIData, null, 2));
     console.log('AI recommendations received:', aiRecommendationsRaw);

@@ -4,6 +4,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { parse } from "https://deno.land/std@0.168.0/encoding/csv.ts";
 import { jsonrepair } from 'https://esm.sh/jsonrepair@3.6.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
+import { OPENAI_RESPONSES_URL, extractResponseText } from '../_shared/openai.ts';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const CASE_MODEL = Deno.env.get('OPENAI_CASE_MODEL')
@@ -1008,7 +1009,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
 
       console.log(`Generating case ${i + 1} for ${sector} - ${style}...`);
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch(OPENAI_RESPONSES_URL, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${openAIApiKey}`,
@@ -1016,7 +1017,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
         },
         body: JSON.stringify({
           model: CASE_MODEL,
-          messages: [
+          input: [
             {
               role: 'system',
               content: 'Du är en erfaren finansanalytiker som skapar investeringsanalyser för svenska investerare. Svara alltid med giltigt JSON.'
@@ -1024,7 +1025,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
             { role: 'user', content: prompt }
           ],
           temperature: 0.7,
-          max_completion_tokens: 500,
+          max_output_tokens: 500,
           response_format: WEEKLY_CASE_RESPONSE_FORMAT,
         }),
       });
@@ -1037,7 +1038,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
       }
 
       const data = await response.json();
-      const generatedContent = data?.choices?.[0]?.message?.content;
+      const generatedContent = extractResponseText(data);
 
       console.log('OpenAI weekly case response content', {
         ticker: selectedTicker,

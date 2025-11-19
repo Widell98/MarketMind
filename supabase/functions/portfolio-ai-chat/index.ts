@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { OPENAI_RESPONSES_URL, extractResponseText, parseResponsesSseData } from '../_shared/openai.ts';
 import { IntentType } from './intent-types.ts';
 import { detectUserIntentWithOpenAI } from './intent-detector.ts';
 const corsHeaders = {
@@ -627,7 +628,7 @@ const classifyIntentWithLLM = async (
   openAIApiKey: string,
 ): Promise<IntentType | null> => {
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(OPENAI_RESPONSES_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -636,8 +637,8 @@ const classifyIntentWithLLM = async (
       body: JSON.stringify({
         model: INLINE_INTENT_MODEL,
         temperature: 0,
-        max_completion_tokens: 5,
-        messages: [
+        max_output_tokens: 5,
+        input: [
           {
             role: 'system',
             content: 'Klassificera användarens fråga som en av följande kategorier: stock_analysis, news_update, general_news, market_analysis, portfolio_optimization, buy_sell_decisions, general_advice. Svara endast med etiketten.',
@@ -656,7 +657,7 @@ const classifyIntentWithLLM = async (
     }
 
     const data = await response.json();
-    const content = data?.choices?.[0]?.message?.content?.trim()?.toLowerCase?.();
+    const content = extractResponseText(data)?.trim()?.toLowerCase?.();
     const label = (content ?? '').replace(/[^a-z_]/g, '') as IntentType;
     if ((INTENT_EXAMPLES as Record<string, string[]>)[label]) {
       console.log('Intent classified via LLM:', label);
@@ -948,7 +949,7 @@ const evaluateNewsIntentWithOpenAI = async ({
       },
     ];
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(OPENAI_RESPONSES_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -958,7 +959,7 @@ const evaluateNewsIntentWithOpenAI = async ({
         model: INLINE_INTENT_MODEL,
         temperature: 0,
         response_format: { type: 'json_schema', json_schema: NEWS_INTENT_SCHEMA },
-        messages,
+        input: messages,
       }),
     });
 
@@ -968,7 +969,7 @@ const evaluateNewsIntentWithOpenAI = async ({
     }
 
     const data = await response.json();
-    const rawContent = data?.choices?.[0]?.message?.content;
+    const rawContent = extractResponseText(data);
 
     if (!rawContent || typeof rawContent !== 'string') {
       return null;
@@ -1059,7 +1060,7 @@ const evaluateStockIntentWithOpenAI = async ({
       'Avgör om detta ska besvaras som en aktiespecifik fråga.',
     ].join('\n');
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(OPENAI_RESPONSES_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1069,7 +1070,7 @@ const evaluateStockIntentWithOpenAI = async ({
         model: INLINE_INTENT_MODEL,
         temperature: 0,
         response_format: { type: 'json_schema', json_schema: STOCK_INTENT_SCHEMA },
-        messages: [
+        input: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userContent },
         ],
@@ -1082,7 +1083,7 @@ const evaluateStockIntentWithOpenAI = async ({
     }
 
     const data = await response.json();
-    const rawContent = data?.choices?.[0]?.message?.content;
+    const rawContent = extractResponseText(data);
 
     if (!rawContent || typeof rawContent !== 'string') {
       return null;
@@ -1173,7 +1174,7 @@ const askLLMIfRealtimeNeeded = async ({
       'Returnera JSON i formatet {"realtime": "yes" eller "no", "reason": "...", "question_type": "...", "recommendations": "yes" eller "no"}.',
     ].filter(Boolean);
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(OPENAI_RESPONSES_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1182,8 +1183,8 @@ const askLLMIfRealtimeNeeded = async ({
       body: JSON.stringify({
         model: INLINE_INTENT_MODEL,
         temperature: 0,
-        max_completion_tokens: 60,
-        messages: [
+        max_output_tokens: 60,
+        input: [
           {
             role: 'system',
             content: 'Du avgör om en investeringsfråga behöver realtidsdata. Var konservativ med ja-svar och motivera kort på svenska.',
@@ -1202,7 +1203,7 @@ const askLLMIfRealtimeNeeded = async ({
     }
 
     const data = await response.json();
-    const text = data?.choices?.[0]?.message?.content?.trim();
+    const text = extractResponseText(data);
 
     if (!text) {
       return { decision: false, usedModel: true };
@@ -1430,7 +1431,7 @@ const planRealtimeSearchWithLLM = async ({
       `Användarens fråga:\n"""${message}"""`,
     ].filter(Boolean).join('\n\n');
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(OPENAI_RESPONSES_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1439,10 +1440,10 @@ const planRealtimeSearchWithLLM = async ({
       body: JSON.stringify({
         model: INLINE_INTENT_MODEL,
         temperature: 0,
-        max_completion_tokens: 180,
+        max_output_tokens: 180,
         tool_choice: 'auto',
         tools: [TAVILY_ROUTER_TOOL],
-        messages: [
+        input: [
           {
             role: 'system',
             content: 'Du är en researchplanerare som bara ska trigga Tavily vid behov av realtidsdata och annars förklara varför det inte behövs.',
@@ -1458,13 +1459,42 @@ const planRealtimeSearchWithLLM = async ({
     }
 
     const data = await response.json();
-    const choice = data?.choices?.[0]?.message;
+    const locateToolCallArguments = (): string | null => {
+      const outputs = Array.isArray(data?.output) ? data.output : [];
+      for (const block of outputs) {
+        const contents = Array.isArray(block?.content) ? block.content : [];
+        for (const part of contents) {
+          const type = typeof part?.type === 'string' ? part.type : '';
+          if ((type === 'output_tool_call' || type === 'tool_call') && part?.name === 'tavily_search') {
+            if (typeof part?.arguments === 'string') {
+              return part.arguments;
+            }
+            try {
+              return JSON.stringify(part?.arguments ?? {});
+            } catch (_err) {
+              return null;
+            }
+          }
+        }
+      }
 
-    const toolCall = choice?.tool_calls?.find((call: any) => call?.function?.name === 'tavily_search');
-    if (toolCall) {
+      const legacyToolCalls = data?.choices?.[0]?.message?.tool_calls;
+      if (Array.isArray(legacyToolCalls)) {
+        const legacy = legacyToolCalls.find((call: any) => call?.function?.name === 'tavily_search');
+        if (legacy) {
+          return typeof legacy.function?.arguments === 'string'
+            ? legacy.function.arguments
+            : JSON.stringify(legacy.function?.arguments ?? {});
+        }
+      }
+
+      return null;
+    };
+
+    const toolCallArgs = locateToolCallArguments();
+    if (toolCallArgs) {
       try {
-        const argsRaw = toolCall.function?.arguments ?? '{}';
-        const args = JSON.parse(argsRaw);
+        const args = JSON.parse(toolCallArgs);
         const locales = Array.isArray(args?.preferredLocales)
           ? args.preferredLocales
             .map((value: string) => (value === 'se' || value === 'global') ? value : null)
@@ -1499,7 +1529,7 @@ const planRealtimeSearchWithLLM = async ({
       }
     }
 
-    const fallbackContent = typeof choice?.content === 'string' ? choice.content.trim() : '';
+    const fallbackContent = extractResponseText(data);
     if (fallbackContent) {
       try {
         const parsed = JSON.parse(fallbackContent);
@@ -3719,7 +3749,7 @@ ${importantLines.join('\n')}
 
     // If the client requests non-streaming, return JSON instead of SSE
     if (stream === false) {
-      const nonStreamResp = await fetch('https://api.openai.com/v1/chat/completions', {
+      const nonStreamResp = await fetch(OPENAI_RESPONSES_URL, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${openAIApiKey}`,
@@ -3727,8 +3757,7 @@ ${importantLines.join('\n')}
         },
         body: JSON.stringify({
           model,
-          messages,
-          stream: false,
+          input: messages,
         }),
       });
 
@@ -3740,7 +3769,7 @@ ${importantLines.join('\n')}
       }
 
       const nonStreamData = await nonStreamResp.json();
-      const aiMessage = nonStreamData.choices?.[0]?.message?.content || '';
+      const aiMessage = extractResponseText(nonStreamData);
 
       // Update AI memory and optionally save to chat history
       await updateAIMemory(supabase, userId, message, aiMessage, aiMemory, userIntent);
@@ -3777,7 +3806,7 @@ ${importantLines.join('\n')}
     }
 
     // Default: streaming SSE response
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(OPENAI_RESPONSES_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -3785,7 +3814,7 @@ ${importantLines.join('\n')}
       },
       body: JSON.stringify({
         model,
-        messages,
+        input: messages,
         stream: true,
       }),
     });
@@ -3817,60 +3846,61 @@ ${importantLines.join('\n')}
             const lines = chunk.split('\n');
 
             for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6);
-                if (data === '[DONE]') {
-                  // Update AI memory
-                  await updateAIMemory(supabase, userId, message, aiMessage, aiMemory, userIntent);
-                  
-                  // Send final telemetry
-                  console.log('TELEMETRY COMPLETE:', { 
-                    ...telemetryData, 
-                    responseLength: aiMessage.length,
-                    completed: true 
-                  });
-                  
-                  // Save complete message to database
-                  if (sessionId && aiMessage) {
-                    await supabase
-                      .from('portfolio_chat_history')
-                      .insert({
-                        user_id: userId,
-                        chat_session_id: sessionId,
-                        message: aiMessage,
-                        message_type: 'assistant',
-                        context_data: {
-                          analysisType,
-                          model,
-                          requestId,
-                          hasMarketData,
-                          profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
-                          requiresConfirmation: profileChangeDetection.requiresConfirmation,
-                          confidence: 0.8
-                        }
-                      });
-                  }
-                  
-                  controller.close();
-                  return;
+              if (!line.startsWith('data:')) {
+                continue;
+              }
+
+              const payload = line.slice(5).trim();
+              if (!payload) {
+                continue;
+              }
+
+              const { content, done, error } = parseResponsesSseData(payload);
+
+              if (error) {
+                throw new Error(error);
+              }
+
+              if (content) {
+                aiMessage += content;
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  content,
+                  profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+                  requiresConfirmation: profileChangeDetection.requiresConfirmation
+                })}\n\n`));
+              }
+
+              if (done) {
+                await updateAIMemory(supabase, userId, message, aiMessage, aiMemory, userIntent);
+
+                console.log('TELEMETRY COMPLETE:', {
+                  ...telemetryData,
+                  responseLength: aiMessage.length,
+                  completed: true
+                });
+
+                if (sessionId && aiMessage) {
+                  await supabase
+                    .from('portfolio_chat_history')
+                    .insert({
+                      user_id: userId,
+                      chat_session_id: sessionId,
+                      message: aiMessage,
+                      message_type: 'assistant',
+                      context_data: {
+                        analysisType,
+                        model,
+                        requestId,
+                        hasMarketData,
+                        profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+                        requiresConfirmation: profileChangeDetection.requiresConfirmation,
+                        confidence: 0.8
+                      }
+                    });
                 }
 
-                try {
-                  const parsed = JSON.parse(data);
-                  if (parsed.choices?.[0]?.delta?.content) {
-                    const content = parsed.choices[0].delta.content;
-                    aiMessage += content;
-                    
-                    // Stream content to client
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-                      content,
-                      profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
-                      requiresConfirmation: profileChangeDetection.requiresConfirmation
-                    })}\n\n`));
-                  }
-                } catch (e) {
-                  // Ignore JSON parse errors for non-JSON lines
-                }
+                controller.close();
+                return;
               }
             }
           }
