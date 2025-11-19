@@ -108,6 +108,26 @@ const pickRandom = (items: readonly string[]): string => {
   return items[Math.floor(Math.random() * items.length)] ?? '';
 };
 
+const DOCUMENT_CONTEXT_MATCH_COUNT = 8;
+const DOCUMENT_SUMMARY_CONTEXT_MAX_CHARS_PER_DOCUMENT = 60000;
+const DOCUMENT_SUMMARY_PATTERNS: RegExp[] = [
+  /sammanfatta/i,
+  /sammanfattning/i,
+  /summering/i,
+  /sammanställ/i,
+  /sammanstall/i,
+  /summary/i,
+  /summarize/i,
+  /summarise/i,
+  /key points?/i,
+  /key takeaways?/i,
+  /nyckelpunkter/i,
+  /huvudpunkter/i,
+  /huvudinsikter/i,
+  /övergripande bild/i,
+  /helhetsbild/i,
+];
+
 type HeadingDirectiveInput = {
   intent: IntentType;
 };
