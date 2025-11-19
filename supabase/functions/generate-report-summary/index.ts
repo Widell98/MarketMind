@@ -95,6 +95,7 @@ const normalizeKeyPoints = (value: unknown): string[] => {
 
 const REPORT_RESPONSE_FORMAT = {
   type: 'json_schema',
+  name: 'report_summary_response',
   json_schema: {
     name: 'report_summary_response',
     schema: {

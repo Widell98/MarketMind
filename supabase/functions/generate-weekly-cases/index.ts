@@ -23,6 +23,7 @@ const SHEET_CSV_URL =
 
 const WEEKLY_CASE_RESPONSE_FORMAT = {
   type: 'json_schema',
+  name: 'weekly_stock_case',
   json_schema: {
     name: 'weekly_stock_case',
     schema: {

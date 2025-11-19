@@ -158,6 +158,7 @@ const GROWTH_TICKERS = /NVDA|AAPL|MSFT|GOOGL|META|AMZN|TSLA|ADBE|CRM|SHOP|SNOW|E
 
 const PORTFOLIO_RESPONSE_FORMAT = {
   type: 'json_schema',
+  name: 'portfolio_strategy_response',
   json_schema: {
     name: 'portfolio_strategy_response',
     schema: {

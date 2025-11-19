@@ -984,7 +984,11 @@ const evaluateNewsIntentWithOpenAI = async ({
         model: INLINE_INTENT_MODEL,
         temperature: 0,
         text: {
-          format: { type: 'json_schema', json_schema: NEWS_INTENT_SCHEMA },
+          format: {
+            type: 'json_schema',
+            name: NEWS_INTENT_SCHEMA.name,
+            json_schema: NEWS_INTENT_SCHEMA,
+          },
         },
         input: messages,
       }),
@@ -1097,7 +1101,11 @@ const evaluateStockIntentWithOpenAI = async ({
         model: INLINE_INTENT_MODEL,
         temperature: 0,
         text: {
-          format: { type: 'json_schema', json_schema: STOCK_INTENT_SCHEMA },
+          format: {
+            type: 'json_schema',
+            name: STOCK_INTENT_SCHEMA.name,
+            json_schema: STOCK_INTENT_SCHEMA,
+          },
         },
         input: [
           { role: 'system', content: systemPrompt },
