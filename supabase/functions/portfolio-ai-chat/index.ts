@@ -230,6 +230,16 @@ OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
 `,
 };
 
+const buildIntentPrompt = (intent: IntentType): string => {
+  const prompt = INTENT_PROMPTS[intent];
+  if (prompt) {
+    return prompt;
+  }
+
+  console.warn(`Okänt intent '${intent}' – använder general_advice-prompt som fallback.`);
+  return INTENT_PROMPTS.general_advice;
+};
+
 type PersonalizationPromptInput = {
   aiMemory?: Record<string, unknown> | null;
   favoriteSectors?: string[] | null;
