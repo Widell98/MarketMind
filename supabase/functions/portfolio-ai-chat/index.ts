@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { OPENAI_RESPONSES_URL, extractResponseText, parseResponsesSseData } from '../../lib/openai.ts';
 import { IntentType } from './intent-types.ts';
 import { detectUserIntentWithOpenAI } from './intent-detector.ts';
 const corsHeaders = {
@@ -8,10 +9,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const PRIMARY_CHAT_MODEL = Deno.env.get('OPENAI_PORTFOLIO_MODEL')
+  || Deno.env.get('OPENAI_MODEL')
+  || 'gpt-5.1';
+
+const INLINE_INTENT_MODEL = Deno.env.get('OPENAI_INTENT_MODEL')
+  || PRIMARY_CHAT_MODEL;
+
 type BasePromptOptions = {
   shouldOfferFollowUp: boolean;
   expertiseLevel?: 'beginner' | 'intermediate' | 'advanced' | null;
   preferredResponseLength?: 'concise' | 'balanced' | 'detailed' | null;
+  respectRiskProfile?: boolean;
 };
 
 const BASE_PROMPT = `Du är en licensierad svensk finansiell rådgivare med många års erfarenhet av kapitalförvaltning. Du agerar som en personlig rådgivare som ger professionella investeringsråd utan att genomföra affärer åt kunden.
@@ -24,13 +33,21 @@ const BASE_PROMPT = `Du är en licensierad svensk finansiell rådgivare med mån
 
 PERSONA & STIL:
 - Professionell men konverserande ton, som en erfaren rådgivare som bjuder in till dialog.
-- Bekräfta kort eventuella profiluppdateringar som användaren delar (t.ex. sparande, risknivå, mål) innan du fortsätter med rådgivningen.
-- Anpassa råden efter användarens profil och portfölj – referera till risknivå, tidshorisont och större innehav när det är relevant.
+- Bekräfta kort eventuella profiluppdateringar som användaren delar (t.ex. sparande eller mål) innan du fortsätter med rådgivningen.
+- Anpassa råden efter användarens profil och portfölj. Ta endast hänsyn till riskprofilen om användaren uttryckligen ber om det i sin senaste fråga.
 - Använd svensk finansterminologi och marknadskontext.
-- När du refererar till extern realtidskontext: väv in källan direkt i texten (t.ex. "Enligt Reuters...").
+ - När du refererar till extern realtidskontext via Tavily: väv in källan direkt i texten (t.ex. "Enligt Reuters...").
+ - Skippa helt källhänvisningar när du inte har hämtat realtidsdata – dokument- och bakgrundskunskap behöver ingen separat källsektion.
 - Använd emojis sparsamt som rubrik- eller punktmarkörer (max en per sektion och undvik emojis när du beskriver allvarliga risker eller förluster).
 - När du rekommenderar en aktie ska bolaget vara börsnoterat och du måste ange dess ticker i formatet Företagsnamn (TICKER).
-- Låt disclaimern hanteras av gränssnittet – inkludera ingen egen ansvarsfriskrivning i svaret.`;
+- Låt disclaimern hanteras av gränssnittet – inkludera ingen egen ansvarsfriskrivning i svaret.
+- Skriv huvuddelen som korta stycken (2–3 meningar) med naturliga övergångar.
+- Använd punktlistor endast när det gör resonemanget tydligare och begränsa listorna till högst tre korta punkter.
+- Rubriker är helt frivilliga – använd dem bara när användaren efterfrågar struktur eller när svaret blir enklare att läsa.
+- Skapa aldrig en innehållsförteckning eller skriv att du tänker ta upp ett visst antal punkter – gå direkt på innehållet.
+- Om du nämner en rubrik eller punkt ska det alltid följas av faktisk text; hitta inte på sektioner som inte dyker upp i svaret.
+- Undvik att rada upp många namngivna sektioner; två välskrivna stycken eller sektioner räcker normalt.
+- Varje rubrik eller punkt ska följas direkt av minst en fullständig mening så att inget block lämnas tomt.`;
 
 const buildBasePrompt = (options: BasePromptOptions): string => {
   const personalizationLines: string[] = [];
@@ -53,6 +70,12 @@ const buildBasePrompt = (options: BasePromptOptions): string => {
     personalizationLines.push('- Hoppa över avslutande följdfrågor om de inte tillför något i just detta svar.');
   }
 
+  if (options.respectRiskProfile === true) {
+    personalizationLines.push('- Använd riskprofilen denna gång eftersom användaren bad om riskanpassade råd.');
+  } else if (options.respectRiskProfile === false) {
+    personalizationLines.push('- Låt riskprofilen vara åt sidan tills användaren uttryckligen ber om risknivå eller riskhantering.');
+  }
+
   return `${BASE_PROMPT}\n${personalizationLines.join('\n')}`;
 };
 
@@ -62,6 +85,8 @@ const INTENT_PROMPTS: Record<IntentType, string> = {
 - Om frågan är snäv (ex. "vilka triggers?" eller "vad är riskerna?") → svara fokuserat i 2–5 meningar.
 - Om frågan är bred eller allmän (ex. "kan du analysera bolaget X?") → använd hela analysstrukturen nedan.
 - Var alltid tydlig och koncis i motiveringarna.
+- Presentera resonemanget som 2–3 korta stycken med naturliga övergångar.
+- Lista endast nyckelpunkter om användaren uttryckligen ber om det och håll listorna mycket korta.
 
 📌 FLEXIBEL STRUKTUR (välj delar beroende på fråga):
 🏢 Företagsöversikt – när användaren saknar kontext.
@@ -78,30 +103,40 @@ OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
 - Identifiera över-/underexponering mot sektorer och geografier.
 - Föreslå omviktningar med procentsatser när det behövs.
 - Ta hänsyn till användarens kassareserver och månadssparande.
-- Ge tydliga prioriteringssteg men lämna utrymme för fortsatt dialog.`,
+- Ge tydliga prioriteringssteg men lämna utrymme för fortsatt dialog.
+- Beskriv dina råd i sammanhängande stycken och använd punktlistor endast om de gör prioriteringarna tydligare.`,
   buy_sell_decisions: `KÖP/SÄLJ-BESLUTSUPPGIFT:
 - Bedöm om tidpunkten är lämplig baserat på data och sentiment.
 - Ange korta pro/cons för att väga beslutet.
 - Rekommendera positionsstorlek i procent av portföljen.
-- Erbjud uppföljande steg om användaren vill agera.`,
+- Erbjud uppföljande steg om användaren vill agera.
+- Sammanfatta beslutsunderlaget i ett par stycken och håll eventuella punktlistor till max tre korta rader.`,
   market_analysis: `MARKNADSANALYSUPPGIFT:
 - Analysera övergripande trender koncist.
 - Beskriv effekten på användarens portfölj eller mål när användaren uttryckligen ber om det.
-- Föreslå 1–2 potentiella justeringar eller bevakningspunkter.`,
+- Föreslå 1–2 potentiella justeringar eller bevakningspunkter.
+- Fokusera på flytande stycken och begränsa listor till korta höjdpunkter.
+- Håll dig till högst två sektioner och låt varje del bestå av 2–3 meningar i löpande text.`,
   general_news: `NYHETSBREV:
-- Ge en kort marknadssammanfattning uppdelad i sektioner (t.ex. globala marknader, sektorer, bolag).
-- Prioritera större trender och rubriker som påverkar sentimentet.
-- Gör det lättläst med 1 emoji per sektion och tydliga rubriker.
-- Fråga om användaren vill koppla nyheterna till sin portfölj.`,
+- Ge en kort marknadssammanfattning i 1–2 sektioner (t.ex. globala marknader + sektorer).
+- Varje sektion ska ha en rubrik följt av 2–3 meningar – inga separata punktlistor.
+- Prioritera större trender som påverkar sentimentet.
+- Om svaret är kort kan du hoppa över rubriker och emojis helt.
+- Fråga om användaren vill koppla nyheterna till sin portfölj.
+- Begränsa listor till de viktigaste punkterna och låt stycken bära resten av resonemanget.
+- Nämn aldrig sektioner som du inte direkt fyller med text.`,
   news_update: `NYHETSBEVAKNING:
 - Sammanfatta de viktigaste nyheterna som påverkar användarens portfölj de senaste 24 timmarna.
-- Gruppéra efter bolag, sektor eller tema och referera till källor med tidsangivelse.
+- Gruppéra efter bolag, sektor eller tema och referera till Tavily-källor med tidsangivelse endast om du faktiskt körde en realtidssökning.
 - Förklara hur varje nyhet påverkar innehav eller strategi.
-- Föreslå konkreta uppföljningssteg.`,
+- Föreslå konkreta uppföljningssteg.
+- Var selektiv med punktlistor och växla gärna till korta stycken när du beskriver konsekvenserna.
+- Stanna vid högst två sektioner och se till att varje rubrik följs av ett komplett stycke innan eventuella punktlistor.`,
   general_advice: `ALLMÄN INVESTERINGSRÅDGIVNING:
 - Ge råd i 2–4 meningar när frågan är enkel.
-- Anpassa förslag till användarens riskprofil och intressen.
-- När aktieförslag behövs ska formatet vara **Företagsnamn (TICKER)** - Kort motivering och endast inkludera börsnoterade bolag.`,
+- Anpassa förslag till användarens mål och intressen. Ta bara upp riskprofilen om användaren uttryckligen efterfrågar det.
+- När aktieförslag behövs ska formatet vara **Företagsnamn (TICKER)** - Kort motivering och endast inkludera börsnoterade bolag.
+- Svara i ett eller två stycken och undvik listor om inte användaren bett om en specifik lista.`,
   document_summary: `DOKUMENTSAMMANFATTNING:
 - Utgå strikt från användarens uppladdade dokument som primär källa.
 - Läs igenom hela underlaget innan du formulerar svaret.
@@ -111,8 +146,11 @@ OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
 `
 };
 
+const NO_FAKE_SECTION_DIRECTIVE = '- Beskriv bara de delar du faktiskt tar upp och nämn aldrig "X punkter" eller sektioner som inte följs av innehåll.';
+
 const buildIntentPrompt = (intent: IntentType): string => {
-  return INTENT_PROMPTS[intent] ?? INTENT_PROMPTS.general_advice;
+  const basePrompt = INTENT_PROMPTS[intent] ?? INTENT_PROMPTS.general_advice;
+  return `${basePrompt}\n${NO_FAKE_SECTION_DIRECTIVE}`;
 };
 
 type HeadingDirectiveInput = {
@@ -162,19 +200,20 @@ const buildHeadingDirectives = ({ intent }: HeadingDirectiveInput): string => {
     const riskHeading = pickRandom(HEADING_VARIATIONS.risks);
 
     directives.push(
-      '- Använd följande rubriker i detta svar för variation:',
-      `  • Analys: ${analysisHeading}`,
-      `  • Rekommendation: ${recommendationHeading}`,
-      `  • Risker: ${riskHeading}`
+      '- Om du behöver rubriker för tydlighet, välj högst två av följande alternativ och använd dem endast när du direkt följer upp med innehåll:',
+      `  • Möjlig analysrubrik: ${analysisHeading}`,
+      `  • Möjlig rekommendationsrubrik: ${recommendationHeading}`,
+      `  • Möjlig riskrubrik: ${riskHeading}`,
+      '- Lämna helt rubrikerna om svaret blir mer naturligt i styckeform och nämn dem inte på annat sätt.'
     );
   } else if (intent === 'news_update' || intent === 'general_news') {
     const newsHeading = pickRandom(HEADING_VARIATIONS.news);
     const actionsHeading = pickRandom(HEADING_VARIATIONS.actions);
     directives.push(
-      '- För nyhetssektionerna i detta svar, börja med rubriken:',
-      `  • ${newsHeading}`,
-      '- När du föreslår uppföljning eller nästa steg, använd rubriken:',
-      `  • ${actionsHeading}`
+      '- Använd rubriker bara om de hjälper läsaren – annars skriv löpande text:',
+      `  • Nyhetsrubrik att välja vid behov: ${newsHeading}`,
+      `  • Åtgärdsrubrik att välja vid behov: ${actionsHeading}`,
+      '- Hoppa helt över rubriker som du inte tänker använda direkt – inga referenser till tomma sektioner.'
     );
   }
 
@@ -589,17 +628,17 @@ const classifyIntentWithLLM = async (
   openAIApiKey: string,
 ): Promise<IntentType | null> => {
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(OPENAI_RESPONSES_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${openAIApiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: INLINE_INTENT_MODEL,
         temperature: 0,
-        max_tokens: 5,
-        messages: [
+        max_output_tokens: 5,
+        input: [
           {
             role: 'system',
             content: 'Klassificera användarens fråga som en av följande kategorier: stock_analysis, news_update, general_news, market_analysis, portfolio_optimization, buy_sell_decisions, general_advice. Svara endast med etiketten.',
@@ -618,7 +657,7 @@ const classifyIntentWithLLM = async (
     }
 
     const data = await response.json();
-    const content = data?.choices?.[0]?.message?.content?.trim()?.toLowerCase?.();
+    const content = extractResponseText(data)?.trim()?.toLowerCase?.();
     const label = (content ?? '').replace(/[^a-z_]/g, '') as IntentType;
     if ((INTENT_EXAMPLES as Record<string, string[]>)[label]) {
       console.log('Intent classified via LLM:', label);
@@ -910,17 +949,17 @@ const evaluateNewsIntentWithOpenAI = async ({
       },
     ];
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(OPENAI_RESPONSES_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: INLINE_INTENT_MODEL,
         temperature: 0,
         response_format: { type: 'json_schema', json_schema: NEWS_INTENT_SCHEMA },
-        messages,
+        input: messages,
       }),
     });
 
@@ -930,7 +969,7 @@ const evaluateNewsIntentWithOpenAI = async ({
     }
 
     const data = await response.json();
-    const rawContent = data?.choices?.[0]?.message?.content;
+    const rawContent = extractResponseText(data);
 
     if (!rawContent || typeof rawContent !== 'string') {
       return null;
@@ -1021,17 +1060,17 @@ const evaluateStockIntentWithOpenAI = async ({
       'Avgör om detta ska besvaras som en aktiespecifik fråga.',
     ].join('\n');
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(OPENAI_RESPONSES_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: INLINE_INTENT_MODEL,
         temperature: 0,
         response_format: { type: 'json_schema', json_schema: STOCK_INTENT_SCHEMA },
-        messages: [
+        input: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userContent },
         ],
@@ -1044,7 +1083,7 @@ const evaluateStockIntentWithOpenAI = async ({
     }
 
     const data = await response.json();
-    const rawContent = data?.choices?.[0]?.message?.content;
+    const rawContent = extractResponseText(data);
 
     if (!rawContent || typeof rawContent !== 'string') {
       return null;
@@ -1135,17 +1174,17 @@ const askLLMIfRealtimeNeeded = async ({
       'Returnera JSON i formatet {"realtime": "yes" eller "no", "reason": "...", "question_type": "...", "recommendations": "yes" eller "no"}.',
     ].filter(Boolean);
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(OPENAI_RESPONSES_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${openAIApiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: INLINE_INTENT_MODEL,
         temperature: 0,
-        max_tokens: 60,
-        messages: [
+        max_output_tokens: 60,
+        input: [
           {
             role: 'system',
             content: 'Du avgör om en investeringsfråga behöver realtidsdata. Var konservativ med ja-svar och motivera kort på svenska.',
@@ -1164,7 +1203,7 @@ const askLLMIfRealtimeNeeded = async ({
     }
 
     const data = await response.json();
-    const text = data?.choices?.[0]?.message?.content?.trim();
+    const text = extractResponseText(data);
 
     if (!text) {
       return { decision: false, usedModel: true };
@@ -1283,6 +1322,26 @@ type TavilyContextPayload = {
 
 type TavilySearchDepth = 'basic' | 'advanced';
 
+type TavilyLocalePreference = 'se' | 'global';
+
+type TavilyLLMPlanInput = {
+  message: string;
+  entityAwareQuery?: string | null;
+  userIntent?: IntentType;
+  recentMessages?: string[];
+  openAIApiKey: string;
+};
+
+type TavilyLLMPlan = {
+  shouldSearch: boolean;
+  query?: string;
+  topic?: TavilyTopic;
+  depth?: TavilySearchDepth;
+  freshnessDays?: number;
+  preferredLocales?: TavilyLocalePreference[];
+  reason?: string;
+};
+
 type TavilySearchOptions = {
   query?: string;
   includeDomains?: string[];
@@ -1296,6 +1355,206 @@ type TavilySearchOptions = {
   timeoutMs?: number;
   requireRecentDays?: number;
   allowUndatedFromDomains?: string[];
+};
+
+const TAVILY_ROUTER_TOOL = {
+  type: 'function',
+  function: {
+    name: 'tavily_search',
+    description: 'Planera en Tavily-sökning för dagsaktuell finans- eller marknadskontext innan rådgivaren svarar användaren.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Kortfattad sökfras som hjälper Tavily att hitta relevanta nyheter eller rapporter.'
+        },
+        topic: {
+          type: 'string',
+          enum: ['general', 'news', 'finance'],
+          description: 'Välj "news" för rubriker, "finance" för bolagsspecifika uppdateringar eller "general" vid osäkerhet.'
+        },
+        depth: {
+          type: 'string',
+          enum: ['basic', 'advanced'],
+          description: 'Ange "advanced" när du behöver längre utdrag eller råinnehåll.'
+        },
+        freshnessDays: {
+          type: 'integer',
+          minimum: 1,
+          maximum: 30,
+          description: 'Maximalt antal dagar bakåt som källorna får vara.'
+        },
+        preferredLocales: {
+          type: 'array',
+          items: {
+            type: 'string',
+            enum: ['se', 'global'],
+          },
+          description: 'Prioriterade geografiska marknader, t.ex. Sverige (se) eller globalt.'
+        },
+        reason: {
+          type: 'string',
+          description: 'Kort svensk motivering till varför realtidsdata behövs.'
+        }
+      },
+      required: ['query'],
+    },
+  },
+} as const;
+
+const planRealtimeSearchWithLLM = async ({
+  message,
+  entityAwareQuery,
+  userIntent,
+  recentMessages,
+  openAIApiKey,
+}: TavilyLLMPlanInput): Promise<TavilyLLMPlan> => {
+  try {
+    const routerContext: string[] = [];
+    if (userIntent) {
+      routerContext.push(`Identifierad intent: ${userIntent}.`);
+    }
+    if (entityAwareQuery && entityAwareQuery.trim().length > 0) {
+      routerContext.push(`Föreslagen sökfras: ${entityAwareQuery.trim()}`);
+    }
+    if (recentMessages && recentMessages.length > 0) {
+      routerContext.push('Tidigare relaterade frågor:\n' + recentMessages.map((entry, index) => `${index + 1}. ${entry}`).join('\n'));
+    }
+
+    const routerPrompt = [
+      'Du avgör om nästa svar behöver dagsaktuella källor innan rådgivaren svarar kunden.',
+      'Om färska nyheter, intradagspris eller senaste rapporter krävs → anropa tavily_search exakt en gång.',
+      'Om äldre kunskap räcker → svara med JSON på formatet {"decision":"skip","reason":"kort svensk motivering"}.',
+      'Ange alltid en motivering (på svenska) antingen i JSON:et eller i fältet reason när du anropar verktyget.',
+      routerContext.join('\n\n'),
+      `Användarens fråga:\n"""${message}"""`,
+    ].filter(Boolean).join('\n\n');
+
+    const response = await fetch(OPENAI_RESPONSES_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${openAIApiKey}`,
+      },
+      body: JSON.stringify({
+        model: INLINE_INTENT_MODEL,
+        temperature: 0,
+        max_output_tokens: 180,
+        tool_choice: 'auto',
+        tools: [TAVILY_ROUTER_TOOL],
+        input: [
+          {
+            role: 'system',
+            content: 'Du är en researchplanerare som bara ska trigga Tavily vid behov av realtidsdata och annars förklara varför det inte behövs.',
+          },
+          { role: 'user', content: routerPrompt },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('LLM Tavily-router misslyckades med status', response.status);
+      return { shouldSearch: false };
+    }
+
+    const data = await response.json();
+    const locateToolCallArguments = (): string | null => {
+      const outputs = Array.isArray(data?.output) ? data.output : [];
+      for (const block of outputs) {
+        const contents = Array.isArray(block?.content) ? block.content : [];
+        for (const part of contents) {
+          const type = typeof part?.type === 'string' ? part.type : '';
+          if ((type === 'output_tool_call' || type === 'tool_call') && part?.name === 'tavily_search') {
+            if (typeof part?.arguments === 'string') {
+              return part.arguments;
+            }
+            try {
+              return JSON.stringify(part?.arguments ?? {});
+            } catch (_err) {
+              return null;
+            }
+          }
+        }
+      }
+
+      const legacyToolCalls = data?.choices?.[0]?.message?.tool_calls;
+      if (Array.isArray(legacyToolCalls)) {
+        const legacy = legacyToolCalls.find((call: any) => call?.function?.name === 'tavily_search');
+        if (legacy) {
+          return typeof legacy.function?.arguments === 'string'
+            ? legacy.function.arguments
+            : JSON.stringify(legacy.function?.arguments ?? {});
+        }
+      }
+
+      return null;
+    };
+
+    const toolCallArgs = locateToolCallArguments();
+    if (toolCallArgs) {
+      try {
+        const args = JSON.parse(toolCallArgs);
+        const locales = Array.isArray(args?.preferredLocales)
+          ? args.preferredLocales
+            .map((value: string) => (value === 'se' || value === 'global') ? value : null)
+            .filter(Boolean) as TavilyLocalePreference[]
+          : undefined;
+        const depth = args?.depth === 'advanced' || args?.depth === 'basic'
+          ? args.depth
+          : undefined;
+        const topic = args?.topic === 'news' || args?.topic === 'finance' || args?.topic === 'general'
+          ? args.topic
+          : undefined;
+        const freshnessDaysRaw = typeof args?.freshnessDays === 'number'
+          ? args.freshnessDays
+          : typeof args?.freshnessDays === 'string'
+            ? Number(args.freshnessDays)
+            : undefined;
+        const freshnessDays = Number.isFinite(freshnessDaysRaw)
+          ? Math.min(30, Math.max(1, Math.round(Number(freshnessDaysRaw))))
+          : undefined;
+        return {
+          shouldSearch: true,
+          query: typeof args?.query === 'string' ? args.query.trim() : undefined,
+          topic,
+          depth,
+          freshnessDays,
+          preferredLocales: locales,
+          reason: typeof args?.reason === 'string' ? args.reason.trim() : undefined,
+        };
+      } catch (error) {
+        console.warn('Kunde inte tolka Tavily-verktygsargument:', error);
+        return { shouldSearch: true };
+      }
+    }
+
+    const fallbackContent = extractResponseText(data);
+    if (fallbackContent) {
+      try {
+        const parsed = JSON.parse(fallbackContent);
+        const normalizedDecision = typeof parsed?.decision === 'string'
+          ? parsed.decision.toLowerCase()
+          : '';
+        const shouldSearch = normalizedDecision === 'search' || normalizedDecision === 'ja' || normalizedDecision === 'yes';
+        return {
+          shouldSearch,
+          reason: typeof parsed?.reason === 'string' ? parsed.reason.trim() : undefined,
+        };
+      } catch (error) {
+        const normalized = fallbackContent.toLowerCase();
+        if (normalized.includes('search') || normalized.includes('realtid') || normalized.includes('tavily')) {
+          return { shouldSearch: true, reason: fallbackContent };
+        }
+        return { shouldSearch: false, reason: fallbackContent };
+      }
+    }
+
+    return { shouldSearch: false };
+  } catch (error) {
+    console.warn('Fel i LLM-planeringen för Tavily:', error);
+    return { shouldSearch: false };
+  }
 };
 
 type StockDetectionPattern = {
@@ -1715,6 +1974,10 @@ serve(async (req) => {
         .map(entry => entry.content as string)
         .slice(-3)
       : [];
+
+    const riskKeywordPattern = /(riskprofil|risktolerans|riskniv[åa]|risktagande|riskjusterad|riskhantering|risknivån|risknivaan|risknivor|risk)/i;
+    const mentionsRisk = (value?: string): boolean => typeof value === 'string' && riskKeywordPattern.test(value);
+    const userExplicitRiskFocus = mentionsRisk(message) || recentUserMessages.some(mentionsRisk);
 
     if (!message || !userId) {
       console.error('Missing required fields:', { message: !!message, userId: !!userId });
@@ -2565,18 +2828,30 @@ serve(async (req) => {
       detectedEntities: interpretedEntities,
     });
 
-    const shouldFetchTavily = !hasUploadedDocuments && !isDocumentSummaryRequest && !isSimplePersonalAdviceRequest && (
-      isStockMentionRequest || hasRealTimeTrigger
-    );
+    const llmTavilyPlan = await planRealtimeSearchWithLLM({
+      message,
+      entityAwareQuery,
+      userIntent,
+      recentMessages: recentUserMessages,
+      openAIApiKey,
+    });
+    if (llmTavilyPlan.reason) {
+      console.log('LLM Tavily-plan:', llmTavilyPlan.reason);
+    }
+
+    const shouldFetchTavily = !hasUploadedDocuments && !isDocumentSummaryRequest && !isSimplePersonalAdviceRequest && llmTavilyPlan.shouldSearch;
     if (shouldFetchTavily) {
-      const logMessage = isStockMentionRequest
-        ? 'Aktieomnämnande upptäckt – anropar Tavily för relevanta nyheter.'
-        : 'Fråga upptäckt som realtidsfråga – anropar Tavily.';
+      const logMessage = llmTavilyPlan.reason
+        ? `LLM begärde Tavily-sökning: ${llmTavilyPlan.reason}`
+        : 'LLM begärde Tavily-sökning – hämtar realtidskällor.';
       console.log(logMessage);
 
       const shouldPrioritizeStockAnalysis = primaryDetectedTicker && (isStockAnalysisRequest || isFinancialDataRequest);
 
       const determineTavilyTopic = (): TavilyTopic => {
+        if (llmTavilyPlan.topic) {
+          return llmTavilyPlan.topic;
+        }
         if (hasRealTimeTrigger || userIntent === 'general_news' || userIntent === 'news_update' || userIntent === 'market_analysis') {
           return 'news';
         }
@@ -2586,11 +2861,13 @@ serve(async (req) => {
         return 'finance';
       };
 
-      const shouldUseAdvancedDepth = shouldPrioritizeStockAnalysis
+      const shouldUseAdvancedDepthFallback = shouldPrioritizeStockAnalysis
         || isFinancialDataRequest
         || userIntent === 'news_update'
         || userIntent === 'market_analysis'
         || hasRealTimeTrigger;
+      const selectedDepth: TavilySearchDepth = llmTavilyPlan.depth ?? (shouldUseAdvancedDepthFallback ? 'advanced' : 'basic');
+      const shouldUseAdvancedDepth = selectedDepth === 'advanced';
 
       const normalizeTickerToken = (value: string | null | undefined): string => {
         if (!value) return '';
@@ -2671,6 +2948,20 @@ serve(async (req) => {
       }
 
       const determineIncludeDomains = (): string[] => {
+        if (Array.isArray(llmTavilyPlan.preferredLocales) && llmTavilyPlan.preferredLocales.length > 0) {
+          const wantsSE = llmTavilyPlan.preferredLocales.includes('se');
+          const wantsGlobal = llmTavilyPlan.preferredLocales.includes('global');
+          if (wantsSE && !wantsGlobal) {
+            return SWEDISH_PRIORITY_TAVILY_DOMAINS;
+          }
+          if (wantsGlobal && !wantsSE) {
+            return INTERNATIONAL_PRIORITY_TAVILY_DOMAINS;
+          }
+          if (wantsSE && wantsGlobal) {
+            return TRUSTED_TAVILY_DOMAINS;
+          }
+        }
+
         if (swedishScore === 0 && internationalScore === 0) {
           return TRUSTED_TAVILY_DOMAINS;
         }
@@ -2691,17 +2982,23 @@ serve(async (req) => {
 
       const buildDefaultTavilyOptions = (): TavilySearchOptions => {
         const options: TavilySearchOptions = {
-          query: entityAwareQuery ?? undefined,
+          query: (llmTavilyPlan.query && llmTavilyPlan.query.length > 2)
+            ? llmTavilyPlan.query
+            : entityAwareQuery ?? undefined,
           includeDomains: prioritizedIncludeDomains,
           excludeDomains: DEFAULT_EXCLUDED_TAVILY_DOMAINS,
           includeRawContent: shouldUseAdvancedDepth,
           topic: determineTavilyTopic(),
-          searchDepth: shouldUseAdvancedDepth ? 'advanced' : 'basic',
+          searchDepth: selectedDepth,
           maxResults: 6,
           timeoutMs: hasRealTimeTrigger ? 5000 : 6500,
         };
 
-        if (hasRealTimeTrigger || userIntent === 'news_update') {
+        if (typeof llmTavilyPlan.freshnessDays === 'number' && llmTavilyPlan.freshnessDays > 0) {
+          options.requireRecentDays = llmTavilyPlan.freshnessDays;
+          options.days = llmTavilyPlan.freshnessDays;
+          options.timeRange = llmTavilyPlan.freshnessDays <= 3 ? 'day' : 'week';
+        } else if (hasRealTimeTrigger || userIntent === 'news_update') {
           options.timeRange = 'day';
           if (options.topic === 'news' && options.days === undefined) {
             options.days = 3;
@@ -2903,6 +3200,7 @@ serve(async (req) => {
       shouldOfferFollowUp,
       expertiseLevel: expertiseFromMemory ?? expertiseFromProfile ?? null,
       preferredResponseLength: preferredLength,
+      respectRiskProfile: userExplicitRiskFocus,
     });
 
     const headingDirective = buildHeadingDirectives({ intent: userIntent });
@@ -3088,9 +3386,9 @@ serve(async (req) => {
         }
 
         contextInfo += `\n\nNUVARANDE PORTFÖLJ:
-- Totalt värde: ${totalValueFormatted} SEK
-- Antal innehav: ${actualHoldings.length}
-- Största positioner: ${holdingsSummary || 'Inga registrerade innehav'}`;
+  - Totalt värde: ${totalValueFormatted} SEK
+  - Antal innehav: ${actualHoldings.length}
+  - Största positioner: ${holdingsSummary || 'Inga registrerade innehav'}`;
 
         if (portfolio) {
           if (recommendedAllocationEntries.length > 0) {
@@ -3103,8 +3401,13 @@ serve(async (req) => {
             });
           }
 
-          contextInfo += `\n- Portföljens riskpoäng: ${portfolio.risk_score || 'Ej beräknad'}
-- Förväntad årlig avkastning: ${portfolio.expected_return || 'Ej beräknad'}%`;
+          if (userExplicitRiskFocus && portfolio.risk_score) {
+            contextInfo += `\n- Portföljens riskpoäng: ${portfolio.risk_score}`;
+          } else if (!userExplicitRiskFocus && portfolio.risk_score) {
+            contextInfo += `\n- Riskprofil: Finns sparad men ska endast användas om användaren efterfrågar riskanalys.`;
+          }
+
+          contextInfo += `\n- Förväntad årlig avkastning: ${portfolio.expected_return || 'Ej beräknad'}%`;
         }
       }
     }
@@ -3357,7 +3660,7 @@ serve(async (req) => {
       '- Använd aldrig hela strukturen slentrianmässigt – välj endast sektioner som ger värde.',
       '- Variera rubriker och emojis för att undvika repetitiva svar.',
       '- Avsluta endast med en öppen fråga när det känns naturligt och svaret inte redan är komplett.',
-      '- Avsluta svaret med en sektion "Källor:" där varje länk står på en egen rad (om källor finns).',
+      '- Lägg endast till en sektion "Källor:" när du fick realtidsdata via Tavily, och lista då länkarna exakt i den ordning du fick dem. I alla andra fall ska ingen källsektion eller källa nämnas.',
     ];
 
     if (isDocumentSummaryRequest) {
@@ -3375,8 +3678,8 @@ ${importantLines.join('\n')}
 `;
 
 
-    // Force using gpt-4o to avoid streaming restrictions and reduce cost
-    const model = 'gpt-4o';
+    // Force using gpt-5.1 with reasoning-enabled features for consistent behavior
+    const model = PRIMARY_CHAT_MODEL;
 
     console.log('Selected model:', model, 'for request type:', {
       isStockAnalysis: isStockAnalysisRequest,
@@ -3391,7 +3694,7 @@ ${importantLines.join('\n')}
       const formattedSourcesList = tavilyContext.sources
         .map((url, index) => `${index + 1}. ${url}`)
         .join('\n');
-      tavilySourceInstruction = `\n\nKÄLLHÄNVISNINGAR FÖR AGENTEN:\n${formattedSourcesList}\n\nINSTRUKTION: Avsluta alltid ditt svar med en sektion "Källor:" som listar dessa länkar i samma ordning och med en länk per rad.`;
+      tavilySourceInstruction = `\n\nKÄLLHÄNVISNINGAR FÖR AGENTEN:\n${formattedSourcesList}\n\nINSTRUKTION: Dessa länkar kommer från din realtidssökning – väv in dem i resonemanget när du hänvisar till faktan och avsluta svaret med en sektion "Källor:" som listar exakt samma länkar i samma ordning, en per rad. Ange inga andra källor.`;
     }
 
     // Build messages array with enhanced context
@@ -3446,7 +3749,7 @@ ${importantLines.join('\n')}
 
     // If the client requests non-streaming, return JSON instead of SSE
     if (stream === false) {
-      const nonStreamResp = await fetch('https://api.openai.com/v1/chat/completions', {
+      const nonStreamResp = await fetch(OPENAI_RESPONSES_URL, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${openAIApiKey}`,
@@ -3454,8 +3757,7 @@ ${importantLines.join('\n')}
         },
         body: JSON.stringify({
           model,
-          messages,
-          stream: false,
+          input: messages,
         }),
       });
 
@@ -3467,7 +3769,7 @@ ${importantLines.join('\n')}
       }
 
       const nonStreamData = await nonStreamResp.json();
-      const aiMessage = nonStreamData.choices?.[0]?.message?.content || '';
+      const aiMessage = extractResponseText(nonStreamData);
 
       // Update AI memory and optionally save to chat history
       await updateAIMemory(supabase, userId, message, aiMessage, aiMemory, userIntent);
@@ -3504,7 +3806,7 @@ ${importantLines.join('\n')}
     }
 
     // Default: streaming SSE response
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(OPENAI_RESPONSES_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -3512,7 +3814,7 @@ ${importantLines.join('\n')}
       },
       body: JSON.stringify({
         model,
-        messages,
+        input: messages,
         stream: true,
       }),
     });
@@ -3544,60 +3846,61 @@ ${importantLines.join('\n')}
             const lines = chunk.split('\n');
 
             for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6);
-                if (data === '[DONE]') {
-                  // Update AI memory
-                  await updateAIMemory(supabase, userId, message, aiMessage, aiMemory, userIntent);
-                  
-                  // Send final telemetry
-                  console.log('TELEMETRY COMPLETE:', { 
-                    ...telemetryData, 
-                    responseLength: aiMessage.length,
-                    completed: true 
-                  });
-                  
-                  // Save complete message to database
-                  if (sessionId && aiMessage) {
-                    await supabase
-                      .from('portfolio_chat_history')
-                      .insert({
-                        user_id: userId,
-                        chat_session_id: sessionId,
-                        message: aiMessage,
-                        message_type: 'assistant',
-                        context_data: {
-                          analysisType,
-                          model,
-                          requestId,
-                          hasMarketData,
-                          profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
-                          requiresConfirmation: profileChangeDetection.requiresConfirmation,
-                          confidence: 0.8
-                        }
-                      });
-                  }
-                  
-                  controller.close();
-                  return;
+              if (!line.startsWith('data:')) {
+                continue;
+              }
+
+              const payload = line.slice(5).trim();
+              if (!payload) {
+                continue;
+              }
+
+              const { content, done, error } = parseResponsesSseData(payload);
+
+              if (error) {
+                throw new Error(error);
+              }
+
+              if (content) {
+                aiMessage += content;
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  content,
+                  profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+                  requiresConfirmation: profileChangeDetection.requiresConfirmation
+                })}\n\n`));
+              }
+
+              if (done) {
+                await updateAIMemory(supabase, userId, message, aiMessage, aiMemory, userIntent);
+
+                console.log('TELEMETRY COMPLETE:', {
+                  ...telemetryData,
+                  responseLength: aiMessage.length,
+                  completed: true
+                });
+
+                if (sessionId && aiMessage) {
+                  await supabase
+                    .from('portfolio_chat_history')
+                    .insert({
+                      user_id: userId,
+                      chat_session_id: sessionId,
+                      message: aiMessage,
+                      message_type: 'assistant',
+                      context_data: {
+                        analysisType,
+                        model,
+                        requestId,
+                        hasMarketData,
+                        profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+                        requiresConfirmation: profileChangeDetection.requiresConfirmation,
+                        confidence: 0.8
+                      }
+                    });
                 }
 
-                try {
-                  const parsed = JSON.parse(data);
-                  if (parsed.choices?.[0]?.delta?.content) {
-                    const content = parsed.choices[0].delta.content;
-                    aiMessage += content;
-                    
-                    // Stream content to client
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-                      content,
-                      profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
-                      requiresConfirmation: profileChangeDetection.requiresConfirmation
-                    })}\n\n`));
-                  }
-                } catch (e) {
-                  // Ignore JSON parse errors for non-JSON lines
-                }
+                controller.close();
+                return;
               }
             }
           }

@@ -2,11 +2,16 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { jsonrepair } from "https://esm.sh/jsonrepair@3.6.1";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { OPENAI_RESPONSES_URL, extractResponseText } from '../../lib/openai.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+const REPORT_MODEL = Deno.env.get('OPENAI_REPORT_MODEL')
+  || Deno.env.get('OPENAI_MODEL')
+  || 'gpt-5.1';
 
 type GenerateReportSummaryPayload = {
   company_name?: string | null;
@@ -17,14 +22,6 @@ type GenerateReportSummaryPayload = {
   source_document_name?: string | null;
   source_document_id?: string | null;
   created_by?: string | null;
-};
-
-type OpenAIResponse = {
-  choices?: Array<{
-    message?: {
-      content?: string;
-    };
-  }>;
 };
 
 const extractJsonPayload = (content: string): string => {
@@ -58,6 +55,40 @@ const normalizeKeyPoints = (value: unknown): string[] => {
 
   return [];
 };
+
+const REPORT_RESPONSE_FORMAT = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'report_summary_response',
+    schema: {
+      type: 'object',
+      additionalProperties: true,
+      properties: {
+        company_name: { type: 'string' },
+        report_title: { type: 'string' },
+        summary: { type: 'string' },
+        key_points: {
+          type: 'array',
+          items: { type: 'string' },
+        },
+        key_metrics: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              label: { type: 'string' },
+              value: { type: 'string' },
+              trend: { type: 'string' },
+            },
+            required: ['label', 'value'],
+          },
+        },
+        ceo_commentary: { type: 'string' },
+      },
+      required: ['summary', 'key_points'],
+    },
+  },
+} as const;
 
 const normalizeKeyMetrics = (value: unknown): ParsedMetric[] => {
   if (Array.isArray(value)) {
@@ -366,17 +397,18 @@ serve(async (req) => {
   });
 
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch(OPENAI_RESPONSES_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${openAIApiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: REPORT_MODEL,
         temperature: 0.6,
-        max_tokens: 600,
-        messages: [
+        max_output_tokens: 600,
+        response_format: REPORT_RESPONSE_FORMAT,
+        input: [
           {
             role: "system",
             content: "Du är en erfaren finansanalytiker som levererar koncisa rapportanalyser på svenska och svarar alltid med giltig JSON.",
@@ -398,8 +430,8 @@ serve(async (req) => {
       });
     }
 
-    const data = (await response.json()) as OpenAIResponse;
-    const content = data?.choices?.[0]?.message?.content;
+    const data = await response.json();
+    const content = extractResponseText(data);
 
     if (!content) {
       console.error("OpenAI response missing content", data);

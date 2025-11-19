@@ -2,6 +2,11 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { OPENAI_RESPONSES_URL, extractResponseText } from '../../lib/openai.ts';
+
+const STRATEGY_MODEL = Deno.env.get('OPENAI_STRATEGY_MODEL')
+  || Deno.env.get('OPENAI_MODEL')
+  || 'gpt-5.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -125,6 +130,63 @@ const GROWTH_KEYWORDS = [
 const CASHFLOW_TICKERS = /SHB|SEB|NDA|SWED|AVANZ|CAST|SBB|BALD|FABG|KO|PEP|T|TEL2|TELIA|VNQ|XACTHYG|LUNE|EQNR|MAIN|O\b/;
 const DEFENSIVE_TICKERS = /AZN|NVO|JNJ|MRK|ABBV|BMY|AXFO|ICA|WMT|KO|PEP|NG/;
 const GROWTH_TICKERS = /NVDA|AAPL|MSFT|GOOGL|META|AMZN|TSLA|ADBE|CRM|SHOP|SNOW|EVO|SINCH|SPOT|SECT B/;
+
+const PORTFOLIO_RESPONSE_FORMAT = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'portfolio_strategy_response',
+    schema: {
+      type: 'object',
+      additionalProperties: true,
+      properties: {
+        plan: {
+          type: 'object',
+          additionalProperties: true,
+          properties: {
+            action_summary: { type: 'string' },
+            risk_alignment: { type: 'string' },
+            next_steps: {
+              type: 'array',
+              items: { type: 'string' },
+              minItems: 1,
+            },
+            recommended_assets: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  ticker: { type: 'string' },
+                  allocation_percent: { type: 'number' },
+                  rationale: { type: 'string' },
+                },
+                required: ['name'],
+              },
+            },
+          },
+        },
+        recommended_assets: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              symbol: { type: 'string' },
+              allocation: { type: 'number' },
+              sector: { type: 'string' },
+              reasoning: { type: 'string' },
+            },
+            required: ['name'],
+          },
+        },
+        complementary_ideas: {
+          type: 'array',
+          items: { type: 'string' },
+        },
+      },
+    },
+  },
+} as const;
 
 function detectSector(name: string, symbol?: string) {
   const n = name.toLowerCase();
@@ -656,7 +718,7 @@ Tillgänglig klientinformation:
 ${contextInfo}
 
 Rådgivningsregler:
-- Basera alltid rekommendationerna på användarens riskprofil, mål, tidsram, likvida medel och intressen.
+- Basera rekommendationerna på användarens mål, tidsram, likvida medel och intressen. Använd endast riskprofilen om användaren uttryckligen efterfrågar riskanpassade råd i sin senaste instruktion.
 - Säkerställ att portföljen är diversifierad och att varje innehav har en tydlig roll (Bas, Tillväxt, Skydd eller Kassaflöde).
 - Justera antalet tillgångar efter kundens önskemål (normalt 3–8 poster) och undvik dubletter mot befintliga innehav.
 - Alla förslag ska vara tillgängliga via svenska handelsplattformar (Avanza, Nordnet) och lämpa sig för ISK/KF när det är relevant.
@@ -755,19 +817,20 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
       }
     }
 
-    console.log('Calling OpenAI API with gpt-4o...');
+    console.log('Calling OpenAI API with', STRATEGY_MODEL, '...');
 
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    const openAIResponse = await fetch(OPENAI_RESPONSES_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
-        messages,
+        model: STRATEGY_MODEL,
+        input: messages,
         temperature: 0.85,
-        max_tokens: 2500,
+        max_output_tokens: 2500,
+        response_format: PORTFOLIO_RESPONSE_FORMAT,
       }),
     });
 
@@ -784,7 +847,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
     }
 
     const openAIData = await openAIResponse.json();
-    const aiRecommendationsRaw = openAIData.choices?.[0]?.message?.content?.trim() || '';
+    const aiRecommendationsRaw = extractResponseText(openAIData);
 
     console.log('OpenAI full response:', JSON.stringify(openAIData, null, 2));
     console.log('AI recommendations received:', aiRecommendationsRaw);

@@ -210,7 +210,7 @@ Svara med endast JSON enligt systemprompt. Max 3 insikter.`
       }
     ],
     temperature: 0.6,
-    max_tokens: 900,
+    max_completion_tokens: 900,
   }),
 });
 
@@ -293,8 +293,8 @@ Endast 3–4 insikter. På svenska. Svara enbart med JSON-array enligt formatet 
             `.trim()
           }
         ],
-        temperature: 0.6,
-        max_tokens: 900,
+    temperature: 0.6,
+    max_completion_tokens: 900,
       }),
     });
 
@@ -373,8 +373,8 @@ async function generateAIMockInsights(type: string, isPersonalized: boolean) {
             content: prompt
           }
         ],
-        temperature: 0.7,
-        max_tokens: 1500,
+    temperature: 0.7,
+    max_completion_tokens: 1500,
       }),
     });
 

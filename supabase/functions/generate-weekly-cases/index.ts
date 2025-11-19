@@ -4,8 +4,12 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { parse } from "https://deno.land/std@0.168.0/encoding/csv.ts";
 import { jsonrepair } from 'https://esm.sh/jsonrepair@3.6.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
+import { OPENAI_RESPONSES_URL, extractResponseText } from '../../lib/openai.ts';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const CASE_MODEL = Deno.env.get('OPENAI_CASE_MODEL')
+  || Deno.env.get('OPENAI_MODEL')
+  || 'gpt-5.1';
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
@@ -17,6 +21,28 @@ const corsHeaders = {
 const CASE_COUNT = 1;
 const SHEET_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRJZtyoepzQZSQw-LXTp0vmnpPVMqluTiPZJkPp61g5KsfEp08CA6LZ7CNoTfIgYe-E7lvCZ_ToMuF4/pub?gid=2130484499&single=true&output=csv";
+
+const WEEKLY_CASE_RESPONSE_FORMAT = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'weekly_stock_case',
+    schema: {
+      type: 'object',
+      additionalProperties: true,
+      properties: {
+        title: { type: 'string' },
+        company_name: { type: 'string' },
+        description: { type: 'string' },
+        long_description: { type: 'string' },
+        sector: { type: 'string' },
+        market_cap: { type: 'string' },
+        pe_ratio: { type: 'string' },
+        dividend_yield: { type: 'string' },
+      },
+      required: ['title', 'company_name', 'description', 'long_description'],
+    },
+  },
+} as const;
 
 const normalizeSheetValue = (value?: string | null) => {
   if (!value) return null;
@@ -983,15 +1009,15 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
 
       console.log(`Generating case ${i + 1} for ${sector} - ${style}...`);
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch(OPENAI_RESPONSES_URL, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${openAIApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
+          model: CASE_MODEL,
+          input: [
             {
               role: 'system',
               content: 'Du är en erfaren finansanalytiker som skapar investeringsanalyser för svenska investerare. Svara alltid med giltigt JSON.'
@@ -999,7 +1025,8 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
             { role: 'user', content: prompt }
           ],
           temperature: 0.7,
-          max_tokens: 500,
+          max_output_tokens: 500,
+          response_format: WEEKLY_CASE_RESPONSE_FORMAT,
         }),
       });
 
@@ -1011,7 +1038,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
       }
 
       const data = await response.json();
-      const generatedContent = data?.choices?.[0]?.message?.content;
+      const generatedContent = extractResponseText(data);
 
       console.log('OpenAI weekly case response content', {
         ticker: selectedTicker,
