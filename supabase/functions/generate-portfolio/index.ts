@@ -161,11 +161,11 @@ const PORTFOLIO_RESPONSE_FORMAT = {
   name: 'portfolio_strategy_response',
   schema: {
     type: 'object',
-    additionalProperties: true,
+    additionalProperties: false,
     properties: {
       plan: {
         type: 'object',
-        additionalProperties: true,
+        additionalProperties: false,
         properties: {
           action_summary: { type: 'string' },
           risk_alignment: { type: 'string' },
@@ -178,6 +178,7 @@ const PORTFOLIO_RESPONSE_FORMAT = {
             type: 'array',
             items: {
               type: 'object',
+              additionalProperties: false,
               properties: {
                 name: { type: 'string' },
                 ticker: { type: 'string' },
@@ -193,6 +194,7 @@ const PORTFOLIO_RESPONSE_FORMAT = {
         type: 'array',
         items: {
           type: 'object',
+          additionalProperties: false,
           properties: {
             name: { type: 'string' },
             symbol: { type: 'string' },
