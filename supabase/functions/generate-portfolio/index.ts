@@ -208,6 +208,7 @@ const PORTFOLIO_RESPONSE_FORMAT = {
                 allocation_percent: { type: 'number' },
                 rationale: { type: 'string' },
               },
+              required: ['name', 'ticker', 'allocation_percent', 'rationale'],
             },
           },
         },
@@ -224,6 +225,7 @@ const PORTFOLIO_RESPONSE_FORMAT = {
             sector: { type: 'string' },
             reasoning: { type: 'string' },
           },
+          required: ['name', 'symbol', 'allocation', 'sector', 'reasoning'],
         },
       },
       complementary_ideas: {
