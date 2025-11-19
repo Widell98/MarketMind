@@ -7,6 +7,59 @@ const STRATEGY_MODEL = Deno.env.get('OPENAI_STRATEGY_MODEL')
   || Deno.env.get('OPENAI_MODEL')
   || 'gpt-5.1';
 
+type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
+const toResponsesInput = (messages: ResponsesApiMessage[]) =>
+  messages.map((m) => ({
+    role: m.role,
+    content: [
+      {
+        type: 'input_text' as const,
+        text: m.content,
+      },
+    ],
+  }));
+
+const extractOpenAIResponseText = (data: any): string => {
+  if (Array.isArray(data?.output)) {
+    for (const item of data.output) {
+      if (!Array.isArray(item?.content)) continue;
+
+      for (const part of item.content) {
+        const parsedPayload = (part as any)?.parsed ?? (part as any)?.json;
+        if (parsedPayload !== undefined) {
+          if (typeof parsedPayload === 'string') {
+            const trimmed = parsedPayload.trim();
+            if (trimmed) return trimmed;
+          } else {
+            try {
+              const serialized = JSON.stringify(parsedPayload);
+              if (serialized) return serialized;
+            } catch {
+              // continue if serialization fails
+            }
+          }
+        }
+      }
+
+      const text = item.content
+        .map((part: { text?: string }) => part?.text?.trim?.())
+        .filter(Boolean)
+        .join('\n')
+        .trim();
+
+      if (text) return text;
+    }
+  }
+
+  if (Array.isArray(data?.output_text) && data.output_text.length > 0) {
+    const text = data.output_text.join('\n').trim();
+    if (text) return text;
+  }
+
+  return data?.choices?.[0]?.message?.content?.trim?.() ?? '';
+};
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -136,11 +189,13 @@ const PORTFOLIO_RESPONSE_FORMAT = {
     name: 'portfolio_strategy_response',
     schema: {
       type: 'object',
-      additionalProperties: true,
+      additionalProperties: false,
+      required: ['plan', 'recommended_assets', 'complementary_ideas'],
       properties: {
         plan: {
           type: 'object',
-          additionalProperties: true,
+          additionalProperties: false,
+          required: ['action_summary', 'risk_alignment', 'next_steps', 'recommended_assets'],
           properties: {
             action_summary: { type: 'string' },
             risk_alignment: { type: 'string' },
@@ -153,13 +208,14 @@ const PORTFOLIO_RESPONSE_FORMAT = {
               type: 'array',
               items: {
                 type: 'object',
+                additionalProperties: false,
+                required: ['name', 'ticker', 'allocation_percent', 'rationale'],
                 properties: {
                   name: { type: 'string' },
                   ticker: { type: 'string' },
                   allocation_percent: { type: 'number' },
                   rationale: { type: 'string' },
                 },
-                required: ['name'],
               },
             },
           },
@@ -168,6 +224,8 @@ const PORTFOLIO_RESPONSE_FORMAT = {
           type: 'array',
           items: {
             type: 'object',
+            additionalProperties: false,
+            required: ['name', 'symbol', 'allocation', 'sector', 'reasoning'],
             properties: {
               name: { type: 'string' },
               symbol: { type: 'string' },
@@ -175,7 +233,6 @@ const PORTFOLIO_RESPONSE_FORMAT = {
               sector: { type: 'string' },
               reasoning: { type: 'string' },
             },
-            required: ['name'],
           },
         },
         complementary_ideas: {
@@ -792,7 +849,7 @@ Erfarenhetsnivå: ${experienceSummary}
 
 Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerställ att all text är på svenska.`;
 
-    const messages: Array<{ role: 'system' | 'user'; content: string }> = [
+    const messages: ResponsesApiMessage[] = [
       { role: 'system', content: systemPrompt }
     ];
 
@@ -818,7 +875,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
 
     console.log('Calling OpenAI API with', STRATEGY_MODEL, '...');
 
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    const openAIResponse = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -826,10 +883,15 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
       },
       body: JSON.stringify({
         model: STRATEGY_MODEL,
-        messages,
-        temperature: 0.85,
-        max_completion_tokens: 2500,
-        response_format: PORTFOLIO_RESPONSE_FORMAT,
+        input: toResponsesInput(messages),
+        max_output_tokens: 2500,
+        reasoning: {
+          effort: 'medium',
+        },
+        text: {
+          format: PORTFOLIO_RESPONSE_FORMAT,
+          verbosity: 'high',
+        },
       }),
     });
 
@@ -846,7 +908,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
     }
 
     const openAIData = await openAIResponse.json();
-    const aiRecommendationsRaw = openAIData.choices?.[0]?.message?.content?.trim() || '';
+    const aiRecommendationsRaw = extractOpenAIResponseText(openAIData);
 
     console.log('OpenAI full response:', JSON.stringify(openAIData, null, 2));
     console.log('AI recommendations received:', aiRecommendationsRaw);
