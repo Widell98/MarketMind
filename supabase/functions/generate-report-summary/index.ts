@@ -12,6 +12,19 @@ const REPORT_MODEL = Deno.env.get('OPENAI_REPORT_MODEL')
   || Deno.env.get('OPENAI_MODEL')
   || 'gpt-5.1';
 
+type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
+const toResponsesInput = (messages: ResponsesApiMessage[]) =>
+  messages.map((m) => ({
+    role: m.role,
+    content: [
+      {
+        type: 'input_text' as const,
+        text: m.content,
+      },
+    ],
+  }));
+
 type GenerateReportSummaryPayload = {
   company_name?: string | null;
   report_title?: string | null;
@@ -24,11 +37,55 @@ type GenerateReportSummaryPayload = {
 };
 
 type OpenAIResponse = {
+  output?: Array<{
+    content?: Array<{ text?: string }>;
+  }>;
+  output_text?: string[];
   choices?: Array<{
     message?: {
       content?: string;
     };
   }>;
+};
+
+const extractOpenAIResponseText = (data: OpenAIResponse): string => {
+  if (Array.isArray(data?.output)) {
+    for (const item of data.output) {
+      if (!Array.isArray(item?.content)) continue;
+
+      for (const part of item.content) {
+        const parsedPayload = (part as any)?.parsed ?? (part as any)?.json;
+        if (parsedPayload !== undefined) {
+          if (typeof parsedPayload === 'string') {
+            const trimmed = parsedPayload.trim();
+            if (trimmed) return trimmed;
+          } else {
+            try {
+              const serialized = JSON.stringify(parsedPayload);
+              if (serialized) return serialized;
+            } catch {
+              // ignore serialization issues
+            }
+          }
+        }
+      }
+
+      const text = item.content
+        .map((part: { text?: string }) => part?.text?.trim?.())
+        .filter(Boolean)
+        .join('\n')
+        .trim();
+
+      if (text) return text;
+    }
+  }
+
+  if (Array.isArray(data?.output_text) && data.output_text.length > 0) {
+    const text = data.output_text.join('\n').trim();
+    if (text) return text;
+  }
+
+  return data?.choices?.[0]?.message?.content?.trim?.() ?? '';
 };
 
 const extractJsonPayload = (content: string): string => {
@@ -65,35 +122,33 @@ const normalizeKeyPoints = (value: unknown): string[] => {
 
 const REPORT_RESPONSE_FORMAT = {
   type: 'json_schema',
-  json_schema: {
-    name: 'report_summary_response',
-    schema: {
-      type: 'object',
-      additionalProperties: true,
-      properties: {
-        company_name: { type: 'string' },
-        report_title: { type: 'string' },
-        summary: { type: 'string' },
-        key_points: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-        key_metrics: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              label: { type: 'string' },
-              value: { type: 'string' },
-              trend: { type: 'string' },
-            },
-            required: ['label', 'value'],
-          },
-        },
-        ceo_commentary: { type: 'string' },
+  name: 'report_summary_response',
+  schema: {
+    type: 'object',
+    additionalProperties: true,
+    properties: {
+      company_name: { type: 'string' },
+      report_title: { type: 'string' },
+      summary: { type: 'string' },
+      key_points: {
+        type: 'array',
+        items: { type: 'string' },
       },
-      required: ['summary', 'key_points'],
+      key_metrics: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            label: { type: 'string' },
+            value: { type: 'string' },
+            trend: { type: 'string' },
+          },
+          required: ['label', 'value'],
+        },
+      },
+      ceo_commentary: { type: 'string' },
     },
+    required: ['summary', 'key_points'],
   },
 } as const;
 
@@ -403,30 +458,34 @@ serve(async (req) => {
     reportTitleHint,
   });
 
-  try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${openAIApiKey}`,
-      },
-      body: JSON.stringify({
-        model: REPORT_MODEL,
-        temperature: 0.6,
-        max_completion_tokens: 600,
-        response_format: REPORT_RESPONSE_FORMAT,
-        messages: [
-          {
-            role: "system",
-            content: "Du är en erfaren finansanalytiker som levererar koncisa rapportanalyser på svenska och svarar alltid med giltig JSON.",
+    try {
+      const promptMessages: ResponsesApiMessage[] = [
+        {
+          role: 'system',
+          content: 'Du är en erfaren finansanalytiker som levererar koncisa rapportanalyser på svenska och svarar alltid med giltig JSON.',
+        },
+        { role: 'user', content: prompt },
+      ];
+
+      const response = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openAIApiKey}`,
+        },
+        body: JSON.stringify({
+          model: REPORT_MODEL,
+          max_output_tokens: 600,
+          reasoning: {
+            effort: "low",
           },
-          {
-            role: "user",
-            content: prompt,
+          text: {
+            format: REPORT_RESPONSE_FORMAT,
+            verbosity: "medium",
           },
-        ],
-      }),
-    });
+          input: toResponsesInput(promptMessages),
+        }),
+      });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -438,7 +497,7 @@ serve(async (req) => {
     }
 
     const data = (await response.json()) as OpenAIResponse;
-    const content = data?.choices?.[0]?.message?.content;
+    const content = extractOpenAIResponseText(data);
 
     if (!content) {
       console.error("OpenAI response missing content", data);
