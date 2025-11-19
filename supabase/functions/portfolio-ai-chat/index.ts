@@ -15,6 +15,14 @@ const PRIMARY_CHAT_MODEL = Deno.env.get('OPENAI_PORTFOLIO_MODEL')
 const INLINE_INTENT_MODEL = Deno.env.get('OPENAI_INTENT_MODEL')
   || PRIMARY_CHAT_MODEL;
 
+type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
+const formatMessagesForResponsesApi = (messages: ResponsesApiMessage[]): string =>
+  messages
+    .map(({ role, content }) => `${role.toUpperCase()}: ${content}`.trim())
+    .join('\n\n')
+    .trim();
+
 const extractResponsesApiText = (data: any): string => {
   if (Array.isArray(data?.output)) {
     for (const item of data.output) {
@@ -989,13 +997,15 @@ const evaluateNewsIntentWithOpenAI = async ({
   try {
     const systemPrompt = `Du hjälper en svensk finansiell assistent att välja rätt typ av nyhetssvar.\n- Välj \"news_update\" om användaren sannolikt vill ha en uppdatering om sina innehav eller portfölj.\n- Välj \"general_news\" om användaren vill ha ett brett marknadsbrev eller nyhetssvep.\n- Returnera \"none\" om inget av alternativen passar.\nSvara alltid med giltig JSON.`;
 
-    const messages = [
+    const messages: ResponsesApiMessage[] = [
       { role: 'system', content: systemPrompt },
       {
         role: 'user',
         content: `Meddelande: "${message.trim()}"\nHar användaren portföljdata hos oss: ${hasPortfolio ? 'ja' : 'nej'}\nVilket nyhetssvar förväntas?`,
       },
     ];
+
+    const textInput = formatMessagesForResponsesApi(messages);
 
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
@@ -1016,7 +1026,7 @@ const evaluateNewsIntentWithOpenAI = async ({
           },
           verbosity: 'low',
         },
-        input: messages,
+        input: textInput,
       }),
     });
 
@@ -1117,6 +1127,13 @@ const evaluateStockIntentWithOpenAI = async ({
       'Avgör om detta ska besvaras som en aktiespecifik fråga.',
     ].join('\n');
 
+    const messages: ResponsesApiMessage[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userContent },
+    ];
+
+    const textInput = formatMessagesForResponsesApi(messages);
+
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
@@ -1136,10 +1153,7 @@ const evaluateStockIntentWithOpenAI = async ({
           },
           verbosity: 'low',
         },
-        input: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userContent },
-        ],
+        input: textInput,
       }),
     });
 

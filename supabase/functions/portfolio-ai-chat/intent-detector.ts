@@ -4,6 +4,14 @@ const INTENT_MODEL = Deno.env.get('OPENAI_INTENT_MODEL')
   || Deno.env.get('OPENAI_MODEL')
   || 'gpt-5.1';
 
+type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
+const formatMessagesForResponsesApi = (messages: ResponsesApiMessage[]): string =>
+  messages
+    .map(({ role, content }) => `${role.toUpperCase()}: ${content}`.trim())
+    .join('\n\n')
+    .trim();
+
 const extractResponsesApiText = (data: any): string => {
   if (Array.isArray(data?.output)) {
     for (const item of data.output) {
@@ -167,7 +175,7 @@ export const detectUserIntentWithOpenAI = async (
   }
 
   try {
-    const messages = [
+    const messages: ResponsesApiMessage[] = [
       { role: 'system', content: SYSTEM_PROMPT },
       ...EXAMPLE_CLASSIFICATIONS.flatMap(example => [
         { role: 'user', content: example.user },
@@ -175,6 +183,8 @@ export const detectUserIntentWithOpenAI = async (
       ]),
       { role: 'user', content: message.trim() },
     ];
+
+    const textInput = formatMessagesForResponsesApi(messages);
 
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
@@ -195,7 +205,7 @@ export const detectUserIntentWithOpenAI = async (
           },
           verbosity: 'low',
         },
-        input: messages,
+        input: textInput,
       }),
     });
 

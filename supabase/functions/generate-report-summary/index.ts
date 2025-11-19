@@ -12,6 +12,14 @@ const REPORT_MODEL = Deno.env.get('OPENAI_REPORT_MODEL')
   || Deno.env.get('OPENAI_MODEL')
   || 'gpt-5.1';
 
+type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
+const formatMessagesForResponsesApi = (messages: ResponsesApiMessage[]): string =>
+  messages
+    .map(({ role, content }) => `${role.toUpperCase()}: ${content}`.trim())
+    .join('\n\n')
+    .trim();
+
 type GenerateReportSummaryPayload = {
   company_name?: string | null;
   report_title?: string | null;
@@ -432,6 +440,16 @@ serve(async (req) => {
   });
 
   try {
+    const promptMessages: ResponsesApiMessage[] = [
+      {
+        role: 'system',
+        content: 'Du är en erfaren finansanalytiker som levererar koncisa rapportanalyser på svenska och svarar alltid med giltig JSON.',
+      },
+      { role: 'user', content: prompt },
+    ];
+
+    const textInput = formatMessagesForResponsesApi(promptMessages);
+
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -448,16 +466,7 @@ serve(async (req) => {
           format: REPORT_RESPONSE_FORMAT,
           verbosity: "medium",
         },
-        input: [
-          {
-            role: "system",
-            content: "Du är en erfaren finansanalytiker som levererar koncisa rapportanalyser på svenska och svarar alltid med giltig JSON.",
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
+        input: textInput,
       }),
     });
 

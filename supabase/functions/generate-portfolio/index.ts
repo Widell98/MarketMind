@@ -7,6 +7,14 @@ const STRATEGY_MODEL = Deno.env.get('OPENAI_STRATEGY_MODEL')
   || Deno.env.get('OPENAI_MODEL')
   || 'gpt-5.1';
 
+type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
+const formatMessagesForResponsesApi = (messages: ResponsesApiMessage[]): string =>
+  messages
+    .map(({ role, content }) => `${role.toUpperCase()}: ${content}`.trim())
+    .join('\n\n')
+    .trim();
+
 const extractOpenAIResponseText = (data: any): string => {
   if (Array.isArray(data?.output)) {
     for (const item of data.output) {
@@ -841,7 +849,7 @@ Erfarenhetsnivå: ${experienceSummary}
 
 Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerställ att all text är på svenska.`;
 
-    const messages: Array<{ role: 'system' | 'user'; content: string }> = [
+    const messages: ResponsesApiMessage[] = [
       { role: 'system', content: systemPrompt }
     ];
 
@@ -865,6 +873,8 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
       }
     }
 
+    const textInput = formatMessagesForResponsesApi(messages);
+
     console.log('Calling OpenAI API with', STRATEGY_MODEL, '...');
 
     const openAIResponse = await fetch('https://api.openai.com/v1/responses', {
@@ -875,7 +885,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
       },
       body: JSON.stringify({
         model: STRATEGY_MODEL,
-        input: messages,
+        input: textInput,
         max_output_tokens: 2500,
         reasoning: {
           effort: 'medium',

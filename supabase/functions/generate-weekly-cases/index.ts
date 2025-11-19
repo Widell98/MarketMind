@@ -12,6 +12,14 @@ const CASE_MODEL = Deno.env.get('OPENAI_CASE_MODEL')
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
+type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
+const formatMessagesForResponsesApi = (messages: ResponsesApiMessage[]): string =>
+  messages
+    .map(({ role, content }) => `${role.toUpperCase()}: ${content}`.trim())
+    .join('\n\n')
+    .trim();
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -1032,6 +1040,16 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
 
       console.log(`Generating case ${i + 1} for ${sector} - ${style}...`);
 
+      const promptMessages: ResponsesApiMessage[] = [
+        {
+          role: 'system',
+          content: 'Du är en erfaren finansanalytiker som skapar investeringsanalyser för svenska investerare. Svara alltid med giltigt JSON.'
+        },
+        { role: 'user', content: prompt }
+      ];
+
+      const textInput = formatMessagesForResponsesApi(promptMessages);
+
       const response = await fetch('https://api.openai.com/v1/responses', {
         method: 'POST',
         headers: {
@@ -1040,13 +1058,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
         },
         body: JSON.stringify({
           model: CASE_MODEL,
-          input: [
-            {
-              role: 'system',
-              content: 'Du är en erfaren finansanalytiker som skapar investeringsanalyser för svenska investerare. Svara alltid med giltigt JSON.'
-            },
-            { role: 'user', content: prompt }
-          ],
+          input: textInput,
           max_output_tokens: 500,
           reasoning: {
             effort: 'low',
