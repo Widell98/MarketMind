@@ -49,6 +49,18 @@ export interface ConversationData {
   marketExperience?: string;
   investmentExperienceLevel?: 'beginner' | 'intermediate' | 'advanced';
   preferredAssets?: string;
+  analysisFocus?: 'fundamental' | 'technical' | 'macro' | 'mixed';
+  analysisDepth?: 'light' | 'normal' | 'deep';
+  analysisTimeframe?: 'short' | 'medium' | 'long';
+  caseProfile?: 'defensive' | 'balanced' | 'growth' | 'value' | 'thematic' | 'high_volatility';
+  portfolioAnalysisIntent?:
+    | 'analyze_holdings'
+    | 'find_ideas'
+    | 'sector_exposure'
+    | 'overlap_risk'
+    | 'model_portfolios'
+    | 'deep_dive';
+  initialIntent?: 'model_portfolios' | 'idea_generation' | 'learn_analysis' | 'market_overview';
   currentAllocation?: string | Record<string, any>;
   currentPortfolioValue?: string;
   previousPerformance?: string;
@@ -477,6 +489,50 @@ export const useConversationalPortfolio = () => {
       commodities: 'Råvaror (t.ex. guld, olja)',
     }) ?? conversationData.preferredAssets;
 
+    const analysisFocusText = mapValue(conversationData.analysisFocus, {
+      fundamental: 'Bolagsanalys & siffror',
+      technical: 'Teknisk analys & prisrörelser',
+      macro: 'Makro, räntor & konjunktur',
+      mixed: 'Blandat fokus',
+    }) ?? conversationData.analysisFocus;
+
+    const analysisDepthText = mapValue(conversationData.analysisDepth, {
+      light: 'Snabb översikt',
+      normal: 'Standardnivå',
+      deep: 'Djupgående equity research',
+    }) ?? conversationData.analysisDepth;
+
+    const analysisTimeframeText = mapValue(conversationData.analysisTimeframe, {
+      short: 'Kortsiktigt fokus',
+      medium: 'Medellångt perspektiv',
+      long: 'Långsiktigt fokus',
+    }) ?? conversationData.analysisTimeframe;
+
+    const caseProfileText = mapValue(conversationData.caseProfile, {
+      defensive: 'Defensiva & stabila case',
+      balanced: 'Balanserad risk',
+      growth: 'Tillväxt & innovation',
+      value: 'Värde & kassaflöde',
+      thematic: 'Tematiska megatrender',
+      high_volatility: 'Hög volatilitet / småbolag',
+    }) ?? conversationData.caseProfile;
+
+    const portfolioIntentText = mapValue(conversationData.portfolioAnalysisIntent, {
+      analyze_holdings: 'Analysera befintliga innehav',
+      find_ideas: 'Hitta nya case som matchar stilen',
+      sector_exposure: 'Kartlägga sektor- och riskexponering',
+      overlap_risk: 'Identifiera överlapp och risker',
+      model_portfolios: 'Jämföra mot modellportföljer',
+      deep_dive: 'Djup fundamental analys av huvudpositioner',
+    }) ?? conversationData.portfolioAnalysisIntent;
+
+    const initialIntentText = mapValue(conversationData.initialIntent, {
+      model_portfolios: 'Utforska modellportföljer',
+      idea_generation: 'Skapa nya case-idéer',
+      learn_analysis: 'Lära sig aktieanalys',
+      market_overview: 'Få marknadsöversikt',
+    }) ?? conversationData.initialIntent;
+
     const optimizationGoalsText = mapArrayValues(conversationData.optimizationGoals, {
       risk_balance: 'Balansera risken bättre',
       diversify: 'Öka diversifieringen',
@@ -602,6 +658,36 @@ GRUNDLÄGGANDE PROFIL:
     if (preferredAssetsText) {
       prompt += `
 - Mest intresserad av: ${preferredAssetsText}`;
+    }
+
+    if (analysisFocusText) {
+      prompt += `
+- Analysfokus: ${analysisFocusText}`;
+    }
+
+    if (analysisDepthText) {
+      prompt += `
+- Analysdjup: ${analysisDepthText}`;
+    }
+
+    if (analysisTimeframeText) {
+      prompt += `
+- Analysens tidshorisont: ${analysisTimeframeText}`;
+    }
+
+    if (caseProfileText) {
+      prompt += `
+- Föredragen casestil: ${caseProfileText}`;
+    }
+
+    if (portfolioIntentText) {
+      prompt += `
+- Portföljfokus för AI:n: ${portfolioIntentText}`;
+    }
+
+    if (initialIntentText) {
+      prompt += `
+- Startfokus: ${initialIntentText}`;
     }
 
     if (conversationData.sectors && conversationData.sectors.length > 0) {
@@ -1616,6 +1702,36 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         normalized.isBeginnerInvestor = investmentExperience === 'beginner';
       }
 
+      const analysisFocus = ensureString(profile.analysis_focus) as ConversationData['analysisFocus'];
+      if (analysisFocus) {
+        normalized.analysisFocus = analysisFocus;
+      }
+
+      const analysisDepth = ensureString(profile.analysis_depth) as ConversationData['analysisDepth'];
+      if (analysisDepth) {
+        normalized.analysisDepth = analysisDepth;
+      }
+
+      const analysisTimeframe = ensureString(profile.analysis_timeframe) as ConversationData['analysisTimeframe'];
+      if (analysisTimeframe) {
+        normalized.analysisTimeframe = analysisTimeframe;
+      }
+
+      const caseProfile = ensureString(profile.case_profile) as ConversationData['caseProfile'];
+      if (caseProfile) {
+        normalized.caseProfile = caseProfile;
+      }
+
+      const portfolioIntent = ensureString(profile.portfolio_analysis_intent) as ConversationData['portfolioAnalysisIntent'];
+      if (portfolioIntent) {
+        normalized.portfolioAnalysisIntent = portfolioIntent;
+      }
+
+      const startingIntent = ensureString(profile.initial_intent) as ConversationData['initialIntent'];
+      if (startingIntent) {
+        normalized.initialIntent = startingIntent;
+      }
+
       const currentPortfolioValue = ensureNumber(profile.current_portfolio_value);
       if (typeof currentPortfolioValue === 'number') {
         normalized.currentPortfolioValue = currentPortfolioValue.toString();
@@ -2207,6 +2323,12 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         investment_goal: mergedConversationData.investmentGoal || 'growth',
         risk_tolerance: mergedConversationData.riskTolerance || null,
         investment_experience: investmentExperienceLevel,
+        analysis_focus: mergedConversationData.analysisFocus || null,
+        analysis_depth: mergedConversationData.analysisDepth || null,
+        analysis_timeframe: mergedConversationData.analysisTimeframe || null,
+        case_profile: mergedConversationData.caseProfile || null,
+        portfolio_analysis_intent: mergedConversationData.portfolioAnalysisIntent || null,
+        initial_intent: mergedConversationData.initialIntent || null,
         sector_interests: sectorInterestsForProfile,
         current_holdings: mergedConversationData.currentHoldings || [],
         current_allocation: currentAllocationValue,

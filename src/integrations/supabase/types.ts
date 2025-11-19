@@ -1651,16 +1651,22 @@ export type Database = {
           activity_preference: string | null
           age: number | null
           annual_income: number | null
+          analysis_depth: string | null
+          analysis_focus: string | null
+          analysis_timeframe: string | null
           control_importance: number | null
           created_at: string
+          current_portfolio_strategy: string | null
           current_allocation: Json | null
           current_holdings: Json | null
           current_portfolio_value: number | null
+          case_profile: string | null
           emergency_buffer_months: number | null
           has_children: boolean | null
           has_loans: boolean | null
           housing_situation: string | null
           id: string
+          initial_intent: string | null
           investment_experience: string | null
           investment_goal: string | null
           investment_horizon: string | null
@@ -1670,9 +1676,17 @@ export type Database = {
           loan_details: string | null
           market_crash_reaction: string | null
           monthly_investment_amount: number | null
+          optimization_diversification_focus: string[] | null
+          optimization_goals: string[] | null
+          optimization_preference: string | null
+          optimization_risk_focus: string | null
+          optimization_timeline: string | null
           overexposure_awareness: string | null
           panic_selling_history: boolean | null
           portfolio_change_frequency: string | null
+          portfolio_analysis_intent: string | null
+          portfolio_help_focus: string | null
+          preferred_assets: string[] | null
           preferred_stock_count: number | null
           risk_comfort_level: number | null
           risk_tolerance: string | null
@@ -1686,16 +1700,22 @@ export type Database = {
           activity_preference?: string | null
           age?: number | null
           annual_income?: number | null
+          analysis_depth?: string | null
+          analysis_focus?: string | null
+          analysis_timeframe?: string | null
           control_importance?: number | null
           created_at?: string
+          current_portfolio_strategy?: string | null
           current_allocation?: Json | null
           current_holdings?: Json | null
           current_portfolio_value?: number | null
+          case_profile?: string | null
           emergency_buffer_months?: number | null
           has_children?: boolean | null
           has_loans?: boolean | null
           housing_situation?: string | null
           id?: string
+          initial_intent?: string | null
           investment_experience?: string | null
           investment_goal?: string | null
           investment_horizon?: string | null
@@ -1705,9 +1725,17 @@ export type Database = {
           loan_details?: string | null
           market_crash_reaction?: string | null
           monthly_investment_amount?: number | null
+          optimization_diversification_focus?: string[] | null
+          optimization_goals?: string[] | null
+          optimization_preference?: string | null
+          optimization_risk_focus?: string | null
+          optimization_timeline?: string | null
           overexposure_awareness?: string | null
           panic_selling_history?: boolean | null
           portfolio_change_frequency?: string | null
+          portfolio_analysis_intent?: string | null
+          portfolio_help_focus?: string | null
+          preferred_assets?: string[] | null
           preferred_stock_count?: number | null
           risk_comfort_level?: number | null
           risk_tolerance?: string | null
@@ -1721,16 +1749,22 @@ export type Database = {
           activity_preference?: string | null
           age?: number | null
           annual_income?: number | null
+          analysis_depth?: string | null
+          analysis_focus?: string | null
+          analysis_timeframe?: string | null
           control_importance?: number | null
           created_at?: string
+          current_portfolio_strategy?: string | null
           current_allocation?: Json | null
           current_holdings?: Json | null
           current_portfolio_value?: number | null
+          case_profile?: string | null
           emergency_buffer_months?: number | null
           has_children?: boolean | null
           has_loans?: boolean | null
           housing_situation?: string | null
           id?: string
+          initial_intent?: string | null
           investment_experience?: string | null
           investment_goal?: string | null
           investment_horizon?: string | null
@@ -1740,9 +1774,17 @@ export type Database = {
           loan_details?: string | null
           market_crash_reaction?: string | null
           monthly_investment_amount?: number | null
+          optimization_diversification_focus?: string[] | null
+          optimization_goals?: string[] | null
+          optimization_preference?: string | null
+          optimization_risk_focus?: string | null
+          optimization_timeline?: string | null
           overexposure_awareness?: string | null
           panic_selling_history?: boolean | null
           portfolio_change_frequency?: string | null
+          portfolio_analysis_intent?: string | null
+          portfolio_help_focus?: string | null
+          preferred_assets?: string[] | null
           preferred_stock_count?: number | null
           risk_comfort_level?: number | null
           risk_tolerance?: string | null
