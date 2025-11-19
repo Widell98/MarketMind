@@ -31,21 +31,23 @@ const SHEET_CSV_URL =
 
 const WEEKLY_CASE_RESPONSE_FORMAT = {
   type: 'json_schema',
-  name: 'weekly_stock_case',
-  schema: {
-    type: 'object',
-    additionalProperties: true,
-    properties: {
-      title: { type: 'string' },
-      company_name: { type: 'string' },
-      description: { type: 'string' },
-      long_description: { type: 'string' },
-      sector: { type: 'string' },
-      market_cap: { type: 'string' },
-      pe_ratio: { type: 'string' },
-      dividend_yield: { type: 'string' },
+  json_schema: {
+    name: 'weekly_stock_case',
+    schema: {
+      type: 'object',
+      additionalProperties: true,
+      properties: {
+        title: { type: 'string' },
+        company_name: { type: 'string' },
+        description: { type: 'string' },
+        long_description: { type: 'string' },
+        sector: { type: 'string' },
+        market_cap: { type: 'string' },
+        pe_ratio: { type: 'string' },
+        dividend_yield: { type: 'string' },
+      },
+      required: ['title', 'company_name', 'description', 'long_description'],
     },
-    required: ['title', 'company_name', 'description', 'long_description'],
   },
 } as const;
 
