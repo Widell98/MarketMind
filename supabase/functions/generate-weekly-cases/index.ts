@@ -67,35 +67,52 @@ const extractJsonPayload = (content: string): string => {
 };
 
 const extractOpenAIResponseText = (data: any): string => {
-  if (Array.isArray(data?.output)) {
-    for (const item of data.output) {
-      if (!Array.isArray(item?.content)) continue;
+  const contentParts = Array.isArray(data?.output)
+    ? data.output.flatMap((item: any) =>
+        Array.isArray(item?.content) ? item.content : []
+      )
+    : [];
 
-      for (const part of item.content) {
-        const parsedPayload = (part as any)?.parsed ?? (part as any)?.json;
-        if (parsedPayload !== undefined) {
-          if (typeof parsedPayload === 'string') {
-            const trimmed = parsedPayload.trim();
-            if (trimmed) return trimmed;
-          } else {
-            try {
-              const serialized = JSON.stringify(parsedPayload);
-              if (serialized) return serialized;
-            } catch {
-              // ignore serialization issues
-            }
-          }
+  for (const part of contentParts) {
+    if ((part as any)?.parsed !== undefined) {
+      const parsedPayload = (part as any).parsed;
+      if (typeof parsedPayload === 'string') {
+        const trimmed = parsedPayload.trim();
+        if (trimmed) return trimmed;
+      } else if (parsedPayload !== null && parsedPayload !== undefined) {
+        try {
+          const serialized = JSON.stringify(parsedPayload);
+          if (serialized) return serialized;
+        } catch {
+          // ignore serialization issues
         }
       }
-
-      const text = item.content
-        .map((part: { text?: string }) => part?.text?.trim?.())
-        .filter(Boolean)
-        .join('\n')
-        .trim();
-
-      if (text) return text;
     }
+
+    if ((part as any)?.json !== undefined) {
+      const jsonPayload = (part as any).json;
+      if (typeof jsonPayload === 'string') {
+        const trimmed = jsonPayload.trim();
+        if (trimmed) return trimmed;
+      } else if (jsonPayload !== null && jsonPayload !== undefined) {
+        try {
+          const serialized = JSON.stringify(jsonPayload);
+          if (serialized) return serialized;
+        } catch {
+          // ignore serialization issues
+        }
+      }
+    }
+  }
+
+  const textPayload = contentParts
+    .map((part: { text?: string }) => (typeof part?.text === 'string' ? part.text.trim() : ''))
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+
+  if (textPayload) {
+    return textPayload;
   }
 
   if (Array.isArray(data?.output_text) && data.output_text.length > 0) {
@@ -103,7 +120,12 @@ const extractOpenAIResponseText = (data: any): string => {
     if (text) return text;
   }
 
-  return data?.choices?.[0]?.message?.content?.trim?.() ?? '';
+  const fallbackText = data?.choices?.[0]?.message?.content;
+  if (typeof fallbackText === 'string' && fallbackText.trim()) {
+    return fallbackText.trim();
+  }
+
+  return '';
 };
 
 const sanitizeNumber = (value: unknown): number | null => {
@@ -1075,8 +1097,8 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
           reasoning: {
             effort: 'low',
           },
+          text_format: WEEKLY_CASE_RESPONSE_FORMAT,
           text: {
-            format: WEEKLY_CASE_RESPONSE_FORMAT,
             verbosity: 'medium',
           },
         }),

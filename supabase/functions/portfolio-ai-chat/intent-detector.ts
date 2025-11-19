@@ -18,35 +18,52 @@ const toResponsesInput = (messages: ResponsesApiMessage[]) =>
   }));
 
 const extractResponsesApiText = (data: any): string => {
-  if (Array.isArray(data?.output)) {
-    for (const item of data.output) {
-      if (!Array.isArray(item?.content)) continue;
+  const contentParts = Array.isArray(data?.output)
+    ? data.output.flatMap((item: any) =>
+        Array.isArray(item?.content) ? item.content : []
+      )
+    : [];
 
-      for (const part of item.content) {
-        const parsedPayload = (part as any)?.parsed ?? (part as any)?.json;
-        if (parsedPayload !== undefined) {
-          if (typeof parsedPayload === 'string') {
-            const trimmed = parsedPayload.trim();
-            if (trimmed) return trimmed;
-          } else {
-            try {
-              const stringified = JSON.stringify(parsedPayload);
-              if (stringified) return stringified;
-            } catch {
-              // ignore and fall back to text handling
-            }
-          }
+  for (const part of contentParts) {
+    if ((part as any)?.parsed !== undefined) {
+      const parsedPayload = (part as any).parsed;
+      if (typeof parsedPayload === 'string') {
+        const trimmed = parsedPayload.trim();
+        if (trimmed) return trimmed;
+      } else if (parsedPayload !== null && parsedPayload !== undefined) {
+        try {
+          const stringified = JSON.stringify(parsedPayload);
+          if (stringified) return stringified;
+        } catch {
+          // ignore and fall back to text handling
         }
       }
-
-      const text = item.content
-        .map((part: { text?: string }) => part?.text?.trim?.())
-        .filter(Boolean)
-        .join('\n')
-        .trim();
-
-      if (text) return text;
     }
+
+    if ((part as any)?.json !== undefined) {
+      const jsonPayload = (part as any).json;
+      if (typeof jsonPayload === 'string') {
+        const trimmed = jsonPayload.trim();
+        if (trimmed) return trimmed;
+      } else if (jsonPayload !== null && jsonPayload !== undefined) {
+        try {
+          const stringified = JSON.stringify(jsonPayload);
+          if (stringified) return stringified;
+        } catch {
+          // ignore and fall back to text handling
+        }
+      }
+    }
+  }
+
+  const textPayload = contentParts
+    .map((part: { text?: string }) => (typeof part?.text === 'string' ? part.text.trim() : ''))
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+
+  if (textPayload) {
+    return textPayload;
   }
 
   if (Array.isArray(data?.output_text) && data.output_text.length > 0) {
@@ -54,7 +71,12 @@ const extractResponsesApiText = (data: any): string => {
     if (text) return text;
   }
 
-  return data?.choices?.[0]?.message?.content?.trim?.() ?? '';
+  const fallbackText = data?.choices?.[0]?.message?.content;
+  if (typeof fallbackText === 'string' && fallbackText.trim()) {
+    return fallbackText.trim();
+  }
+
+  return '';
 };
 
 const ALLOWED_INTENTS: IntentType[] = [
@@ -191,12 +213,12 @@ export const detectUserIntentWithOpenAI = async (
           reasoning: {
             effort: 'none',
           },
+          text_format: {
+            type: 'json_schema',
+            name: INTENT_SCHEMA.name,
+            schema: INTENT_SCHEMA.schema,
+          },
           text: {
-            format: {
-              type: 'json_schema',
-              name: INTENT_SCHEMA.name,
-              schema: INTENT_SCHEMA.schema,
-            },
             verbosity: 'low',
           },
           input: toResponsesInput(messages),
