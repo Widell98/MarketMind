@@ -3418,11 +3418,11 @@ serve(async (req) => {
       expertiseLevel: expertiseFromMemory ?? expertiseFromProfile ?? null,
       preferredResponseLength: preferredLength,
       respectRiskProfile: userExplicitRiskFocus,
-      includeTranslationDirective: shouldBridgeLanguage,
-      enableEmojiGuidance,
-      enableHeadingGuidance,
-      enforceTickerFormat,
-    });
+        includeTranslationDirective: shouldBridgeLanguage,
+        enableEmojiGuidance: includeEmojiGuidance,
+        enableHeadingGuidance: includeHeadingGuidance,
+        enforceTickerFormat,
+      });
 
     const headingDirective = buildHeadingDirectives({ intent: userIntent });
     const intentPrompt = buildIntentPrompt({
