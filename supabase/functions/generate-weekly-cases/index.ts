@@ -65,50 +65,38 @@ const extractJsonPayload = (content: string): string => {
 const extractOpenAIResponseText = (data: any): string => {
   if (Array.isArray(data?.output)) {
     for (const item of data.output) {
-      if (!Array.isArray(item?.content)) {
-        continue;
-      }
+      if (!Array.isArray(item?.content)) continue;
 
       for (const part of item.content) {
         const parsedPayload = (part as any)?.parsed ?? (part as any)?.json;
         if (parsedPayload !== undefined) {
           if (typeof parsedPayload === 'string') {
             const trimmed = parsedPayload.trim();
-            if (trimmed) {
-              return trimmed;
-            }
+            if (trimmed) return trimmed;
           } else {
             try {
               const serialized = JSON.stringify(parsedPayload);
-              if (serialized) {
-                return serialized;
-              }
+              if (serialized) return serialized;
             } catch {
               // ignore serialization issues
             }
           }
         }
       }
-    }
 
-    const flattenedText = data.output
-      ?.flatMap((item: any) => Array.isArray(item?.content) ? item.content : [])
-      ?.filter((contentPart: any) => typeof contentPart?.text === 'string')
-      ?.map((contentPart: any) => contentPart.text.trim())
-      ?.filter((textValue: string) => textValue.length > 0)
-      ?.join('\n')
-      ?.trim();
+      const text = item.content
+        .map((part: { text?: string }) => part?.text?.trim?.())
+        .filter(Boolean)
+        .join('\n')
+        .trim();
 
-    if (flattenedText) {
-      return flattenedText;
+      if (text) return text;
     }
   }
 
   if (Array.isArray(data?.output_text) && data.output_text.length > 0) {
     const text = data.output_text.join('\n').trim();
-    if (text) {
-      return text;
-    }
+    if (text) return text;
   }
 
   return data?.choices?.[0]?.message?.content?.trim?.() ?? '';
@@ -1078,12 +1066,15 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
         },
         body: JSON.stringify({
           model: CASE_MODEL,
-          input: promptMessages,
+          input: toResponsesInput(promptMessages),
           max_output_tokens: 500,
           reasoning: {
             effort: 'low',
           },
-          text_format: WEEKLY_CASE_RESPONSE_FORMAT,
+          text: {
+            format: WEEKLY_CASE_RESPONSE_FORMAT,
+            verbosity: 'medium',
+          },
         }),
       });
 

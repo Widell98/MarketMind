@@ -17,53 +17,52 @@ const INLINE_INTENT_MODEL = Deno.env.get('OPENAI_INTENT_MODEL')
 
 type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
+const toResponsesInput = (messages: ResponsesApiMessage[]) =>
+  messages.map((m) => ({
+    role: m.role,
+    content: [
+      {
+        type: 'input_text' as const,
+        text: m.content,
+      },
+    ],
+  }));
+
 const extractResponsesApiText = (data: any): string => {
   if (Array.isArray(data?.output)) {
     for (const item of data.output) {
-      if (!Array.isArray(item?.content)) {
-        continue;
-      }
+      if (!Array.isArray(item?.content)) continue;
 
       for (const part of item.content) {
         const parsedPayload = (part as any)?.parsed ?? (part as any)?.json;
         if (parsedPayload !== undefined) {
           if (typeof parsedPayload === 'string') {
             const trimmed = parsedPayload.trim();
-            if (trimmed) {
-              return trimmed;
-            }
+            if (trimmed) return trimmed;
           } else {
             try {
               const stringified = JSON.stringify(parsedPayload);
-              if (stringified) {
-                return stringified;
-              }
+              if (stringified) return stringified;
             } catch {
-              // ignore JSON stringify errors and continue
+              // ignore serialization errors
             }
           }
         }
       }
-    }
 
-    const flattenedText = data.output
-      ?.flatMap((item: any) => Array.isArray(item?.content) ? item.content : [])
-      ?.filter((contentPart: any) => typeof contentPart?.text === 'string')
-      ?.map((contentPart: any) => contentPart.text.trim())
-      ?.filter((textValue: string) => textValue.length > 0)
-      ?.join('\n')
-      ?.trim();
+      const text = item.content
+        .map((part: { text?: string }) => part?.text?.trim?.())
+        .filter(Boolean)
+        .join('\n')
+        .trim();
 
-    if (flattenedText) {
-      return flattenedText;
+      if (text) return text;
     }
   }
 
   if (Array.isArray(data?.output_text) && data.output_text.length > 0) {
     const text = data.output_text.join('\n').trim();
-    if (text) {
-      return text;
-    }
+    if (text) return text;
   }
 
   return data?.choices?.[0]?.message?.content?.trim?.() ?? '';
@@ -1012,15 +1011,15 @@ const evaluateNewsIntentWithOpenAI = async ({
         reasoning: {
           effort: 'none',
         },
-        text_format: {
-          type: 'json_schema',
-          name: NEWS_INTENT_SCHEMA.name,
-          schema: NEWS_INTENT_SCHEMA.schema,
-        },
         text: {
+          format: {
+            type: 'json_schema',
+            name: NEWS_INTENT_SCHEMA.name,
+            schema: NEWS_INTENT_SCHEMA.schema,
+          },
           verbosity: 'low',
         },
-        input: messages,
+        input: toResponsesInput(messages),
       }),
     });
 
@@ -1137,15 +1136,15 @@ const evaluateStockIntentWithOpenAI = async ({
         reasoning: {
           effort: 'none',
         },
-        text_format: {
-          type: 'json_schema',
-          name: STOCK_INTENT_SCHEMA.name,
-          schema: STOCK_INTENT_SCHEMA.schema,
-        },
         text: {
+          format: {
+            type: 'json_schema',
+            name: STOCK_INTENT_SCHEMA.name,
+            schema: STOCK_INTENT_SCHEMA.schema,
+          },
           verbosity: 'low',
         },
-        input: messages,
+        input: toResponsesInput(messages),
       }),
     });
 

@@ -14,6 +14,17 @@ const REPORT_MODEL = Deno.env.get('OPENAI_REPORT_MODEL')
 
 type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
+const toResponsesInput = (messages: ResponsesApiMessage[]) =>
+  messages.map((m) => ({
+    role: m.role,
+    content: [
+      {
+        type: 'input_text' as const,
+        text: m.content,
+      },
+    ],
+  }));
+
 type GenerateReportSummaryPayload = {
   company_name?: string | null;
   report_title?: string | null;
@@ -40,50 +51,38 @@ type OpenAIResponse = {
 const extractOpenAIResponseText = (data: OpenAIResponse): string => {
   if (Array.isArray(data?.output)) {
     for (const item of data.output) {
-      if (!Array.isArray(item?.content)) {
-        continue;
-      }
+      if (!Array.isArray(item?.content)) continue;
 
       for (const part of item.content) {
         const parsedPayload = (part as any)?.parsed ?? (part as any)?.json;
         if (parsedPayload !== undefined) {
           if (typeof parsedPayload === 'string') {
             const trimmed = parsedPayload.trim();
-            if (trimmed) {
-              return trimmed;
-            }
+            if (trimmed) return trimmed;
           } else {
             try {
               const serialized = JSON.stringify(parsedPayload);
-              if (serialized) {
-                return serialized;
-              }
+              if (serialized) return serialized;
             } catch {
               // ignore serialization issues
             }
           }
         }
       }
-    }
 
-    const flattenedText = data.output
-      ?.flatMap((item: any) => Array.isArray(item?.content) ? item.content : [])
-      ?.filter((contentPart: any) => typeof contentPart?.text === 'string')
-      ?.map((contentPart: any) => contentPart.text.trim())
-      ?.filter((textValue: string) => textValue.length > 0)
-      ?.join('\n')
-      ?.trim();
+      const text = item.content
+        .map((part: { text?: string }) => part?.text?.trim?.())
+        .filter(Boolean)
+        .join('\n')
+        .trim();
 
-    if (flattenedText) {
-      return flattenedText;
+      if (text) return text;
     }
   }
 
   if (Array.isArray(data?.output_text) && data.output_text.length > 0) {
     const text = data.output_text.join('\n').trim();
-    if (text) {
-      return text;
-    }
+    if (text) return text;
   }
 
   return data?.choices?.[0]?.message?.content?.trim?.() ?? '';
@@ -459,34 +458,34 @@ serve(async (req) => {
     reportTitleHint,
   });
 
-  try {
-    const promptMessages: ResponsesApiMessage[] = [
-      {
-        role: 'system',
-        content: 'Du är en erfaren finansanalytiker som levererar koncisa rapportanalyser på svenska och svarar alltid med giltig JSON.',
-      },
-      { role: 'user', content: prompt },
-    ];
+    try {
+      const promptMessages: ResponsesApiMessage[] = [
+        {
+          role: 'system',
+          content: 'Du är en erfaren finansanalytiker som levererar koncisa rapportanalyser på svenska och svarar alltid med giltig JSON.',
+        },
+        { role: 'user', content: prompt },
+      ];
 
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${openAIApiKey}`,
-      },
-      body: JSON.stringify({
-        model: REPORT_MODEL,
-        max_output_tokens: 600,
-        reasoning: {
-          effort: "low",
+      const response = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openAIApiKey}`,
         },
-        text_format: REPORT_RESPONSE_FORMAT,
-        text: {
-          verbosity: "medium",
-        },
-        input: promptMessages,
-      }),
-    });
+        body: JSON.stringify({
+          model: REPORT_MODEL,
+          max_output_tokens: 600,
+          reasoning: {
+            effort: "low",
+          },
+          text: {
+            format: REPORT_RESPONSE_FORMAT,
+            verbosity: "medium",
+          },
+          input: toResponsesInput(promptMessages),
+        }),
+      });
 
     if (!response.ok) {
       const errorText = await response.text();
