@@ -205,9 +205,9 @@ const buildPrompt = (
 
     const summaryStyleGuidelines = [
       "Sammanfattningen ska bestå av 4–5 meningar som bildar ett sammanhållet stycke utan punktlistor.",
-      "Inled med en kontextualiserande mening om bolagets övergripande läge eller tema i rapporten.",
-      "Följ upp med siffror eller förändringar och förklara kort vad som drev utfallet.",
-      "Använd övergångar som ‘Vidare’, ‘Dessutom’ eller ‘Detta innebär att’ för att skapa en tydlig röd tråd.",
+      "Börja med en fokuserad mening som radar upp 2–3 nyckelsiffror (t.ex. omsättning, EBIT, kassaflöde) med både nivå och förändring innan du går in på resonemanget.",
+      "Följ därefter upp med en kontextualiserande mening om vad som drev utfallet och hur siffrorna hänger ihop.",
+      "Använd övergångar som ‘Vidare’, ‘Dessutom’ eller ‘Detta innebär att’ för att skapa en tydlig röd tråd och växla till en mer förklarande text i mening tre och framåt.",
       "Avsluta med en helhetsbedömning eller nästa steg som nämns i rapporten, utan egna spekulationer.",
     ].join("\n");
 

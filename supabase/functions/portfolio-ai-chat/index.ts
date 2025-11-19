@@ -223,7 +223,8 @@ OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
   document_summary: `DOKUMENTSAMMANFATTNING:
 - Utgå strikt från användarens uppladdade dokument som primär källa och läs igenom hela underlaget innan du svarar.
 - Identifiera dokumentets syfte, struktur och kärninsikter och väv in 3–4 centrala siffror direkt i texten.
-- Skriv sammanfattningen som 4–6 meningar i löpande styckeform: börja med en kontextmening, följ upp med vad som drev utfallet och använd övergångar som "Vidare" eller "Dessutom".
+- Inled alltid svaret med en fokuserad mening som radar upp de viktigaste nyckeltalen (nivå + förändring) innan du övergår till analyserande text.
+- Skriv sammanfattningen som 4–6 meningar i löpande styckeform: låt mening två och framåt förklara vad som drev utfallet och använd övergångar som "Vidare" eller "Dessutom".
 - Avsluta med dokumentets slutsats, VD:ns budskap eller nästa steg – om inget finns ska du säga att ingen VD-kommentar identifierades.
 - Undvik punktlistor helt och använd rubriker endast om dokumentet självt kräver det och fyll dem då direkt med löpande text.
 - Återge inte långa citat – destillera och tolka innehållet i en professionell ton.
