@@ -4,7 +4,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { parse } from "https://deno.land/std@0.168.0/encoding/csv.ts";
 import { jsonrepair } from 'https://esm.sh/jsonrepair@3.6.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
-import { OPENAI_RESPONSES_URL, extractResponseText } from '../_shared/openai.ts';
+import { OPENAI_RESPONSES_URL, extractResponseText } from '../../lib/openai.ts';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const CASE_MODEL = Deno.env.get('OPENAI_CASE_MODEL')

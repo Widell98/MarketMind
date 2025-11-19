@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import { OPENAI_RESPONSES_URL, extractResponseText, parseResponsesSseData } from '../_shared/openai.ts';
+import { OPENAI_RESPONSES_URL, extractResponseText, parseResponsesSseData } from '../../lib/openai.ts';
 import { IntentType } from './intent-types.ts';
 import { detectUserIntentWithOpenAI } from './intent-detector.ts';
 const corsHeaders = {

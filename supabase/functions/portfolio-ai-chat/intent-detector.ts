@@ -1,4 +1,4 @@
-import { OPENAI_RESPONSES_URL, extractResponseText } from '../_shared/openai.ts';
+import { OPENAI_RESPONSES_URL, extractResponseText } from '../../lib/openai.ts';
 import { IntentDetectionResult, IntentType } from './intent-types.ts';
 
 const INTENT_MODEL = Deno.env.get('OPENAI_INTENT_MODEL')
