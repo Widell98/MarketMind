@@ -58,7 +58,7 @@ const Privacy: React.FC = () => {
                 <h2>5. Lagring av data</h2>
                 <p>
                   Vi använder Supabase (EU/EES-hosting) för datalagring. AI-analyser genereras via OpenAI
-                  GPT-4o och Tavily. Endast textdata som rör analysinnehåll skickas – inga personuppgifter
+                  GPT-5.1 och Tavily. Endast textdata som rör analysinnehåll skickas – inga personuppgifter
                   eller betalningsdata. Vi sparar uppgifter så länge kontot är aktivt eller enligt lagkrav
                   (t.ex. bokföring i 7 år).
                 </p>

@@ -8,6 +8,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const REPORT_MODEL = Deno.env.get('OPENAI_REPORT_MODEL')
+  || Deno.env.get('OPENAI_MODEL')
+  || 'gpt-5.1';
+
+type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
 type GenerateReportSummaryPayload = {
   company_name?: string | null;
   report_title?: string | null;
@@ -20,11 +26,77 @@ type GenerateReportSummaryPayload = {
 };
 
 type OpenAIResponse = {
+  output?: Array<{
+    content?: Array<{ text?: string }>;
+  }>;
+  output_text?: string[];
   choices?: Array<{
     message?: {
       content?: string;
     };
   }>;
+};
+
+const extractOpenAIResponseText = (data: OpenAIResponse): string => {
+  const contentParts = Array.isArray(data?.output)
+    ? data.output.flatMap((item: any) =>
+        Array.isArray(item?.content) ? item.content : []
+      )
+    : [];
+
+  for (const part of contentParts) {
+    if ((part as any)?.parsed !== undefined) {
+      const parsedPayload = (part as any).parsed;
+      if (typeof parsedPayload === 'string') {
+        const trimmed = parsedPayload.trim();
+        if (trimmed) return trimmed;
+      } else if (parsedPayload !== null && parsedPayload !== undefined) {
+        try {
+          const serialized = JSON.stringify(parsedPayload);
+          if (serialized) return serialized;
+        } catch {
+          // ignore serialization issues
+        }
+      }
+    }
+
+    if ((part as any)?.json !== undefined) {
+      const jsonPayload = (part as any).json;
+      if (typeof jsonPayload === 'string') {
+        const trimmed = jsonPayload.trim();
+        if (trimmed) return trimmed;
+      } else if (jsonPayload !== null && jsonPayload !== undefined) {
+        try {
+          const serialized = JSON.stringify(jsonPayload);
+          if (serialized) return serialized;
+        } catch {
+          // ignore serialization issues
+        }
+      }
+    }
+  }
+
+  const textPayload = contentParts
+    .map((part: { text?: string }) => (typeof part?.text === 'string' ? part.text.trim() : ''))
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+
+  if (textPayload) {
+    return textPayload;
+  }
+
+  if (Array.isArray(data?.output_text) && data.output_text.length > 0) {
+    const text = data.output_text.join('\n').trim();
+    if (text) return text;
+  }
+
+  const fallbackText = data?.choices?.[0]?.message?.content;
+  if (typeof fallbackText === 'string' && fallbackText.trim()) {
+    return fallbackText.trim();
+  }
+
+  return '';
 };
 
 const extractJsonPayload = (content: string): string => {
@@ -58,6 +130,38 @@ const normalizeKeyPoints = (value: unknown): string[] => {
 
   return [];
 };
+
+const REPORT_RESPONSE_FORMAT = {
+  type: 'json_schema',
+  name: 'report_summary_response',
+  schema: {
+    type: 'object',
+    additionalProperties: true,
+    properties: {
+      company_name: { type: 'string' },
+      report_title: { type: 'string' },
+      summary: { type: 'string' },
+      key_points: {
+        type: 'array',
+        items: { type: 'string' },
+      },
+      key_metrics: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            label: { type: 'string' },
+            value: { type: 'string' },
+            trend: { type: 'string' },
+          },
+          required: ['label', 'value'],
+        },
+      },
+      ceo_commentary: { type: 'string' },
+    },
+    required: ['summary', 'key_points'],
+  },
+} as const;
 
 const normalizeKeyMetrics = (value: unknown): ParsedMetric[] => {
   if (Array.isArray(value)) {
@@ -365,29 +469,34 @@ serve(async (req) => {
     reportTitleHint,
   });
 
-  try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${openAIApiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.6,
-        max_tokens: 600,
-        messages: [
-          {
-            role: "system",
-            content: "Du är en erfaren finansanalytiker som levererar koncisa rapportanalyser på svenska och svarar alltid med giltig JSON.",
+    try {
+      const promptMessages: ResponsesApiMessage[] = [
+        {
+          role: 'system',
+          content: 'Du är en erfaren finansanalytiker som levererar koncisa rapportanalyser på svenska och svarar alltid med giltig JSON.',
+        },
+        { role: 'user', content: prompt },
+      ];
+
+      const response = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openAIApiKey}`,
+        },
+        body: JSON.stringify({
+          model: REPORT_MODEL,
+          max_output_tokens: 600,
+          reasoning: {
+            effort: "low",
           },
-          {
-            role: "user",
-            content: prompt,
+          text: {
+            format: REPORT_RESPONSE_FORMAT,
+            verbosity: "medium",
           },
-        ],
-      }),
-    });
+          input: promptMessages,
+        }),
+      });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -399,7 +508,7 @@ serve(async (req) => {
     }
 
     const data = (await response.json()) as OpenAIResponse;
-    const content = data?.choices?.[0]?.message?.content;
+    const content = extractOpenAIResponseText(data);
 
     if (!content) {
       console.error("OpenAI response missing content", data);

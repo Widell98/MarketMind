@@ -8,6 +8,70 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
+const extractResponsesApiText = (data: any): string => {
+  const contentParts = Array.isArray(data?.output)
+    ? data.output.flatMap((item: any) =>
+        Array.isArray(item?.content) ? item.content : []
+      )
+    : [];
+
+  for (const part of contentParts) {
+    if ((part as any)?.parsed !== undefined) {
+      const parsedPayload = (part as any).parsed;
+      if (typeof parsedPayload === 'string') {
+        const trimmed = parsedPayload.trim();
+        if (trimmed) return trimmed;
+      } else if (parsedPayload !== null && parsedPayload !== undefined) {
+        try {
+          const stringified = JSON.stringify(parsedPayload);
+          if (stringified) return stringified;
+        } catch {
+          // ignore serialization errors
+        }
+      }
+    }
+
+    if ((part as any)?.json !== undefined) {
+      const jsonPayload = (part as any).json;
+      if (typeof jsonPayload === 'string') {
+        const trimmed = jsonPayload.trim();
+        if (trimmed) return trimmed;
+      } else if (jsonPayload !== null && jsonPayload !== undefined) {
+        try {
+          const stringified = JSON.stringify(jsonPayload);
+          if (stringified) return stringified;
+        } catch {
+          // ignore serialization errors
+        }
+      }
+    }
+  }
+
+  const textPayload = contentParts
+    .map((part: { text?: string }) => (typeof part?.text === 'string' ? part.text.trim() : ''))
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+
+  if (textPayload) {
+    return textPayload;
+  }
+
+  if (Array.isArray(data?.output_text) && data.output_text.length > 0) {
+    const text = data.output_text.join('\n').trim();
+    if (text) return text;
+  }
+
+  const fallbackText = data?.choices?.[0]?.message?.content;
+  if (typeof fallbackText === 'string' && fallbackText.trim()) {
+    return fallbackText.trim();
+  }
+
+  return '';
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -20,7 +84,18 @@ serve(async (req) => {
     const requestBody = await req.json();
     console.log('Request body received:', JSON.stringify(requestBody, null, 2));
     
-    const { message, userId, systemPrompt, model = 'gpt-4o-mini', maxTokens = 50, temperature = 0.3 } = requestBody;
+    const defaultModel = Deno.env.get('OPENAI_REASONING_MODEL')
+      || Deno.env.get('OPENAI_MODEL')
+      || 'gpt-5.1';
+
+    const {
+      message,
+      userId,
+      systemPrompt,
+      model = defaultModel,
+      maxTokens = 50,
+      temperature = 0.3,
+    } = requestBody;
 
     console.log('Quick AI Assistant called with:', { 
       message: message?.substring(0, 50) + '...', 
@@ -60,7 +135,7 @@ Exempel:
 
 Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
 
-    const messages = [
+    const messages: ResponsesApiMessage[] = [
       {
         role: 'system',
         content: enhancedSystemPrompt
@@ -74,10 +149,17 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
     console.log('=== CALLING OPENAI API ===');
     console.log('Model:', model);
     console.log('Max tokens:', maxTokens);
-    console.log('Temperature:', temperature);
+    console.log('Legacy temperature input (ignored for GPT-5 modeller):', temperature);
     console.log('System prompt length:', systemPrompt?.length);
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const reasoningEffort = maxTokens >= 150 ? 'medium' : 'low';
+    const verbosity: 'low' | 'medium' | 'high' = maxTokens <= 60
+      ? 'low'
+      : maxTokens >= 150
+        ? 'high'
+        : 'medium';
+
+    const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -85,9 +167,14 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
       },
       body: JSON.stringify({
         model: model,
-        messages: messages,
-        max_tokens: maxTokens,
-        temperature: temperature,
+        input: messages,
+        max_output_tokens: maxTokens,
+        reasoning: {
+          effort: reasoningEffort,
+        },
+        text: {
+          verbosity,
+        },
       }),
     });
 
@@ -119,9 +206,37 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
     }
 
     const data = await response.json();
-    console.log('OpenAI response received, choices:', data.choices?.length);
-    
-    const aiResponse = data.choices[0].message.content;
+    console.log('OpenAI response received');
+
+    const aiResponse = extractResponsesApiText(data);
+
+    const reasoningSegments: string[] = [];
+    if (Array.isArray(data?.output)) {
+      for (const item of data.output) {
+        const content = Array.isArray(item?.content) ? item.content : [];
+        for (const part of content) {
+          if (Array.isArray(part?.reasoning_content)) {
+            for (const reasoning of part.reasoning_content) {
+              if (typeof reasoning?.text === 'string' && reasoning.text.trim()) {
+                reasoningSegments.push(reasoning.text.trim());
+              }
+            }
+          }
+          if (typeof part?.text === 'string' && part?.type === 'reasoning' && part.text.trim()) {
+            reasoningSegments.push(part.text.trim());
+          }
+        }
+        if (Array.isArray(item?.reasoning_content)) {
+          for (const reasoning of item.reasoning_content) {
+            if (typeof reasoning?.text === 'string' && reasoning.text.trim()) {
+              reasoningSegments.push(reasoning.text.trim());
+            }
+          }
+        }
+      }
+    }
+
+    const reasoningText = reasoningSegments.join('\n');
     console.log('AI response length:', aiResponse?.length);
     console.log('AI response:', aiResponse);
 
@@ -144,11 +259,14 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
     console.log('=== FUNCTION COMPLETED SUCCESSFULLY ===');
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         response: aiResponse,
+        reasoning: reasoningText || null,
         success: true,
         model: model,
-        tokens_used: maxTokens
+        tokens_used: data?.usage?.output_tokens ?? data?.usage?.completion_tokens ?? maxTokens,
+        usage: data?.usage ?? null,
+        response_id: data?.id ?? null
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
