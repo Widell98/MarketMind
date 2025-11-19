@@ -7,6 +7,32 @@ const STRATEGY_MODEL = Deno.env.get('OPENAI_STRATEGY_MODEL')
   || Deno.env.get('OPENAI_MODEL')
   || 'gpt-5.1';
 
+const extractOpenAIResponseText = (data: any): string => {
+  if (Array.isArray(data?.output)) {
+    for (const item of data.output) {
+      if (Array.isArray(item?.content)) {
+        const text = item.content
+          .map((part: { text?: string }) => part?.text?.trim?.())
+          .filter(Boolean)
+          .join('\n')
+          .trim();
+        if (text) {
+          return text;
+        }
+      }
+    }
+  }
+
+  if (Array.isArray(data?.output_text) && data.output_text.length > 0) {
+    const text = data.output_text.join('\n').trim();
+    if (text) {
+      return text;
+    }
+  }
+
+  return data?.choices?.[0]?.message?.content?.trim?.() ?? '';
+};
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -132,56 +158,56 @@ const GROWTH_TICKERS = /NVDA|AAPL|MSFT|GOOGL|META|AMZN|TSLA|ADBE|CRM|SHOP|SNOW|E
 
 const PORTFOLIO_RESPONSE_FORMAT = {
   type: 'json_schema',
-  json_schema: {
-    name: 'portfolio_strategy_response',
-    schema: {
-      type: 'object',
-      additionalProperties: true,
-      properties: {
-        plan: {
-          type: 'object',
-          additionalProperties: true,
-          properties: {
-            action_summary: { type: 'string' },
-            risk_alignment: { type: 'string' },
-            next_steps: {
-              type: 'array',
-              items: { type: 'string' },
-              minItems: 1,
-            },
-            recommended_assets: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  name: { type: 'string' },
-                  ticker: { type: 'string' },
-                  allocation_percent: { type: 'number' },
-                  rationale: { type: 'string' },
-                },
-                required: ['name'],
+  name: 'portfolio_strategy_response',
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      plan: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          action_summary: { type: 'string' },
+          risk_alignment: { type: 'string' },
+          next_steps: {
+            type: 'array',
+            items: { type: 'string' },
+            minItems: 1,
+          },
+          recommended_assets: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                name: { type: 'string' },
+                ticker: { type: 'string' },
+                allocation_percent: { type: 'number' },
+                rationale: { type: 'string' },
               },
+              required: ['name'],
             },
           },
         },
-        recommended_assets: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              name: { type: 'string' },
-              symbol: { type: 'string' },
-              allocation: { type: 'number' },
-              sector: { type: 'string' },
-              reasoning: { type: 'string' },
-            },
-            required: ['name'],
+      },
+      recommended_assets: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            name: { type: 'string' },
+            symbol: { type: 'string' },
+            allocation: { type: 'number' },
+            sector: { type: 'string' },
+            reasoning: { type: 'string' },
           },
+          required: ['name'],
         },
-        complementary_ideas: {
-          type: 'array',
-          items: { type: 'string' },
-        },
+      },
+      complementary_ideas: {
+        type: 'array',
+        items: { type: 'string' },
       },
     },
   },
@@ -818,7 +844,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och s√§kerst√
 
     console.log('Calling OpenAI API with', STRATEGY_MODEL, '...');
 
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    const openAIResponse = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -826,10 +852,15 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och s√§kerst√
       },
       body: JSON.stringify({
         model: STRATEGY_MODEL,
-        messages,
-        temperature: 0.85,
-        max_completion_tokens: 2500,
-        response_format: PORTFOLIO_RESPONSE_FORMAT,
+        input: messages,
+        max_output_tokens: 2500,
+        reasoning: {
+          effort: 'medium',
+        },
+        text: {
+          format: PORTFOLIO_RESPONSE_FORMAT,
+          verbosity: 'high',
+        },
       }),
     });
 
@@ -846,7 +877,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och s√§kerst√
     }
 
     const openAIData = await openAIResponse.json();
-    const aiRecommendationsRaw = openAIData.choices?.[0]?.message?.content?.trim() || '';
+    const aiRecommendationsRaw = extractOpenAIResponseText(openAIData);
 
     console.log('OpenAI full response:', JSON.stringify(openAIData, null, 2));
     console.log('AI recommendations received:', aiRecommendationsRaw);
