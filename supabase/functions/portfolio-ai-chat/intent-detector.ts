@@ -162,7 +162,9 @@ export const detectUserIntentWithOpenAI = async (
       body: JSON.stringify({
         model: INTENT_MODEL,
         temperature: 0.2,
-        response_format: { type: 'json_schema', json_schema: INTENT_SCHEMA },
+        text: {
+          format: { type: 'json_schema', json_schema: INTENT_SCHEMA },
+        },
         input: messages,
       }),
     });

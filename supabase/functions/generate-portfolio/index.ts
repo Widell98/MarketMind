@@ -855,7 +855,9 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och s√§kerst√
         input: messages,
         temperature: 0.85,
         max_output_tokens: 2500,
-        response_format: PORTFOLIO_RESPONSE_FORMAT,
+        text: {
+          format: PORTFOLIO_RESPONSE_FORMAT,
+        },
       }),
     });
 

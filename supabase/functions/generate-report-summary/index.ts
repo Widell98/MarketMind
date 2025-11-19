@@ -444,7 +444,9 @@ serve(async (req) => {
         model: REPORT_MODEL,
         temperature: 0.6,
         max_output_tokens: 600,
-        response_format: REPORT_RESPONSE_FORMAT,
+        text: {
+          format: REPORT_RESPONSE_FORMAT,
+        },
         input: [
           {
             role: "system",

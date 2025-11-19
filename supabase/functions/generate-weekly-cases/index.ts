@@ -1051,7 +1051,9 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
           ],
           temperature: 0.7,
           max_output_tokens: 500,
-          response_format: WEEKLY_CASE_RESPONSE_FORMAT,
+          text: {
+            format: WEEKLY_CASE_RESPONSE_FORMAT,
+          },
         }),
       });
 
