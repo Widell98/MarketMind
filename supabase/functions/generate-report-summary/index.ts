@@ -154,44 +154,52 @@ const buildPrompt = (
         .join("\n")}\n\n`
     : "";
 
-    const objectives = [
-      "Läs igenom underlaget noggrant och identifiera följande:",
-      "",
-      "1. Bolagsnamn – exakt som det står i rapporten.",
-      "2. Rapporttitel – exempelvis “Q3 Interim Report 2025”, “Delårsrapport Q2 2025” eller “Annual Report 2024”.",
-      "3. Kärnbudskapet – 3–4 meningar som objektivt sammanfattar rapportens läge, baserat enbart på siffror och text från rapporten.",
-      "4. Nyckelsiffror – minst tre, direkt citerade från rapportens data. Exempel: Nettoomsättning, Net Sales, EBIT, EBITDA, Free Cash Flow, tillväxt %, organisk tillväxt, eller segmentdata. Etiketten ska alltid skrivas exakt som i rapporten.",
-      "5. Nyckelpunkter – 3–6 korta och konkreta observationer baserade på rapportens innehåll, utan egna slutsatser eller tolkningar.",
-      "6. VD-kommentar – om VD uttalar sig i dokumentet, sammanfatta kärnan i 1–2 meningar. Om ingen VD-kommentar finns: \"Ingen VD-kommentar identifierad\".",
-    ].join("\n");
+ const objectives = [
+  "Genomför följande uppgifter baserat uteslutande på fakta i rapporttexten:",
+  "",
+  "1. Identifiera bolagsnamnet – exakt som det förekommer i dokumentet (använd inte tolkningar).",
+  "2. Identifiera rapporttiteln – exakt enligt dokumentets rubrik eller formella titel.",
+  "3. Formulera en kondenserad och faktadriven sammanfattning (3–4 meningar) som beskriver rapportens kärnbudskap utan tolkningar eller spekulation.",
+  "4. Extrahera minst tre kvantitativa nyckelsiffror – etiketter och värden ska vara ordagranna från rapporten. Om rapporten anger förändringstal (t.ex. “+14% y/y”) ska detta placeras i fältet 'trend'.",
+  "5. Identifiera 3–6 objektiva datapunkter som framgår tydligt i rapportens text, exempelvis trender, segmentprestationer eller väsentliga händelser.",
+  "6. Sammanfatta VD-kommentaren i 1–2 meningar om en sådan sektion finns. Om ingen VD-kommentar förekommer ska värdet vara: \"Ingen VD-kommentar identifierad\".",
+].join("\n");
 
-    const importantNotes = [
-      "VIKTIGT:",
-      "- Hitta inte på siffror. Använd endast exakta värden som står i rapporten.",
-      "- Gissa inte bolagsnamn. Om det är oklart, använd det som står på rapportens första sida.",
-      "- Om rapporten innehåller flera segment (exempelvis Automotive, Games, Retail) får du använda segmentdata, men ange tydligt vilken kategori siffrorna gäller.",
-      "- Sammanfattningen ska vara kort, neutral, faktabaserad och enkel att använda i UI.",
-    ].join("\n");
+   const importantNotes = [
+  "VIKTIGA PRINCIPER:",
+  "- Hitta aldrig på siffror, etiketter eller trender. Alla nyckeltal måste förekomma ordagrant i rapporten.",
+  "- Gissa aldrig bolagsnamn eller rapporttitel. Om osäkerhet föreligger, använd exakt det som står tydligast i dokumentets inledning.",
+  "- Tolkningar, slutsatser, rekommendationer eller spekulativa utsagor är inte tillåtna.",
+  "- Om rapporten innehåller flera segment (exempelvis Retail, Automotive, Software), inkludera endast segmentdata om det uttryckligen anges.",
+  "- Sammanfattningen ska vara kort, tydlig, neutral och lämpad för ett professionellt finansiellt gränssnitt.",
+  "- All output måste vara strikt giltig JSON utan text före eller efter JSON-strukturen.",
+].join("\n");
 
-    const jsonFormat = [
-      "RETURNERA UTESLUTANDE FÖLJANDE GILTIGA JSON:",
-      "",
-      "{",
-      "  \"company_name\": \"identifierat bolagsnamn\",",
-      "  \"report_title\": \"identifierad rapporttitel\",",
-      "  \"summary\": \"3-4 meningar som summerar rapporten.\",",
-      "  \"key_metrics\": [",
-      "    { \"label\": \"Nettoförsäljning Q3\", \"value\": \"99,1 MSEK\", \"trend\": \"+25 % y/y\" }",
-      "  ],",
-      "  \"key_points\": [\"punkt\"],",
-      "  \"ceo_commentary\": \"1-2 meningar\"",
-      "}",
-      "",
-      `Underlag (${sourceDescriptor}):`,
-      "\"\"\"",
-      reportContent,
-      "\"\"\"",
-    ].join("\n");
+   const jsonFormat = [
+  "RETURNERA ENDAST FÖLJANDE GILTIGA JSON-STRUKTUR:",
+  "",
+  "{",
+  "  \"company_name\": \"...\",",
+  "  \"report_title\": \"...\",",
+  "  \"summary\": \"3–4 meningar som sammanfattar rapportens kärna.\",",
+  "  \"key_metrics\": [",
+  "    {",
+  "      \"label\": \"etikett exakt som i rapporten\",",
+  "      \"value\": \"värde exakt som i rapporten\",",
+  "      \"trend\": \"t.ex. +14% y/y om det förekommer\"",
+  "    }",
+  "  ],",
+  "  \"key_points\": [",
+  "    \"kort objektiv datapunkt baserad på rapportens innehåll\"",
+  "  ],",
+  "  \"ceo_commentary\": \"1–2 meningar eller 'Ingen VD-kommentar identifierad'\"",
+  "}",
+  "",
+  `UNDERLAG (${sourceDescriptor}):`,
+  "\"\"\"",
+  reportContent,
+  "\"\"\"",
+].join("\n");
 
     const promptSections = [
       "Du är en senior finansanalytiker som analyserar års- och kvartalsrapporter.",
