@@ -78,6 +78,70 @@ const buildBasePrompt = (options: BasePromptOptions): string => {
   return `${BASE_PROMPT}\n${personalizationLines.join('\n')}`;
 };
 
+const HEADING_VARIATIONS = {
+  recommendation: [
+    'Rekommendation',
+    'Strategi framåt',
+    'Fortsatt väg',
+  ],
+  risk: [
+    'Risker att bevaka',
+    'Riskbild',
+    'Nedåtrisker',
+  ],
+  news: [
+    'Marknadsöversikt',
+    'Nyhetsläget',
+    'Dagens fokus',
+  ],
+  actions: [
+    'Möjliga åtgärder',
+    'Att tänka på',
+    'Föreslagna steg',
+  ],
+} as const;
+
+const pickRandom = (items: readonly string[]): string => {
+  if (!items.length) {
+    return '';
+  }
+  return items[Math.floor(Math.random() * items.length)] ?? '';
+};
+
+type HeadingDirectiveInput = {
+  intent: IntentType;
+};
+
+const buildHeadingDirectives = ({ intent }: HeadingDirectiveInput): string => {
+  const directives: string[] = [];
+
+  if (intent === 'document_summary') {
+    const recommendationHeading = pickRandom(HEADING_VARIATIONS.recommendation);
+    const riskHeading = pickRandom(HEADING_VARIATIONS.risk);
+    directives.push(
+      '- Använd rubriker endast om dokumentet själv kräver det:',
+      `  • Möjlig rekommendationsrubrik: ${recommendationHeading}`,
+      `  • Möjlig riskrubrik: ${riskHeading}`,
+      '- Lämna helt rubrikerna om svaret blir mer naturligt i styckeform och nämn dem inte på annat sätt.'
+    );
+  } else if (intent === 'news_update' || intent === 'general_news') {
+    const newsHeading = pickRandom(HEADING_VARIATIONS.news);
+    const actionsHeading = pickRandom(HEADING_VARIATIONS.actions);
+    directives.push(
+      '- Använd rubriker bara om de hjälper läsaren – annars skriv löpande text:',
+      `  • Nyhetsrubrik att välja vid behov: ${newsHeading}`,
+      `  • Åtgärdsrubrik att välja vid behov: ${actionsHeading}`,
+      '- Hoppa helt över rubriker som du inte tänker använda direkt – inga referenser till tomma sektioner.'
+    );
+  }
+
+  if (directives.length === 0) {
+    return '';
+  }
+
+  return directives.join('\n');
+};
+
 const INTENT_PROMPTS: Record<IntentType, string> = {
   stock_analysis: `AKTIEANALYSUPPGIFT:
 - Anpassa alltid svarslängd och struktur efter användarens fråga.
@@ -144,26 +208,6 @@ OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
 - Undvik punktlistor helt och använd rubriker endast om dokumentet självt kräver det och fyll dem då direkt med löpande text.
 - Återge inte långa citat – destillera och tolka innehållet i en professionell ton.
 `,
-      `  • Möjlig rekommendationsrubrik: ${recommendationHeading}`,
-      `  • Möjlig riskrubrik: ${riskHeading}`,
-      '- Lämna helt rubrikerna om svaret blir mer naturligt i styckeform och nämn dem inte på annat sätt.'
-    );
-  } else if (intent === 'news_update' || intent === 'general_news') {
-    const newsHeading = pickRandom(HEADING_VARIATIONS.news);
-    const actionsHeading = pickRandom(HEADING_VARIATIONS.actions);
-    directives.push(
-      '- Använd rubriker bara om de hjälper läsaren – annars skriv löpande text:',
-      `  • Nyhetsrubrik att välja vid behov: ${newsHeading}`,
-      `  • Åtgärdsrubrik att välja vid behov: ${actionsHeading}`,
-      '- Hoppa helt över rubriker som du inte tänker använda direkt – inga referenser till tomma sektioner.'
-    );
-  }
-
-  if (directives.length === 0) {
-    return '';
-  }
-
-  return directives.join('\n');
 };
 
 type PersonalizationPromptInput = {
