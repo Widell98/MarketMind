@@ -1059,62 +1059,47 @@ const ChatPortfolioAdvisor = () => {
     return new Map(questions.map(question => [question.id, question]));
   }, [questions]);
 
-  const getMissingMandatoryQuestionId = useCallback((): string | null => {
-    const analysisIntentAnswer = conversationData.analysisIntent ?? conversationData.portfolioHelp;
-    const requirements = [
-      {
-        id: 'experienceLevel',
-        isComplete:
-          typeof conversationData.investmentExperienceLevel === 'string' &&
-          conversationData.investmentExperienceLevel.trim().length > 0,
-      },
-      {
-        id: 'hasPortfolio',
-        isComplete: typeof conversationData.hasCurrentPortfolio === 'boolean',
-      },
-      {
-        id: 'analysisFocus',
-        isComplete:
-          typeof analysisIntentAnswer === 'string' && analysisIntentAnswer.trim().length > 0,
-      },
-      {
-        id: 'goalRiskTime',
-        isComplete:
-          (typeof conversationData.goalHorizonBundle === 'string' &&
-            conversationData.goalHorizonBundle.trim().length > 0) ||
-          ((typeof conversationData.investmentGoal === 'string' &&
-            conversationData.investmentGoal.trim().length > 0) &&
-            (typeof conversationData.timeHorizon === 'string' &&
-              conversationData.timeHorizon.trim().length > 0) &&
-            (typeof conversationData.riskTolerance === 'string' &&
-              conversationData.riskTolerance.trim().length > 0)),
-      },
-      {
-        id: 'capitalCommitment',
-        isComplete:
-          (typeof conversationData.capitalRangeCode === 'string' &&
-            conversationData.capitalRangeCode.trim().length > 0) ||
-          (typeof conversationData.availableCapital === 'string' &&
-            conversationData.availableCapital.trim().length > 0) ||
-          (typeof conversationData.portfolioSize === 'string' && conversationData.portfolioSize.trim().length > 0),
-      },
-    ];
+  const getMissingMandatoryQuestionId = useCallback(
+    (dataOverride?: ConversationData): string | null => {
+      const data = dataOverride ?? conversationData;
+      const analysisIntentAnswer = data.analysisIntent ?? data.portfolioHelp;
+      const requirements = [
+        {
+          id: 'experienceLevel',
+          isComplete:
+            typeof data.investmentExperienceLevel === 'string' && data.investmentExperienceLevel.trim().length > 0,
+        },
+        {
+          id: 'hasPortfolio',
+          isComplete: typeof data.hasCurrentPortfolio === 'boolean',
+        },
+        {
+          id: 'analysisFocus',
+          isComplete:
+            typeof analysisIntentAnswer === 'string' && analysisIntentAnswer.trim().length > 0,
+        },
+        {
+          id: 'goalRiskTime',
+          isComplete:
+            (typeof data.goalHorizonBundle === 'string' && data.goalHorizonBundle.trim().length > 0) ||
+            ((typeof data.investmentGoal === 'string' && data.investmentGoal.trim().length > 0) &&
+              (typeof data.timeHorizon === 'string' && data.timeHorizon.trim().length > 0) &&
+              (typeof data.riskTolerance === 'string' && data.riskTolerance.trim().length > 0)),
+        },
+        {
+          id: 'capitalCommitment',
+          isComplete:
+            (typeof data.capitalRangeCode === 'string' && data.capitalRangeCode.trim().length > 0) ||
+            (typeof data.availableCapital === 'string' && data.availableCapital.trim().length > 0) ||
+            (typeof data.portfolioSize === 'string' && data.portfolioSize.trim().length > 0),
+        },
+      ];
 
-    const missingRequirement = requirements.find(requirement => !requirement.isComplete);
-    return missingRequirement?.id ?? null;
-  }, [
-    conversationData.analysisIntent,
-    conversationData.availableCapital,
-    conversationData.capitalRangeCode,
-    conversationData.goalHorizonBundle,
-    conversationData.hasCurrentPortfolio,
-    conversationData.investmentExperienceLevel,
-    conversationData.investmentGoal,
-    conversationData.portfolioHelp,
-    conversationData.portfolioSize,
-    conversationData.riskTolerance,
-    conversationData.timeHorizon,
-  ]);
+      const missingRequirement = requirements.find(requirement => !requirement.isComplete);
+      return missingRequirement?.id ?? null;
+    },
+    [conversationData]
+  );
 
   const resetMultiSelectState = useCallback(() => {
     setPendingMultiSelect([]);
@@ -1616,7 +1601,7 @@ const ChatPortfolioAdvisor = () => {
       addBotMessage(`Perfekt! Jag har registrerat dina ${validHoldings.length} innehav. Nu kan jag analysera din befintliga portfölj och ge bättre rekommendationer.`);
       
       setTimeout(() => {
-        moveToNextQuestion();
+        moveToNextQuestion(updatedData);
       }, 1500);
     }, 1000);
   };
@@ -1746,11 +1731,11 @@ const ChatPortfolioAdvisor = () => {
 
     // Move to next question
     setTimeout(() => {
-      moveToNextQuestion();
+      moveToNextQuestion(updatedData);
     }, 1000);
   };
 
-  const moveToNextQuestion = () => {
+  const moveToNextQuestion = (latestData?: ConversationData) => {
     let nextStep = currentStep + 1;
 
     // Skip questions that shouldn't be shown
@@ -1762,7 +1747,7 @@ const ChatPortfolioAdvisor = () => {
       nextStep++;
     }
 
-    const missingMandatoryQuestionId = getMissingMandatoryQuestionId();
+    const missingMandatoryQuestionId = getMissingMandatoryQuestionId(latestData);
     if (missingMandatoryQuestionId) {
       const requiredIndex = questions.findIndex(question => question.id === missingMandatoryQuestionId);
       if (requiredIndex !== -1 && nextStep > requiredIndex) {
