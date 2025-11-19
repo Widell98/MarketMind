@@ -440,10 +440,13 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: REPORT_MODEL,
-        temperature: 0.6,
         max_output_tokens: 600,
+        reasoning: {
+          effort: "low",
+        },
         text: {
           format: REPORT_RESPONSE_FORMAT,
+          verbosity: "medium",
         },
         input: [
           {

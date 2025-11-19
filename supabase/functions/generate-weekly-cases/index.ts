@@ -1047,10 +1047,13 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
             },
             { role: 'user', content: prompt }
           ],
-          temperature: 0.7,
           max_output_tokens: 500,
+          reasoning: {
+            effort: 'low',
+          },
           text: {
             format: WEEKLY_CASE_RESPONSE_FORMAT,
+            verbosity: 'medium',
           },
         }),
       });

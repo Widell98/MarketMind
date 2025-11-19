@@ -853,10 +853,13 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och s√§kerst√
       body: JSON.stringify({
         model: STRATEGY_MODEL,
         input: messages,
-        temperature: 0.85,
         max_output_tokens: 2500,
+        reasoning: {
+          effort: 'medium',
+        },
         text: {
           format: PORTFOLIO_RESPONSE_FORMAT,
+          verbosity: 'high',
         },
       }),
     });
