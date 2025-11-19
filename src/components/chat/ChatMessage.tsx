@@ -178,8 +178,23 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     const elements: React.ReactNode[] = [];
     let keyCounter = 0;
     let currentList: { type: 'ol' | 'ul'; marker?: 'disc' | 'dash'; items: string[] } | null = null;
+    let pendingListItem: { type: 'ol' | 'ul'; marker?: 'disc' | 'dash'; content: string } | null = null;
 
     const getKey = () => `message-fragment-${keyCounter++}`;
+
+    const flushPendingAsParagraph = () => {
+      if (!pendingListItem) return;
+
+      elements.push(
+        <p
+          key={getKey()}
+          className="mb-1.5 text-[13px] leading-[1.6] text-foreground last:mb-0"
+          dangerouslySetInnerHTML={{ __html: parseMarkdownSafely(pendingListItem.content) }}
+        />,
+      );
+
+      pendingListItem = null;
+    };
 
     const flushList = () => {
       if (!currentList) return;
@@ -220,6 +235,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       const trimmedLine = line.trim();
 
       if (trimmedLine === '') {
+        flushPendingAsParagraph();
         flushList();
         elements.push(
           <div
@@ -232,6 +248,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       }
 
       if (trimmedLine.startsWith('###')) {
+        flushPendingAsParagraph();
         flushList();
         elements.push(
           <h3
@@ -246,6 +263,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       }
 
       if (trimmedLine.startsWith('##')) {
+        flushPendingAsParagraph();
         flushList();
         elements.push(
           <h2
@@ -262,27 +280,62 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       if (trimmedLine.startsWith('-') || trimmedLine.startsWith('•')) {
         const contentWithoutMarker = trimmedLine.replace(/^[-•]\s*/, '').trim();
 
-        if (!currentList || currentList.type !== 'ul' || currentList.marker !== 'disc') {
-          flushList();
-          currentList = { type: 'ul', marker: 'disc', items: [] };
+        const isContinuation =
+          (currentList && currentList.type === 'ul' && currentList.marker === 'disc') ||
+          (pendingListItem && pendingListItem.type === 'ul' && pendingListItem.marker === 'disc');
+
+        if (currentList && currentList.type === 'ul' && currentList.marker === 'disc') {
+          currentList.items.push(contentWithoutMarker);
+          return;
         }
 
-        currentList.items.push(contentWithoutMarker);
+        if (pendingListItem && pendingListItem.type === 'ul' && pendingListItem.marker === 'disc') {
+          currentList = { type: 'ul', marker: 'disc', items: [pendingListItem.content, contentWithoutMarker] };
+          pendingListItem = null;
+          return;
+        }
+
+        flushList();
+        flushPendingAsParagraph();
+
+        if (isContinuation) {
+          currentList = { type: 'ul', marker: 'disc', items: [contentWithoutMarker] };
+        } else {
+          pendingListItem = { type: 'ul', marker: 'disc', content: contentWithoutMarker };
+        }
         return;
       }
 
       if (/^\d+\./.test(trimmedLine)) {
         const contentWithoutNumber = trimmedLine.replace(/^\d+\.\s*/, '').trim();
 
-        if (!currentList || currentList.type !== 'ul' || currentList.marker !== 'dash') {
-          flushList();
-          currentList = { type: 'ul', marker: 'dash', items: [] };
+        const isContinuation =
+          (currentList && currentList.type === 'ol') ||
+          (pendingListItem && pendingListItem.type === 'ol');
+
+        if (currentList && currentList.type === 'ol') {
+          currentList.items.push(contentWithoutNumber);
+          return;
         }
 
-        currentList.items.push(contentWithoutNumber);
+        if (pendingListItem && pendingListItem.type === 'ol') {
+          currentList = { type: 'ol', items: [pendingListItem.content, contentWithoutNumber] };
+          pendingListItem = null;
+          return;
+        }
+
+        flushList();
+        flushPendingAsParagraph();
+
+        if (isContinuation) {
+          currentList = { type: 'ol', items: [contentWithoutNumber] };
+        } else {
+          pendingListItem = { type: 'ol', content: contentWithoutNumber };
+        }
         return;
       }
 
+      flushPendingAsParagraph();
       flushList();
       elements.push(
         <p
@@ -294,6 +347,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     });
 
     flushList();
+    flushPendingAsParagraph();
 
     return elements;
   };
@@ -316,6 +370,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
 
     const lines = message.content.split('\n');
     const headings: string[] = [];
+    let bulletSequence = 0;
     let bulletPoints = 0;
 
     lines.forEach((line) => {
@@ -329,9 +384,18 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       }
 
       if (trimmed.match(/^(?:[-•]|\d+\.)\s+/)) {
-        bulletPoints += 1;
+        bulletSequence += 1;
+      } else {
+        if (bulletSequence > 1) {
+          bulletPoints += bulletSequence;
+        }
+        bulletSequence = 0;
       }
     });
+
+    if (bulletSequence > 1) {
+      bulletPoints += bulletSequence;
+    }
 
     const chips: string[] = [];
     headings.slice(0, 2).forEach((heading) => chips.push(heading));
