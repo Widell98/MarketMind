@@ -96,35 +96,32 @@ const normalizeKeyPoints = (value: unknown): string[] => {
 const REPORT_RESPONSE_FORMAT = {
   type: 'json_schema',
   name: 'report_summary_response',
-  json_schema: {
-    name: 'report_summary_response',
-    schema: {
-      type: 'object',
-      additionalProperties: true,
-      properties: {
-        company_name: { type: 'string' },
-        report_title: { type: 'string' },
-        summary: { type: 'string' },
-        key_points: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-        key_metrics: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              label: { type: 'string' },
-              value: { type: 'string' },
-              trend: { type: 'string' },
-            },
-            required: ['label', 'value'],
-          },
-        },
-        ceo_commentary: { type: 'string' },
+  schema: {
+    type: 'object',
+    additionalProperties: true,
+    properties: {
+      company_name: { type: 'string' },
+      report_title: { type: 'string' },
+      summary: { type: 'string' },
+      key_points: {
+        type: 'array',
+        items: { type: 'string' },
       },
-      required: ['summary', 'key_points'],
+      key_metrics: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            label: { type: 'string' },
+            value: { type: 'string' },
+            trend: { type: 'string' },
+          },
+          required: ['label', 'value'],
+        },
+      },
+      ceo_commentary: { type: 'string' },
     },
+    required: ['summary', 'key_points'],
   },
 } as const;
 

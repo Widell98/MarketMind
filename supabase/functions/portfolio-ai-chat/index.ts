@@ -987,7 +987,7 @@ const evaluateNewsIntentWithOpenAI = async ({
           format: {
             type: 'json_schema',
             name: NEWS_INTENT_SCHEMA.name,
-            json_schema: NEWS_INTENT_SCHEMA,
+            schema: NEWS_INTENT_SCHEMA.schema,
           },
         },
         input: messages,
@@ -1104,7 +1104,7 @@ const evaluateStockIntentWithOpenAI = async ({
           format: {
             type: 'json_schema',
             name: STOCK_INTENT_SCHEMA.name,
-            json_schema: STOCK_INTENT_SCHEMA,
+            schema: STOCK_INTENT_SCHEMA.schema,
           },
         },
         input: [

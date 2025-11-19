@@ -159,56 +159,53 @@ const GROWTH_TICKERS = /NVDA|AAPL|MSFT|GOOGL|META|AMZN|TSLA|ADBE|CRM|SHOP|SNOW|E
 const PORTFOLIO_RESPONSE_FORMAT = {
   type: 'json_schema',
   name: 'portfolio_strategy_response',
-  json_schema: {
-    name: 'portfolio_strategy_response',
-    schema: {
-      type: 'object',
-      additionalProperties: true,
-      properties: {
-        plan: {
-          type: 'object',
-          additionalProperties: true,
-          properties: {
-            action_summary: { type: 'string' },
-            risk_alignment: { type: 'string' },
-            next_steps: {
-              type: 'array',
-              items: { type: 'string' },
-              minItems: 1,
-            },
-            recommended_assets: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  name: { type: 'string' },
-                  ticker: { type: 'string' },
-                  allocation_percent: { type: 'number' },
-                  rationale: { type: 'string' },
-                },
-                required: ['name'],
+  schema: {
+    type: 'object',
+    additionalProperties: true,
+    properties: {
+      plan: {
+        type: 'object',
+        additionalProperties: true,
+        properties: {
+          action_summary: { type: 'string' },
+          risk_alignment: { type: 'string' },
+          next_steps: {
+            type: 'array',
+            items: { type: 'string' },
+            minItems: 1,
+          },
+          recommended_assets: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                ticker: { type: 'string' },
+                allocation_percent: { type: 'number' },
+                rationale: { type: 'string' },
               },
+              required: ['name'],
             },
           },
         },
-        recommended_assets: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              name: { type: 'string' },
-              symbol: { type: 'string' },
-              allocation: { type: 'number' },
-              sector: { type: 'string' },
-              reasoning: { type: 'string' },
-            },
-            required: ['name'],
+      },
+      recommended_assets: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            symbol: { type: 'string' },
+            allocation: { type: 'number' },
+            sector: { type: 'string' },
+            reasoning: { type: 'string' },
           },
+          required: ['name'],
         },
-        complementary_ideas: {
-          type: 'array',
-          items: { type: 'string' },
-        },
+      },
+      complementary_ideas: {
+        type: 'array',
+        items: { type: 'string' },
       },
     },
   },

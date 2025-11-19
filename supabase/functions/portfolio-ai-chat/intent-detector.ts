@@ -166,7 +166,7 @@ export const detectUserIntentWithOpenAI = async (
           format: {
             type: 'json_schema',
             name: INTENT_SCHEMA.name,
-            json_schema: INTENT_SCHEMA,
+            schema: INTENT_SCHEMA.schema,
           },
         },
         input: messages,
