@@ -17,6 +17,7 @@ export interface ChatSession {
   created_at: string;
   is_active: boolean;
   folder_id: string | null;
+  context_data?: Record<string, unknown> | null;
 }
 
 interface ChatSessionsContextValue {
@@ -84,12 +85,13 @@ export const ChatSessionsProvider = ({ children }: ChatSessionsProviderProps) =>
 
       if (error) throw error;
 
-      const formattedSessions: ChatSession[] = (data || []).map(session => ({
+      const formattedSessions: ChatSession[] = (data || []).map((session) => ({
         id: session.id,
         session_name: session.session_name || 'Ny Session',
         created_at: session.created_at,
         is_active: session.is_active || false,
         folder_id: session.folder_id,
+        context_data: session.context_data ?? null,
       }));
 
       setSessions(formattedSessions);
