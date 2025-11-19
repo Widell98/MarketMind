@@ -283,7 +283,7 @@ const MindmapNavigator: React.FC<MindmapNavigatorProps> = ({
         : [];
       const hasDocumentsFromSession = Boolean(sessionDocIds.length);
       const hasDocumentsFromLibrary = sessionDocIds.some((docId) => documentIds?.has(docId));
-      const hasDocuments = layoutMeta?.hasDocuments ?? hasDocumentsFromSession || hasDocumentsFromLibrary;
+      const hasDocuments = layoutMeta?.hasDocuments ?? (hasDocumentsFromSession || hasDocumentsFromLibrary);
       const activity = sessionActivity?.[session.id];
       const lastAssistantAt = activity?.lastAssistantAt ?? layoutMeta?.lastAssistantAt;
       const lastMessageAt = activity?.lastMessageAt ?? layoutMeta?.lastMessageAt;
