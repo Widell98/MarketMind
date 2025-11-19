@@ -197,10 +197,18 @@ const buildPrompt = (
       "",
       "1. Bolagsnamn – exakt som det står i rapporten.",
       "2. Rapporttitel – exempelvis “Q3 Interim Report 2025”, “Delårsrapport Q2 2025” eller “Annual Report 2024”.",
-      "3. Kärnbudskapet – 3–4 meningar som objektivt sammanfattar rapportens läge, baserat enbart på siffror och text från rapporten.",
+      "3. Kärnbudskapet – skriv en löpande rapportsammanfattning som objektivt beskriver läget baserat enbart på siffror och text från rapporten.",
       "4. Nyckelsiffror – minst tre, direkt citerade från rapportens data. Exempel: Nettoomsättning, Net Sales, EBIT, EBITDA, Free Cash Flow, tillväxt %, organisk tillväxt, eller segmentdata. Etiketten ska alltid skrivas exakt som i rapporten.",
       "5. Nyckelpunkter – 3–6 korta och konkreta observationer baserade på rapportens innehåll, utan egna slutsatser eller tolkningar.",
       "6. VD-kommentar – om VD uttalar sig i dokumentet, sammanfatta kärnan i 1–2 meningar. Om ingen VD-kommentar finns: \"Ingen VD-kommentar identifierad\".",
+    ].join("\n");
+
+    const summaryStyleGuidelines = [
+      "Sammanfattningen ska bestå av 4–5 meningar som bildar ett sammanhållet stycke utan punktlistor.",
+      "Inled med en kontextualiserande mening om bolagets övergripande läge eller tema i rapporten.",
+      "Följ upp med siffror eller förändringar och förklara kort vad som drev utfallet.",
+      "Använd övergångar som ‘Vidare’, ‘Dessutom’ eller ‘Detta innebär att’ för att skapa en tydlig röd tråd.",
+      "Avsluta med en helhetsbedömning eller nästa steg som nämns i rapporten, utan egna spekulationer.",
     ].join("\n");
 
     const importantNotes = [
@@ -217,7 +225,7 @@ const buildPrompt = (
       "{",
       "  \"company_name\": \"identifierat bolagsnamn\",",
       "  \"report_title\": \"identifierad rapporttitel\",",
-      "  \"summary\": \"3-4 meningar som summerar rapporten.\",",
+      "  \"summary\": \"4-5 meningar i ett löpande stycke som summerar rapporten.\",",
       "  \"key_metrics\": [",
       "    { \"label\": \"Nettoförsäljning Q3\", \"value\": \"99,1 MSEK\", \"trend\": \"+25 % y/y\" }",
       "  ],",
@@ -238,6 +246,9 @@ const buildPrompt = (
       hintsBlock ? `${hintsBlock}${objectives}`.trim() : objectives,
       "",
       importantNotes,
+      "",
+      "STILKRAV FÖR SAMMANFATTNINGEN:",
+      summaryStyleGuidelines,
       "",
       jsonFormat,
     ];
