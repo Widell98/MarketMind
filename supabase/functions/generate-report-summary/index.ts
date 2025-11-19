@@ -14,17 +14,6 @@ const REPORT_MODEL = Deno.env.get('OPENAI_REPORT_MODEL')
 
 type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
-const toResponsesInput = (messages: ResponsesApiMessage[]) =>
-  messages.map((m) => ({
-    role: m.role,
-    content: [
-      {
-        type: 'input_text' as const,
-        text: m.content,
-      },
-    ],
-  }));
-
 type GenerateReportSummaryPayload = {
   company_name?: string | null;
   report_title?: string | null;
@@ -505,7 +494,7 @@ serve(async (req) => {
             format: REPORT_RESPONSE_FORMAT,
             verbosity: "medium",
           },
-          input: toResponsesInput(promptMessages),
+          input: promptMessages,
         }),
       });
 

@@ -1092,7 +1092,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
         },
         body: JSON.stringify({
           model: CASE_MODEL,
-          input: toResponsesInput(promptMessages),
+          input: promptMessages,
           max_output_tokens: 500,
           reasoning: {
             effort: 'low',

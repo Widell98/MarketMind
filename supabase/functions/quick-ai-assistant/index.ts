@@ -10,17 +10,6 @@ const corsHeaders = {
 
 type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
-const toResponsesInput = (messages: ResponsesApiMessage[]) =>
-  messages.map((m) => ({
-    role: m.role,
-    content: [
-      {
-        type: 'input_text' as const,
-        text: m.content,
-      },
-    ],
-  }));
-
 const extractResponsesApiText = (data: any): string => {
   const contentParts = Array.isArray(data?.output)
     ? data.output.flatMap((item: any) =>
@@ -178,7 +167,7 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
       },
       body: JSON.stringify({
         model: model,
-        input: toResponsesInput(messages),
+        input: messages,
         max_output_tokens: maxTokens,
         reasoning: {
           effort: reasoningEffort,

@@ -9,17 +9,6 @@ const STRATEGY_MODEL = Deno.env.get('OPENAI_STRATEGY_MODEL')
 
 type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
-const toResponsesInput = (messages: ResponsesApiMessage[]) =>
-  messages.map((m) => ({
-    role: m.role,
-    content: [
-      {
-        type: 'input_text' as const,
-        text: m.content,
-      },
-    ],
-  }));
-
 const extractOpenAIResponseText = (data: any): string => {
   const contentParts = Array.isArray(data?.output)
     ? data.output.flatMap((item: any) =>
@@ -909,7 +898,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och s√§kerst√
       },
       body: JSON.stringify({
         model: STRATEGY_MODEL,
-        input: toResponsesInput(messages),
+        input: messages,
         max_output_tokens: 2500,
         reasoning: {
           effort: 'medium',

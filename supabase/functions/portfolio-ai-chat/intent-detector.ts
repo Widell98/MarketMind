@@ -6,17 +6,6 @@ const INTENT_MODEL = Deno.env.get('OPENAI_INTENT_MODEL')
 
 type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
-const toResponsesInput = (messages: ResponsesApiMessage[]) =>
-  messages.map((m) => ({
-    role: m.role,
-    content: [
-      {
-        type: 'input_text' as const,
-        text: m.content,
-      },
-    ],
-  }));
-
 const extractResponsesApiText = (data: any): string => {
   const contentParts = Array.isArray(data?.output)
     ? data.output.flatMap((item: any) =>
@@ -221,7 +210,7 @@ export const detectUserIntentWithOpenAI = async (
             },
             verbosity: 'low',
           },
-          input: toResponsesInput(messages),
+          input: messages,
         }),
       });
 
