@@ -176,8 +176,34 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
   const formatMessageContent = (content: string) => {
     const lines = content.split('\n');
     const elements: React.ReactNode[] = [];
+    const summarySegments: string[] = [];
     let keyCounter = 0;
-    let currentList: { type: 'ol' | 'ul'; marker?: 'disc' | 'dash'; items: string[] } | null = null;
+    let currentList: { items: string[] } | null = null;
+
+    const toPlainText = (input: string) =>
+      input
+        .replace(/[*_`]/g, '')
+        .replace(/\[(.*?)\]\((.*?)\)/g, '$1')
+        .replace(/<[^>]+>/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const getTransitionPhrase = (index: number, total: number) => {
+      if (total === 1) {
+        return 'Sammanfattningsvis';
+      }
+
+      if (index === 0) {
+        return 'Inledningsvis';
+      }
+
+      if (index === total - 1) {
+        return 'Avslutningsvis';
+      }
+
+      const phrases = ['Vidare', 'Dessutom', 'Även'];
+      return phrases[(index - 1) % phrases.length];
+    };
 
     const getKey = () => `message-fragment-${keyCounter++}`;
 
@@ -185,32 +211,31 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       if (!currentList) return;
 
       const listKey = getKey();
-      const ListTag = currentList.type === 'ol' ? 'ol' : 'ul';
-      const isDashList = currentList.type === 'ul' && currentList.marker === 'dash';
-      const listClassName = `ml-4 ${
-        currentList.type === 'ol'
-          ? 'list-decimal'
-          : isDashList
-            ? 'list-none'
-            : 'list-disc'
-      } space-y-1.5 text-[13px] leading-[1.6] text-foreground`;
+      const totalItems = currentList.items.length;
 
       elements.push(
-        <ListTag key={listKey} className={listClassName}>
+        <div key={listKey} className="space-y-1.5">
           {currentList.items.map((item, index) => {
             const sanitizedContent = parseMarkdownSafely(item);
+            const plainText = toPlainText(item);
+
+            if (plainText) {
+              summarySegments.push(plainText);
+            }
 
             return (
-              <li key={`${listKey}-item-${index}`} className={isDashList ? 'flex items-start gap-2' : undefined}>
-                {isDashList && <span className="select-none text-[13px] text-foreground">-</span>}
-                <span
-                  className={isDashList ? 'flex-1 text-[13px] leading-[1.6] text-foreground' : undefined}
-                  dangerouslySetInnerHTML={{ __html: sanitizedContent }}
-                />
-              </li>
+              <p
+                key={`${listKey}-item-${index}`}
+                className="text-[13px] leading-[1.65] text-foreground"
+              >
+                <span className="font-medium text-primary/85">
+                  {getTransitionPhrase(index, totalItems)}.
+                </span>{' '}
+                <span dangerouslySetInnerHTML={{ __html: sanitizedContent }} />
+              </p>
             );
           })}
-        </ListTag>,
+        </div>,
       );
 
       currentList = null;
@@ -224,7 +249,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         elements.push(
           <div
             key={getKey()}
-            className="h-3"
+            className="h-2"
             aria-hidden="true"
           />,
         );
@@ -262,9 +287,9 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       if (trimmedLine.startsWith('-') || trimmedLine.startsWith('•')) {
         const contentWithoutMarker = trimmedLine.replace(/^[-•]\s*/, '').trim();
 
-        if (!currentList || currentList.type !== 'ul' || currentList.marker !== 'disc') {
+        if (!currentList) {
           flushList();
-          currentList = { type: 'ul', marker: 'disc', items: [] };
+          currentList = { items: [] };
         }
 
         currentList.items.push(contentWithoutMarker);
@@ -274,9 +299,9 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       if (/^\d+\./.test(trimmedLine)) {
         const contentWithoutNumber = trimmedLine.replace(/^\d+\.\s*/, '').trim();
 
-        if (!currentList || currentList.type !== 'ul' || currentList.marker !== 'dash') {
+        if (!currentList) {
           flushList();
-          currentList = { type: 'ul', marker: 'dash', items: [] };
+          currentList = { items: [] };
         }
 
         currentList.items.push(contentWithoutNumber);
@@ -294,6 +319,26 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     });
 
     flushList();
+
+    if (summarySegments.length > 0) {
+      const summaryText = summarySegments
+        .slice(0, 3)
+        .map((segment) => segment.replace(/[.\s]+$/g, '').trim())
+        .filter(Boolean)
+        .join('. ');
+
+      if (summaryText) {
+        const formattedSummary = `${summaryText}${summaryText.endsWith('.') ? '' : '.'}`;
+        elements.push(
+          <p
+            key={getKey()}
+            className="mt-3 text-[13px] font-medium text-foreground"
+          >
+            {`Sammantaget innebär detta att ${formattedSummary}`}
+          </p>,
+        );
+      }
+    }
 
     return elements;
   };

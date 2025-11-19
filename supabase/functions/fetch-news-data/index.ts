@@ -156,7 +156,7 @@ async function fetchFinancialCalendarData() {
           }
         ],
         temperature: 0.7,
-        max_tokens: 2000,
+        max_completion_tokens: 2000,
       }),
     });
 
@@ -216,7 +216,7 @@ async function fetchMarketMomentumData() {
           }
         ],
         temperature: 0.7,
-        max_tokens: 2500,
+        max_completion_tokens: 2500,
       }),
     });
 
@@ -279,7 +279,7 @@ async function fetchLiveNewsData() {
           }
         ],
         temperature: 0.8,
-        max_tokens: 3000,
+        max_completion_tokens: 3000,
       }),
     });
 

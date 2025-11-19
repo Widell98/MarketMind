@@ -8,6 +8,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const REPORT_MODEL = Deno.env.get('OPENAI_REPORT_MODEL')
+  || Deno.env.get('OPENAI_MODEL')
+  || 'gpt-5.1';
+
 type GenerateReportSummaryPayload = {
   company_name?: string | null;
   report_title?: string | null;
@@ -58,6 +62,40 @@ const normalizeKeyPoints = (value: unknown): string[] => {
 
   return [];
 };
+
+const REPORT_RESPONSE_FORMAT = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'report_summary_response',
+    schema: {
+      type: 'object',
+      additionalProperties: true,
+      properties: {
+        company_name: { type: 'string' },
+        report_title: { type: 'string' },
+        summary: { type: 'string' },
+        key_points: {
+          type: 'array',
+          items: { type: 'string' },
+        },
+        key_metrics: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              label: { type: 'string' },
+              value: { type: 'string' },
+              trend: { type: 'string' },
+            },
+            required: ['label', 'value'],
+          },
+        },
+        ceo_commentary: { type: 'string' },
+      },
+      required: ['summary', 'key_points'],
+    },
+  },
+} as const;
 
 const normalizeKeyMetrics = (value: unknown): ParsedMetric[] => {
   if (Array.isArray(value)) {
@@ -159,10 +197,18 @@ const buildPrompt = (
       "",
       "1. Bolagsnamn – exakt som det står i rapporten.",
       "2. Rapporttitel – exempelvis “Q3 Interim Report 2025”, “Delårsrapport Q2 2025” eller “Annual Report 2024”.",
-      "3. Kärnbudskapet – 3–4 meningar som objektivt sammanfattar rapportens läge, baserat enbart på siffror och text från rapporten.",
+      "3. Kärnbudskapet – skriv en löpande rapportsammanfattning som objektivt beskriver läget baserat enbart på siffror och text från rapporten.",
       "4. Nyckelsiffror – minst tre, direkt citerade från rapportens data. Exempel: Nettoomsättning, Net Sales, EBIT, EBITDA, Free Cash Flow, tillväxt %, organisk tillväxt, eller segmentdata. Etiketten ska alltid skrivas exakt som i rapporten.",
       "5. Nyckelpunkter – 3–6 korta och konkreta observationer baserade på rapportens innehåll, utan egna slutsatser eller tolkningar.",
       "6. VD-kommentar – om VD uttalar sig i dokumentet, sammanfatta kärnan i 1–2 meningar. Om ingen VD-kommentar finns: \"Ingen VD-kommentar identifierad\".",
+    ].join("\n");
+
+    const summaryStyleGuidelines = [
+      "Sammanfattningen ska bestå av 4–5 meningar som bildar ett sammanhållet stycke utan punktlistor.",
+      "Börja med en fokuserad mening som radar upp 2–3 nyckelsiffror (t.ex. omsättning, EBIT, kassaflöde) med både nivå och förändring innan du går in på resonemanget.",
+      "Följ därefter upp med en kontextualiserande mening om vad som drev utfallet och hur siffrorna hänger ihop.",
+      "Använd övergångar som ‘Vidare’, ‘Dessutom’ eller ‘Detta innebär att’ för att skapa en tydlig röd tråd och växla till en mer förklarande text i mening tre och framåt.",
+      "Avsluta med en helhetsbedömning eller nästa steg som nämns i rapporten, utan egna spekulationer.",
     ].join("\n");
 
     const importantNotes = [
@@ -179,7 +225,7 @@ const buildPrompt = (
       "{",
       "  \"company_name\": \"identifierat bolagsnamn\",",
       "  \"report_title\": \"identifierad rapporttitel\",",
-      "  \"summary\": \"3-4 meningar som summerar rapporten.\",",
+      "  \"summary\": \"4-5 meningar i ett löpande stycke som summerar rapporten.\",",
       "  \"key_metrics\": [",
       "    { \"label\": \"Nettoförsäljning Q3\", \"value\": \"99,1 MSEK\", \"trend\": \"+25 % y/y\" }",
       "  ],",
@@ -200,6 +246,9 @@ const buildPrompt = (
       hintsBlock ? `${hintsBlock}${objectives}`.trim() : objectives,
       "",
       importantNotes,
+      "",
+      "STILKRAV FÖR SAMMANFATTNINGEN:",
+      summaryStyleGuidelines,
       "",
       jsonFormat,
     ];
@@ -373,9 +422,10 @@ serve(async (req) => {
         "Authorization": `Bearer ${openAIApiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: REPORT_MODEL,
         temperature: 0.6,
-        max_tokens: 600,
+        max_completion_tokens: 600,
+        response_format: REPORT_RESPONSE_FORMAT,
         messages: [
           {
             role: "system",

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight } from 'lucide-react';
@@ -54,6 +54,19 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
   refreshingTicker
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const [currentPage, setCurrentPage] = useState(0);
+
+  const holdingsPerPage = 6;
+  const totalPages = Math.max(1, Math.ceil(holdings.length / holdingsPerPage));
+
+  useEffect(() => {
+    if (currentPage >= totalPages) {
+      setCurrentPage(0);
+    }
+  }, [currentPage, totalPages]);
+
+  const startIndex = currentPage * holdingsPerPage;
+  const visibleHoldings = holdings.slice(startIndex, startIndex + holdingsPerPage);
 
   // Detect if we're on mobile
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -106,7 +119,7 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
       {isExpanded && (
         <CardContent className="pt-0">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {holdings.map((holding) => {
+            {visibleHoldings.map((holding) => {
               const { valueInSEK: computedValue } = resolveHoldingValue(holding);
               const holdingPerformance = holdingPerformanceMap?.[holding.id];
 
@@ -149,6 +162,30 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
               );
             })}
           </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 0))}
+                disabled={currentPage === 0}
+              >
+                Föregående
+              </Button>
+              <div className="text-sm text-muted-foreground">
+                Sida {currentPage + 1} av {totalPages}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages - 1))}
+                disabled={currentPage >= totalPages - 1}
+              >
+                Nästa
+              </Button>
+            </div>
+          )}
         </CardContent>
       )}
     </Card>
