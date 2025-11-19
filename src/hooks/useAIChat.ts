@@ -567,7 +567,7 @@ export const useAIChat = (portfolioId?: string) => {
           user_id: user.id, 
           session_name: sessionName,
           context_data: {
-            created_for: 'advisory',
+            created_for: 'analysis',
             market_context: 'normal',
             portfolio_id: portfolioId
           }
@@ -933,7 +933,7 @@ export const useAIChat = (portfolioId?: string) => {
           user_id: user.id,
           session_name: sessionName,
           context_data: {
-            created_for: 'advisory',
+            created_for: 'analysis',
             market_context: 'normal',
             portfolio_id: portfolioId
           }

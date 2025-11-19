@@ -180,7 +180,7 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ portfolio, reco
               <AlertCircle className="w-5 h-5 text-blue-600" />
               AI Recommendations
             </CardTitle>
-            <CardDescription>Personalized advice from your AI advisor</CardDescription>
+            <CardDescription>Personalized insights from your AI analyst</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">

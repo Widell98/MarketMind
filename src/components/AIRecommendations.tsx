@@ -84,7 +84,7 @@ const AIRecommendations = () => {
     if (typeof recommendation.allocation === 'number') {
       parts.push(`AI-förslag: ${Math.round(recommendation.allocation)}% av portföljen`);
     }
-    return parts.join(' • ') || 'AI-genererad rekommendation baserad på din rådgivning.';
+    return parts.join(' • ') || 'AI-genererad rekommendation baserad på din analys.';
   };
 
   const buildRecommendationTags = (recommendation: UserHolding) => {
@@ -231,7 +231,7 @@ const AIRecommendations = () => {
             <Brain className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
             <h3 className="text-lg font-medium mb-2 text-foreground">Inga AI-rekommendationer tillgängliga</h3>
             <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
-              Chatta med AI:n eller använd Portfolio Advisor för att få personaliserade investeringsidéer baserade på din portfölj.
+              Chatta med AI:n eller använd Portföljanalytikern för att få personaliserade investeringsidéer baserade på din portfölj.
             </p>
 
             <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg mb-4">
@@ -259,7 +259,7 @@ const AIRecommendations = () => {
                 variant="outline"
                 className="flex items-center gap-2"
               >
-                Portfolio Advisor
+                Portföljanalytiker
               </Button>
             </div>
           </div>

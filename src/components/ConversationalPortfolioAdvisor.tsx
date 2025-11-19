@@ -29,10 +29,10 @@ const ConversationalPortfolioAdvisor = () => {
             <Brain className="w-10 h-10 text-primary" />
           </div>
           <CardTitle className="text-3xl font-semibold text-foreground mb-3">
-            AI Portfolio Advisor
+            AI Portfolio Analyst
           </CardTitle>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
-            Skapa din personliga investeringsstrategi genom en naturlig chatt-konversation
+            Få en datadriven genomlysning av din portfölj genom en naturlig chatt-konversation
           </p>
         </CardHeader>
         
@@ -43,12 +43,12 @@ const ConversationalPortfolioAdvisor = () => {
                 <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
                   <Sparkles className="w-4 h-4 text-primary" />
                 </div>
-                Chattbaserad konsultation
+                Chattbaserad analys
               </h3>
               <ul className="text-muted-foreground space-y-2 text-sm">
                 <li className="flex items-start gap-2">
                   <span className="w-1.5 h-1.5 bg-primary/80 rounded-full mt-2 flex-shrink-0"></span>
-                  Naturlig konversation med AI-rådgivare
+                  Naturlig konversation med AI-analytiker
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="w-1.5 h-1.5 bg-primary/80 rounded-full mt-2 flex-shrink-0"></span>
@@ -66,7 +66,7 @@ const ConversationalPortfolioAdvisor = () => {
                 <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
                   <Brain className="w-4 h-4 text-primary" />
                 </div>
-                Personlig analys
+                Personlig portföljdiagnos
               </h3>
               <ul className="text-muted-foreground space-y-2 text-sm">
                 <li className="flex items-start gap-2">
@@ -75,11 +75,11 @@ const ConversationalPortfolioAdvisor = () => {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="w-1.5 h-1.5 bg-primary/80 rounded-full mt-2 flex-shrink-0"></span>
-                  Föreslår konkreta investeringar
+                  Identifierar styrkor och svagheter
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="w-1.5 h-1.5 bg-primary/80 rounded-full mt-2 flex-shrink-0"></span>
-                  Skapar actionable strategi
+                  Levererar handlingsbara insikter
                 </li>
               </ul>
             </div>
@@ -92,7 +92,7 @@ const ConversationalPortfolioAdvisor = () => {
             <ol className="text-muted-foreground space-y-3 text-sm">
               <li className="flex items-start gap-3">
                 <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">1</span>
-                Starta en chatt med AI-rådgivaren
+                Starta en chatt med AI-analytikern
               </li>
               <li className="flex items-start gap-3">
                 <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">2</span>
@@ -100,7 +100,7 @@ const ConversationalPortfolioAdvisor = () => {
               </li>
               <li className="flex items-start gap-3">
                 <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">3</span>
-                Få en personlig portföljstrategi med konkreta rekommendationer
+                Få en djup portföljanalys med handlingsbara insikter
               </li>
               <li className="flex items-start gap-3">
                 <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">4</span>
@@ -109,12 +109,12 @@ const ConversationalPortfolioAdvisor = () => {
             </ol>
           </div>
 
-          <Button 
+          <Button
             onClick={() => setShowChat(true)}
             className="w-full h-12 text-base font-medium"
             size="lg"
           >
-            Starta Chatt-konsultation
+            Starta analyschatten
             <Brain className="w-5 h-5 ml-2" />
           </Button>
         </CardContent>

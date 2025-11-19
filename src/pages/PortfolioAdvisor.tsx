@@ -53,7 +53,7 @@ const PortfolioAdvisor = () => {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
-          <p>Du måste vara inloggad för att komma åt portföljrådgivaren.</p>
+          <p>Du måste vara inloggad för att komma åt portföljanalytikern.</p>
         </div>
       </Layout>
     );

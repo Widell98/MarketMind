@@ -45,7 +45,7 @@ const FloatingActionButton: React.FC = () => {
     },
     {
       id: 'ai_chat',
-      label: 'AI-rådgivning',
+      label: 'AI-analys',
       icon: MessageSquare,
       action: 'ai_chat',
       color: 'bg-purple-600 hover:bg-purple-700 text-white'

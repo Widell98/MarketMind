@@ -109,7 +109,7 @@ const SubscriptionCard: React.FC = () => {
         {!isPremium ? (
           <>
             <CardDescription>
-              Du använder den kostnadsfria versionen av AI Portfolio Advisor
+              Du använder den kostnadsfria versionen av AI Portfolio Analyst
             </CardDescription>
             
             <div className="space-y-3">

@@ -84,6 +84,47 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
     setRiskProfile(prev => ({ ...prev, [field]: value }));
   };
 
+  const determineGoalHorizonBundle = () => {
+    const { risk_tolerance, investment_horizon } = riskProfile;
+
+    if (risk_tolerance === 'high' || investment_horizon === 'short') {
+      return 'aggressive_short';
+    }
+
+    if (risk_tolerance === 'low' && investment_horizon === 'long') {
+      return 'capital_guard';
+    }
+
+    if (risk_tolerance === 'low') {
+      return 'income_medium_conservative';
+    }
+
+    if (risk_tolerance === 'moderate' && investment_horizon === 'medium') {
+      return 'income_medium_conservative';
+    }
+
+    return 'growth_long_balanced';
+  };
+
+  const determineCapitalRangeCode = () => {
+    const monthlyAmount = riskProfile.monthly_investment_amount;
+    if (typeof monthlyAmount !== 'number' || !Number.isFinite(monthlyAmount) || monthlyAmount <= 0) {
+      return '50k_200k';
+    }
+
+    const annualized = monthlyAmount * 12;
+    if (annualized < 50000) {
+      return 'under_50k';
+    }
+    if (annualized < 200000) {
+      return '50k_200k';
+    }
+    if (annualized < 500000) {
+      return '200k_500k';
+    }
+    return '500k_plus';
+  };
+
   const sendMessageToAI = async () => {
     if (!message.trim()) return;
 
@@ -98,15 +139,30 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
 
     setLoading(true);
     try {
+      const resolvedExperienceLevel =
+        riskProfile.risk_tolerance === 'low'
+          ? 'beginner'
+          : riskProfile.risk_tolerance === 'high'
+            ? 'advanced'
+            : 'intermediate';
+
+      const goalHorizonBundle = determineGoalHorizonBundle();
+      const capitalRangeCode = determineCapitalRangeCode();
+
       const conversationData = {
-        isBeginnerInvestor: false,
+        isBeginnerInvestor: resolvedExperienceLevel === 'beginner',
         hasCurrentPortfolio: false,
+        investmentExperienceLevel: resolvedExperienceLevel,
         age: riskProfile.age || undefined,
         investmentGoal: 'wealth',
         timeHorizon: riskProfile.investment_horizon || undefined,
         riskTolerance: riskProfile.risk_tolerance || undefined,
         monthlyAmount: riskProfile.monthly_investment_amount?.toString(),
         monthlyAmountNumeric: riskProfile.monthly_investment_amount ?? undefined,
+        analysisIntent: 'build_new_strategy',
+        goalHorizonBundle,
+        capitalRangeCode,
+        availableCapital: capitalRangeCode,
         interests: [],
         companies: [],
         portfolioHelp: message,
@@ -219,6 +275,9 @@ ${response}`;
 
     try {
       // Build conversation data from the current assessment
+      const goalHorizonBundle = determineGoalHorizonBundle();
+      const capitalRangeCode = determineCapitalRangeCode();
+
       const conversationData = {
         isBeginnerInvestor: false,
         hasCurrentPortfolio: false,
@@ -227,6 +286,10 @@ ${response}`;
         timeHorizon: riskProfile.investment_horizon || 'medium',
         riskTolerance: riskProfile.risk_tolerance || 'balanced',
         monthlyAmount: riskProfile.monthly_investment_amount?.toString() || '5000',
+        analysisIntent: 'build_new_strategy',
+        goalHorizonBundle,
+        capitalRangeCode,
+        availableCapital: capitalRangeCode,
         interests: [],
         companies: aiRecommendations.map(r => r.name)
       };
