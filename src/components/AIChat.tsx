@@ -6,16 +6,17 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import ChatMessages from './chat/ChatMessages';
 import ChatInput from './chat/ChatInput';
 import ProfileUpdateConfirmation from './ProfileUpdateConfirmation';
-import ChatFolderSidebar from './chat/ChatFolderSidebar';
+import MindmapNavigator from './chat/MindmapNavigator';
 import ChatDocumentManager from './chat/ChatDocumentManager';
 import { useChatDocuments } from '@/hooks/useChatDocuments';
 import { useToast } from '@/hooks/use-toast';
+import { useChatMindmapLayout } from '@/hooks/useChatMindmapLayout';
 
-import { LogIn, MessageSquare, Brain, Lock, Sparkles, Menu, PanelLeftClose, PanelLeft, Crown, Infinity } from 'lucide-react';
+import { LogIn, MessageSquare, Brain, Lock, Sparkles, PanelLeftClose, PanelLeft, Crown, Infinity, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -47,7 +48,15 @@ const AIChat = ({
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const {
+    layout: mindmapLayout,
+    loadMindmapLayout,
+    saveMindmapLayout,
+    isLoading: isMindmapLayoutLoading,
+  } = useChatMindmapLayout();
+  const {
     messages,
+    sessions,
+    sessionActivity,
     currentSessionId,
     isLoading,
     quotaExceeded,
@@ -75,7 +84,7 @@ const AIChat = ({
   } = useChatDocuments();
   const [input, setInput] = useState('');
   const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mindmapOpen, setMindmapOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [isGuideSession, setIsGuideSession] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
@@ -101,6 +110,8 @@ const AIChat = ({
     () => uploadedDocuments.filter((doc) => selectedDocumentIds.includes(doc.id)),
     [uploadedDocuments, selectedDocumentIds]
   );
+
+  const availableDocumentIds = useMemo(() => new Set(uploadedDocuments.map((doc) => doc.id)), [uploadedDocuments]);
 
   const handleToggleDocument = useCallback((documentId: string) => {
     const targetDocument = uploadedDocuments.find((doc) => doc.id === documentId);
@@ -196,6 +207,10 @@ const AIChat = ({
     navigate
   ]);
   const hasHandledNavigationSessionRef = useRef(false);
+
+  useEffect(() => {
+    void loadMindmapLayout();
+  }, [loadMindmapLayout]);
 
   useEffect(() => {
     const navigationState = location.state as {
@@ -307,13 +322,14 @@ const AIChat = ({
     setInput('');
     setHasProcessedInitialMessage(false); // Reset for new session
     if (isMobile) {
-      setSidebarOpen(false);
+      setMindmapOpen(false);
     }
   }, [user, createNewSession, isMobile]);
   const handleLoadSession = useCallback(async (sessionId: string) => {
+    setIsGuideSession(false);
     await loadSession(sessionId);
     if (isMobile) {
-      setSidebarOpen(false);
+      setMindmapOpen(false);
     }
   }, [loadSession, isMobile]);
   const handleExamplePrompt = (prompt: string) => {
@@ -338,7 +354,7 @@ const AIChat = ({
     setIsGuideSession(true);
     clearMessages();
     if (isMobile) {
-      setSidebarOpen(false);
+      setMindmapOpen(false);
     }
   }, [clearMessages, isMobile]);
   const sidebarProps = useMemo(() => ({
@@ -352,7 +368,27 @@ const AIChat = ({
     onEditSessionName: editSessionName,
     onLoadGuideSession: handleLoadGuideSession,
     onCreateNewSession: handleNewSession,
-    className: isMobile ? "w-full min-h-full" : "w-[300px] xl:w-[320px]",
+    layout: mindmapLayout,
+    onUpdateLayout: saveMindmapLayout,
+    isLayoutLoading: isMindmapLayoutLoading,
+    sessionActivity,
+    sessions,
+    documentIds: availableDocumentIds,
+    onPrefillPrompt: (sessionId: string, prompt: string) => {
+      const runPrefill = async () => {
+        if (sessionId && currentSessionId !== sessionId) {
+          await handleLoadSession(sessionId);
+        }
+        setInput(prompt);
+        setTimeout(() => inputRef.current?.focus(), 100);
+        if (isMobile) {
+          setMindmapOpen(false);
+        }
+      };
+
+      void runPrefill();
+    },
+    className: isMobile ? "w-full min-h-full" : "w-[320px] xl:w-[360px]",
   }), [
     isGuideSession,
     currentSessionId,
@@ -362,6 +398,12 @@ const AIChat = ({
     editSessionName,
     handleLoadGuideSession,
     handleNewSession,
+    mindmapLayout,
+    isMindmapLayoutLoading,
+    saveMindmapLayout,
+    sessionActivity,
+    sessions,
+    availableDocumentIds,
     isMobile,
   ]);
   return (
@@ -369,27 +411,23 @@ const AIChat = ({
       {user ? (
         <>
           {!isMobile && !desktopSidebarCollapsed && (
-            <ChatFolderSidebar {...sidebarProps} />
+            <div className="hidden min-h-0 shrink-0 md:flex md:w-[320px] lg:w-[360px]">
+              <MindmapNavigator {...sidebarProps} />
+            </div>
           )}
 
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
             <header className="grid grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-ai-border/60 px-4 py-3 sm:px-6">
               <div className="flex items-center gap-2">
                 {isMobile && (
-                  <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-                    <SheetTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground"
-                      >
-                        <Menu className="h-4 w-4" />
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="w-full max-w-xs p-0 sm:max-w-sm">
-                      <ChatFolderSidebar {...sidebarProps} />
-                    </SheetContent>
-                  </Sheet>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setMindmapOpen(true)}
+                    className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground"
+                  >
+                    {mindmapOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
+                  </Button>
                 )}
 
                 {!isMobile && (
@@ -437,6 +475,37 @@ const AIChat = ({
                 )}
               </div>
             </header>
+
+            {isMobile && (
+              <Dialog open={mindmapOpen} onOpenChange={setMindmapOpen}>
+                <DialogContent className="max-w-full gap-0 border-ai-border/60 p-0 shadow-2xl">
+                  <div className="flex h-[85vh] flex-col overflow-hidden bg-ai-surface">
+                    <div className="flex items-center justify-between border-b border-ai-border/60 px-4 py-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <Sparkles className="h-4 w-4 text-primary" /> Mindmap över sessioner
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" className="rounded-ai-md" onClick={handleNewSession}>
+                          <Plus className="mr-2 h-4 w-4" /> Ny session
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-9 w-9 rounded-full"
+                          onClick={() => setMindmapOpen(false)}
+                          aria-label="Stäng mindmap"
+                        >
+                          <PanelLeftClose className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <MindmapNavigator {...sidebarProps} variant="fullscreen" />
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
 
             <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
               <ChatMessages

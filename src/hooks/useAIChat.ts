@@ -376,6 +376,9 @@ export const useAIChat = (portfolioId?: string) => {
     return Math.max(0, totalCredits - usedCredits);
   }, [usage?.ai_messages_count]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [sessionActivity, setSessionActivity] = useState<
+    Record<string, { messageCount: number; lastMessageAt?: string; lastAssistantAt?: string }>
+  >({});
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -490,6 +493,20 @@ export const useAIChat = (portfolioId?: string) => {
         }, 50);
       }
 
+      setSessionActivity((previous) => {
+        const lastMessage = mergedMessages[mergedMessages.length - 1];
+        const lastAssistant = [...mergedMessages].reverse().find((message) => message.role === 'assistant');
+
+        return {
+          ...previous,
+          [sessionId]: {
+            messageCount: mergedMessages.length,
+            lastMessageAt: lastMessage?.timestamp?.toISOString?.() ?? lastMessage?.timestamp?.toString(),
+            lastAssistantAt: lastAssistant?.timestamp?.toISOString?.() ?? lastAssistant?.timestamp?.toString(),
+          },
+        };
+      });
+
     } catch (error) {
       console.error('Error loading messages:', error);
       toast({
@@ -514,6 +531,45 @@ export const useAIChat = (portfolioId?: string) => {
 
       if (!formattedSessions || formattedSessions.length === 0) {
         return;
+      }
+
+      const sessionIds = formattedSessions.map((session) => session.id);
+
+      const { data: activityRows, error: activityError } = await supabase
+        .from('portfolio_chat_history')
+        .select('chat_session_id, created_at, message_type')
+        .in('chat_session_id', sessionIds)
+        .eq('user_id', user.id);
+
+      if (activityError) {
+        console.error('Error loading session activity:', activityError);
+      } else if (activityRows) {
+        const activityMap: Record<string, { messageCount: number; lastMessageAt?: string; lastAssistantAt?: string }> = {};
+
+        activityRows.forEach((row) => {
+          const sessionKey = row.chat_session_id as string;
+          const existing = activityMap[sessionKey] ?? { messageCount: 0 };
+          const createdAt = row.created_at as string;
+          const isAssistant = row.message_type === 'assistant';
+
+          activityMap[sessionKey] = {
+            messageCount: existing.messageCount + 1,
+            lastMessageAt: existing.lastMessageAt
+              ? new Date(existing.lastMessageAt) > new Date(createdAt)
+                ? existing.lastMessageAt
+                : createdAt
+              : createdAt,
+            lastAssistantAt: isAssistant
+              ? existing.lastAssistantAt
+                ? new Date(existing.lastAssistantAt) > new Date(createdAt)
+                  ? existing.lastAssistantAt
+                  : createdAt
+                : createdAt
+              : existing.lastAssistantAt,
+          };
+        });
+
+        setSessionActivity((previous) => ({ ...activityMap, ...previous }));
       }
     } catch (error) {
       console.error('Error loading sessions:', error);
@@ -1552,6 +1608,7 @@ export const useAIChat = (portfolioId?: string) => {
   return {
     messages,
     sessions,
+    sessionActivity,
     currentSessionId,
     isLoading,
     isAnalyzing,
