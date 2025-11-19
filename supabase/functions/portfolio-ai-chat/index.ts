@@ -684,20 +684,19 @@ const classifyIntentWithLLM = async (
   openAIApiKey: string,
 ): Promise<IntentType | null> => {
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${openAIApiKey}`,
-      },
-      body: JSON.stringify({
-        model: INLINE_INTENT_MODEL,
-        temperature: 0,
-        max_completion_tokens: 5,
-        messages: [
-          {
-            role: 'system',
-            content: 'Klassificera användarens fråga som en av följande kategorier: stock_analysis, news_update, general_news, market_analysis, portfolio_optimization, buy_sell_decisions, general_advice. Svara endast med etiketten.',
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${openAIApiKey}`,
+    },
+    body: JSON.stringify({
+      model: INLINE_INTENT_MODEL,
+      max_completion_tokens: 5,
+      messages: [
+        {
+          role: 'system',
+          content: 'Klassificera användarens fråga som en av följande kategorier: stock_analysis, news_update, general_news, market_analysis, portfolio_optimization, buy_sell_decisions, general_advice. Svara endast med etiketten.',
           },
           {
             role: 'user',
@@ -1254,20 +1253,19 @@ const askLLMIfRealtimeNeeded = async ({
       'Returnera JSON i formatet {"realtime": "yes" eller "no", "reason": "...", "question_type": "...", "recommendations": "yes" eller "no"}.',
     ].filter(Boolean);
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${openAIApiKey}`,
-      },
-      body: JSON.stringify({
-        model: INLINE_INTENT_MODEL,
-        temperature: 0,
-        max_completion_tokens: 60,
-        messages: [
-          {
-            role: 'system',
-            content: 'Du avgör om en investeringsfråga behöver realtidsdata. Var konservativ med ja-svar och motivera kort på svenska.',
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${openAIApiKey}`,
+    },
+    body: JSON.stringify({
+      model: INLINE_INTENT_MODEL,
+      max_completion_tokens: 60,
+      messages: [
+        {
+          role: 'system',
+          content: 'Du avgör om en investeringsfråga behöver realtidsdata. Var konservativ med ja-svar och motivera kort på svenska.',
           },
           {
             role: 'user',
@@ -1511,20 +1509,19 @@ const planRealtimeSearchWithLLM = async ({
       `Användarens fråga:\n"""${message}"""`,
     ].filter(Boolean).join('\n\n');
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${openAIApiKey}`,
-      },
-      body: JSON.stringify({
-        model: INLINE_INTENT_MODEL,
-        temperature: 0,
-        max_completion_tokens: 180,
-        tool_choice: 'auto',
-        tools: [TAVILY_ROUTER_TOOL],
-        messages: [
-          {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${openAIApiKey}`,
+    },
+    body: JSON.stringify({
+      model: INLINE_INTENT_MODEL,
+      max_completion_tokens: 180,
+      tool_choice: 'auto',
+      tools: [TAVILY_ROUTER_TOOL],
+      messages: [
+        {
             role: 'system',
             content: 'Du är en researchplanerare som bara ska trigga Tavily vid behov av realtidsdata och annars förklara varför det inte behövs.',
           },
