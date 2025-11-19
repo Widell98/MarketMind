@@ -1271,15 +1271,18 @@ export type Database = {
       }
       user_ai_memory: {
         Row: {
+          analysis_focus_preferences: Json | null
           communication_style: string | null
           created_at: string
           current_goals: Json | null
           expertise_level: string | null
           favorite_sectors: Json | null
           frequently_asked_topics: Json | null
+          follow_up_preference: string | null
           id: string
           investment_philosophy: string | null
           last_interaction: string | null
+          macro_focus_topic: string | null
           preferred_companies: Json | null
           preferred_interaction_times: Json | null
           preferred_response_length: string | null
@@ -1290,15 +1293,18 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          analysis_focus_preferences?: Json | null
           communication_style?: string | null
           created_at?: string
           current_goals?: Json | null
           expertise_level?: string | null
           favorite_sectors?: Json | null
           frequently_asked_topics?: Json | null
+          follow_up_preference?: string | null
           id?: string
           investment_philosophy?: string | null
           last_interaction?: string | null
+          macro_focus_topic?: string | null
           preferred_companies?: Json | null
           preferred_interaction_times?: Json | null
           preferred_response_length?: string | null
@@ -1309,15 +1315,18 @@ export type Database = {
           user_id: string
         }
         Update: {
+          analysis_focus_preferences?: Json | null
           communication_style?: string | null
           created_at?: string
           current_goals?: Json | null
           expertise_level?: string | null
           favorite_sectors?: Json | null
           frequently_asked_topics?: Json | null
+          follow_up_preference?: string | null
           id?: string
           investment_philosophy?: string | null
           last_interaction?: string | null
+          macro_focus_topic?: string | null
           preferred_companies?: Json | null
           preferred_interaction_times?: Json | null
           preferred_response_length?: string | null
