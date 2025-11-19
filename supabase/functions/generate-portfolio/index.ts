@@ -10,15 +10,38 @@ const STRATEGY_MODEL = Deno.env.get('OPENAI_STRATEGY_MODEL')
 const extractOpenAIResponseText = (data: any): string => {
   if (Array.isArray(data?.output)) {
     for (const item of data.output) {
-      if (Array.isArray(item?.content)) {
-        const text = item.content
-          .map((part: { text?: string }) => part?.text?.trim?.())
-          .filter(Boolean)
-          .join('\n')
-          .trim();
-        if (text) {
-          return text;
+      if (!Array.isArray(item?.content)) {
+        continue;
+      }
+
+      for (const part of item.content) {
+        const parsedPayload = (part as any)?.parsed ?? (part as any)?.json;
+        if (parsedPayload !== undefined) {
+          if (typeof parsedPayload === 'string') {
+            const trimmed = parsedPayload.trim();
+            if (trimmed) {
+              return trimmed;
+            }
+          } else {
+            try {
+              const serialized = JSON.stringify(parsedPayload);
+              if (serialized) {
+                return serialized;
+              }
+            } catch {
+              // ignore serialization issues and continue through remaining payloads
+            }
+          }
         }
+      }
+
+      const text = item.content
+        .map((part: { text?: string }) => part?.text?.trim?.())
+        .filter(Boolean)
+        .join('\n')
+        .trim();
+      if (text) {
+        return text;
       }
     }
   }
