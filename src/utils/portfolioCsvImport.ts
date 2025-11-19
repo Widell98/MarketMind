@@ -24,7 +24,10 @@ export const normalizeShareClassTicker = (value: string) => {
   }
 
   const compactMatch = base.match(/^(.*?)([ABCD])$/i);
-  if (compactMatch) {
+  const hasNordicSuffix = Boolean(suffix);
+  const isLongEnoughToAvoidCommonUS = base.length >= 5;
+
+  if (compactMatch && (hasNordicSuffix || isLongEnoughToAvoidCommonUS)) {
     const [, main, shareClass] = compactMatch;
     if (main.length >= 2) {
       return `${main} ${shareClass.toUpperCase()}${suffix}`;
