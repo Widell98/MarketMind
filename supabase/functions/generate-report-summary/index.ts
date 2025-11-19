@@ -374,28 +374,35 @@ serve(async (req) => {
   });
 
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${openAIApiKey}`,
+ const response = await fetch("https://api.openai.com/v1/responses", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${openAIApiKey}`,
+  },
+  body: JSON.stringify({
+    model: "gpt-5-mini",
+    max_output_tokens: 600,
+    reasoning: {
+      effort: "medium"   // bättre struktur, mindre hallucinationer
+    },
+    text: {
+      verbosity: "medium" // bäst för JSON-output
+    },
+    input: [
+      {
+        role: "system",
+        content:
+          "Du är en erfaren finansanalytiker som levererar koncisa, professionella rapportsammanfattningar på svenska. Du returnerar alltid strikt giltig JSON utan någon text utanför JSON-strukturen."
       },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.6,
-        max_tokens: 600,
-        messages: [
-          {
-            role: "system",
-            content: "Du är en erfaren finansanalytiker som levererar koncisa rapportanalyser på svenska och svarar alltid med giltig JSON.",
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-      }),
-    });
+      {
+        role: "user",
+        content: prompt
+      }
+    ]
+  }),
+});
+
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -406,8 +413,8 @@ serve(async (req) => {
       });
     }
 
-    const data = (await response.json()) as OpenAIResponse;
-    const content = data?.choices?.[0]?.message?.content;
+const data = await response.json();
+const content = data.output_text;
 
     if (!content) {
       console.error("OpenAI response missing content", data);
