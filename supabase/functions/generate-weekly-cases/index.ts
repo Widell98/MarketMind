@@ -12,6 +12,8 @@ const CASE_MODEL = Deno.env.get('OPENAI_CASE_MODEL')
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
+type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -21,25 +23,29 @@ const CASE_COUNT = 1;
 const SHEET_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRJZtyoepzQZSQw-LXTp0vmnpPVMqluTiPZJkPp61g5KsfEp08CA6LZ7CNoTfIgYe-E7lvCZ_ToMuF4/pub?gid=2130484499&single=true&output=csv";
 
+const WEEKLY_CASE_RESPONSE_SCHEMA = {
+  type: 'object',
+  additionalProperties: true,
+  properties: {
+    title: { type: 'string' },
+    company_name: { type: 'string' },
+    description: { type: 'string' },
+    long_description: { type: 'string' },
+    sector: { type: 'string' },
+    market_cap: { type: 'string' },
+    pe_ratio: { type: 'string' },
+    dividend_yield: { type: 'string' },
+  },
+  required: ['title', 'company_name', 'description', 'long_description'],
+} as const;
+
 const WEEKLY_CASE_RESPONSE_FORMAT = {
   type: 'json_schema',
+  name: 'weekly_stock_case',
+  schema: WEEKLY_CASE_RESPONSE_SCHEMA,
   json_schema: {
     name: 'weekly_stock_case',
-    schema: {
-      type: 'object',
-      additionalProperties: true,
-      properties: {
-        title: { type: 'string' },
-        company_name: { type: 'string' },
-        description: { type: 'string' },
-        long_description: { type: 'string' },
-        sector: { type: 'string' },
-        market_cap: { type: 'string' },
-        pe_ratio: { type: 'string' },
-        dividend_yield: { type: 'string' },
-      },
-      required: ['title', 'company_name', 'description', 'long_description'],
-    },
+    schema: WEEKLY_CASE_RESPONSE_SCHEMA,
   },
 } as const;
 
@@ -58,6 +64,68 @@ const extractJsonPayload = (content: string): string => {
   }
 
   return trimmed;
+};
+
+const extractOpenAIResponseText = (data: any): string => {
+  const contentParts = Array.isArray(data?.output)
+    ? data.output.flatMap((item: any) =>
+        Array.isArray(item?.content) ? item.content : []
+      )
+    : [];
+
+  for (const part of contentParts) {
+    if ((part as any)?.parsed !== undefined) {
+      const parsedPayload = (part as any).parsed;
+      if (typeof parsedPayload === 'string') {
+        const trimmed = parsedPayload.trim();
+        if (trimmed) return trimmed;
+      } else if (parsedPayload !== null && parsedPayload !== undefined) {
+        try {
+          const serialized = JSON.stringify(parsedPayload);
+          if (serialized) return serialized;
+        } catch {
+          // ignore serialization issues
+        }
+      }
+    }
+
+    if ((part as any)?.json !== undefined) {
+      const jsonPayload = (part as any).json;
+      if (typeof jsonPayload === 'string') {
+        const trimmed = jsonPayload.trim();
+        if (trimmed) return trimmed;
+      } else if (jsonPayload !== null && jsonPayload !== undefined) {
+        try {
+          const serialized = JSON.stringify(jsonPayload);
+          if (serialized) return serialized;
+        } catch {
+          // ignore serialization issues
+        }
+      }
+    }
+  }
+
+  const textPayload = contentParts
+    .map((part: { text?: string }) => (typeof part?.text === 'string' ? part.text.trim() : ''))
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+
+  if (textPayload) {
+    return textPayload;
+  }
+
+  if (Array.isArray(data?.output_text) && data.output_text.length > 0) {
+    const text = data.output_text.join('\n').trim();
+    if (text) return text;
+  }
+
+  const fallbackText = data?.choices?.[0]?.message?.content;
+  if (typeof fallbackText === 'string' && fallbackText.trim()) {
+    return fallbackText.trim();
+  }
+
+  return '';
 };
 
 const sanitizeNumber = (value: unknown): number | null => {
@@ -1008,7 +1076,15 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
 
       console.log(`Generating case ${i + 1} for ${sector} - ${style}...`);
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const promptMessages: ResponsesApiMessage[] = [
+        {
+          role: 'system',
+          content: 'Du är en erfaren finansanalytiker som skapar investeringsanalyser för svenska investerare. Svara alltid med giltigt JSON.'
+        },
+        { role: 'user', content: prompt }
+      ];
+
+      const response = await fetch('https://api.openai.com/v1/responses', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${openAIApiKey}`,
@@ -1016,16 +1092,15 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
         },
         body: JSON.stringify({
           model: CASE_MODEL,
-          messages: [
-            {
-              role: 'system',
-              content: 'Du är en erfaren finansanalytiker som skapar investeringsanalyser för svenska investerare. Svara alltid med giltigt JSON.'
-            },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.7,
-          max_completion_tokens: 500,
-          response_format: WEEKLY_CASE_RESPONSE_FORMAT,
+          input: toResponsesInput(promptMessages),
+          max_output_tokens: 500,
+          reasoning: {
+            effort: 'low',
+          },
+          text: {
+            format: WEEKLY_CASE_RESPONSE_FORMAT,
+            verbosity: 'medium',
+          },
         }),
       });
 
@@ -1037,7 +1112,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
       }
 
       const data = await response.json();
-      const generatedContent = data?.choices?.[0]?.message?.content;
+      const generatedContent = extractOpenAIResponseText(data);
 
       console.log('OpenAI weekly case response content', {
         ticker: selectedTicker,

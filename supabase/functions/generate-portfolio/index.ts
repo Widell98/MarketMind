@@ -7,6 +7,81 @@ const STRATEGY_MODEL = Deno.env.get('OPENAI_STRATEGY_MODEL')
   || Deno.env.get('OPENAI_MODEL')
   || 'gpt-5.1';
 
+type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
+const toResponsesInput = (messages: ResponsesApiMessage[]) =>
+  messages.map((m) => ({
+    role: m.role,
+    content: [
+      {
+        type: 'input_text' as const,
+        text: m.content,
+      },
+    ],
+  }));
+
+const extractOpenAIResponseText = (data: any): string => {
+  const contentParts = Array.isArray(data?.output)
+    ? data.output.flatMap((item: any) =>
+        Array.isArray(item?.content) ? item.content : []
+      )
+    : [];
+
+  for (const part of contentParts) {
+    if ((part as any)?.parsed !== undefined) {
+      const parsedPayload = (part as any).parsed;
+      if (typeof parsedPayload === 'string') {
+        const trimmed = parsedPayload.trim();
+        if (trimmed) return trimmed;
+      } else if (parsedPayload !== null && parsedPayload !== undefined) {
+        try {
+          const serialized = JSON.stringify(parsedPayload);
+          if (serialized) return serialized;
+        } catch {
+          // ignore serialization issues
+        }
+      }
+    }
+
+    if ((part as any)?.json !== undefined) {
+      const jsonPayload = (part as any).json;
+      if (typeof jsonPayload === 'string') {
+        const trimmed = jsonPayload.trim();
+        if (trimmed) return trimmed;
+      } else if (jsonPayload !== null && jsonPayload !== undefined) {
+        try {
+          const serialized = JSON.stringify(jsonPayload);
+          if (serialized) return serialized;
+        } catch {
+          // ignore serialization issues
+        }
+      }
+    }
+  }
+
+  const textPayload = contentParts
+    .map((part: { text?: string }) => (typeof part?.text === 'string' ? part.text.trim() : ''))
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+
+  if (textPayload) {
+    return textPayload;
+  }
+
+  if (Array.isArray(data?.output_text) && data.output_text.length > 0) {
+    const text = data.output_text.join('\n').trim();
+    if (text) return text;
+  }
+
+  const fallbackText = data?.choices?.[0]?.message?.content;
+  if (typeof fallbackText === 'string' && fallbackText.trim()) {
+    return fallbackText.trim();
+  }
+
+  return '';
+};
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -130,60 +205,68 @@ const CASHFLOW_TICKERS = /SHB|SEB|NDA|SWED|AVANZ|CAST|SBB|BALD|FABG|KO|PEP|T|TEL
 const DEFENSIVE_TICKERS = /AZN|NVO|JNJ|MRK|ABBV|BMY|AXFO|ICA|WMT|KO|PEP|NG/;
 const GROWTH_TICKERS = /NVDA|AAPL|MSFT|GOOGL|META|AMZN|TSLA|ADBE|CRM|SHOP|SNOW|EVO|SINCH|SPOT|SECT B/;
 
-const PORTFOLIO_RESPONSE_FORMAT = {
-  type: 'json_schema',
-  json_schema: {
-    name: 'portfolio_strategy_response',
-    schema: {
+const PORTFOLIO_RESPONSE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['plan', 'recommended_assets', 'complementary_ideas'],
+  properties: {
+    plan: {
       type: 'object',
-      additionalProperties: true,
+      additionalProperties: false,
+      required: ['action_summary', 'risk_alignment', 'next_steps', 'recommended_assets'],
       properties: {
-        plan: {
-          type: 'object',
-          additionalProperties: true,
-          properties: {
-            action_summary: { type: 'string' },
-            risk_alignment: { type: 'string' },
-            next_steps: {
-              type: 'array',
-              items: { type: 'string' },
-              minItems: 1,
-            },
-            recommended_assets: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  name: { type: 'string' },
-                  ticker: { type: 'string' },
-                  allocation_percent: { type: 'number' },
-                  rationale: { type: 'string' },
-                },
-                required: ['name'],
-              },
-            },
-          },
+        action_summary: { type: 'string' },
+        risk_alignment: { type: 'string' },
+        next_steps: {
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
         },
         recommended_assets: {
           type: 'array',
           items: {
             type: 'object',
+            additionalProperties: false,
+            required: ['name', 'ticker', 'allocation_percent', 'rationale'],
             properties: {
               name: { type: 'string' },
-              symbol: { type: 'string' },
-              allocation: { type: 'number' },
-              sector: { type: 'string' },
-              reasoning: { type: 'string' },
+              ticker: { type: 'string' },
+              allocation_percent: { type: 'number' },
+              rationale: { type: 'string' },
             },
-            required: ['name'],
           },
-        },
-        complementary_ideas: {
-          type: 'array',
-          items: { type: 'string' },
         },
       },
     },
+    recommended_assets: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['name', 'symbol', 'allocation', 'sector', 'reasoning'],
+        properties: {
+          name: { type: 'string' },
+          symbol: { type: 'string' },
+          allocation: { type: 'number' },
+          sector: { type: 'string' },
+          reasoning: { type: 'string' },
+        },
+      },
+    },
+    complementary_ideas: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+  },
+} as const;
+
+const PORTFOLIO_RESPONSE_FORMAT = {
+  type: 'json_schema',
+  name: 'portfolio_strategy_response',
+  schema: PORTFOLIO_RESPONSE_SCHEMA,
+  json_schema: {
+    name: 'portfolio_strategy_response',
+    schema: PORTFOLIO_RESPONSE_SCHEMA,
   },
 } as const;
 
@@ -792,7 +875,7 @@ Erfarenhetsnivå: ${experienceSummary}
 
 Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerställ att all text är på svenska.`;
 
-    const messages: Array<{ role: 'system' | 'user'; content: string }> = [
+    const messages: ResponsesApiMessage[] = [
       { role: 'system', content: systemPrompt }
     ];
 
@@ -818,7 +901,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
 
     console.log('Calling OpenAI API with', STRATEGY_MODEL, '...');
 
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    const openAIResponse = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -826,10 +909,15 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
       },
       body: JSON.stringify({
         model: STRATEGY_MODEL,
-        messages,
-        temperature: 0.85,
-        max_completion_tokens: 2500,
-        response_format: PORTFOLIO_RESPONSE_FORMAT,
+        input: toResponsesInput(messages),
+        max_output_tokens: 2500,
+        reasoning: {
+          effort: 'medium',
+        },
+        text: {
+          format: PORTFOLIO_RESPONSE_FORMAT,
+          verbosity: 'high',
+        },
       }),
     });
 
@@ -846,7 +934,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
     }
 
     const openAIData = await openAIResponse.json();
-    const aiRecommendationsRaw = openAIData.choices?.[0]?.message?.content?.trim() || '';
+    const aiRecommendationsRaw = extractOpenAIResponseText(openAIData);
 
     console.log('OpenAI full response:', JSON.stringify(openAIData, null, 2));
     console.log('AI recommendations received:', aiRecommendationsRaw);

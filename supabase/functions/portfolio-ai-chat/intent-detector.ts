@@ -4,6 +4,81 @@ const INTENT_MODEL = Deno.env.get('OPENAI_INTENT_MODEL')
   || Deno.env.get('OPENAI_MODEL')
   || 'gpt-5.1';
 
+type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
+const toResponsesInput = (messages: ResponsesApiMessage[]) =>
+  messages.map((m) => ({
+    role: m.role,
+    content: [
+      {
+        type: 'input_text' as const,
+        text: m.content,
+      },
+    ],
+  }));
+
+const extractResponsesApiText = (data: any): string => {
+  const contentParts = Array.isArray(data?.output)
+    ? data.output.flatMap((item: any) =>
+        Array.isArray(item?.content) ? item.content : []
+      )
+    : [];
+
+  for (const part of contentParts) {
+    if ((part as any)?.parsed !== undefined) {
+      const parsedPayload = (part as any).parsed;
+      if (typeof parsedPayload === 'string') {
+        const trimmed = parsedPayload.trim();
+        if (trimmed) return trimmed;
+      } else if (parsedPayload !== null && parsedPayload !== undefined) {
+        try {
+          const stringified = JSON.stringify(parsedPayload);
+          if (stringified) return stringified;
+        } catch {
+          // ignore and fall back to text handling
+        }
+      }
+    }
+
+    if ((part as any)?.json !== undefined) {
+      const jsonPayload = (part as any).json;
+      if (typeof jsonPayload === 'string') {
+        const trimmed = jsonPayload.trim();
+        if (trimmed) return trimmed;
+      } else if (jsonPayload !== null && jsonPayload !== undefined) {
+        try {
+          const stringified = JSON.stringify(jsonPayload);
+          if (stringified) return stringified;
+        } catch {
+          // ignore and fall back to text handling
+        }
+      }
+    }
+  }
+
+  const textPayload = contentParts
+    .map((part: { text?: string }) => (typeof part?.text === 'string' ? part.text.trim() : ''))
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+
+  if (textPayload) {
+    return textPayload;
+  }
+
+  if (Array.isArray(data?.output_text) && data.output_text.length > 0) {
+    const text = data.output_text.join('\n').trim();
+    if (text) return text;
+  }
+
+  const fallbackText = data?.choices?.[0]?.message?.content;
+  if (typeof fallbackText === 'string' && fallbackText.trim()) {
+    return fallbackText.trim();
+  }
+
+  return '';
+};
+
 const ALLOWED_INTENTS: IntentType[] = [
   'stock_analysis',
   'portfolio_optimization',
@@ -118,7 +193,7 @@ export const detectUserIntentWithOpenAI = async (
   }
 
   try {
-    const messages = [
+    const messages: ResponsesApiMessage[] = [
       { role: 'system', content: SYSTEM_PROMPT },
       ...EXAMPLE_CLASSIFICATIONS.flatMap(example => [
         { role: 'user', content: example.user },
@@ -127,19 +202,28 @@ export const detectUserIntentWithOpenAI = async (
       { role: 'user', content: message.trim() },
     ];
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: INTENT_MODEL,
-        temperature: 0.2,
-        response_format: { type: 'json_schema', json_schema: INTENT_SCHEMA },
-        messages,
-      }),
-    });
+      const response = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: INTENT_MODEL,
+          reasoning: {
+            effort: 'none',
+          },
+          text: {
+            format: {
+              type: 'json_schema',
+              name: INTENT_SCHEMA.name,
+              schema: INTENT_SCHEMA.schema,
+            },
+            verbosity: 'low',
+          },
+          input: toResponsesInput(messages),
+        }),
+      });
 
     if (!response.ok) {
       console.warn('Intent interpreter request failed', response.status, await response.text());
@@ -147,7 +231,7 @@ export const detectUserIntentWithOpenAI = async (
     }
 
     const data = await response.json();
-    const rawContent = data?.choices?.[0]?.message?.content;
+    const rawContent = extractResponsesApiText(data);
 
     if (!rawContent || typeof rawContent !== 'string') {
       return null;

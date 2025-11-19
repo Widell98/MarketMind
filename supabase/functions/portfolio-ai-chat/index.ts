@@ -15,6 +15,81 @@ const PRIMARY_CHAT_MODEL = Deno.env.get('OPENAI_PORTFOLIO_MODEL')
 const INLINE_INTENT_MODEL = Deno.env.get('OPENAI_INTENT_MODEL')
   || PRIMARY_CHAT_MODEL;
 
+type ResponsesApiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
+const toResponsesInput = (messages: ResponsesApiMessage[]) =>
+  messages.map((m) => ({
+    role: m.role,
+    content: [
+      {
+        type: 'input_text' as const,
+        text: m.content,
+      },
+    ],
+  }));
+
+const extractResponsesApiText = (data: any): string => {
+  const contentParts = Array.isArray(data?.output)
+    ? data.output.flatMap((item: any) =>
+        Array.isArray(item?.content) ? item.content : []
+      )
+    : [];
+
+  for (const part of contentParts) {
+    if ((part as any)?.parsed !== undefined) {
+      const parsedPayload = (part as any).parsed;
+      if (typeof parsedPayload === 'string') {
+        const trimmed = parsedPayload.trim();
+        if (trimmed) return trimmed;
+      } else if (parsedPayload !== null && parsedPayload !== undefined) {
+        try {
+          const stringified = JSON.stringify(parsedPayload);
+          if (stringified) return stringified;
+        } catch {
+          // ignore serialization errors
+        }
+      }
+    }
+
+    if ((part as any)?.json !== undefined) {
+      const jsonPayload = (part as any).json;
+      if (typeof jsonPayload === 'string') {
+        const trimmed = jsonPayload.trim();
+        if (trimmed) return trimmed;
+      } else if (jsonPayload !== null && jsonPayload !== undefined) {
+        try {
+          const stringified = JSON.stringify(jsonPayload);
+          if (stringified) return stringified;
+        } catch {
+          // ignore serialization errors
+        }
+      }
+    }
+  }
+
+  const textPayload = contentParts
+    .map((part: { text?: string }) => (typeof part?.text === 'string' ? part.text.trim() : ''))
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+
+  if (textPayload) {
+    return textPayload;
+  }
+
+  if (Array.isArray(data?.output_text) && data.output_text.length > 0) {
+    const text = data.output_text.join('\n').trim();
+    if (text) return text;
+  }
+
+  const fallbackText = data?.choices?.[0]?.message?.content;
+  if (typeof fallbackText === 'string' && fallbackText.trim()) {
+    return fallbackText.trim();
+  }
+
+  return '';
+};
+
 type BasePromptOptions = {
   shouldOfferFollowUp: boolean;
   expertiseLevel?: 'beginner' | 'intermediate' | 'advanced' | null;
@@ -627,20 +702,19 @@ const classifyIntentWithLLM = async (
   openAIApiKey: string,
 ): Promise<IntentType | null> => {
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${openAIApiKey}`,
-      },
-      body: JSON.stringify({
-        model: INLINE_INTENT_MODEL,
-        temperature: 0,
-        max_completion_tokens: 5,
-        messages: [
-          {
-            role: 'system',
-            content: 'Klassificera användarens fråga som en av följande kategorier: stock_analysis, news_update, general_news, market_analysis, portfolio_optimization, buy_sell_decisions, general_advice. Svara endast med etiketten.',
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${openAIApiKey}`,
+    },
+    body: JSON.stringify({
+      model: INLINE_INTENT_MODEL,
+      max_completion_tokens: 5,
+      messages: [
+        {
+          role: 'system',
+          content: 'Klassificera användarens fråga som en av följande kategorier: stock_analysis, news_update, general_news, market_analysis, portfolio_optimization, buy_sell_decisions, general_advice. Svara endast med etiketten.',
           },
           {
             role: 'user',
@@ -940,7 +1014,7 @@ const evaluateNewsIntentWithOpenAI = async ({
   try {
     const systemPrompt = `Du hjälper en svensk finansiell assistent att välja rätt typ av nyhetssvar.\n- Välj \"news_update\" om användaren sannolikt vill ha en uppdatering om sina innehav eller portfölj.\n- Välj \"general_news\" om användaren vill ha ett brett marknadsbrev eller nyhetssvep.\n- Returnera \"none\" om inget av alternativen passar.\nSvara alltid med giltig JSON.`;
 
-    const messages = [
+    const messages: ResponsesApiMessage[] = [
       { role: 'system', content: systemPrompt },
       {
         role: 'user',
@@ -948,7 +1022,7 @@ const evaluateNewsIntentWithOpenAI = async ({
       },
     ];
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -956,9 +1030,18 @@ const evaluateNewsIntentWithOpenAI = async ({
       },
       body: JSON.stringify({
         model: INLINE_INTENT_MODEL,
-        temperature: 0,
-        response_format: { type: 'json_schema', json_schema: NEWS_INTENT_SCHEMA },
-        messages,
+        reasoning: {
+          effort: 'none',
+        },
+        text: {
+          format: {
+            type: 'json_schema',
+            name: NEWS_INTENT_SCHEMA.name,
+            schema: NEWS_INTENT_SCHEMA.schema,
+          },
+          verbosity: 'low',
+        },
+        input: toResponsesInput(messages),
       }),
     });
 
@@ -968,7 +1051,7 @@ const evaluateNewsIntentWithOpenAI = async ({
     }
 
     const data = await response.json();
-    const rawContent = data?.choices?.[0]?.message?.content;
+    const rawContent = extractResponsesApiText(data);
 
     if (!rawContent || typeof rawContent !== 'string') {
       return null;
@@ -1059,7 +1142,12 @@ const evaluateStockIntentWithOpenAI = async ({
       'Avgör om detta ska besvaras som en aktiespecifik fråga.',
     ].join('\n');
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const messages: ResponsesApiMessage[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userContent },
+    ];
+
+    const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1067,12 +1155,18 @@ const evaluateStockIntentWithOpenAI = async ({
       },
       body: JSON.stringify({
         model: INLINE_INTENT_MODEL,
-        temperature: 0,
-        response_format: { type: 'json_schema', json_schema: STOCK_INTENT_SCHEMA },
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userContent },
-        ],
+        reasoning: {
+          effort: 'none',
+        },
+        text: {
+          format: {
+            type: 'json_schema',
+            name: STOCK_INTENT_SCHEMA.name,
+            schema: STOCK_INTENT_SCHEMA.schema,
+          },
+          verbosity: 'low',
+        },
+        input: toResponsesInput(messages),
       }),
     });
 
@@ -1082,7 +1176,7 @@ const evaluateStockIntentWithOpenAI = async ({
     }
 
     const data = await response.json();
-    const rawContent = data?.choices?.[0]?.message?.content;
+    const rawContent = extractResponsesApiText(data);
 
     if (!rawContent || typeof rawContent !== 'string') {
       return null;
@@ -1173,20 +1267,19 @@ const askLLMIfRealtimeNeeded = async ({
       'Returnera JSON i formatet {"realtime": "yes" eller "no", "reason": "...", "question_type": "...", "recommendations": "yes" eller "no"}.',
     ].filter(Boolean);
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${openAIApiKey}`,
-      },
-      body: JSON.stringify({
-        model: INLINE_INTENT_MODEL,
-        temperature: 0,
-        max_completion_tokens: 60,
-        messages: [
-          {
-            role: 'system',
-            content: 'Du avgör om en investeringsfråga behöver realtidsdata. Var konservativ med ja-svar och motivera kort på svenska.',
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${openAIApiKey}`,
+    },
+    body: JSON.stringify({
+      model: INLINE_INTENT_MODEL,
+      max_completion_tokens: 60,
+      messages: [
+        {
+          role: 'system',
+          content: 'Du avgör om en investeringsfråga behöver realtidsdata. Var konservativ med ja-svar och motivera kort på svenska.',
           },
           {
             role: 'user',
@@ -1430,20 +1523,19 @@ const planRealtimeSearchWithLLM = async ({
       `Användarens fråga:\n"""${message}"""`,
     ].filter(Boolean).join('\n\n');
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${openAIApiKey}`,
-      },
-      body: JSON.stringify({
-        model: INLINE_INTENT_MODEL,
-        temperature: 0,
-        max_completion_tokens: 180,
-        tool_choice: 'auto',
-        tools: [TAVILY_ROUTER_TOOL],
-        messages: [
-          {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${openAIApiKey}`,
+    },
+    body: JSON.stringify({
+      model: INLINE_INTENT_MODEL,
+      max_completion_tokens: 180,
+      tool_choice: 'auto',
+      tools: [TAVILY_ROUTER_TOOL],
+      messages: [
+        {
             role: 'system',
             content: 'Du är en researchplanerare som bara ska trigga Tavily vid behov av realtidsdata och annars förklara varför det inte behövs.',
           },
