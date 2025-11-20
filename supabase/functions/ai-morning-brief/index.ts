@@ -9,10 +9,25 @@ const corsHeaders = {
 };
 
 const openAIApiKey = Deno.env.get("OPENAI_API_KEY");
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseUrl = Deno.env.get("SUPABASE_URL");
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+
+if (!supabaseUrl) {
+  throw new Error("SUPABASE_URL is not configured");
+}
+
+if (!supabaseServiceKey && !supabaseAnonKey) {
+  throw new Error("No Supabase key configured. Set SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY.");
+}
+
+if (!supabaseServiceKey) {
+  console.warn("SUPABASE_SERVICE_ROLE_KEY missing, falling back to anon key for invokes");
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey ?? supabaseAnonKey!);
 const functionsUrl = Deno.env.get("SUPABASE_FUNCTIONS_URL") ?? `${supabaseUrl}/functions/v1`;
+const functionAuthToken = supabaseServiceKey ?? supabaseAnonKey;
 
 const DEFAULT_SUMMARY =
   "AI sammanfattar gårdagens marknadsrörelser och viktiga nyheter varje morgon vid 07:00. Håll dig uppdaterad med de viktigaste höjdpunkterna innan börsen öppnar.";
@@ -103,12 +118,16 @@ async function buildContextSnapshot() {
 }
 
 async function invokeSupabaseFunction(name: string, body: unknown) {
+  if (!functionAuthToken) {
+    throw new Error(`Missing auth token for invoking ${name}`);
+  }
+
   const response = await fetch(`${functionsUrl}/${name}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${supabaseServiceKey}`,
-      apikey: supabaseServiceKey,
+      Authorization: `Bearer ${functionAuthToken}`,
+      apikey: functionAuthToken,
     },
     body: JSON.stringify(body ?? {}),
   });
@@ -274,6 +293,23 @@ function buildFallbackBrief(context: any) {
 }
 
 async function persistBrief(payload: any, context: any) {
+  if (!supabaseServiceKey) {
+    const now = new Date().toISOString();
+    console.warn("Persist skipped because SUPABASE_SERVICE_ROLE_KEY is missing");
+    return {
+      id: `temp-${now}`,
+      generated_at: now,
+      sentiment: payload.sentiment ?? "neutral",
+      payload,
+      source_snapshot: {
+        news: context.news,
+        market: context.market,
+        calendar: context.calendar,
+      },
+      status: "preview",
+    };
+  }
+
   const hash = await hashPayload(payload, context.news);
   const now = new Date().toISOString();
   const { data, error } = await supabase
