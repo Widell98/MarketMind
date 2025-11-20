@@ -506,6 +506,11 @@ const ChatPortfolioAdvisor = () => {
     []
   );
 
+  const normalizeTickerSymbol = useCallback(
+    (value: string) => normalizeShareClassTicker(value).trim().toUpperCase(),
+    []
+  );
+
   const combinedTickers = useMemo(() => {
     const map = new Map<string, SheetTicker>();
 
