@@ -9,6 +9,22 @@ const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
+const extractOutputText = (data: any) => {
+  if (!data?.output) return null;
+
+  for (const block of data.output) {
+    if (block.type === "message" && Array.isArray(block.content)) {
+      for (const part of block.content) {
+        if (part.type === "output_text" && typeof part.text === "string") {
+          return part.text;
+        }
+      }
+    }
+  }
+
+  return null;
+};
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -990,7 +1006,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-5-mini',
           messages: [
             {
               role: 'system',
@@ -1011,7 +1027,11 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
       }
 
       const data = await response.json();
-      const generatedContent = data?.choices?.[0]?.message?.content;
+      const generatedContent =
+        extractOutputText(data) ??
+        data.output_text ??
+        data.choices?.[0]?.message?.content ??
+        "";
 
       console.log('OpenAI weekly case response content', {
         ticker: selectedTicker,
