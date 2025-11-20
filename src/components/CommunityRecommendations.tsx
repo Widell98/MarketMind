@@ -95,25 +95,6 @@ const CommunityRecommendations: React.FC = () => {
     };
   }, [refetch]);
 
-  useEffect(() => {
-    const container = carouselRef.current;
-    if (!container) return;
-
-    const handleScroll = () => {
-      if (!container) return;
-      const firstChild = container.firstElementChild as HTMLElement | null;
-      if (!firstChild) return;
-
-      const gap = 16;
-      const childWidth = firstChild.clientWidth + gap;
-      const index = Math.round(container.scrollLeft / childWidth);
-      setCarouselIndex(Math.min(filteredRecommendations.length - 1, Math.max(0, index)));
-    };
-
-    container.addEventListener('scroll', handleScroll, { passive: true });
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [filteredRecommendations.length]);
-
   const handleViewItem = (recommendation: CommunityRecommendation) => {
     if (recommendation.stock_case) {
       navigate(`/stock-cases/${recommendation.stock_case.id}`);
@@ -306,6 +287,10 @@ const CommunityRecommendations: React.FC = () => {
     }).format(new Date(dateString));
   };
 
+  const isAIGenerated = (recommendation: CommunityRecommendation) => {
+    return recommendation.stock_case?.ai_generated || recommendation.analysis?.ai_generated;
+  };
+
   const allSectors = useMemo(() => {
     const sectors = recommendations
       .map((rec) => rec.stock_case?.sector)
@@ -349,9 +334,24 @@ const CommunityRecommendations: React.FC = () => {
       .slice(0, 6);
   }, [tagStats]);
 
-  const isAIGenerated = (recommendation: CommunityRecommendation) => {
-    return recommendation.stock_case?.ai_generated || recommendation.analysis?.ai_generated;
-  };
+  useEffect(() => {
+    const container = carouselRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      if (!container) return;
+      const firstChild = container.firstElementChild as HTMLElement | null;
+      if (!firstChild) return;
+
+      const gap = 16;
+      const childWidth = firstChild.clientWidth + gap;
+      const index = Math.round(container.scrollLeft / childWidth);
+      setCarouselIndex(Math.min(filteredRecommendations.length - 1, Math.max(0, index)));
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [filteredRecommendations.length]);
 
   const scrollToSlide = (index: number) => {
     if (!filteredRecommendations.length) return;
