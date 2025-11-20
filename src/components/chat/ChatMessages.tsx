@@ -42,6 +42,8 @@ const ChatMessages = ({
     handleShowDemo,
     updateGuideSession,
   } = useGuideSession();
+  const [isUserNearBottom, setIsUserNearBottom] = React.useState(true);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   const handleGuidePrompt = React.useCallback(
     (prompt: string) => {
@@ -55,6 +57,34 @@ const ChatMessages = ({
     },
     [onExamplePrompt, handlePromptExample, updateGuideSession]
   );
+
+  const handleScroll = React.useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
+    const isNearBottom = distanceFromBottom < 160;
+    setIsUserNearBottom(isNearBottom);
+  }, []);
+
+  React.useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const { scrollHeight, clientHeight } = container;
+    const isAtBottom = scrollHeight <= clientHeight;
+    setIsUserNearBottom(isAtBottom);
+  }, []);
+
+  React.useEffect(() => {
+    if (!isUserNearBottom) return;
+
+    messagesEndRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'end',
+    });
+  }, [messages, isUserNearBottom, messagesEndRef]);
 
   const examplePrompts = [
     {
@@ -86,6 +116,8 @@ const ChatMessages = ({
   if (isLoadingSession) {
     return (
       <div
+        ref={containerRef}
+        onScroll={handleScroll}
         className="flex-1 min-h-0 overflow-y-auto"
         style={{ scrollbarGutter: 'stable' }}
       >
@@ -106,6 +138,8 @@ const ChatMessages = ({
 
   return (
     <div
+      ref={containerRef}
+      onScroll={handleScroll}
       className="flex-1 min-h-0 overflow-y-auto"
       style={{ scrollbarGutter: 'stable' }}
     >
