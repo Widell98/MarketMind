@@ -38,20 +38,64 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     const suggestions: StockSuggestion[] = [];
     const bannedSymbols = new Set(['ISK', 'KF', 'PPM', 'AP7']);
     const bannedNameRegex = /(Investeringssparkonto|Kapitalförsäkring|Fond(er)?|Index(nära)?|ETF(er)?|Sparkonto)/i;
-    const patterns = [
-      /\*\*([^*]+?)\*\*\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
-      /\*\*([^*()]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)\*\*/g,
-      /(?:Förslag|Rekommendation|Aktie):\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/gi,
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
-      /\d+\.\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
-      /-\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
-      /•\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
-      /([A-Z]{2,6}(?:[-.][A-Z]{1,3})?):\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{3,})\s+\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)(?=[\s.,!?]|$)/g,
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)\s*-\s*Sektor:\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
-      /(?:^\d+\.|\*|-|•)\s*([^()\n]{2,50}?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/gm,
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,50}?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)(?:\s*-|\s*:|\s*,|\s*\.|\s*$)/g,
-      /\b([A-Z]{2,6}(?:[-.][A-Z]{1,3})?)\b\s*-\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,50})/g,
+
+    const patterns: Array<{ regex: RegExp; map: (match: RegExpExecArray) => { name: string; symbol: string; sector?: string } }> = [
+      {
+        regex: /\*\*([^*]+?)\*\*\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /\*\*([^*()]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)\*\*/g,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /(?:Förslag|Rekommendation|Aktie):\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/gi,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /\d+\.\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /-\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /•\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /([A-Z]{2,6}(?:[-.][A-Z]{1,3})?):\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
+        map: (match) => ({ symbol: match[1], name: match[2] }),
+      },
+      {
+        regex: /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{3,})\s+\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)(?=[\s.,!?]|$)/g,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)\s*-\s*Sektor:\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
+        map: (match) => ({ name: match[1], symbol: match[2], sector: match[3] }),
+      },
+      {
+        regex: /(?:^\d+\.|\*|-|•)\s*([^()\n]{2,50}?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/gm,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,50}?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)(?:\s*-|\s*:|\s*,|\s*\.|\s*$)/g,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /\b([A-Z]{2,6}(?:[-.][A-Z]{1,3})?)\b\s*-\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,50})/g,
+        map: (match) => ({ symbol: match[1], name: match[2] }),
+      },
+      {
+        regex: /\b([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\s*\(([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,100})\)/g,
+        map: (match) => ({ symbol: match[1], name: match[2] }),
+      },
     ];
 
     const existingSymbols = new Set(
@@ -63,28 +107,14 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     );
     const contentToParse = aktierSection ? aktierSection[1] : content;
 
-    patterns.forEach((pattern, index) => {
+    patterns.forEach(({ regex, map }) => {
       let match;
-      const regex = new RegExp(pattern.source, pattern.flags);
-      while ((match = regex.exec(contentToParse)) !== null) {
-        let name;
-        let symbol;
-        let sector;
-
-        if (index === 7) {
-          symbol = match[1].trim();
-          name = match[2].trim();
-        } else if (index === 9) {
-          name = match[1].trim();
-          symbol = match[2].trim();
-          sector = match[3]?.trim();
-        } else if (index === 12) {
-          symbol = match[1].trim();
-          name = match[2].trim();
-        } else {
-          name = match[1].trim();
-          symbol = match[2].trim();
-        }
+      const localRegex = new RegExp(regex.source, regex.flags);
+      while ((match = localRegex.exec(contentToParse)) !== null) {
+        const mapped = map(match);
+        let name = mapped.name.trim();
+        let symbol = mapped.symbol.trim();
+        const sector = mapped.sector?.trim();
 
         name = name.replace(/^(Aktie|Bolag|AB|Inc|Corp|Ltd)[\s:]/i, '').trim();
         name = name.replace(/[\s:](AB|Inc|Corp|Ltd)$/i, '').trim();
