@@ -12,8 +12,38 @@ const PRIMARY_CHAT_MODEL = Deno.env.get('OPENAI_PORTFOLIO_MODEL')
   || Deno.env.get('OPENAI_MODEL')
   || 'gpt-5.1';
 
+const LIGHTWEIGHT_CHAT_MODEL = Deno.env.get('OPENAI_PORTFOLIO_LIGHT_MODEL')
+  || 'gpt-4o-mini';
+
 const INLINE_INTENT_MODEL = Deno.env.get('OPENAI_INTENT_MODEL')
   || PRIMARY_CHAT_MODEL;
+
+const selectChatModel = ({
+  hasRealTimeTrigger,
+  isDocumentSummaryRequest,
+  isSimplePersonalAdviceRequest,
+  userIntent,
+}: {
+  hasRealTimeTrigger: boolean;
+  isDocumentSummaryRequest: boolean;
+  isSimplePersonalAdviceRequest: boolean;
+  userIntent: IntentType;
+}): string => {
+  if (hasRealTimeTrigger
+    || isDocumentSummaryRequest
+    || userIntent === 'news_update'
+    || userIntent === 'general_news'
+    || userIntent === 'market_analysis'
+  ) {
+    return PRIMARY_CHAT_MODEL;
+  }
+
+  if (isSimplePersonalAdviceRequest && userIntent === 'general_advice') {
+    return LIGHTWEIGHT_CHAT_MODEL;
+  }
+
+  return PRIMARY_CHAT_MODEL;
+};
 
 type BasePromptOptions = {
   shouldOfferFollowUp: boolean;
@@ -118,6 +148,67 @@ const detectSwedishLanguage = (text: string, interpreterLanguage?: string | null
   });
 
   return score >= 3;
+};
+
+type ChatMessage = { role: 'user' | 'assistant'; content: string };
+
+const RECENT_CHAT_HISTORY_LIMIT = 8;
+const MAX_CHAT_MESSAGE_LENGTH = 1200;
+const HISTORY_SUMMARY_MAX_LENGTH = 2000;
+
+const normalizeChatHistory = (history: unknown): ChatMessage[] => {
+  if (!Array.isArray(history)) return [];
+
+  return history
+    .map((entry) => {
+      const role = typeof entry?.role === 'string' ? entry.role as string : '';
+      const content = typeof entry?.content === 'string' ? entry.content.trim() : '';
+
+      if (!content || !['user', 'assistant'].includes(role)) {
+        return null;
+      }
+
+      return {
+        role: role as ChatMessage['role'],
+        content: content.slice(0, MAX_CHAT_MESSAGE_LENGTH),
+      } as ChatMessage;
+    })
+    .filter((entry): entry is ChatMessage => Boolean(entry));
+};
+
+const prepareChatHistory = (
+  chatHistory: unknown
+): { recentMessages: ChatMessage[]; summaryMessage: { role: 'system'; content: string } | null; totalEntries: number } => {
+  const normalizedHistory = normalizeChatHistory(chatHistory);
+
+  if (normalizedHistory.length === 0) {
+    return { recentMessages: [], summaryMessage: null, totalEntries: 0 };
+  }
+
+  const recentMessages = normalizedHistory.slice(-RECENT_CHAT_HISTORY_LIMIT);
+  const olderMessages = normalizedHistory.slice(0, Math.max(0, normalizedHistory.length - RECENT_CHAT_HISTORY_LIMIT));
+
+  if (olderMessages.length === 0) {
+    return { recentMessages, summaryMessage: null, totalEntries: normalizedHistory.length };
+  }
+
+  const summaryLines = olderMessages.map((entry) => {
+    const speaker = entry.role === 'assistant' ? 'AI' : 'Användare';
+    return `${speaker}: ${entry.content}`;
+  });
+
+  const joinedSummary = summaryLines.join('\n');
+  const truncatedSummary =
+    joinedSummary.length > HISTORY_SUMMARY_MAX_LENGTH
+      ? `${joinedSummary.slice(0, HISTORY_SUMMARY_MAX_LENGTH)}...`
+      : joinedSummary;
+
+  const summaryMessage = {
+    role: 'system' as const,
+    content: `Sammanfattning av äldre historik (serverside-kortad):\n${truncatedSummary}`
+  };
+
+  return { recentMessages, summaryMessage, totalEntries: normalizedHistory.length };
 };
 
 type MacroTheme = 'inflation' | 'rates' | 'growth';
@@ -454,17 +545,21 @@ const buildPersonalizationPrompt = ({
     sections.push('- Betona stabilitet och tidshorisont för barns sparande snarare än kortsiktig avkastning.');
   }
 
+  const riskComfortData = (aiMemory?.risk_comfort_patterns as Record<string, unknown> | null) ?? null;
   const macroSource = macroTheme
-    || (isMacroTheme(aiMemory?.macro_focus_topic) ? aiMemory?.macro_focus_topic as MacroTheme : null)
+    || (isMacroTheme(riskComfortData?.macro_focus_topic as string) ? riskComfortData?.macro_focus_topic as MacroTheme : null)
     || detectMacroThemeFromMessages(Array.isArray(recentMessages) ? recentMessages : []);
   const macroInstruction = getMacroInstruction(macroSource);
   if (macroInstruction) {
     sections.push(macroInstruction);
   }
 
-  const memoryAngles = Array.isArray(aiMemory?.analysis_focus_preferences)
-    ? (aiMemory.analysis_focus_preferences as unknown[]).filter(isAnalysisAngle)
-    : [];
+  const memoryAnglesSource = Array.isArray((riskComfortData as Record<string, unknown> | null)?.analysis_focus_preferences)
+    ? (riskComfortData as { analysis_focus_preferences: unknown[] }).analysis_focus_preferences
+    : (Array.isArray((aiMemory as Record<string, unknown> | null)?.analysis_focus_preferences)
+      ? (aiMemory as { analysis_focus_preferences: unknown[] }).analysis_focus_preferences
+      : []);
+  const memoryAngles = memoryAnglesSource.filter(isAnalysisAngle);
   const combinedAngles = new Set<AnalysisAngle>([
     ...(analysisAngles ?? []),
     ...memoryAngles,
@@ -1980,7 +2075,7 @@ const fetchTavilyContext = async (
 
     const timeout = typeof searchOptions.timeoutMs === 'number' && searchOptions.timeoutMs > 0
       ? searchOptions.timeoutMs
-      : 6000;
+      : 12000;
 
     const domainAttempts: string[][] = [];
     if (effectiveIncludeDomains.length > 0) {
@@ -2136,6 +2231,8 @@ serve(async (req) => {
     
     const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData, stream, documentIds } = requestBody;
 
+    const { recentMessages: preparedChatHistory, summaryMessage, totalEntries: totalHistoryEntries } = prepareChatHistory(chatHistory);
+
     const filteredDocumentIds: string[] = Array.isArray(documentIds)
       ? documentIds.filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0)
       : [];
@@ -2159,12 +2256,10 @@ serve(async (req) => {
       analysisType
     });
 
-    const recentUserMessages = Array.isArray(chatHistory)
-      ? chatHistory
-        .filter((entry: { role?: string; content?: string }) => entry?.role === 'user' && typeof entry?.content === 'string')
-        .map(entry => entry.content as string)
-        .slice(-3)
-      : [];
+    const recentUserMessages = preparedChatHistory
+      .filter((entry) => entry.role === 'user')
+      .map((entry) => entry.content)
+      .slice(-3);
 
     const riskKeywordPattern = /(riskprofil|risktolerans|riskniv[åa]|risktagande|riskjusterad|riskhantering|risknivån|risknivaan|risknivor|risk)/i;
     const mentionsRisk = (value?: string): boolean => typeof value === 'string' && riskKeywordPattern.test(value);
@@ -2227,6 +2322,8 @@ serve(async (req) => {
         .eq('user_id', userId)
         .maybeSingle()
     ]);
+
+    const aiMemoryRiskComfort = (aiMemory?.risk_comfort_patterns as Record<string, unknown> | null) ?? null;
 
     let sheetTickerSymbols: string[] = [];
     let sheetTickerNames: string[] = [];
@@ -3302,7 +3399,7 @@ serve(async (req) => {
         });
 
         const updatedFavoriteSectors = Array.from(new Set([...(existingMemory?.favorite_sectors || []), ...interests])).slice(0, 6);
-        const updatedFavoriteCompanies = Array.from(new Set([...(existingMemory?.favorite_companies || []), ...companies])).slice(0, 6);
+        const updatedPreferredCompanies = Array.from(new Set([...(existingMemory?.preferred_companies || []), ...companies])).slice(0, 6);
 
         let expertiseLevel: 'beginner' | 'intermediate' | 'advanced' = (existingMemory?.expertise_level as 'beginner' | 'intermediate' | 'advanced') || 'beginner';
         if (riskProfile?.investment_experience && ['beginner', 'intermediate', 'advanced'].includes(riskProfile.investment_experience)) {
@@ -3312,21 +3409,36 @@ serve(async (req) => {
           expertiseLevel = expertiseLevel === 'beginner' ? 'intermediate' : 'advanced';
         }
 
-        const followUpPreference = wantsConcise ? 'skip' : existingMemory?.follow_up_preference ?? 'auto';
+        const existingRiskComfort = (existingMemory?.risk_comfort_patterns as Record<string, unknown> | null) ?? {};
+        const followUpPreference = wantsConcise
+          ? 'skip'
+          : (typeof (existingRiskComfort as { follow_up_preference?: unknown }).follow_up_preference === 'string'
+            ? (existingRiskComfort as { follow_up_preference: string }).follow_up_preference
+            : 'auto');
 
         const conversationTexts = [userMessage, aiResponse].filter((value): value is string => typeof value === 'string' && value.length > 0);
         const macroThemeFromConversation = detectMacroThemeFromMessages(conversationTexts);
         const macroFocusTopic = macroThemeFromConversation
-          || (isMacroTheme(existingMemory?.macro_focus_topic) ? existingMemory?.macro_focus_topic as MacroTheme : null)
+          || (isMacroTheme((existingRiskComfort as { macro_focus_topic?: unknown }).macro_focus_topic as string)
+            ? (existingRiskComfort as { macro_focus_topic: MacroTheme }).macro_focus_topic
+            : null)
           || null;
         const analysisAnglesFromConversation = detectAnalysisAnglesInText(conversationTexts.join('\n'));
-        const existingAngles = Array.isArray(existingMemory?.analysis_focus_preferences)
-          ? (existingMemory.analysis_focus_preferences as unknown[]).filter(isAnalysisAngle)
+        const existingAngles = Array.isArray((existingRiskComfort as { analysis_focus_preferences?: unknown }).analysis_focus_preferences)
+          ? ((existingRiskComfort as { analysis_focus_preferences: unknown[] }).analysis_focus_preferences).filter(isAnalysisAngle)
           : [];
         const mergedAnalysisAngles = Array.from(new Set<AnalysisAngle>([
           ...existingAngles,
           ...analysisAnglesFromConversation,
         ])).slice(0, 4);
+
+        const mergedRiskComfort: Record<string, unknown> = {
+          ...existingRiskComfort,
+          follow_up_preference: followUpPreference,
+          last_detected_intent: detectedIntent,
+          macro_focus_topic: macroFocusTopic,
+          analysis_focus_preferences: mergedAnalysisAngles,
+        };
 
         const memoryData = {
           user_id: userId,
@@ -3340,12 +3452,9 @@ serve(async (req) => {
             ...(isPortfolioOptimizationRequest ? ['portföljoptimering'] : [])
           ].slice(0, 6),
           favorite_sectors: updatedFavoriteSectors,
-          favorite_companies: updatedFavoriteCompanies,
+          preferred_companies: updatedPreferredCompanies,
           current_goals: Array.from(detectedGoals).slice(0, 6),
-          follow_up_preference: followUpPreference,
-          last_detected_intent: detectedIntent,
-          macro_focus_topic: macroFocusTopic,
-          analysis_focus_preferences: mergedAnalysisAngles,
+          risk_comfort_patterns: mergedRiskComfort,
           updated_at: new Date().toISOString()
         };
 
@@ -3397,7 +3506,9 @@ serve(async (req) => {
       }
     }
 
-    const followUpPreference = typeof aiMemory?.follow_up_preference === 'string' ? aiMemory.follow_up_preference : 'auto';
+    const followUpPreference = typeof (aiMemoryRiskComfort as { follow_up_preference?: unknown })?.follow_up_preference === 'string'
+      ? (aiMemoryRiskComfort as { follow_up_preference: string }).follow_up_preference
+      : 'auto';
     let shouldOfferFollowUp = followUpPreference !== 'skip' && aiMemory?.communication_style !== 'concise';
     if (['general_news'].includes(userIntent) && followUpPreference !== 'force') {
       shouldOfferFollowUp = false;
@@ -3907,14 +4018,22 @@ ${importantLines.join('\n')}
 `;
 
 
-    // Force using gpt-5.1 with reasoning-enabled features for consistent behavior
-    const model = PRIMARY_CHAT_MODEL;
+    const model = selectChatModel({
+      hasRealTimeTrigger,
+      isDocumentSummaryRequest,
+      isSimplePersonalAdviceRequest,
+      userIntent,
+    });
 
     console.log('Selected model:', model, 'for request type:', {
       isStockAnalysis: isStockAnalysisRequest,
       isPortfolioOptimization: isPortfolioOptimizationRequest,
       messageLength: message.length,
-      historyLength: chatHistory.length
+      historyLength: totalHistoryEntries,
+      hasRealTimeTrigger,
+      isDocumentSummaryRequest,
+      isSimplePersonalAdviceRequest,
+      userIntent
     });
 
     const hasMarketData = tavilyContext.formattedContext.length > 0;
@@ -3929,7 +4048,8 @@ ${importantLines.join('\n')}
     // Build messages array with enhanced context
     const messages = [
       { role: 'system', content: contextInfo + tavilyContext.formattedContext + tavilySourceInstruction },
-      ...chatHistory,
+      ...(summaryMessage ? [summaryMessage] : []),
+      ...preparedChatHistory,
       { role: 'user', content: message }
     ];
 
