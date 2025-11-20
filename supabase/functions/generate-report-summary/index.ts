@@ -382,12 +382,12 @@ serve(async (req) => {
   },
   body: JSON.stringify({
     model: "gpt-5-mini",
-    max_output_tokens: 600,
+    max_output_tokens: 1600,
     reasoning: {
-      effort: "medium"   // bättre struktur, mindre hallucinationer
+      effort: "low",
     },
     text: {
-      verbosity: "medium" // bäst för JSON-output
+      verbosity: "medium",
     },
     input: [
       {
@@ -414,7 +414,10 @@ serve(async (req) => {
     }
 
 const data = await response.json();
-const content = data.output_text;
+const content =
+  data?.output?.find((o: { type?: string }) => o.type === "message")
+    ?.content?.find((c: { type?: string }) => c.type === "output_text")
+    ?.text ?? null;
 
     if (!content) {
       console.error("OpenAI response missing content", data);
