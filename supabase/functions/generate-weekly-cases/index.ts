@@ -1190,7 +1190,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
       } catch (parseError) {
         const message = 'Error parsing generated case JSON';
         console.error(message, parseError);
-        console.error('Generated content:', generatedContent);
+        console.error('Generated content:', rawContent);
         warnings.push(message);
       }
     }
