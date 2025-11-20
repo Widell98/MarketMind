@@ -9,25 +9,20 @@ const corsHeaders = {
 };
 
 const openAIApiKey = Deno.env.get("OPENAI_API_KEY");
-const supabaseUrl = Deno.env.get("SUPABASE_URL");
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim();
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim();
 
 if (!supabaseUrl) {
   throw new Error("SUPABASE_URL is not configured");
 }
 
-if (!supabaseServiceKey && !supabaseAnonKey) {
-  throw new Error("No Supabase key configured. Set SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY.");
-}
-
 if (!supabaseServiceKey) {
-  console.warn("SUPABASE_SERVICE_ROLE_KEY missing, falling back to anon key for invokes");
+  throw new Error("SUPABASE_SERVICE_ROLE_KEY is not configured");
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey ?? supabaseAnonKey!);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const functionsUrl = Deno.env.get("SUPABASE_FUNCTIONS_URL") ?? `${supabaseUrl}/functions/v1`;
-const functionAuthToken = supabaseServiceKey ?? supabaseAnonKey;
+const functionAuthToken = supabaseServiceKey;
 
 const DEFAULT_SUMMARY =
   "AI sammanfattar gårdagens marknadsrörelser och viktiga nyheter varje morgon vid 07:00. Håll dig uppdaterad med de viktigaste höjdpunkterna innan börsen öppnar.";
