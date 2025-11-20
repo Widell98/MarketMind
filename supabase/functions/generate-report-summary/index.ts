@@ -381,13 +381,13 @@ serve(async (req) => {
     "Authorization": `Bearer ${openAIApiKey}`,
   },
   body: JSON.stringify({
-    model: "gpt5o-mini",
+    model: "gpt-5o-mini",
     max_output_tokens: 600,
     reasoning: {
-      effort: "medium"   // bättre struktur, mindre hallucinationer
+      effort: "none",
     },
     text: {
-      verbosity: "medium" // bäst för JSON-output
+      verbosity: "medium",
     },
     input: [
       {
@@ -414,7 +414,7 @@ serve(async (req) => {
     }
 
 const data = await response.json();
-const content = data.output_text;
+const content = data?.output?.[0]?.content?.[0]?.text ?? data.output_text ?? null;
 
     if (!content) {
       console.error("OpenAI response missing content", data);
