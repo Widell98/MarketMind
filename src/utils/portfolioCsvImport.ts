@@ -20,7 +20,7 @@ export const normalizeShareClassTicker = (value: string) => {
   const alreadySeparated = base.match(/^(.*?)[\s\-]([ABCD])$/i);
   if (alreadySeparated) {
     const [, main, shareClass] = alreadySeparated;
-    return `${main.trim()} ${shareClass.toUpperCase()}${suffix}`;
+    return `${main.trim()}-${shareClass.toUpperCase()}${suffix}`;
   }
 
   const compactMatch = base.match(/^(.*?)([ABCD])$/i);
@@ -30,7 +30,7 @@ export const normalizeShareClassTicker = (value: string) => {
   if (compactMatch && (hasNordicSuffix || isLongEnoughToAvoidCommonUS)) {
     const [, main, shareClass] = compactMatch;
     if (main.length >= 2) {
-      return `${main} ${shareClass.toUpperCase()}${suffix}`;
+      return `${main}-${shareClass.toUpperCase()}${suffix}`;
     }
   }
 
