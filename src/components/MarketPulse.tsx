@@ -4,6 +4,7 @@ import { useMarketData, type MarketDataResponse } from '../hooks/useMarketData';
 import Sparkline from './ui/Sparkline';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
+import { marketIndices as fallbackIndices, topStocks as fallbackTop, bottomStocks as fallbackBottom } from '../mockData/marketData';
 
 type MarketPulseBaseProps = {
   marketData: MarketDataResponse | null;
@@ -14,12 +15,14 @@ type MarketPulseBaseProps = {
 
 const MarketPulseBase: React.FC<MarketPulseBaseProps> = ({ marketData, loading, error, refetch }) => {
   const data =
-    marketData || {
-      marketIndices: [],
-      topStocks: [],
-      bottomStocks: [],
-      lastUpdated: new Date().toISOString(),
-    };
+    marketData && (marketData.marketIndices?.length || marketData.topStocks?.length || marketData.bottomStocks?.length)
+      ? marketData
+      : {
+          marketIndices: fallbackIndices,
+          topStocks: fallbackTop,
+          bottomStocks: fallbackBottom,
+          lastUpdated: new Date().toISOString(),
+        };
 
   const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString('sv-SE', {
