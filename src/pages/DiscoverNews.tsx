@@ -154,21 +154,30 @@ const DiscoverNews = () => {
         <div className="mx-auto w-full max-w-6xl space-y-8 px-1 sm:px-4 lg:px-0">
           
           {(reportHighlights.length > 0 || reportsLoading) && (
-            <section className="space-y-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm sm:p-8">
+            <section className="space-y-4 rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/15 via-primary/10 to-background p-6 shadow-lg shadow-primary/10 backdrop-blur sm:p-8">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Senaste AI-genererade rapporterna
-                  </p>
-                  <h2 className="text-2xl font-semibold text-foreground">Viktiga höjdpunkter</h2>
+                <div className="flex items-center gap-2">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/20 text-primary">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-primary/80">
+                      Senaste AI-genererade rapporterna
+                    </p>
+                    <h2 className="text-2xl font-semibold text-foreground">Viktiga höjdpunkter</h2>
+                  </div>
                 </div>
-                <Button variant="ghost" className="rounded-xl" onClick={() => navigate('/discover')}>
+                <Button
+                  variant="default"
+                  className="rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/30 transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/40"
+                  onClick={() => navigate('/discover')}
+                >
                   Visa alla rapporter
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
               {reportsLoading && reportHighlights.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-6 py-10 text-center text-sm text-muted-foreground">
+                <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/10 px-6 py-10 text-center text-sm text-primary">
                   Laddar rapporter…
                 </div>
               ) : (
@@ -182,14 +191,22 @@ const DiscoverNews = () => {
           )}
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <Card id="morgonrapport" className="border-border/60 bg-card/80">
+            <Card
+              id="morgonrapport"
+              className="border border-primary/25 bg-gradient-to-br from-primary/12 via-primary/8 to-background shadow-md shadow-primary/10"
+            >
               <CardContent className="space-y-5 p-4 sm:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      AI-genererat nyhetsbrev
-                    </p>
-                    <h3 className="text-2xl font-semibold text-foreground">Morgonrapporten</h3>
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/20 text-primary">
+                      <Sparkles className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-primary/80">
+                        AI-genererat nyhetsbrev
+                      </p>
+                      <h3 className="text-2xl font-semibold text-foreground">Morgonrapporten</h3>
+                    </div>
                   </div>
                   <Badge variant="secondary" className="rounded-full bg-primary/10 text-xs text-primary">
                     Genererad kl 07:00
@@ -226,7 +243,7 @@ const DiscoverNews = () => {
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fokus idag</p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {focusAreas.map((area) => (
-                        <Badge key={area} variant="outline" className="rounded-full border-border/60 text-xs">
+                        <Badge key={area} variant="outline" className="rounded-full border-primary/60 text-xs text-primary">
                           {area}
                         </Badge>
                       ))}
@@ -247,11 +264,18 @@ const DiscoverNews = () => {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  <Button className="rounded-xl" variant="default" onClick={() => navigate('/news#morgonrapport')}>
+                  <Button
+                    className="rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/30 transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/40"
+                    variant="default"
+                    onClick={() => navigate('/news#morgonrapport')}
+                  >
                     Läs hela morgonrapporten
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
-                  <Button variant="outline" className="rounded-xl border-border/70">
+                  <Button
+                    variant="outline"
+                    className="rounded-xl border-primary/60 text-primary shadow-inner shadow-primary/10 transition hover:bg-primary/10"
+                  >
                     Prenumerera på utskick
                   </Button>
                 </div>

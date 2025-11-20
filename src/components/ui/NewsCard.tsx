@@ -43,22 +43,22 @@ const NewsCard: React.FC<NewsCardProps> = ({ news }) => {
 
   return (
     <>
-      <div className="card-finance mb-3 animate-fade-in">
+      <div className="card-finance mb-3 animate-fade-in rounded-2xl border border-primary/25 bg-primary/5 p-4 shadow-sm shadow-primary/10 transition hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/20">
         <div className="flex justify-between items-start mb-1.5">
           <span className={`badge-finance ${getCategoryBadgeClass(news.category)}`}>
             {news.category.charAt(0).toUpperCase() + news.category.slice(1)}
           </span>
           <span className="text-xs text-gray-500 dark:text-gray-400">{formatPublishedTime(news.publishedAt)}</span>
         </div>
-        <h3 className="font-medium text-sm mb-1.5 dark:text-white">{news.headline}</h3>
+        <h3 className="font-medium text-sm mb-1.5 text-primary dark:text-blue-200">{news.headline}</h3>
         <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">{news.summary}</p>
         <div className="flex justify-between items-center">
           <span className="text-xs text-gray-500 dark:text-gray-400">{news.source}</span>
-          <button 
+          <button
             onClick={handleReadMoreClick}
-            className="text-xs text-finance-lightBlue font-medium hover:text-finance-blue dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer"
+            className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-md shadow-primary/30 transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/40 dark:bg-blue-500 dark:text-white"
           >
-            Read more →
+            Läs mer →
           </button>
         </div>
       </div>
