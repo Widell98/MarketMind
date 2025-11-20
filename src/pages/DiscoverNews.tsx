@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight, Clock, Loader2, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 
 import Layout from '@/components/Layout';
 import ReportHighlightCard from '@/components/ReportHighlightCard';
@@ -12,24 +12,8 @@ import { Separator } from '@/components/ui/separator';
 import { useDiscoverReportSummaries } from '@/hooks/useDiscoverReportSummaries';
 import { useMarketData } from '@/hooks/useMarketData';
 import { useNewsData } from '@/hooks/useNewsData';
-import { useMarketOverviewInsights, type MarketOverviewInsight } from '@/hooks/useMarketOverviewInsights';
-
-type Sentiment = 'bullish' | 'bearish' | 'neutral';
-
-const SENTIMENT_META: Record<Sentiment, { label: string; badgeClass: string }> = {
-  bullish: { label: 'Positivt sentiment', badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  bearish: { label: 'Försiktigt sentiment', badgeClass: 'bg-rose-50 text-rose-700 border-rose-200' },
-  neutral: { label: 'Neutral ton', badgeClass: 'bg-amber-50 text-amber-700 border-amber-200' },
-};
-
-const deriveSentimentFromInsight = (insight?: MarketOverviewInsight): Sentiment => {
-  if (!insight) return 'neutral';
-  if (insight.sentiment) return insight.sentiment;
-  const text = `${insight.title ?? ''} ${insight.content ?? ''}`.toLowerCase();
-  if (/(stiger|uppgång|rekord|positiv|expansion|tillväxt)/.test(text)) return 'bullish';
-  if (/(faller|nedgång|oro|risk|press|svag)/.test(text)) return 'bearish';
-  return 'neutral';
-};
+import { useMarketOverviewInsights } from '@/hooks/useMarketOverviewInsights';
+import { useMorningBrief } from '@/hooks/useMorningBrief';
 
 type IndexTile = {
   symbol: string;
@@ -52,24 +36,26 @@ const DiscoverNews = () => {
   const navigate = useNavigate();
   const { reports, loading: reportsLoading } = useDiscoverReportSummaries(24);
   const { marketData, loading: marketLoading, error: marketError, refetch: refetchMarketData } = useMarketData();
-  const { newsData, loading: newsLoading, error: newsError } = useNewsData();
+  const { newsData } = useNewsData();
   const { data: overviewInsights = [], isLoading: insightsLoading } = useMarketOverviewInsights();
-
-  const companyCount = useMemo(
-    () => new Set(reports.map((report) => report.companyName?.trim())).size,
-    [reports]
-  );
-
-  const sourceCount = useMemo(
-    () => new Set(reports.map((report) => report.sourceType ?? report.sourceDocumentName ?? 'Okänd källa')).size,
-    [reports]
-  );
+  const { brief: morningBrief, loading: morningBriefLoading, error: morningBriefError } = useMorningBrief();
 
   const heroInsight = overviewInsights[0];
-  const heroSentiment = deriveSentimentFromInsight(heroInsight);
   const heroIndices = marketData?.marketIndices ?? [];
   const lastUpdated = marketData?.lastUpdated ? new Date(marketData.lastUpdated) : null;
   const reportHighlights = useMemo(() => reports.slice(0, 3), [reports]);
+
+  const morningBriefHighlights = useMemo(
+    () =>
+      (morningBrief?.highlights ?? []).map((item, index) => ({
+        id: item.id ?? `brief-${index}`,
+        title: item.headline ?? item.title ?? 'Höjdpunkt',
+        summary: item.summary,
+        source: item.source ?? 'AI morning brief',
+        publishedAt: item.publishedAt,
+      })),
+    [morningBrief?.highlights]
+  );
   
   const normalizedIndices = useMemo<IndexTile[]>(() => {
     return heroIndices.map((index) => ({
@@ -129,7 +115,25 @@ const DiscoverNews = () => {
 
   const topNewsHighlights = useMemo(() => (newsData ?? []).slice(0, 3), [newsData]);
 
+  const highlightItems = useMemo(() => {
+    if (morningBriefHighlights.length) {
+      return morningBriefHighlights;
+    }
+
+    return topNewsHighlights.map((item) => ({
+      id: item.id,
+      title: item.headline,
+      summary: item.summary,
+      source: item.source,
+      publishedAt: item.publishedAt,
+    }));
+  }, [morningBriefHighlights, topNewsHighlights]);
+
   const focusAreas = useMemo(() => {
+    if (morningBrief?.focusAreas?.length) {
+      return morningBrief.focusAreas.slice(0, 3);
+    }
+
     if (heroInsight?.key_factors?.length) {
       return heroInsight.key_factors.slice(0, 3);
     }
@@ -139,7 +143,7 @@ const DiscoverNews = () => {
     }
 
     return ['Marknadspuls', 'Rapporter', 'Nyheter'];
-  }, [heroInsight, trendingCategories]);
+  }, [heroInsight, morningBrief?.focusAreas, trendingCategories]);
 
   const formatPublishedLabel = (isoString?: string) => {
     if (!isoString) return 'Okänd tid';
@@ -147,6 +151,16 @@ const DiscoverNews = () => {
     if (Number.isNaN(date.getTime())) return 'Okänd tid';
     return date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
   };
+
+  const formattedGeneratedAt = useMemo(() => {
+    if (!morningBrief?.generatedAt) return 'Genererad kl 07:00';
+    const parsed = new Date(morningBrief.generatedAt);
+    if (Number.isNaN(parsed.getTime())) {
+      return `Genererad ${morningBrief.generatedAt}`;
+    }
+
+    return `Genererad ${parsed.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
+  }, [morningBrief?.generatedAt]);
 
   return (
     <Layout>
@@ -208,33 +222,48 @@ const DiscoverNews = () => {
                       <h3 className="text-2xl font-semibold text-foreground">Morgonrapporten</h3>
                     </div>
                   </div>
-                  <Badge variant="secondary" className="rounded-full bg-primary/10 text-xs text-primary">
-                    Genererad kl 07:00
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="rounded-full bg-primary/10 text-xs text-primary">
+                      {formattedGeneratedAt}
+                    </Badge>
+                    <Badge variant="outline" className="hidden items-center gap-1 rounded-full border-primary/50 text-[11px] font-semibold text-primary sm:inline-flex">
+                      <Sparkles className="h-3 w-3" /> ai-morning-brief
+                    </Badge>
+                  </div>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {heroInsight?.content ??
+                  {morningBrief?.intro ??
+                    heroInsight?.content ??
                     'AI sammanfattar gårdagens marknadsrörelser och vad som väntar i dag. Följ höjdpunkterna och få ett par snabba fokusområden innan börsen öppnar.'}
                 </p>
+                {morningBriefError && (
+                  <div className="rounded-xl border border-dashed border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-700">
+                    Kunde inte hämta dagens ai-morning-brief just nu. Vi visar senaste nyheterna istället.
+                  </div>
+                )}
                 <div className="space-y-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Gårdagens höjdpunkter
                     </p>
-                    {topNewsHighlights.length ? (
+                    {morningBriefLoading && !highlightItems.length ? (
+                      <div className="mt-3 rounded-2xl border border-dashed border-primary/40 bg-primary/10 p-4 text-sm text-primary">
+                        Laddar morgonrapporten…
+                      </div>
+                    ) : highlightItems.length ? (
                       <ul className="mt-2 space-y-3">
-                        {topNewsHighlights.map((item) => (
-                          <li key={item.id} className="rounded-2xl border border-border/60 bg-muted/20 p-3">
-                            <p className="text-sm font-semibold text-foreground">{item.headline}</p>
+                        {highlightItems.map((item) => (
+                          <li key={item.id} className="rounded-2xl border border-primary/30 bg-primary/5 p-3 shadow-sm shadow-primary/10">
+                            <p className="text-sm font-semibold text-foreground">{item.title}</p>
                             <p className="text-xs text-muted-foreground">
                               {item.source} · {formatPublishedLabel(item.publishedAt)}
                             </p>
-                            <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{item.summary}</p>
+                            <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{item.summary ?? 'Ingen sammanfattning tillgänglig ännu.'}</p>
                           </li>
                         ))}
                       </ul>
                     ) : (
-                      <div className="mt-3 rounded-2xl border border-dashed border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
+                      <div className="mt-3 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4 text-sm text-muted-foreground">
                         Nyhetsflödet är lugnt just nu. Vi uppdaterar morgonrapporten när nya artiklar finns tillgängliga.
                       </div>
                     )}
@@ -254,12 +283,14 @@ const DiscoverNews = () => {
                       Händelser att bevaka
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      {lastUpdated
-                        ? `Marknadspulsen uppdaterades ${lastUpdated.toLocaleTimeString('sv-SE', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}. Håll ett extra öga på indexrörelserna och dagens rapportflöde.`
-                        : 'Håll koll på viktiga makrobesked och kommande rapportsläpp under dagen.'}
+                      {morningBrief?.events
+                        ? morningBrief.events
+                        : lastUpdated
+                            ? `Marknadspulsen uppdaterades ${lastUpdated.toLocaleTimeString('sv-SE', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}. Håll ett extra öga på indexrörelserna och dagens rapportflöde.`
+                            : 'Håll koll på viktiga makrobesked och kommande rapportsläpp under dagen.'}
                     </p>
                   </div>
                 </div>
