@@ -226,7 +226,7 @@ const DiscoverNews = () => {
         <div className="mx-auto w-full max-w-6xl space-y-8 px-1 sm:px-4 lg:px-0">
           
           {(reportHighlights.length > 0 || reportsLoading) && (
-            <section className="space-y-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm sm:p-8">
+            <section className="space-y-4 rounded-3xl border border-border/60 bg-gradient-to-br from-primary/5 via-card/90 to-background p-6 shadow-sm sm:p-8">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -234,7 +234,7 @@ const DiscoverNews = () => {
                   </p>
                   <h2 className="text-2xl font-semibold text-foreground">Viktiga höjdpunkter</h2>
                 </div>
-                <Button variant="ghost" className="rounded-xl" onClick={() => navigate('/discover')}>
+                <Button variant="ghost" className="rounded-xl text-primary hover:bg-primary/10" onClick={() => navigate('/discover')}>
                   Visa alla rapporter
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -253,7 +253,7 @@ const DiscoverNews = () => {
             </section>
           )}
 
-          <section className="space-y-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm sm:p-8">
+          <section className="space-y-4 rounded-3xl border border-border/60 bg-gradient-to-br from-primary/5 via-card/90 to-background p-6 shadow-sm sm:p-8">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bläddra rapporter</p>
@@ -263,7 +263,7 @@ const DiscoverNews = () => {
                   rapporterna att läsa direkt.
                 </p>
               </div>
-              <Badge variant="outline" className="rounded-full border-border/60 text-xs text-muted-foreground">
+              <Badge variant="outline" className="rounded-full border-primary/30 bg-primary/10 text-xs text-primary">
                 {visibleNews.length} av {filteredNews.length || 0} träffar
               </Badge>
             </div>
@@ -275,11 +275,11 @@ const DiscoverNews = () => {
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                   placeholder="Sök rubriker, bolag eller källa"
-                  className="pl-9"
+                  className="rounded-xl border-border/60 bg-background/70 pl-9 focus:border-primary/60 focus:ring-primary/20"
                 />
               </div>
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="rounded-xl border-border/70 bg-background/60">
+                <SelectTrigger className="rounded-xl border-border/70 bg-background/70 focus:border-primary/60 focus:ring-primary/20">
                   <div className="flex items-center gap-2">
                     <Filter className="h-4 w-4 text-muted-foreground" />
                     <SelectValue placeholder="Kategori" />
@@ -295,7 +295,7 @@ const DiscoverNews = () => {
               </Select>
 
               <Select value={selectedSource} onValueChange={setSelectedSource}>
-                <SelectTrigger className="rounded-xl border-border/70 bg-background/60">
+                <SelectTrigger className="rounded-xl border-border/70 bg-background/70 focus:border-primary/60 focus:ring-primary/20">
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <SelectValue placeholder="Bolag/källa" />
@@ -320,7 +320,7 @@ const DiscoverNews = () => {
             {newsLoading ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {Array.from({ length: 6 }).map((_, index) => (
-                  <Card key={`news-skeleton-${index}`} className="border-border/60 bg-muted/20">
+                  <Card key={`news-skeleton-${index}`} className="border-border/60 bg-primary/5">
                     <CardContent className="space-y-3 p-4">
                       <div className="h-4 w-24 animate-pulse rounded-full bg-muted" />
                       <div className="h-5 w-3/4 animate-pulse rounded bg-muted" />
@@ -335,7 +335,7 @@ const DiscoverNews = () => {
                 {visibleNews.map((item) => (
                   <Dialog key={item.id}>
                     <DialogTrigger asChild>
-                      <Card className="group h-full cursor-pointer border-border/60 bg-card/80 shadow-sm transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
+                      <Card className="group h-full cursor-pointer border-border/60 bg-gradient-to-b from-card/90 via-background to-primary/5 shadow-sm transition hover:-translate-y-1 hover:border-primary/50 hover:shadow-lg">
                         <CardContent className="flex h-full flex-col gap-3 p-4">
                           <div className="flex items-start justify-between gap-3">
                             <div className="space-y-1">
@@ -368,7 +368,7 @@ const DiscoverNews = () => {
                       </DialogHeader>
                       <div className="space-y-3">
                         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          <Badge variant="outline" className="rounded-full border-border/60 text-[11px]">
+                          <Badge variant="outline" className="rounded-full border-primary/40 bg-primary/10 text-[11px] text-primary">
                             {item.category || 'Övrigt'}
                           </Badge>
                           <span>•</span>
@@ -378,7 +378,7 @@ const DiscoverNews = () => {
                         </div>
                         <p className="text-base leading-relaxed text-foreground">{item.summary}</p>
                         {item.url && (
-                          <Button asChild variant="outline" className="rounded-xl">
+                          <Button asChild variant="outline" className="rounded-xl border-primary/40 text-primary hover:bg-primary/10">
                             <a href={item.url} target="_blank" rel="noreferrer">
                               Öppna källan
                             </a>
@@ -390,14 +390,14 @@ const DiscoverNews = () => {
                 ))}
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-6 text-sm text-muted-foreground">
+              <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-6 text-sm text-muted-foreground">
                 Inga rapporter matchar dina filter just nu. Justera sökning eller kategorier för att hitta fler artiklar.
               </div>
             )}
           </section>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <Card id="morgonrapport" className="border-border/60 bg-card/80">
+            <Card id="morgonrapport" className="border-border/60 bg-gradient-to-br from-primary/5 via-card/90 to-background">
               <CardContent className="space-y-5 p-4 sm:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
@@ -406,7 +406,7 @@ const DiscoverNews = () => {
                     </p>
                     <h3 className="text-2xl font-semibold text-foreground">Morgonrapporten</h3>
                   </div>
-                  <Badge variant="secondary" className="rounded-full bg-primary/10 text-xs text-primary">
+                  <Badge variant="secondary" className="rounded-full bg-primary/10 text-xs text-primary shadow-sm">
                     Skapad av MarketMind-teamet
                   </Badge>
                 </div>
