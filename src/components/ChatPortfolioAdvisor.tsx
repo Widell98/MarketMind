@@ -37,7 +37,7 @@ import { useUserHoldings } from '@/hooks/useUserHoldings';
 import useSheetTickers, { RawSheetTicker, SheetTicker, sanitizeSheetTickerList } from '@/hooks/useSheetTickers';
 import StockReplacementDialog from '@/components/StockReplacementDialog';
 import { mapEdgeFunctionErrorMessage } from '@/utils/mapEdgeFunctionError';
-import { parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
+import { normalizeShareClassTicker, parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
 
 interface QuestionOption {
   value: string;
@@ -503,6 +503,11 @@ const ChatPortfolioAdvisor = () => {
 
   const priceFormatter = useMemo(
     () => new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    []
+  );
+
+  const normalizeTickerSymbol = useCallback(
+    (value: string) => normalizeShareClassTicker(value).trim().toUpperCase(),
     []
   );
 
@@ -1349,7 +1354,7 @@ const ChatPortfolioAdvisor = () => {
           const parsed = parsePortfolioHoldingsFromCSV(text).map(holding =>
             createHolding({
               name: holding.name,
-              symbol: holding.symbol,
+              symbol: normalizeShareClassTicker(holding.symbol),
               quantity: holding.quantity,
               purchasePrice: holding.purchasePrice,
               nameManuallyEdited: true,
