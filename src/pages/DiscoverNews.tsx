@@ -77,6 +77,16 @@ const DiscoverNews = () => {
     [reports]
   );
 
+  type BrowsableNewsItem = {
+    id: string;
+    headline: string;
+    summary: string;
+    category?: string;
+    source?: string;
+    publishedAt?: string;
+    url?: string;
+  };
+
   const heroInsight = overviewInsights[0];
   const heroSentiment = deriveSentimentFromInsight(heroInsight);
   const heroIndices = marketData?.marketIndices ?? [];
@@ -124,10 +134,29 @@ const DiscoverNews = () => {
     return padded.slice(0, MAX_INDEX_TILES);
   }, [normalizedIndices, prioritizedIndices]);
 
-  const trendingCategories = useMemo(() => {
-    if (!newsData?.length) return [] as { category: string; count: number }[];
+  const reportHighlightsAsNews = useMemo<BrowsableNewsItem[]>(
+    () =>
+      reportHighlights.map((report) => ({
+        id: `report-${report.id}`,
+        headline: report.reportTitle || report.companyName || 'Kuraterad rapport',
+        summary: report.summary || 'Sammanfattning saknas just nu.',
+        category: report.companyName || 'Kuraterad rapport',
+        source: report.sourceDocumentName || report.sourceType || 'MarketMind-teamet',
+        publishedAt: report.createdAt,
+        url: report.sourceUrl,
+      })),
+    [reportHighlights]
+  );
 
-    const counts = newsData.reduce<Record<string, number>>((acc, item) => {
+  const combinedNewsItems = useMemo<BrowsableNewsItem[]>(
+    () => [...(newsData ?? []), ...reportHighlightsAsNews],
+    [newsData, reportHighlightsAsNews]
+  );
+
+  const trendingCategories = useMemo(() => {
+    if (!combinedNewsItems.length) return [] as { category: string; count: number }[];
+
+    const counts = combinedNewsItems.reduce<Record<string, number>>((acc, item) => {
       const category = item.category?.trim() || 'Övrigt';
       acc[category] = (acc[category] ?? 0) + 1;
       return acc;
@@ -137,9 +166,9 @@ const DiscoverNews = () => {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 4)
       .map(([category, count]) => ({ category, count }));
-  }, [newsData]);
+  }, [combinedNewsItems]);
 
-  const topNewsHighlights = useMemo(() => (newsData ?? []).slice(0, 3), [newsData]);
+  const topNewsHighlights = useMemo(() => combinedNewsItems.slice(0, 3), [combinedNewsItems]);
 
   const focusAreas = useMemo(() => {
     if (heroInsight?.key_factors?.length) {
@@ -155,32 +184,32 @@ const DiscoverNews = () => {
 
   const categoryOptions = useMemo(() => {
     const categories = new Set<string>();
-    (newsData ?? []).forEach((item) => categories.add(item.category?.trim() || 'Övrigt'));
+    combinedNewsItems.forEach((item) => categories.add(item.category?.trim() || 'Övrigt'));
     return ['Alla', ...Array.from(categories).sort()];
-  }, [newsData]);
+  }, [combinedNewsItems]);
 
   const sourceOptions = useMemo(() => {
     const sources = new Set<string>();
-    (newsData ?? []).forEach((item) => sources.add(item.source?.trim() || 'Okänd källa'));
+    combinedNewsItems.forEach((item) => sources.add(item.source?.trim() || 'Okänd källa'));
     return ['Alla', ...Array.from(sources).sort()];
-  }, [newsData]);
+  }, [combinedNewsItems]);
 
   const filteredNews = useMemo(() => {
     const search = searchTerm.trim().toLowerCase();
 
-    return (newsData ?? []).filter((item) => {
+    return combinedNewsItems.filter((item) => {
       const categoryMatch = selectedCategory === 'Alla' || (item.category?.trim() || 'Övrigt') === selectedCategory;
       const sourceMatch = selectedSource === 'Alla' || (item.source?.trim() || 'Okänd källa') === selectedSource;
       const matchesSearch =
         !search ||
-        item.headline.toLowerCase().includes(search) ||
-        item.summary.toLowerCase().includes(search) ||
+        item.headline?.toLowerCase().includes(search) ||
+        item.summary?.toLowerCase().includes(search) ||
         item.category?.toLowerCase().includes(search) ||
         item.source?.toLowerCase().includes(search);
 
       return categoryMatch && sourceMatch && matchesSearch;
     });
-  }, [newsData, searchTerm, selectedCategory, selectedSource]);
+  }, [combinedNewsItems, searchTerm, selectedCategory, selectedSource]);
 
   const visibleNews = useMemo(() => filteredNews.slice(0, 9), [filteredNews]);
 
