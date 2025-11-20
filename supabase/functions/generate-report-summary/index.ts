@@ -382,9 +382,9 @@ serve(async (req) => {
   },
   body: JSON.stringify({
     model: "gpt-5-mini",
-    max_output_tokens: 600,
+    max_output_tokens: 1600,
     reasoning: {
-      effort: "none",
+      effort: "low",
     },
     text: {
       verbosity: "medium",
