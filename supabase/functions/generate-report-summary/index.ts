@@ -414,7 +414,10 @@ serve(async (req) => {
     }
 
 const data = await response.json();
-const content = data?.output?.[0]?.content?.[0]?.text ?? data.output_text ?? null;
+const content =
+  data?.output?.find((o: { type?: string }) => o.type === "message")
+    ?.content?.find((c: { type?: string }) => c.type === "output_text")
+    ?.text ?? null;
 
     if (!content) {
       console.error("OpenAI response missing content", data);
