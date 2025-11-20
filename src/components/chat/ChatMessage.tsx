@@ -107,17 +107,43 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     );
     const contentToParse = aktierSection ? aktierSection[1] : content;
 
+    const cleanName = (rawName: string) =>
+      rawName
+        .replace(/["'“”‘’]/g, '')
+        .replace(/\s+/g, ' ')
+        .replace(/[,:;]+$/g, '')
+        .trim();
+
+    const resolveNameFromContext = (symbol: string, currentName: string) => {
+      const contextualPatterns = [
+        new RegExp(`([A-ZÅÄÖ][a-zåäöA-Z\\s&.-]{2,})\\s+\\(${symbol}\\)`, 'g'),
+        new RegExp(`([A-ZÅÄÖ][a-zåäöA-Z\\s&.-]{2,})\\s+${symbol}\\b`, 'g'),
+        new RegExp(`${symbol}\\s+\\(([A-ZÅÄÖ][a-zåäöA-Z\\s&.-]{2,})\\)`, 'g'),
+      ];
+
+      for (const contextualRegex of contextualPatterns) {
+        const match = contextualRegex.exec(content);
+        if (match?.[1]) {
+          return cleanName(match[1]);
+        }
+      }
+
+      return currentName;
+    };
+
     patterns.forEach(({ regex, map }) => {
       let match;
       const localRegex = new RegExp(regex.source, regex.flags);
       while ((match = localRegex.exec(contentToParse)) !== null) {
         const mapped = map(match);
-        let name = mapped.name.trim();
+        let name = cleanName(mapped.name);
         let symbol = mapped.symbol.trim();
         const sector = mapped.sector?.trim();
 
         name = name.replace(/^(Aktie|Bolag|AB|Inc|Corp|Ltd)[\s:]/i, '').trim();
         name = name.replace(/[\s:](AB|Inc|Corp|Ltd)$/i, '').trim();
+
+        name = resolveNameFromContext(symbol, name);
 
         const symbolValid = /^[A-Z]{1,6}(?:[-.][A-Z]{1,3})?$/.test(symbol);
         const isValidSuggestion =
@@ -128,6 +154,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
           !bannedSymbols.has(symbol.toUpperCase()) &&
           !bannedNameRegex.test(name) &&
           !suggestions.find((s) => s.symbol === symbol.toUpperCase()) &&
+          (name.toUpperCase() !== name || name === symbol.toUpperCase()) &&
           !name.match(/^(och|eller|samt|med|utan|för|till|från|av|på|i|är|har|kan|ska|måste|borde|skulle)$/i) &&
           !!name.match(/[a-öA-Ö]/);
 
