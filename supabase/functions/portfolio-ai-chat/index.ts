@@ -545,17 +545,21 @@ const buildPersonalizationPrompt = ({
     sections.push('- Betona stabilitet och tidshorisont för barns sparande snarare än kortsiktig avkastning.');
   }
 
+  const riskComfortData = (aiMemory?.risk_comfort_patterns as Record<string, unknown> | null) ?? null;
   const macroSource = macroTheme
-    || (isMacroTheme(aiMemory?.macro_focus_topic) ? aiMemory?.macro_focus_topic as MacroTheme : null)
+    || (isMacroTheme(riskComfortData?.macro_focus_topic as string) ? riskComfortData?.macro_focus_topic as MacroTheme : null)
     || detectMacroThemeFromMessages(Array.isArray(recentMessages) ? recentMessages : []);
   const macroInstruction = getMacroInstruction(macroSource);
   if (macroInstruction) {
     sections.push(macroInstruction);
   }
 
-  const memoryAngles = Array.isArray(aiMemory?.analysis_focus_preferences)
-    ? (aiMemory.analysis_focus_preferences as unknown[]).filter(isAnalysisAngle)
-    : [];
+  const memoryAnglesSource = Array.isArray((riskComfortData as Record<string, unknown> | null)?.analysis_focus_preferences)
+    ? (riskComfortData as { analysis_focus_preferences: unknown[] }).analysis_focus_preferences
+    : (Array.isArray((aiMemory as Record<string, unknown> | null)?.analysis_focus_preferences)
+      ? (aiMemory as { analysis_focus_preferences: unknown[] }).analysis_focus_preferences
+      : []);
+  const memoryAngles = memoryAnglesSource.filter(isAnalysisAngle);
   const combinedAngles = new Set<AnalysisAngle>([
     ...(analysisAngles ?? []),
     ...memoryAngles,
@@ -2319,6 +2323,8 @@ serve(async (req) => {
         .maybeSingle()
     ]);
 
+    const aiMemoryRiskComfort = (aiMemory?.risk_comfort_patterns as Record<string, unknown> | null) ?? null;
+
     let sheetTickerSymbols: string[] = [];
     let sheetTickerNames: string[] = [];
     let sheetTickerCurrencyMap = new Map<string, string>();
@@ -3403,21 +3409,36 @@ serve(async (req) => {
           expertiseLevel = expertiseLevel === 'beginner' ? 'intermediate' : 'advanced';
         }
 
-        const followUpPreference = wantsConcise ? 'skip' : existingMemory?.follow_up_preference ?? 'auto';
+        const existingRiskComfort = (existingMemory?.risk_comfort_patterns as Record<string, unknown> | null) ?? {};
+        const followUpPreference = wantsConcise
+          ? 'skip'
+          : (typeof (existingRiskComfort as { follow_up_preference?: unknown }).follow_up_preference === 'string'
+            ? (existingRiskComfort as { follow_up_preference: string }).follow_up_preference
+            : 'auto');
 
         const conversationTexts = [userMessage, aiResponse].filter((value): value is string => typeof value === 'string' && value.length > 0);
         const macroThemeFromConversation = detectMacroThemeFromMessages(conversationTexts);
         const macroFocusTopic = macroThemeFromConversation
-          || (isMacroTheme(existingMemory?.macro_focus_topic) ? existingMemory?.macro_focus_topic as MacroTheme : null)
+          || (isMacroTheme((existingRiskComfort as { macro_focus_topic?: unknown }).macro_focus_topic as string)
+            ? (existingRiskComfort as { macro_focus_topic: MacroTheme }).macro_focus_topic
+            : null)
           || null;
         const analysisAnglesFromConversation = detectAnalysisAnglesInText(conversationTexts.join('\n'));
-        const existingAngles = Array.isArray(existingMemory?.analysis_focus_preferences)
-          ? (existingMemory.analysis_focus_preferences as unknown[]).filter(isAnalysisAngle)
+        const existingAngles = Array.isArray((existingRiskComfort as { analysis_focus_preferences?: unknown }).analysis_focus_preferences)
+          ? ((existingRiskComfort as { analysis_focus_preferences: unknown[] }).analysis_focus_preferences).filter(isAnalysisAngle)
           : [];
         const mergedAnalysisAngles = Array.from(new Set<AnalysisAngle>([
           ...existingAngles,
           ...analysisAnglesFromConversation,
         ])).slice(0, 4);
+
+        const mergedRiskComfort: Record<string, unknown> = {
+          ...existingRiskComfort,
+          follow_up_preference: followUpPreference,
+          last_detected_intent: detectedIntent,
+          macro_focus_topic: macroFocusTopic,
+          analysis_focus_preferences: mergedAnalysisAngles,
+        };
 
         const memoryData = {
           user_id: userId,
@@ -3433,10 +3454,7 @@ serve(async (req) => {
           favorite_sectors: updatedFavoriteSectors,
           preferred_companies: updatedPreferredCompanies,
           current_goals: Array.from(detectedGoals).slice(0, 6),
-          follow_up_preference: followUpPreference,
-          last_detected_intent: detectedIntent,
-          macro_focus_topic: macroFocusTopic,
-          analysis_focus_preferences: mergedAnalysisAngles,
+          risk_comfort_patterns: mergedRiskComfort,
           updated_at: new Date().toISOString()
         };
 
@@ -3488,7 +3506,9 @@ serve(async (req) => {
       }
     }
 
-    const followUpPreference = typeof aiMemory?.follow_up_preference === 'string' ? aiMemory.follow_up_preference : 'auto';
+    const followUpPreference = typeof (aiMemoryRiskComfort as { follow_up_preference?: unknown })?.follow_up_preference === 'string'
+      ? (aiMemoryRiskComfort as { follow_up_preference: string }).follow_up_preference
+      : 'auto';
     let shouldOfferFollowUp = followUpPreference !== 'skip' && aiMemory?.communication_style !== 'concise';
     if (['general_news'].includes(userIntent) && followUpPreference !== 'force') {
       shouldOfferFollowUp = false;
