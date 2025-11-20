@@ -2071,7 +2071,7 @@ const fetchTavilyContext = async (
 
     const timeout = typeof searchOptions.timeoutMs === 'number' && searchOptions.timeoutMs > 0
       ? searchOptions.timeoutMs
-      : 6000;
+      : 12000;
 
     const domainAttempts: string[][] = [];
     if (effectiveIncludeDomains.length > 0) {
@@ -3393,7 +3393,7 @@ serve(async (req) => {
         });
 
         const updatedFavoriteSectors = Array.from(new Set([...(existingMemory?.favorite_sectors || []), ...interests])).slice(0, 6);
-        const updatedFavoriteCompanies = Array.from(new Set([...(existingMemory?.favorite_companies || []), ...companies])).slice(0, 6);
+        const updatedPreferredCompanies = Array.from(new Set([...(existingMemory?.preferred_companies || []), ...companies])).slice(0, 6);
 
         let expertiseLevel: 'beginner' | 'intermediate' | 'advanced' = (existingMemory?.expertise_level as 'beginner' | 'intermediate' | 'advanced') || 'beginner';
         if (riskProfile?.investment_experience && ['beginner', 'intermediate', 'advanced'].includes(riskProfile.investment_experience)) {
@@ -3431,7 +3431,7 @@ serve(async (req) => {
             ...(isPortfolioOptimizationRequest ? ['portföljoptimering'] : [])
           ].slice(0, 6),
           favorite_sectors: updatedFavoriteSectors,
-          favorite_companies: updatedFavoriteCompanies,
+          preferred_companies: updatedPreferredCompanies,
           current_goals: Array.from(detectedGoals).slice(0, 6),
           follow_up_preference: followUpPreference,
           last_detected_intent: detectedIntent,
