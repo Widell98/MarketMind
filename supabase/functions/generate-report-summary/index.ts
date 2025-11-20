@@ -381,7 +381,7 @@ serve(async (req) => {
     "Authorization": `Bearer ${openAIApiKey}`,
   },
   body: JSON.stringify({
-    model: "gpt-5o-mini",
+    model: "gpt-5-mini",
     max_output_tokens: 600,
     reasoning: {
       effort: "none",
