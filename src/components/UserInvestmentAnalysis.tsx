@@ -75,7 +75,7 @@ const UserInvestmentAnalysis = ({
     investment_experience: '',
     monthly_investment_amount: '' as number | string,
     sector_interests: [] as string[],
-    risk_comfort_level: 1
+    risk_comfort_level: 3
   });
 
   React.useEffect(() => {
@@ -87,7 +87,7 @@ const UserInvestmentAnalysis = ({
       investment_experience: riskProfile.investment_experience || '',
       monthly_investment_amount: riskProfile.monthly_investment_amount?.toString() || '',
       sector_interests: riskProfile.sector_interests || [],
-      risk_comfort_level: riskProfile.risk_comfort_level || 1
+      risk_comfort_level: riskProfile.risk_comfort_level || 3
     });
   }, [riskProfile]);
 
@@ -330,6 +330,8 @@ const UserInvestmentAnalysis = ({
       : Number(preferenceForm.monthly_investment_amount);
 
     try {
+      const safeRiskComfort = Math.min(5, Math.max(1, preferenceForm.risk_comfort_level || 1));
+
       const updatedProfile = await saveRiskProfile({
         ...rest,
         risk_tolerance: preferenceForm.risk_tolerance || null,
@@ -337,7 +339,7 @@ const UserInvestmentAnalysis = ({
         investment_experience: preferenceForm.investment_experience || null,
         monthly_investment_amount: Number.isNaN(monthlyAmount) ? null : monthlyAmount,
         sector_interests: preferenceForm.sector_interests,
-        risk_comfort_level: preferenceForm.risk_comfort_level
+        risk_comfort_level: safeRiskComfort
       });
 
       if (updatedProfile && onUpdateProfile) {
@@ -425,13 +427,13 @@ const UserInvestmentAnalysis = ({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Riskkomfort</Label>
-                <span className="text-sm text-slate-500 dark:text-slate-400">{preferenceForm.risk_comfort_level}/10</span>
+                <span className="text-sm text-slate-500 dark:text-slate-400">{preferenceForm.risk_comfort_level}/5</span>
               </div>
               <Slider
                 value={[preferenceForm.risk_comfort_level]}
                 onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, risk_comfort_level: value[0] }))}
                 min={1}
-                max={10}
+                max={5}
                 step={1}
                 className="py-3"
               />
@@ -574,11 +576,11 @@ const UserInvestmentAnalysis = ({
                 <div>
                   <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Riskkomfort</p>
                   <div className="flex items-center gap-3">
-                    <Progress 
-                      value={(riskProfile.risk_comfort_level || 0) * 10} 
+                    <Progress
+                      value={(riskProfile.risk_comfort_level || 0) * 20}
                       className="h-3 w-24 bg-slate-200 dark:bg-slate-700"
                     />
-                    <span className="text-xl font-bold text-slate-900 dark:text-slate-100">{riskProfile.risk_comfort_level || 0}/10</span>
+                    <span className="text-xl font-bold text-slate-900 dark:text-slate-100">{riskProfile.risk_comfort_level || 0}/5</span>
                   </div>
                 </div>
               </div>
