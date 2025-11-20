@@ -12,8 +12,38 @@ const PRIMARY_CHAT_MODEL = Deno.env.get('OPENAI_PORTFOLIO_MODEL')
   || Deno.env.get('OPENAI_MODEL')
   || 'gpt-5.1';
 
+const LIGHTWEIGHT_CHAT_MODEL = Deno.env.get('OPENAI_PORTFOLIO_LIGHT_MODEL')
+  || 'gpt-4o-mini';
+
 const INLINE_INTENT_MODEL = Deno.env.get('OPENAI_INTENT_MODEL')
   || PRIMARY_CHAT_MODEL;
+
+const selectChatModel = ({
+  hasRealTimeTrigger,
+  isDocumentSummaryRequest,
+  isSimplePersonalAdviceRequest,
+  userIntent,
+}: {
+  hasRealTimeTrigger: boolean;
+  isDocumentSummaryRequest: boolean;
+  isSimplePersonalAdviceRequest: boolean;
+  userIntent: IntentType;
+}): string => {
+  if (hasRealTimeTrigger
+    || isDocumentSummaryRequest
+    || userIntent === 'news_update'
+    || userIntent === 'general_news'
+    || userIntent === 'market_analysis'
+  ) {
+    return PRIMARY_CHAT_MODEL;
+  }
+
+  if (isSimplePersonalAdviceRequest && userIntent === 'general_advice') {
+    return LIGHTWEIGHT_CHAT_MODEL;
+  }
+
+  return PRIMARY_CHAT_MODEL;
+};
 
 type BasePromptOptions = {
   shouldOfferFollowUp: boolean;
@@ -118,6 +148,67 @@ const detectSwedishLanguage = (text: string, interpreterLanguage?: string | null
   });
 
   return score >= 3;
+};
+
+type ChatMessage = { role: 'user' | 'assistant'; content: string };
+
+const RECENT_CHAT_HISTORY_LIMIT = 8;
+const MAX_CHAT_MESSAGE_LENGTH = 1200;
+const HISTORY_SUMMARY_MAX_LENGTH = 2000;
+
+const normalizeChatHistory = (history: unknown): ChatMessage[] => {
+  if (!Array.isArray(history)) return [];
+
+  return history
+    .map((entry) => {
+      const role = typeof entry?.role === 'string' ? entry.role as string : '';
+      const content = typeof entry?.content === 'string' ? entry.content.trim() : '';
+
+      if (!content || !['user', 'assistant'].includes(role)) {
+        return null;
+      }
+
+      return {
+        role: role as ChatMessage['role'],
+        content: content.slice(0, MAX_CHAT_MESSAGE_LENGTH),
+      } as ChatMessage;
+    })
+    .filter((entry): entry is ChatMessage => Boolean(entry));
+};
+
+const prepareChatHistory = (
+  chatHistory: unknown
+): { recentMessages: ChatMessage[]; summaryMessage: { role: 'system'; content: string } | null; totalEntries: number } => {
+  const normalizedHistory = normalizeChatHistory(chatHistory);
+
+  if (normalizedHistory.length === 0) {
+    return { recentMessages: [], summaryMessage: null, totalEntries: 0 };
+  }
+
+  const recentMessages = normalizedHistory.slice(-RECENT_CHAT_HISTORY_LIMIT);
+  const olderMessages = normalizedHistory.slice(0, Math.max(0, normalizedHistory.length - RECENT_CHAT_HISTORY_LIMIT));
+
+  if (olderMessages.length === 0) {
+    return { recentMessages, summaryMessage: null, totalEntries: normalizedHistory.length };
+  }
+
+  const summaryLines = olderMessages.map((entry) => {
+    const speaker = entry.role === 'assistant' ? 'AI' : 'Användare';
+    return `${speaker}: ${entry.content}`;
+  });
+
+  const joinedSummary = summaryLines.join('\n');
+  const truncatedSummary =
+    joinedSummary.length > HISTORY_SUMMARY_MAX_LENGTH
+      ? `${joinedSummary.slice(0, HISTORY_SUMMARY_MAX_LENGTH)}...`
+      : joinedSummary;
+
+  const summaryMessage = {
+    role: 'system' as const,
+    content: `Sammanfattning av äldre historik (serverside-kortad):\n${truncatedSummary}`
+  };
+
+  return { recentMessages, summaryMessage, totalEntries: normalizedHistory.length };
 };
 
 type MacroTheme = 'inflation' | 'rates' | 'growth';
@@ -2136,6 +2227,8 @@ serve(async (req) => {
     
     const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData, stream, documentIds } = requestBody;
 
+    const { recentMessages: preparedChatHistory, summaryMessage, totalEntries: totalHistoryEntries } = prepareChatHistory(chatHistory);
+
     const filteredDocumentIds: string[] = Array.isArray(documentIds)
       ? documentIds.filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0)
       : [];
@@ -2159,12 +2252,10 @@ serve(async (req) => {
       analysisType
     });
 
-    const recentUserMessages = Array.isArray(chatHistory)
-      ? chatHistory
-        .filter((entry: { role?: string; content?: string }) => entry?.role === 'user' && typeof entry?.content === 'string')
-        .map(entry => entry.content as string)
-        .slice(-3)
-      : [];
+    const recentUserMessages = preparedChatHistory
+      .filter((entry) => entry.role === 'user')
+      .map((entry) => entry.content)
+      .slice(-3);
 
     const riskKeywordPattern = /(riskprofil|risktolerans|riskniv[åa]|risktagande|riskjusterad|riskhantering|risknivån|risknivaan|risknivor|risk)/i;
     const mentionsRisk = (value?: string): boolean => typeof value === 'string' && riskKeywordPattern.test(value);
@@ -3907,14 +3998,22 @@ ${importantLines.join('\n')}
 `;
 
 
-    // Force using gpt-5.1 with reasoning-enabled features for consistent behavior
-    const model = PRIMARY_CHAT_MODEL;
+    const model = selectChatModel({
+      hasRealTimeTrigger,
+      isDocumentSummaryRequest,
+      isSimplePersonalAdviceRequest,
+      userIntent,
+    });
 
     console.log('Selected model:', model, 'for request type:', {
       isStockAnalysis: isStockAnalysisRequest,
       isPortfolioOptimization: isPortfolioOptimizationRequest,
       messageLength: message.length,
-      historyLength: chatHistory.length
+      historyLength: totalHistoryEntries,
+      hasRealTimeTrigger,
+      isDocumentSummaryRequest,
+      isSimplePersonalAdviceRequest,
+      userIntent
     });
 
     const hasMarketData = tavilyContext.formattedContext.length > 0;
@@ -3929,7 +4028,8 @@ ${importantLines.join('\n')}
     // Build messages array with enhanced context
     const messages = [
       { role: 'system', content: contextInfo + tavilyContext.formattedContext + tavilySourceInstruction },
-      ...chatHistory,
+      ...(summaryMessage ? [summaryMessage] : []),
+      ...preparedChatHistory,
       { role: 'user', content: message }
     ];
 
