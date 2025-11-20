@@ -145,6 +145,14 @@ const DiscoverNews = () => {
     return ['Marknadspuls', 'Rapporter', 'Nyheter'];
   }, [heroInsight, morningBrief?.focusAreas, trendingCategories]);
 
+  const eventsToWatch = useMemo(() => {
+    if (morningBrief?.eventsToWatch?.length) {
+      return morningBrief.eventsToWatch;
+    }
+
+    return null;
+  }, [morningBrief?.eventsToWatch]);
+
   const formatPublishedLabel = (isoString?: string) => {
     if (!isoString) return 'Okänd tid';
     const date = new Date(isoString);
@@ -232,7 +240,7 @@ const DiscoverNews = () => {
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {morningBrief?.intro ??
+                  {morningBrief?.summary ??
                     heroInsight?.content ??
                     'AI sammanfattar gårdagens marknadsrörelser och vad som väntar i dag. Följ höjdpunkterna och få ett par snabba fokusområden innan börsen öppnar.'}
                 </p>
@@ -282,16 +290,25 @@ const DiscoverNews = () => {
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Händelser att bevaka
                     </p>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {morningBrief?.events
-                        ? morningBrief.events
-                        : lastUpdated
-                            ? `Marknadspulsen uppdaterades ${lastUpdated.toLocaleTimeString('sv-SE', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}. Håll ett extra öga på indexrörelserna och dagens rapportflöde.`
-                            : 'Håll koll på viktiga makrobesked och kommande rapportsläpp under dagen.'}
-                    </p>
+                    {eventsToWatch?.length ? (
+                      <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                        {eventsToWatch.map((event, index) => (
+                          <li key={`${event}-${index}`} className="flex items-start gap-2">
+                            <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-primary" />
+                            <span>{event}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {lastUpdated
+                          ? `Marknadspulsen uppdaterades ${lastUpdated.toLocaleTimeString('sv-SE', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}. Håll ett extra öga på indexrörelserna och dagens rapportflöde.`
+                          : 'Håll koll på viktiga makrobesked och kommande rapportsläpp under dagen.'}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3">

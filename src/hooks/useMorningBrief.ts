@@ -8,15 +8,17 @@ export type MorningBriefHighlight = {
   summary?: string;
   source?: string;
   publishedAt?: string;
+  url?: string;
 };
 
 export type MorningBriefPayload = {
+  id?: string;
   generatedAt?: string;
-  headline?: string;
-  intro?: string;
+  sentiment?: 'bullish' | 'bearish' | 'neutral';
+  summary?: string;
   highlights?: MorningBriefHighlight[];
   focusAreas?: string[];
-  events?: string;
+  eventsToWatch?: string[];
 };
 
 export const useMorningBrief = () => {
@@ -36,7 +38,7 @@ export const useMorningBrief = () => {
           throw new Error(functionError.message);
         }
 
-        const payload = (data as MorningBriefPayload | null) ?? null;
+        const payload = (data as { brief?: MorningBriefPayload } | null)?.brief ?? null;
         setBrief(payload);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Kunde inte hämta morgonrapporten';
