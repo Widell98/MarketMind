@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Star, Brain, User, Tag, ShoppingCart, MessageCircle, Trash2 } from 'lucide-react';
+import { Star, Brain, User, Tag, ShoppingCart, MessageCircle, Trash2, ChevronDown } from 'lucide-react';
 
 interface RecommendationCardProps {
   title: string;
@@ -13,6 +13,9 @@ interface RecommendationCardProps {
   onDiscuss: (e: React.MouseEvent) => void;
   onDelete: (e: React.MouseEvent) => void;
   onClick?: () => void;
+  stackedActions?: boolean;
+  descriptionClamp?: 2 | 3;
+  mobileDetails?: React.ReactNode;
 }
 
 const RecommendationCard: React.FC<RecommendationCardProps> = ({
@@ -24,8 +27,16 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
   onAdd,
   onDiscuss,
   onDelete,
-  onClick
+  onClick,
+  stackedActions = false,
+  descriptionClamp = 2,
+  mobileDetails
 }) => {
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const clampClass = descriptionClamp === 3 ? 'line-clamp-3' : 'line-clamp-2';
+  const actionLayoutClass = stackedActions ? 'flex-col sm:flex-col' : 'flex-col sm:flex-row sm:items-center';
+  const showMobileDetailsToggle = Boolean(mobileDetails);
+
   return (
     <div
       className="p-4 border rounded-lg hover:shadow-md transition-all duration-200 cursor-pointer hover:border-primary/30"
@@ -45,7 +56,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             </Badge>
           </div>
 
-          <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{description}</p>
+          <p className={`text-xs text-muted-foreground ${clampClass} mb-2`}>{description}</p>
 
           {author && (
             <p className="text-xs text-muted-foreground mb-2">Av: {author}</p>
@@ -65,7 +76,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             </div>
           )}
 
-          <div className="flex flex-col gap-2 pt-3 mt-3 border-t border-border/50 sm:flex-row sm:items-center">
+          <div className={`flex gap-2 pt-3 mt-3 border-t border-border/50 ${actionLayoutClass}`}>
             <Button
               variant="outline"
               size="sm"
@@ -93,6 +104,30 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
               <Trash2 className="w-3 h-3" />
             </Button>
           </div>
+
+          {showMobileDetailsToggle && (
+            <div className="sm:hidden mt-3">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsDetailsOpen((prev) => !prev);
+                }}
+                className="w-full justify-between text-xs"
+              >
+                {isDetailsOpen ? 'Dölj detaljer' : 'Visa detaljer'}
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform ${isDetailsOpen ? 'rotate-180' : ''}`}
+                />
+              </Button>
+
+              {isDetailsOpen && mobileDetails && (
+                <div className="mt-2 text-xs text-muted-foreground space-y-2">{mobileDetails}</div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
