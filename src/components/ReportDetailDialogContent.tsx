@@ -1,7 +1,7 @@
 import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
-import { ArrowUpRight, Calendar, FileText, LineChart } from 'lucide-react';
+import { ArrowUpRight, Calendar, FileText, LineChart, Sparkles } from 'lucide-react';
 
 import { DialogContent } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -24,7 +24,7 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               <FileText className="h-3.5 w-3.5" />
-              AI-genererad analys
+              Kuraterad rapport
             </div>
             <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">{report.reportTitle}</h2>
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -36,9 +36,13 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
                   {report.sourceDocumentName}
                 </Badge>
               )}
-              <Badge variant="outline" className="flex items-center gap-1 text-[11px] uppercase tracking-wide">
+              <Badge variant="outline" className="flex items-center gap-1 rounded-full text-[11px] uppercase tracking-wide">
                 <Calendar className="h-3 w-3" />
                 {generatedAt}
+              </Badge>
+              <Badge variant="secondary" className="flex items-center gap-1 rounded-full bg-muted/60 text-[11px] font-semibold text-foreground">
+                <Sparkles className="h-3 w-3 text-primary" />
+                Publicerad av MarketMind-teamet
               </Badge>
             </div>
           </div>
@@ -61,7 +65,7 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
         <div className="space-y-8 px-6 pb-8 pt-6 text-sm leading-relaxed text-muted-foreground">
           <div className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">Översikt</h3>
-            <p className="text-base text-foreground/90">{report.summary}</p>
+            <p className="text-base font-medium text-foreground/90 leading-relaxed">{report.summary}</p>
           </div>
 
           {report.keyMetrics && report.keyMetrics.length > 0 && (
@@ -72,9 +76,12 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {report.keyMetrics.map((metric, metricIndex) => (
-                  <div key={`${report.id}-dialog-metric-${metricIndex}`} className="rounded-2xl border border-border/60 bg-card/70 p-4">
+                  <div
+                    key={`${report.id}-dialog-metric-${metricIndex}`}
+                    className="rounded-2xl border border-border/60 bg-card/70 p-3 shadow-sm"
+                  >
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{metric.label}</p>
-                    <p className="text-xl font-semibold text-foreground">{metric.value}</p>
+                    <p className="text-lg font-semibold text-foreground">{metric.value}</p>
                     {metric.trend && <p className="text-xs text-muted-foreground">{metric.trend}</p>}
                   </div>
                 ))}
@@ -105,17 +112,22 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
             </div>
           )}
 
-          {report.sourceUrl && (
-            <div className="space-y-2">
-              <Separator className="bg-border/60" />
-              <p className="text-xs text-muted-foreground">
-                Källa:{' '}
-                <a href={report.sourceUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">
-                  {report.sourceUrl}
-                </a>
-              </p>
+          <div className="space-y-2">
+            <Separator className="bg-border/60" />
+            <div className="space-y-2 text-xs text-muted-foreground">
+              <p className="font-semibold text-foreground/80">Publicerad av MarketMind-teamet</p>
+              {report.sourceUrl ? (
+                <p className="text-muted-foreground">
+                  Källa:{' '}
+                  <a href={report.sourceUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">
+                    {report.sourceUrl}
+                  </a>
+                </p>
+              ) : (
+                <p className="text-muted-foreground">Ingen extern källa angiven</p>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </ScrollArea>
     </DialogContent>

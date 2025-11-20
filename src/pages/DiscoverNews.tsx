@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight, Clock, Loader2, Sparkles } from 'lucide-react';
+import { ArrowRight, Clock, Filter, Search } from 'lucide-react';
 
 import Layout from '@/components/Layout';
 import ReportHighlightCard from '@/components/ReportHighlightCard';
@@ -8,7 +8,15 @@ import MarketPulse from '@/components/MarketPulse';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useDiscoverReportSummaries } from '@/hooks/useDiscoverReportSummaries';
 import { useMarketData } from '@/hooks/useMarketData';
 import { useNewsData } from '@/hooks/useNewsData';
@@ -54,6 +62,10 @@ const DiscoverNews = () => {
   const { marketData, loading: marketLoading, error: marketError, refetch: refetchMarketData } = useMarketData();
   const { newsData, loading: newsLoading, error: newsError } = useNewsData();
   const { data: overviewInsights = [], isLoading: insightsLoading } = useMarketOverviewInsights();
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('Alla');
+  const [selectedSource, setSelectedSource] = useState('Alla');
 
   const companyCount = useMemo(
     () => new Set(reports.map((report) => report.companyName?.trim())).size,
@@ -141,6 +153,37 @@ const DiscoverNews = () => {
     return ['Marknadspuls', 'Rapporter', 'Nyheter'];
   }, [heroInsight, trendingCategories]);
 
+  const categoryOptions = useMemo(() => {
+    const categories = new Set<string>();
+    (newsData ?? []).forEach((item) => categories.add(item.category?.trim() || 'Övrigt'));
+    return ['Alla', ...Array.from(categories).sort()];
+  }, [newsData]);
+
+  const sourceOptions = useMemo(() => {
+    const sources = new Set<string>();
+    (newsData ?? []).forEach((item) => sources.add(item.source?.trim() || 'Okänd källa'));
+    return ['Alla', ...Array.from(sources).sort()];
+  }, [newsData]);
+
+  const filteredNews = useMemo(() => {
+    const search = searchTerm.trim().toLowerCase();
+
+    return (newsData ?? []).filter((item) => {
+      const categoryMatch = selectedCategory === 'Alla' || (item.category?.trim() || 'Övrigt') === selectedCategory;
+      const sourceMatch = selectedSource === 'Alla' || (item.source?.trim() || 'Okänd källa') === selectedSource;
+      const matchesSearch =
+        !search ||
+        item.headline.toLowerCase().includes(search) ||
+        item.summary.toLowerCase().includes(search) ||
+        item.category?.toLowerCase().includes(search) ||
+        item.source?.toLowerCase().includes(search);
+
+      return categoryMatch && sourceMatch && matchesSearch;
+    });
+  }, [newsData, searchTerm, selectedCategory, selectedSource]);
+
+  const visibleNews = useMemo(() => filteredNews.slice(0, 9), [filteredNews]);
+
   const formatPublishedLabel = (isoString?: string) => {
     if (!isoString) return 'Okänd tid';
     const date = new Date(isoString);
@@ -158,7 +201,7 @@ const DiscoverNews = () => {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Senaste AI-genererade rapporterna
+                    Senaste kuraterade rapporterna
                   </p>
                   <h2 className="text-2xl font-semibold text-foreground">Viktiga höjdpunkter</h2>
                 </div>
@@ -181,23 +224,166 @@ const DiscoverNews = () => {
             </section>
           )}
 
+          <section className="space-y-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm sm:p-8">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bläddra rapporter</p>
+                <h2 className="text-2xl font-semibold text-foreground">Nyhets- och rapportsök</h2>
+                <p className="text-sm text-muted-foreground">
+                  Filtrera på bolag/källa och kategori eller sök efter relevanta rubriker. Vi visar de senaste kuraterade
+                  rapporterna att läsa direkt.
+                </p>
+              </div>
+              <Badge variant="outline" className="rounded-full border-border/60 text-xs text-muted-foreground">
+                {visibleNews.length} av {filteredNews.length || 0} träffar
+              </Badge>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-[2fr_1fr_1fr]">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Sök rubriker, bolag eller källa"
+                  className="pl-9"
+                />
+              </div>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="rounded-xl border-border/70 bg-background/60">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-muted-foreground" />
+                    <SelectValue placeholder="Kategori" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  {categoryOptions.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedSource} onValueChange={setSelectedSource}>
+                <SelectTrigger className="rounded-xl border-border/70 bg-background/60">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <SelectValue placeholder="Bolag/källa" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  {sourceOptions.map((source) => (
+                    <SelectItem key={source} value={source}>
+                      {source}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {newsError && !newsLoading && (
+              <div className="rounded-2xl border border-dashed border-rose-200 bg-rose-50/60 p-4 text-sm text-rose-700">
+                Kunde inte ladda nyheterna just nu. Försök igen senare.
+              </div>
+            )}
+
+            {newsLoading ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <Card key={`news-skeleton-${index}`} className="border-border/60 bg-muted/20">
+                    <CardContent className="space-y-3 p-4">
+                      <div className="h-4 w-24 animate-pulse rounded-full bg-muted" />
+                      <div className="h-5 w-3/4 animate-pulse rounded bg-muted" />
+                      <div className="h-14 w-full animate-pulse rounded bg-muted" />
+                      <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : visibleNews.length ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {visibleNews.map((item) => (
+                  <Dialog key={item.id}>
+                    <DialogTrigger asChild>
+                      <Card className="group h-full cursor-pointer border-border/60 bg-card/80 shadow-sm transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
+                        <CardContent className="flex h-full flex-col gap-3 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-1">
+                              <Badge variant="secondary" className="rounded-full bg-primary/10 text-[11px] text-primary">
+                                {item.category || 'Övrigt'}
+                              </Badge>
+                              <h3 className="text-lg font-semibold text-foreground">{item.headline}</h3>
+                              <p className="text-sm text-muted-foreground line-clamp-3">{item.summary}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>{item.source || 'Okänd källa'}</span>
+                            <span>{formatPublishedLabel(item.publishedAt)}</span>
+                          </div>
+                          <div className="mt-auto flex items-center justify-between pt-1 text-sm font-semibold text-primary">
+                            <span className="inline-flex items-center gap-1">
+                              Läs mer
+                              <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                            </span>
+                            <Badge variant="outline" className="rounded-full border-border/60 text-[11px] text-muted-foreground">
+                              {item.source || 'Okänd källa'}
+                            </Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>{item.headline}</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <Badge variant="outline" className="rounded-full border-border/60 text-[11px]">
+                            {item.category || 'Övrigt'}
+                          </Badge>
+                          <span>•</span>
+                          <span>{item.source || 'Okänd källa'}</span>
+                          <span>•</span>
+                          <span>{formatPublishedLabel(item.publishedAt)}</span>
+                        </div>
+                        <p className="text-base leading-relaxed text-foreground">{item.summary}</p>
+                        {item.url && (
+                          <Button asChild variant="outline" className="rounded-xl">
+                            <a href={item.url} target="_blank" rel="noreferrer">
+                              Öppna källan
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-6 text-sm text-muted-foreground">
+                Inga rapporter matchar dina filter just nu. Justera sökning eller kategorier för att hitta fler artiklar.
+              </div>
+            )}
+          </section>
+
           <div className="grid gap-6 lg:grid-cols-2">
             <Card id="morgonrapport" className="border-border/60 bg-card/80">
               <CardContent className="space-y-5 p-4 sm:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      AI-genererat nyhetsbrev
+                      Kuraterad morgonuppdatering
                     </p>
                     <h3 className="text-2xl font-semibold text-foreground">Morgonrapporten</h3>
                   </div>
                   <Badge variant="secondary" className="rounded-full bg-primary/10 text-xs text-primary">
-                    Genererad kl 07:00
+                    Skapad av MarketMind-teamet
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {heroInsight?.content ??
-                    'AI sammanfattar gårdagens marknadsrörelser och vad som väntar i dag. Följ höjdpunkterna och få ett par snabba fokusområden innan börsen öppnar.'}
+                    'Vårt redaktionella team sammanfattar gårdagens marknadsrörelser och vad som väntar i dag. Följ höjdpunkterna och få ett par snabba fokusområden innan börsen öppnar.'}
                 </p>
                 <div className="space-y-4">
                   <div>
