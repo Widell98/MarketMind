@@ -18,8 +18,8 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
   const generatedAt = formatDistanceToNow(new Date(report.createdAt), { addSuffix: true, locale: sv });
 
   return (
-    <DialogContent className="max-w-3xl overflow-hidden rounded-3xl border border-border/50 bg-gradient-to-br from-primary/5 via-card/95 to-background p-0 shadow-2xl">
-      <div className="relative border-b border-border/60 bg-gradient-to-br from-primary/15 via-transparent to-transparent p-6">
+    <DialogContent className="max-w-3xl overflow-hidden rounded-3xl border border-border/50 bg-gradient-to-br from-finance-navy/6 via-card/95 to-background p-0 shadow-2xl">
+      <div className="relative border-b border-border/60 bg-gradient-to-br from-finance-navy/12 via-primary/10 to-transparent p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -28,26 +28,26 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
             </div>
             <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">{report.reportTitle}</h2>
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <Badge variant="secondary" className="rounded-full bg-primary/15 text-primary shadow-sm">
+              <Badge variant="secondary" className="rounded-full border border-finance-navy/15 bg-finance-navy/10 text-finance-navy shadow-sm">
                 {report.companyName}
               </Badge>
               {report.sourceDocumentName && (
-                <Badge variant="outline" className="rounded-full border-primary/30 bg-primary/5 text-xs text-primary">
+                <Badge variant="outline" className="rounded-full border-finance-navy/25 bg-finance-navy/5 text-xs text-finance-navy">
                   {report.sourceDocumentName}
                 </Badge>
               )}
-              <Badge variant="outline" className="flex items-center gap-1 rounded-full border-primary/30 bg-primary/10 text-[11px] uppercase tracking-wide text-primary">
+              <Badge variant="outline" className="flex items-center gap-1 rounded-full border-finance-navy/25 bg-finance-navy/10 text-[11px] uppercase tracking-wide text-finance-navy">
                 <Calendar className="h-3 w-3" />
                 {generatedAt}
               </Badge>
-              <Badge variant="secondary" className="flex items-center gap-1 rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
-                <Sparkles className="h-3 w-3 text-primary" />
+              <Badge variant="secondary" className="flex items-center gap-1 rounded-full bg-finance-navy/10 text-[11px] font-semibold text-finance-navy">
+                <Sparkles className="h-3 w-3 text-finance-navy" />
                 Publicerad av MarketMind-teamet
               </Badge>
             </div>
           </div>
           {report.sourceUrl ? (
-            <Button variant="outline" asChild className="rounded-xl border-primary/40 text-xs text-primary hover:bg-primary/10">
+            <Button variant="outline" asChild className="rounded-xl border-finance-navy/40 text-xs text-finance-navy hover:bg-finance-navy/10">
               <a href={report.sourceUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
                 Visa källa
                 <ArrowUpRight className="h-3.5 w-3.5" />
@@ -78,7 +78,7 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
                 {report.keyMetrics.map((metric, metricIndex) => (
                   <div
                     key={`${report.id}-dialog-metric-${metricIndex}`}
-                    className="rounded-2xl border border-border/60 bg-primary/5 p-3 shadow-sm"
+                    className="rounded-2xl border border-border/60 bg-gradient-to-br from-finance-navy/6 via-primary/5 to-background p-3 shadow-sm"
                   >
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{metric.label}</p>
                     <p className="text-lg font-semibold text-foreground">{metric.value}</p>
