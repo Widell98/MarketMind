@@ -14,38 +14,10 @@ import { useStockCases } from '@/hooks/useStockCases';
 import { useToast } from '@/hooks/use-toast';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useSwipeLikedCases } from '@/hooks/useSwipeLikedCases';
-import { useAuth } from '@/contexts/AuthContext';
-
-const DISMISSED_STORAGE_KEY = 'dismissedStockCaseIds';
-
-const buildDismissedStorageKey = (userId?: string) =>
-  userId ? `${DISMISSED_STORAGE_KEY}:${userId}` : DISMISSED_STORAGE_KEY;
-
-const readDismissedCaseIds = (userId?: string): string[] => {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(buildDismissedStorageKey(userId));
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.error('Could not read dismissed stock cases from localStorage', error);
-    return [];
-  }
-};
-
-const persistDismissedCaseIds = (ids: string[], userId?: string) => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(buildDismissedStorageKey(userId), JSON.stringify(ids));
-  } catch (error) {
-    console.error('Could not persist dismissed stock cases to localStorage', error);
-  }
-};
+import { useDismissedStockCases } from '@/hooks/useDismissedStockCases';
 
 const Discover = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { stockCases: allStockCases, loading: stockCasesLoading } = useStockCases(false);
   const { toast } = useToast();
   const { isAdmin } = useUserRole();
@@ -58,6 +30,12 @@ const Discover = () => {
     removeLikedCase,
     clearLikedCases,
   } = useSwipeLikedCases();
+  const {
+    dismissedCaseIds,
+    addDismissedCase,
+    removeDismissedCase,
+    resetDismissedCases,
+  } = useDismissedStockCases();
 
   const [caseSearchTerm, setCaseSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('');
@@ -67,23 +45,10 @@ const Discover = () => {
   const [caseViewMode, setCaseViewMode] = useState<'grid' | 'list' | 'swipe'>('grid');
   const [activeTab, setActiveTab] = useState<'discover' | 'liked'>('discover');
   const [activeSwipeIndex, setActiveSwipeIndex] = useState(0);
-  const [dismissedCaseIds, setDismissedCaseIds] = useState<string[]>([]);
   const [swipeDelta, setSwipeDelta] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
-
-  useEffect(() => {
-    setDismissedCaseIds(readDismissedCaseIds(user?.id));
-  }, [user?.id]);
-
-  const updateDismissedCaseIds = (updater: (prev: string[]) => string[]) => {
-    setDismissedCaseIds((prev) => {
-      const next = updater(prev);
-      persistDismissedCaseIds(next, user?.id);
-      return next;
-    });
-  };
 
   const filteredCases = useMemo(() => {
     let filtered = [...(allStockCases || [])];
@@ -207,7 +172,7 @@ const Discover = () => {
   const currentSwipeCase = filteredCases[activeSwipeIndex];
 
   const handleSwipeLike = (caseId: string) => {
-    updateDismissedCaseIds((prev) => prev.filter((id) => id !== caseId));
+    removeDismissedCase(caseId);
     likeCase(caseId);
     setActiveSwipeIndex((prev) => Math.min(filteredCases.length - 1, prev + 1));
     toast({
@@ -218,9 +183,7 @@ const Discover = () => {
 
   const handleSwipeSkip = () => {
     if (currentSwipeCase) {
-      updateDismissedCaseIds((prev) =>
-        prev.includes(currentSwipeCase.id) ? prev : [...prev, currentSwipeCase.id]
-      );
+      addDismissedCase(currentSwipeCase.id);
       toast({
         title: 'Case avfärdat',
         description: 'Caseet visas inte i flödet. Återställ om du vill se allt igen.',
@@ -230,7 +193,7 @@ const Discover = () => {
   };
 
   const handleResetDismissed = () => {
-    updateDismissedCaseIds(() => []);
+    resetDismissedCases();
     toast({
       title: 'Avfärdade case återställda',
       description: 'Alla case visas nu igen i Discover.',
