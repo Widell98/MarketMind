@@ -7,6 +7,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 
 const DAILY_MESSAGE_CREDITS = 10;
 const FREE_DAILY_DOCUMENT_MESSAGE_LIMIT = 1;
+const PREMIUM_DAILY_DOCUMENT_MESSAGE_LIMIT = 5;
 
 type ProfileUpdates = Record<string, unknown>;
 
@@ -363,7 +364,6 @@ export const useAIChat = (portfolioId?: string) => {
     usage,
     fetchUsage,
     incrementUsage,
-    loading: subscriptionLoading,
   } = useSubscription();
   const {
     sessions,
@@ -826,50 +826,44 @@ export const useAIChat = (portfolioId?: string) => {
       : [];
 
     const hasDocumentAttachments = sanitizedDocumentIds.length > 0;
+    const isPremium = subscription?.subscribed;
 
     if (hasDocumentAttachments) {
-      if (subscriptionLoading || !subscription) {
+      const now = new Date();
+      const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+
+      const documentMessageLimit = isPremium
+        ? PREMIUM_DAILY_DOCUMENT_MESSAGE_LIMIT
+        : FREE_DAILY_DOCUMENT_MESSAGE_LIMIT;
+
+      const { count: todaysSourceMessages, error: sourceMessageError } = await supabase
+        .from('portfolio_chat_history')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('message_type', 'user')
+        .not('context_data->documentIds', 'is', null)
+        .gte('created_at', startOfDay.toISOString())
+        .lt('created_at', endOfDay.toISOString());
+
+      if (sourceMessageError) {
+        console.error('Failed to verify daily source message limit', sourceMessageError);
         toast({
-          title: "Verifierar prenumeration",
-          description: "Vänta ett ögonblick och försök igen.",
+          title: "Kunde inte verifiera källgränsen",
+          description: "Försök igen om en liten stund.",
           variant: "destructive",
         });
         return false;
       }
 
-      if (subscription.subscribed === false) {
-        const now = new Date();
-        const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
-        const endOfDay = new Date(startOfDay);
-        endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
-
-        const { count: todaysSourceMessages, error: sourceMessageError } = await supabase
-          .from('portfolio_chat_history')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('message_type', 'user')
-          .not('context_data->documentIds', 'is', null)
-          .gte('created_at', startOfDay.toISOString())
-          .lt('created_at', endOfDay.toISOString());
-
-        if (sourceMessageError) {
-          console.error('Failed to verify daily source message limit', sourceMessageError);
-          toast({
-            title: "Kunde inte verifiera källgränsen",
-            description: "Försök igen om en liten stund.",
-            variant: "destructive",
-          });
-          return false;
-        }
-
-        if ((todaysSourceMessages ?? 0) >= FREE_DAILY_DOCUMENT_MESSAGE_LIMIT) {
-          toast({
-            title: "Daglig källgräns nådd",
-            description: "Du kan skicka ett meddelande per dag med uppladdade källor på gratisplanen. Uppgradera för fler.",
-            variant: "destructive",
-          });
-          return false;
-        }
+      if ((todaysSourceMessages ?? 0) >= documentMessageLimit) {
+        toast({
+          title: "Daglig källgräns nådd",
+          description: `Du kan bara skicka ${documentMessageLimit} frågor per dag med bifogade källor eller dokument.`,
+          variant: "destructive",
+        });
+        return false;
       }
     }
 
@@ -879,7 +873,6 @@ export const useAIChat = (portfolioId?: string) => {
 
     // Check usage limit with better error handling
     const canSendMessage = checkUsageLimit('ai_message');
-    const isPremium = subscription?.subscribed;
     const dailyLimit = DAILY_MESSAGE_CREDITS;
 
     if (!canSendMessage && !isPremium) {
@@ -904,7 +897,6 @@ export const useAIChat = (portfolioId?: string) => {
     checkUsageLimit,
     subscription,
     toast,
-    subscriptionLoading,
   ]);
 
   const createNewSessionAndSendMessage = useCallback(async (messageContent: string, options?: SendMessageOptions): Promise<boolean> => {
