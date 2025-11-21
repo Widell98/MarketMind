@@ -3,7 +3,16 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, SortAsc, SortDesc, Grid3X3, List, X } from 'lucide-react';
+import {
+  Search,
+  Filter,
+  SortAsc,
+  SortDesc,
+  Grid3X3,
+  List,
+  PanelsTopLeft,
+  X,
+} from 'lucide-react';
 import {
   Sheet,
   SheetClose,
@@ -27,11 +36,12 @@ interface EnhancedStockCasesSearchProps {
   onSortChange: (value: string) => void;
   sortOrder: string;
   onSortOrderChange: (value: string) => void;
-  viewMode: string;
-  onViewModeChange: (value: string) => void;
+  viewMode: 'grid' | 'list' | 'swipe';
+  onViewModeChange: (value: 'grid' | 'list' | 'swipe') => void;
   availableSectors: string[];
   resultsCount: number;
   totalCount: number;
+  enableSwipeView?: boolean;
 }
 
 const getPerformanceLabel = (value: string) => {
@@ -65,6 +75,7 @@ const EnhancedStockCasesSearch: React.FC<EnhancedStockCasesSearchProps> = ({
   availableSectors,
   resultsCount,
   totalCount,
+  enableSwipeView = false,
 }) => {
   const normalizedSector = selectedSector && selectedSector !== 'all-sectors' ? selectedSector : '';
   const normalizedPerformance =
@@ -105,6 +116,18 @@ const EnhancedStockCasesSearch: React.FC<EnhancedStockCasesSearchProps> = ({
       >
         <List className="h-4 w-4" />
       </Button>
+      {enableSwipeView && (
+        <Button
+          type="button"
+          variant={viewMode === 'swipe' ? 'default' : 'ghost'}
+          size="sm"
+          aria-pressed={viewMode === 'swipe'}
+          onClick={() => onViewModeChange('swipe')}
+          className="px-3"
+        >
+          <PanelsTopLeft className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 
