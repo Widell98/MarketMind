@@ -28,7 +28,7 @@ const StockCases = () => {
   const [performanceFilter, setPerformanceFilter] = useState('');
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState('desc');
-  const [viewMode, setViewMode] = useState('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'swipe'>('grid');
   
   const { stockCases, loading, refetch } = useStockCases();
   const { followingStockCases, loading: followingLoading } = useFollowingStockCases();
