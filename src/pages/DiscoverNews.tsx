@@ -175,43 +175,6 @@ const DiscoverNews = () => {
       <div className="w-full pb-12">
         <div className="mx-auto w-full max-w-6xl space-y-8 px-1 sm:px-4 lg:px-0">
           
-          {(reportHighlights.length > 0 || reportsLoading) && (
-            <section className="space-y-4 rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/15 via-primary/10 to-background p-6 shadow-lg shadow-primary/10 backdrop-blur sm:p-8">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/20 text-primary">
-                    <Sparkles className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-primary/80">
-                      Senaste AI-genererade rapporterna
-                    </p>
-                    <h2 className="text-2xl font-semibold text-foreground">Viktiga höjdpunkter</h2>
-                  </div>
-                </div>
-                <Button
-                  variant="default"
-                  className="rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/30 transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/40"
-                  onClick={() => navigate('/discover')}
-                >
-                  Visa alla rapporter
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-              {reportsLoading && reportHighlights.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/10 px-6 py-10 text-center text-sm text-primary">
-                  Laddar rapporter…
-                </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {reportHighlights.map((report) => (
-                    <ReportHighlightCard key={report.id} report={report} />
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
-
           <div className="grid gap-6 lg:grid-cols-2">
             <Card
               id="morgonrapport"
@@ -342,6 +305,43 @@ const DiscoverNews = () => {
               </CardContent>
             </Card>
           </div>
+
+          {(reportHighlights.length > 0 || reportsLoading) && (
+            <section className="space-y-4 rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/15 via-primary/10 to-background p-6 shadow-lg shadow-primary/10 backdrop-blur sm:p-8">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/20 text-primary">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-primary/80">
+                      Senaste AI-genererade rapporterna
+                    </p>
+                    <h2 className="text-2xl font-semibold text-foreground">Viktiga höjdpunkter</h2>
+                  </div>
+                </div>
+                <Button
+                  variant="default"
+                  className="rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/30 transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/40"
+                  onClick={() => navigate('/discover')}
+                >
+                  Visa alla rapporter
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+              {reportsLoading && reportHighlights.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/10 px-6 py-10 text-center text-sm text-primary">
+                  Laddar rapporter…
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {reportHighlights.map((report) => (
+                    <ReportHighlightCard key={report.id} report={report} />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
         </div>
       </div>
     </Layout>
