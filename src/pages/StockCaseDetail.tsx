@@ -196,10 +196,27 @@ type FinancialStat = {
 
 type NavigationCase = Pick<StockCase, 'id' | 'title' | 'company_name' | 'ai_generated' | 'created_at'>;
 
-const StockCaseDetail = () => {
+type StockCaseDetailProps = {
+  embedded?: boolean;
+  embeddedCaseId?: string;
+  navigationCases?: NavigationCase[];
+  onNavigateCase?: (caseId: string) => void;
+  showRiskWarning?: boolean;
+  className?: string;
+};
+
+const StockCaseDetail = ({
+  embedded = false,
+  embeddedCaseId,
+  navigationCases: navigationCasesOverride,
+  onNavigateCase,
+  showRiskWarning = true,
+  className,
+}: StockCaseDetailProps) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const resolvedCaseId = embeddedCaseId || id || '';
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const analysisSectionRef = useRef<HTMLDivElement | null>(null);
@@ -229,30 +246,33 @@ const StockCaseDetail = () => {
 
       return (data || []) as NavigationCase[];
     },
+    enabled: !navigationCasesOverride,
   });
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL LOGIC
-  const { stockCase, loading, error } = useStockCase(id || '');
-  const { likeCount, isLiked, toggleLike, loading: likesLoading } = useStockCaseLikes(id || '');
+  const { stockCase, loading, error } = useStockCase(resolvedCaseId);
+  const { likeCount, isLiked, toggleLike, loading: likesLoading } = useStockCaseLikes(resolvedCaseId);
   const { followUser, unfollowUser, isFollowing } = useUserFollows();
-  const { updates, isLoading: updatesLoading, deleteUpdate } = useStockCaseUpdates(id || '');
+  const { updates, isLoading: updatesLoading, deleteUpdate } = useStockCaseUpdates(resolvedCaseId);
+
+  const navigationList = navigationCasesOverride || navigationCases;
 
   const { previousCase, nextCase } = useMemo(() => {
     if (!stockCase?.id) {
       return { previousCase: null as NavigationCase | null, nextCase: null as NavigationCase | null };
     }
 
-    const currentIndex = navigationCases.findIndex((navigationCase) => navigationCase.id === stockCase.id);
+    const currentIndex = navigationList.findIndex((navigationCase) => navigationCase.id === stockCase.id);
 
     if (currentIndex === -1) {
       return { previousCase: null as NavigationCase | null, nextCase: null as NavigationCase | null };
     }
 
-    const prev = currentIndex > 0 ? navigationCases[currentIndex - 1] : null;
-    const next = currentIndex < navigationCases.length - 1 ? navigationCases[currentIndex + 1] : null;
+    const prev = currentIndex > 0 ? navigationList[currentIndex - 1] : null;
+    const next = currentIndex < navigationList.length - 1 ? navigationList[currentIndex + 1] : null;
 
     return { previousCase: prev, nextCase: next };
-  }, [navigationCases, stockCase?.id]);
+  }, [navigationList, stockCase?.id]);
 
   const previousCaseTitle = previousCase
     ? normalizeStockCaseTitle(previousCase.title, previousCase.company_name)
@@ -261,6 +281,11 @@ const StockCaseDetail = () => {
 
   const handleNavigateToNeighbor = (caseId?: string | null) => {
     if (!caseId) {
+      return;
+    }
+
+    if (embedded && onNavigateCase) {
+      onNavigateCase(caseId);
       return;
     }
 
@@ -315,12 +340,26 @@ const StockCaseDetail = () => {
     setShowUpdateDialog(false);
     setIsHeroLogoError(false);
 
-    if (typeof window !== 'undefined') {
+    if (!embedded && typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [stockCase?.id]);
+  }, [embedded, stockCase?.id]);
 
   const navigationButtonBaseClasses = 'rounded-full border border-border/40 bg-background/70 text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground';
+
+  const containerClasses = cn(
+    'mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8',
+    embedded ? 'space-y-10 sm:space-y-12' : 'space-y-12',
+    className
+  );
+
+  const fallbackContainerClasses = cn(
+    'mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 space-y-6',
+    className
+  );
+
+  const renderWithinLayout = (children: React.ReactNode) =>
+    embedded ? <>{children}</> : <Layout>{children}</Layout>;
 
   const CaseNavigationControls = () => {
     if (navigationError) {
@@ -390,44 +429,40 @@ const StockCaseDetail = () => {
 
   // NOW we can have conditional logic and early returns
   if (loading) {
-    return (
-      <Layout>
-        <div className="max-w-5xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/2 mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-3/4 mb-6"></div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-4">
-                <div className="h-64 bg-gray-200 rounded"></div>
-                <div className="h-32 bg-gray-200 rounded"></div>
-              </div>
-              <div className="space-y-4">
-                <div className="h-48 bg-gray-200 rounded"></div>
-                <div className="h-32 bg-gray-200 rounded"></div>
-              </div>
+    return renderWithinLayout(
+      <div className={fallbackContainerClasses}>
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/2 mb-4"></div>
+          <div className="h-4 bg-gray-200 rounded w-3/4 mb-6"></div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-4">
+              <div className="h-64 bg-gray-200 rounded"></div>
+              <div className="h-32 bg-gray-200 rounded"></div>
+            </div>
+            <div className="space-y-4">
+              <div className="h-48 bg-gray-200 rounded"></div>
+              <div className="h-32 bg-gray-200 rounded"></div>
             </div>
           </div>
         </div>
-      </Layout>
+      </div>
     );
   }
 
   if (error || !stockCase) {
-    return (
-      <Layout>
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-8">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            Stock Case hittades inte
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Det stock case du letar efter finns inte eller har tagits bort.
-          </p>
-          <Button onClick={() => navigate('/discover')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Tillbaka till Discover
-          </Button>
-        </div>
-      </Layout>
+    return renderWithinLayout(
+      <div className={cn('text-center py-8', fallbackContainerClasses)}>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+          Stock Case hittades inte
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400 mb-6">
+          Det stock case du letar efter finns inte eller har tagits bort.
+        </p>
+        <Button onClick={() => navigate('/discover')}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Tillbaka till Discover
+        </Button>
+      </div>
     );
   }
 
@@ -1206,9 +1241,9 @@ const StockCaseDetail = () => {
     .filter(Boolean)
     .join(' ');
 
-  return (
-    <Layout>
-      <div className="max-w-6xl mx-auto space-y-12 px-4 sm:px-6 lg:px-8">
+  return renderWithinLayout(
+    <>
+      <div className={containerClasses}>
         {/* Hero Section */}
         {isAiGeneratedCase ? (
           <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.55)]">
@@ -1227,6 +1262,16 @@ const StockCaseDetail = () => {
                     Tillbaka
                   </Button>
                   <CaseNavigationControls />
+                  {embedded ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => navigate(`/stock-cases/${resolvedCaseId}`)}
+                      className="h-9 rounded-full px-4 text-xs font-semibold shadow-sm"
+                    >
+                      Öppna caset
+                    </Button>
+                  ) : null}
                 </div>
 
                 {performanceBadge ? (
@@ -1341,6 +1386,16 @@ const StockCaseDetail = () => {
                     Tillbaka
                   </Button>
                   <CaseNavigationControls />
+                  {embedded ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => navigate(`/stock-cases/${resolvedCaseId}`)}
+                      className="h-9 rounded-full px-4 text-xs font-semibold shadow-sm"
+                    >
+                      Öppna caset
+                    </Button>
+                  ) : null}
                 </div>
 
                 {performanceBadge ? (
@@ -1725,20 +1780,22 @@ const StockCaseDetail = () => {
         </div>
 
         {/* Risk Warning - moved to bottom */}
-        <Card className="border-orange-200 bg-orange-50 dark:bg-orange-950/30">
-          <CardContent className="p-4">
-            <div className="text-sm">
-              <p className="font-medium mb-2 flex items-center gap-2 text-orange-700 dark:text-orange-300">
-                <AlertTriangle className="w-4 h-4" />
-                Riskvarning
-              </p>
-              <p className="text-orange-600 dark:text-orange-200">
-                Detta är inte finansiell rådgivning. Alla investeringar innebär risk.
-                Konsultera alltid en finansiell rådgivare innan du fattar investeringsbeslut.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        {showRiskWarning ? (
+          <Card className="border-orange-200 bg-orange-50 dark:bg-orange-950/30">
+            <CardContent className="p-4">
+              <div className="text-sm">
+                <p className="font-medium mb-2 flex items-center gap-2 text-orange-700 dark:text-orange-300">
+                  <AlertTriangle className="w-4 h-4" />
+                  Riskvarning
+                </p>
+                <p className="text-orange-600 dark:text-orange-200">
+                  Detta är inte finansiell rådgivning. Alla investeringar innebär risk.
+                  Konsultera alltid en finansiell rådgivare innan du fattar investeringsbeslut.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
 
       <Dialog open={isVersionDialogOpen} onOpenChange={setIsVersionDialogOpen}>
@@ -1807,19 +1864,19 @@ const StockCaseDetail = () => {
       </AlertDialog>
 
       {/* Update Dialog */}
-      <AddStockCaseUpdateDialog 
-        isOpen={showUpdateDialog} 
-        onClose={() => setShowUpdateDialog(false)} 
-        stockCaseId={stockCase.id} 
+      <AddStockCaseUpdateDialog
+        isOpen={showUpdateDialog}
+        onClose={() => setShowUpdateDialog(false)}
+        stockCaseId={stockCase.id}
         onSuccess={() => {
           setShowUpdateDialog(false);
           toast({
             title: "Uppdatering skapad!",
             description: "Din uppdatering har lagts till framgångsrikt"
           });
-        }} 
+        }}
       />
-    </Layout>
+    </>
   );
 };
 
