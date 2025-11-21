@@ -124,6 +124,18 @@ const Discover = () => {
     return filtered;
   }, [allStockCases, caseSearchTerm, selectedSector, performanceFilter, caseSortBy, caseSortOrder]);
 
+  const navigationCases = useMemo(
+    () =>
+      filteredCases.map((stockCase) => ({
+        id: stockCase.id,
+        title: stockCase.title,
+        company_name: stockCase.company_name,
+        ai_generated: stockCase.ai_generated,
+        created_at: stockCase.created_at,
+      })),
+    [filteredCases]
+  );
+
   const availableSectors = useMemo(() => {
     const sectors = new Set<string>();
     allStockCases?.forEach((sc) => sc.sector && sectors.add(sc.sector));
@@ -214,7 +226,12 @@ const Discover = () => {
                 </div>
 
                 {featuredCase && (
-                  <StockCaseDetail embedded embeddedCaseId={featuredCase.id} />
+                  <StockCaseDetail
+                    embedded
+                    embeddedCaseId={featuredCase.id}
+                    navigationCases={navigationCases}
+                    onNavigateCase={(id) => setFeaturedCaseId(id)}
+                  />
                 )}
 
                 <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>

@@ -199,9 +199,16 @@ type NavigationCase = Pick<StockCase, 'id' | 'title' | 'company_name' | 'ai_gene
 type StockCaseDetailProps = {
   embedded?: boolean;
   embeddedCaseId?: string;
+  navigationCases?: NavigationCase[];
+  onNavigateCase?: (caseId: string) => void;
 };
 
-const StockCaseDetail = ({ embedded = false, embeddedCaseId }: StockCaseDetailProps) => {
+const StockCaseDetail = ({
+  embedded = false,
+  embeddedCaseId,
+  navigationCases: navigationCasesOverride,
+  onNavigateCase,
+}: StockCaseDetailProps) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -235,6 +242,7 @@ const StockCaseDetail = ({ embedded = false, embeddedCaseId }: StockCaseDetailPr
 
       return (data || []) as NavigationCase[];
     },
+    enabled: !navigationCasesOverride,
   });
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL LOGIC
@@ -243,22 +251,24 @@ const StockCaseDetail = ({ embedded = false, embeddedCaseId }: StockCaseDetailPr
   const { followUser, unfollowUser, isFollowing } = useUserFollows();
   const { updates, isLoading: updatesLoading, deleteUpdate } = useStockCaseUpdates(resolvedCaseId);
 
+  const navigationList = navigationCasesOverride || navigationCases;
+
   const { previousCase, nextCase } = useMemo(() => {
     if (!stockCase?.id) {
       return { previousCase: null as NavigationCase | null, nextCase: null as NavigationCase | null };
     }
 
-    const currentIndex = navigationCases.findIndex((navigationCase) => navigationCase.id === stockCase.id);
+    const currentIndex = navigationList.findIndex((navigationCase) => navigationCase.id === stockCase.id);
 
     if (currentIndex === -1) {
       return { previousCase: null as NavigationCase | null, nextCase: null as NavigationCase | null };
     }
 
-    const prev = currentIndex > 0 ? navigationCases[currentIndex - 1] : null;
-    const next = currentIndex < navigationCases.length - 1 ? navigationCases[currentIndex + 1] : null;
+    const prev = currentIndex > 0 ? navigationList[currentIndex - 1] : null;
+    const next = currentIndex < navigationList.length - 1 ? navigationList[currentIndex + 1] : null;
 
     return { previousCase: prev, nextCase: next };
-  }, [navigationCases, stockCase?.id]);
+  }, [navigationList, stockCase?.id]);
 
   const previousCaseTitle = previousCase
     ? normalizeStockCaseTitle(previousCase.title, previousCase.company_name)
@@ -267,6 +277,11 @@ const StockCaseDetail = ({ embedded = false, embeddedCaseId }: StockCaseDetailPr
 
   const handleNavigateToNeighbor = (caseId?: string | null) => {
     if (!caseId) {
+      return;
+    }
+
+    if (embedded && onNavigateCase) {
+      onNavigateCase(caseId);
       return;
     }
 
@@ -1232,6 +1247,16 @@ const StockCaseDetail = ({ embedded = false, embeddedCaseId }: StockCaseDetailPr
                     Tillbaka
                   </Button>
                   <CaseNavigationControls />
+                  {embedded ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => navigate(`/stock-cases/${resolvedCaseId}`)}
+                      className="h-9 rounded-full px-4 text-xs font-semibold shadow-sm"
+                    >
+                      Öppna caset
+                    </Button>
+                  ) : null}
                 </div>
 
                 {performanceBadge ? (
@@ -1346,6 +1371,16 @@ const StockCaseDetail = ({ embedded = false, embeddedCaseId }: StockCaseDetailPr
                     Tillbaka
                   </Button>
                   <CaseNavigationControls />
+                  {embedded ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => navigate(`/stock-cases/${resolvedCaseId}`)}
+                      className="h-9 rounded-full px-4 text-xs font-semibold shadow-sm"
+                    >
+                      Öppna caset
+                    </Button>
+                  ) : null}
                 </div>
 
                 {performanceBadge ? (
