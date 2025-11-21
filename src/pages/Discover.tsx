@@ -324,7 +324,7 @@ const Discover = () => {
                                 </p>
                               </div>
                             </div>
-                            <div className="grid gap-3 sm:gap-4 lg:gap-6 grid-cols-1 xs:grid-cols-2 lg:grid-cols-3">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:gap-6">
                               {group.cases.map((stockCase) => (
                                 <StockCaseCard
                                   key={stockCase.id}
