@@ -19,6 +19,9 @@ interface UsageData {
   predictive_analysis_count: number;
 }
 
+export const FREE_DAILY_AI_MESSAGE_LIMIT = 5;
+const DEFAULT_FREE_USAGE_LIMIT = 10;
+
 const usageFieldMap: Record<UsageType, keyof UsageData> = {
   ai_message: 'ai_messages_count',
   analysis: 'analysis_count',
@@ -167,7 +170,7 @@ export const useSubscription = () => {
     if (!subscription || !usage) return false;
     if (subscription.subscribed) return true;
 
-    const limit = 10;
+    const limit = type === 'ai_message' ? FREE_DAILY_AI_MESSAGE_LIMIT : DEFAULT_FREE_USAGE_LIMIT;
     const usageField = usageFieldMap[type];
     const currentUsage = usage[usageField] || 0;
     return currentUsage < limit;
@@ -175,7 +178,7 @@ export const useSubscription = () => {
 
   const getRemainingUsage = (type: UsageType): number => {
     if (!usage || subscription?.subscribed) return Infinity;
-    const limit = 10;
+    const limit = type === 'ai_message' ? FREE_DAILY_AI_MESSAGE_LIMIT : DEFAULT_FREE_USAGE_LIMIT;
     const usageField = usageFieldMap[type];
     const currentUsage = usage[usageField] || 0;
     return Math.max(0, limit - currentUsage);

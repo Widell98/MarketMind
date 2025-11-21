@@ -3,9 +3,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useChatSessions } from '@/contexts/ChatSessionsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useSubscription } from '@/hooks/useSubscription';
+import { FREE_DAILY_AI_MESSAGE_LIMIT, useSubscription } from '@/hooks/useSubscription';
 
-const DAILY_MESSAGE_CREDITS = 10;
+const DAILY_MESSAGE_CREDITS = FREE_DAILY_AI_MESSAGE_LIMIT;
 const FREE_DAILY_DOCUMENT_MESSAGE_LIMIT = 1;
 
 type ProfileUpdates = Record<string, unknown>;

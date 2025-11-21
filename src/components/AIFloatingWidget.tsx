@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
-import { useSubscription } from '@/hooks/useSubscription';
+import { FREE_DAILY_AI_MESSAGE_LIMIT, useSubscription } from '@/hooks/useSubscription';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -43,7 +43,7 @@ const AIFloatingWidget = () => {
 
   const currentUsage = usage?.ai_messages_count || 0;
   const isPremium = subscription?.subscribed;
-  const dailyLimit = 10;
+  const dailyLimit = FREE_DAILY_AI_MESSAGE_LIMIT;
 
   const quickActions = [
     'Analysera min portfölj',

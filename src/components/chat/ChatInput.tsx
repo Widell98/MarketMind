@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { OPEN_CHAT_DOCUMENT_UPLOAD_EVENT } from '@/constants/chatDocuments';
 import { Send, MessageSquare, AlertCircle, Loader2, Sparkles, X, Paperclip } from 'lucide-react';
-import { useSubscription } from '@/hooks/useSubscription';
+import { FREE_DAILY_AI_MESSAGE_LIMIT, useSubscription } from '@/hooks/useSubscription';
 import PremiumUpgradeModal from './PremiumUpgradeModal';
 
 interface ChatInputProps {
@@ -33,7 +33,7 @@ const ChatInput = memo(({
   const { usage, subscription } = useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
-  const dailyLimit = 10;
+  const dailyLimit = FREE_DAILY_AI_MESSAGE_LIMIT;
   const currentUsage = usage?.ai_messages_count || 0;
   const isPremium = subscription?.subscribed;
   const isAtLimit = !isPremium && currentUsage >= dailyLimit;
