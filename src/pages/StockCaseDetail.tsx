@@ -196,10 +196,16 @@ type FinancialStat = {
 
 type NavigationCase = Pick<StockCase, 'id' | 'title' | 'company_name' | 'ai_generated' | 'created_at'>;
 
-const StockCaseDetail = () => {
+type StockCaseDetailProps = {
+  embedded?: boolean;
+  embeddedCaseId?: string;
+};
+
+const StockCaseDetail = ({ embedded = false, embeddedCaseId }: StockCaseDetailProps) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const resolvedCaseId = embeddedCaseId || id || '';
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const analysisSectionRef = useRef<HTMLDivElement | null>(null);
@@ -232,10 +238,10 @@ const StockCaseDetail = () => {
   });
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL LOGIC
-  const { stockCase, loading, error } = useStockCase(id || '');
-  const { likeCount, isLiked, toggleLike, loading: likesLoading } = useStockCaseLikes(id || '');
+  const { stockCase, loading, error } = useStockCase(resolvedCaseId);
+  const { likeCount, isLiked, toggleLike, loading: likesLoading } = useStockCaseLikes(resolvedCaseId);
   const { followUser, unfollowUser, isFollowing } = useUserFollows();
-  const { updates, isLoading: updatesLoading, deleteUpdate } = useStockCaseUpdates(id || '');
+  const { updates, isLoading: updatesLoading, deleteUpdate } = useStockCaseUpdates(resolvedCaseId);
 
   const { previousCase, nextCase } = useMemo(() => {
     if (!stockCase?.id) {
@@ -322,6 +328,9 @@ const StockCaseDetail = () => {
 
   const navigationButtonBaseClasses = 'rounded-full border border-border/40 bg-background/70 text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground';
 
+  const renderWithinLayout = (children: React.ReactNode) =>
+    embedded ? <>{children}</> : <Layout>{children}</Layout>;
+
   const CaseNavigationControls = () => {
     if (navigationError) {
       return null;
@@ -390,44 +399,40 @@ const StockCaseDetail = () => {
 
   // NOW we can have conditional logic and early returns
   if (loading) {
-    return (
-      <Layout>
-        <div className="max-w-5xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/2 mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-3/4 mb-6"></div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-4">
-                <div className="h-64 bg-gray-200 rounded"></div>
-                <div className="h-32 bg-gray-200 rounded"></div>
-              </div>
-              <div className="space-y-4">
-                <div className="h-48 bg-gray-200 rounded"></div>
-                <div className="h-32 bg-gray-200 rounded"></div>
-              </div>
+    return renderWithinLayout(
+      <div className="max-w-5xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/2 mb-4"></div>
+          <div className="h-4 bg-gray-200 rounded w-3/4 mb-6"></div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-4">
+              <div className="h-64 bg-gray-200 rounded"></div>
+              <div className="h-32 bg-gray-200 rounded"></div>
+            </div>
+            <div className="space-y-4">
+              <div className="h-48 bg-gray-200 rounded"></div>
+              <div className="h-32 bg-gray-200 rounded"></div>
             </div>
           </div>
         </div>
-      </Layout>
+      </div>
     );
   }
 
   if (error || !stockCase) {
-    return (
-      <Layout>
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-8">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            Stock Case hittades inte
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Det stock case du letar efter finns inte eller har tagits bort.
-          </p>
-          <Button onClick={() => navigate('/discover')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Tillbaka till Discover
-          </Button>
-        </div>
-      </Layout>
+    return renderWithinLayout(
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-8">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+          Stock Case hittades inte
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400 mb-6">
+          Det stock case du letar efter finns inte eller har tagits bort.
+        </p>
+        <Button onClick={() => navigate('/discover')}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Tillbaka till Discover
+        </Button>
+      </div>
     );
   }
 
@@ -1206,9 +1211,8 @@ const StockCaseDetail = () => {
     .filter(Boolean)
     .join(' ');
 
-  return (
-    <Layout>
-      <div className="max-w-6xl mx-auto space-y-12 px-4 sm:px-6 lg:px-8">
+  return renderWithinLayout(
+    <div className="max-w-6xl mx-auto space-y-12 px-4 sm:px-6 lg:px-8">
         {/* Hero Section */}
         {isAiGeneratedCase ? (
           <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.55)]">
@@ -1807,19 +1811,19 @@ const StockCaseDetail = () => {
       </AlertDialog>
 
       {/* Update Dialog */}
-      <AddStockCaseUpdateDialog 
-        isOpen={showUpdateDialog} 
-        onClose={() => setShowUpdateDialog(false)} 
-        stockCaseId={stockCase.id} 
+      <AddStockCaseUpdateDialog
+        isOpen={showUpdateDialog}
+        onClose={() => setShowUpdateDialog(false)}
+        stockCaseId={stockCase.id}
         onSuccess={() => {
           setShowUpdateDialog(false);
           toast({
             title: "Uppdatering skapad!",
             description: "Din uppdatering har lagts till framgångsrikt"
           });
-        }} 
+        }}
       />
-    </Layout>
+    </div>
   );
 };
 
