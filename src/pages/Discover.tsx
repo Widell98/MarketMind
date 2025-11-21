@@ -205,6 +205,15 @@ const Discover = () => {
               </TabsList>
 
               <TabsContent value="cases" className="space-y-6 sm:space-y-8">
+                {featuredCase && (
+                  <StockCaseDetail
+                    embedded
+                    embeddedCaseId={featuredCase.id}
+                    navigationCases={navigationCases}
+                    onNavigateCase={(id) => setFeaturedCaseId(id)}
+                  />
+                )}
+
                 <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">
                   <EnhancedStockCasesSearch
                     searchTerm={caseSearchTerm}
@@ -224,15 +233,6 @@ const Discover = () => {
                     totalCount={allStockCases?.length || 0}
                   />
                 </div>
-
-                {featuredCase && (
-                  <StockCaseDetail
-                    embedded
-                    embeddedCaseId={featuredCase.id}
-                    navigationCases={navigationCases}
-                    onNavigateCase={(id) => setFeaturedCaseId(id)}
-                  />
-                )}
 
                 <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
                   {remainingCases.map((sc) => (
