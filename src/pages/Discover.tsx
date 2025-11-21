@@ -1,21 +1,26 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Camera, Newspaper, Sparkles } from 'lucide-react';
 
 import Layout from '@/components/Layout';
 import StockCaseCard from '@/components/StockCaseCard';
 import { Button } from '@/components/ui/button';
 import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
+import StockCaseSpotlight from '@/components/StockCaseSpotlight';
 
 import { useStockCases } from '@/hooks/useStockCases';
 import { useToast } from '@/hooks/use-toast';
 import { useUserRole } from '@/hooks/useUserRole';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Discover = () => {
   const navigate = useNavigate();
   const { stockCases: allStockCases, loading: stockCasesLoading } = useStockCases(false);
   const { toast } = useToast();
   const { isAdmin } = useUserRole();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { user } = useAuth();
 
   const [caseSearchTerm, setCaseSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('');
@@ -23,6 +28,10 @@ const Discover = () => {
   const [caseSortBy, setCaseSortBy] = useState('created_at');
   const [caseSortOrder, setCaseSortOrder] = useState<'asc' | 'desc'>('desc');
   const [caseViewMode, setCaseViewMode] = useState<'grid' | 'list'>('grid');
+  const [spotlightIndex, setSpotlightIndex] = useState(0);
+  const [caseCollection, setCaseCollection] = useState<'all' | 'liked'>('all');
+  const [likedCaseIds, setLikedCaseIds] = useState<string[]>([]);
+  const [likedCasesLoading, setLikedCasesLoading] = useState(false);
 
   const filteredCases = useMemo(() => {
     let filtered = [...(allStockCases || [])];
@@ -110,13 +119,141 @@ const Discover = () => {
     return filtered;
   }, [allStockCases, caseSearchTerm, selectedSector, performanceFilter, caseSortBy, caseSortOrder]);
 
+  const displayedCases = useMemo(() => {
+    if (caseCollection === 'liked') {
+      return filteredCases.filter((stockCase) => likedCaseIds.includes(stockCase.id));
+    }
+    return filteredCases;
+  }, [caseCollection, filteredCases, likedCaseIds]);
+
   const availableSectors = useMemo(() => {
     const sectors = new Set<string>();
     allStockCases?.forEach((sc) => sc.sector && sectors.add(sc.sector));
     return [...sectors].sort();
   }, [allStockCases]);
 
-  const handleViewStockCaseDetails = (id: string) => navigate(`/stock-cases/${id}`);
+  useEffect(() => {
+    setSpotlightIndex((current) => {
+      if (displayedCases.length === 0) {
+        return 0;
+      }
+
+      if (current === 0 && current < displayedCases.length) {
+        return current;
+      }
+
+      return 0;
+    });
+  }, [displayedCases]);
+
+  useEffect(() => {
+    const selectedCaseId = searchParams.get('case');
+
+    if (!displayedCases.length) {
+      if (selectedCaseId) {
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('case');
+          return next;
+        });
+      }
+      return;
+    }
+
+    if (selectedCaseId) {
+      const nextIndex = displayedCases.findIndex((stockCase) => stockCase.id === selectedCaseId);
+      if (nextIndex !== -1 && nextIndex !== spotlightIndex) {
+        setSpotlightIndex(nextIndex);
+        return;
+      }
+    }
+
+    if (!selectedCaseId && displayedCases[spotlightIndex]) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('case', displayedCases[spotlightIndex].id);
+        return next;
+      });
+    }
+  }, [displayedCases, searchParams, setSearchParams, spotlightIndex]);
+
+  useEffect(() => {
+    if (!displayedCases.length) {
+      return;
+    }
+
+    const selectedCaseId = displayedCases[spotlightIndex]?.id;
+    if (!selectedCaseId) {
+      return;
+    }
+
+    if (searchParams.get('case') === selectedCaseId) {
+      return;
+    }
+
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('case', selectedCaseId);
+      return next;
+    });
+  }, [displayedCases, searchParams, setSearchParams, spotlightIndex]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchLikedCases = async () => {
+      if (!user) {
+        setLikedCaseIds([]);
+        return;
+      }
+
+      setLikedCasesLoading(true);
+      const { data, error } = await supabase
+        .from('stock_case_likes')
+        .select('stock_case_id')
+        .eq('user_id', user.id);
+
+      if (!isMounted) return;
+
+      if (error) {
+        console.error('Error fetching liked cases:', error);
+        toast({
+          title: 'Kunde inte hämta gillade case',
+          description: 'Försök igen senare.',
+          variant: 'destructive',
+        });
+        setLikedCaseIds([]);
+      } else {
+        setLikedCaseIds(data?.map((entry) => entry.stock_case_id) || []);
+      }
+
+      setLikedCasesLoading(false);
+    };
+
+    fetchLikedCases();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [toast, user]);
+
+  const handleViewStockCaseDetails = (id: string) => {
+    const index = displayedCases.findIndex((stockCase) => stockCase.id === id);
+    if (index !== -1) {
+      setSpotlightIndex(index);
+    }
+
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('case', id);
+      return next;
+    });
+
+    const spotlightEl = document.getElementById('discover-spotlight');
+    if (spotlightEl) {
+      spotlightEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
   const handleDeleteStockCase = (id: string) => {
     toast({
       title: 'Funktion kommer snart',
@@ -164,6 +301,38 @@ const Discover = () => {
             </div>
           </section>
 
+          <div className="flex items-center justify-between gap-3 rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary">Vy</p>
+              <h3 className="text-lg font-semibold text-foreground sm:text-xl">Välj vilka case som visas</h3>
+              <p className="text-sm text-muted-foreground">Växla mellan alla tillgängliga case och dina gillade favoriter.</p>
+            </div>
+            <div className="inline-flex rounded-full bg-muted/60 p-1 text-sm font-medium shadow-inner">
+              <Button
+                variant={caseCollection === 'all' ? 'default' : 'ghost'}
+                className="rounded-full px-4"
+                onClick={() => setCaseCollection('all')}
+              >
+                Alla case
+              </Button>
+              <Button
+                variant={caseCollection === 'liked' ? 'default' : 'ghost'}
+                className="rounded-full px-4"
+                onClick={() => setCaseCollection('liked')}
+                disabled={likedCasesLoading}
+              >
+                Gillade {likedCaseIds.length > 0 ? `(${likedCaseIds.length})` : ''}
+              </Button>
+            </div>
+          </div>
+
+          <StockCaseSpotlight
+            cases={displayedCases}
+            currentIndex={spotlightIndex}
+            onIndexChange={setSpotlightIndex}
+            onOpenDetails={(id) => navigate(`/stock-cases/${id}`)}
+          />
+
           <div className="w-full space-y-6 sm:space-y-8">
             <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">
               <EnhancedStockCasesSearch
@@ -180,13 +349,13 @@ const Discover = () => {
                 viewMode={caseViewMode}
                 onViewModeChange={setCaseViewMode}
                 availableSectors={availableSectors}
-                resultsCount={filteredCases.length}
+                resultsCount={displayedCases.length}
                 totalCount={allStockCases?.length || 0}
               />
             </div>
 
             <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
-              {filteredCases.map((sc) => (
+              {displayedCases.map((sc) => (
                 <StockCaseCard
                   key={sc.id}
                   stockCase={sc}
@@ -197,16 +366,24 @@ const Discover = () => {
               ))}
             </div>
 
-            {!stockCasesLoading && filteredCases.length === 0 && (
+            {!stockCasesLoading && displayedCases.length === 0 && (
               <div className="rounded-3xl border border-dashed border-border/70 bg-background/60 px-6 py-16 text-center shadow-inner sm:px-10">
                 <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
                   <Camera className="h-8 w-8 text-muted-foreground" />
                 </div>
                 <h3 className="mb-3 text-xl font-semibold text-foreground">
-                  {caseSearchTerm ? 'Inga case matchar din sökning' : 'Inga case hittades'}
+                  {caseCollection === 'liked'
+                    ? 'Du har inga gillade case ännu'
+                    : caseSearchTerm
+                      ? 'Inga case matchar din sökning'
+                      : 'Inga case hittades'}
                 </h3>
                 <p className="mx-auto mb-8 max-w-md text-sm text-muted-foreground sm:text-base">
-                  {caseSearchTerm ? 'Prova att justera dina sökkriterier eller rensa filtren.' : 'Kom tillbaka senare för nya case från communityt.'}
+                  {caseCollection === 'liked'
+                    ? 'Gilla ett case för att samla dina favoriter här.'
+                    : caseSearchTerm
+                      ? 'Prova att justera dina sökkriterier eller rensa filtren.'
+                      : 'Kom tillbaka senare för nya case från communityt.'}
                 </p>
                 {caseSearchTerm && (
                   <Button onClick={() => setCaseSearchTerm('')} variant="outline" className="rounded-xl border-border hover:bg-muted/50">
