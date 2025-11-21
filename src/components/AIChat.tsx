@@ -6,16 +6,18 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import ChatMessages from './chat/ChatMessages';
 import ChatInput from './chat/ChatInput';
 import ProfileUpdateConfirmation from './ProfileUpdateConfirmation';
-import ChatFolderSidebar from './chat/ChatFolderSidebar';
+import MindmapNavigator from './chat/MindmapNavigator';
 import ChatDocumentManager from './chat/ChatDocumentManager';
 import { useChatDocuments } from '@/hooks/useChatDocuments';
 import { useToast } from '@/hooks/use-toast';
+import { useChatMindmapLayout } from '@/hooks/useChatMindmapLayout';
+import { cn } from '@/lib/utils';
 
-import { LogIn, MessageSquare, Brain, Lock, Sparkles, Menu, PanelLeftClose, PanelLeft, Crown, Infinity } from 'lucide-react';
+import { LogIn, MessageSquare, Brain, Lock, Sparkles, Crown, Infinity, Plus, X, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -47,7 +49,15 @@ const AIChat = ({
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const {
+    layout: mindmapLayout,
+    loadMindmapLayout,
+    saveMindmapLayout,
+    isLoading: isMindmapLayoutLoading,
+  } = useChatMindmapLayout();
+  const {
     messages,
+    sessions,
+    sessionActivity,
     currentSessionId,
     isLoading,
     quotaExceeded,
@@ -75,8 +85,7 @@ const AIChat = ({
   } = useChatDocuments();
   const [input, setInput] = useState('');
   const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
+  const [chatPanelOpen, setChatPanelOpen] = useState(!isMobile);
   const [isGuideSession, setIsGuideSession] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
 
@@ -97,10 +106,16 @@ const AIChat = ({
     );
   }, [uploadedDocuments]);
 
+  useEffect(() => {
+    setChatPanelOpen(!isMobile);
+  }, [isMobile]);
+
   const attachedDocuments = useMemo(
     () => uploadedDocuments.filter((doc) => selectedDocumentIds.includes(doc.id)),
     [uploadedDocuments, selectedDocumentIds]
   );
+
+  const availableDocumentIds = useMemo(() => new Set(uploadedDocuments.map((doc) => doc.id)), [uploadedDocuments]);
 
   const handleToggleDocument = useCallback((documentId: string) => {
     const targetDocument = uploadedDocuments.find((doc) => doc.id === documentId);
@@ -190,6 +205,10 @@ const AIChat = ({
     navigate
   ]);
   const hasHandledNavigationSessionRef = useRef(false);
+
+  useEffect(() => {
+    void loadMindmapLayout();
+  }, [loadMindmapLayout]);
 
   useEffect(() => {
     const navigationState = location.state as {
@@ -300,16 +319,13 @@ const AIChat = ({
     await createNewSession();
     setInput('');
     setHasProcessedInitialMessage(false); // Reset for new session
-    if (isMobile) {
-      setSidebarOpen(false);
-    }
-  }, [user, createNewSession, isMobile]);
+    setChatPanelOpen(true);
+  }, [user, createNewSession]);
   const handleLoadSession = useCallback(async (sessionId: string) => {
+    setIsGuideSession(false);
     await loadSession(sessionId);
-    if (isMobile) {
-      setSidebarOpen(false);
-    }
-  }, [loadSession, isMobile]);
+    setChatPanelOpen(true);
+  }, [loadSession]);
   const handleExamplePrompt = (prompt: string) => {
     // Exit guide session when user starts using AI chat
     if (isGuideSession) {
@@ -331,10 +347,7 @@ const AIChat = ({
     // Clear regular chat and show guide
     setIsGuideSession(true);
     clearMessages();
-    if (isMobile) {
-      setSidebarOpen(false);
-    }
-  }, [clearMessages, isMobile]);
+  }, [clearMessages]);
   const sidebarProps = useMemo(() => ({
     currentSessionId: isGuideSession ? 'guide-session' : currentSessionId,
     onLoadSession: (sessionId: string) => {
@@ -346,7 +359,25 @@ const AIChat = ({
     onEditSessionName: editSessionName,
     onLoadGuideSession: handleLoadGuideSession,
     onCreateNewSession: handleNewSession,
-    className: isMobile ? "w-full min-h-full" : "w-[300px] xl:w-[320px]",
+    layout: mindmapLayout,
+    onUpdateLayout: saveMindmapLayout,
+    isLayoutLoading: isMindmapLayoutLoading,
+    sessionActivity,
+    sessions,
+    documentIds: availableDocumentIds,
+    onPrefillPrompt: (sessionId: string, prompt: string) => {
+      const runPrefill = async () => {
+        if (sessionId && currentSessionId !== sessionId) {
+          await handleLoadSession(sessionId);
+        }
+        setInput(prompt);
+        setTimeout(() => inputRef.current?.focus(), 100);
+        setChatPanelOpen(true);
+      };
+
+      void runPrefill();
+    },
+    className: "h-full w-full",
   }), [
     isGuideSession,
     currentSessionId,
@@ -356,64 +387,123 @@ const AIChat = ({
     editSessionName,
     handleLoadGuideSession,
     handleNewSession,
-    isMobile,
+    mindmapLayout,
+    isMindmapLayoutLoading,
+    saveMindmapLayout,
+    sessionActivity,
+    sessions,
+    availableDocumentIds,
   ]);
+
+  const activeSession = useMemo(() => sessions.find((session) => session.id === currentSessionId), [sessions, currentSessionId]);
+
+  const renderChatPanel = () => (
+    <div className="flex h-full max-h-full w-full flex-col overflow-hidden border border-ai-border/60 bg-ai-surface/95 shadow-2xl backdrop-blur-sm">
+      <div className="flex items-start justify-between gap-3 border-b border-ai-border/60 px-4 py-3">
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <MessageSquare className="h-4 w-4 text-primary" />
+            {activeSession?.name ?? 'Välj en konversation'}
+          </div>
+          <p className="text-xs text-ai-text-muted">Utforska kartan och fortsätt chatten i panelen.</p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 rounded-full text-ai-text-muted hover:text-foreground"
+          onClick={() => setChatPanelOpen(false)}
+          aria-label="Stäng chattpanelen"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
+        <ChatMessages
+          messages={messages}
+          isLoading={isLoading}
+          isLoadingSession={isLoadingSession}
+          messagesEndRef={messagesEndRef}
+          onExamplePrompt={showExamplePrompts ? handleExamplePrompt : undefined}
+          showGuideBot={isGuideSession}
+        />
+
+        {user && !isGuideSession && (
+          <ChatDocumentManager
+            documents={uploadedDocuments}
+            selectedDocumentIds={selectedDocumentIds}
+            onToggleDocument={handleToggleDocument}
+            onUpload={handleUploadDocument}
+            onDelete={handleDeleteDocument}
+            isLoading={isLoadingDocuments}
+            isUploading={isUploadingDocument}
+          />
+        )}
+
+        {messages.map((message) => {
+          const profileUpdates = message.context?.profileUpdates;
+
+          if (!message.context?.requiresConfirmation || !profileUpdates) {
+            return null;
+          }
+
+          return (
+            <ProfileUpdateConfirmation
+              key={`${message.id}_confirmation`}
+              profileUpdates={profileUpdates}
+              summary={typeof message.context?.detectedSummary === 'string' ? message.context?.detectedSummary : undefined}
+              onConfirm={() => updateUserProfile(profileUpdates, message.id)}
+              onReject={() => dismissProfileUpdatePrompt(message.id)}
+            />
+          );
+        })}
+      </div>
+
+      {user && !isGuideSession && (
+        <ChatInput
+          input={input}
+          setInput={setInput}
+          onSubmit={handleSubmit}
+          isLoading={isLoading}
+          quotaExceeded={quotaExceeded}
+          inputRef={inputRef}
+          attachedDocuments={attachedDocuments.map((doc) => ({
+            id: doc.id,
+            name: doc.name,
+            status: doc.status,
+          }))}
+          onRemoveDocument={handleRemoveDocument}
+          isAttachDisabled={isUploadingDocument || quotaExceeded}
+        />
+      )}
+    </div>
+  );
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden">
       {user ? (
-        <>
-          {!isMobile && !desktopSidebarCollapsed && (
-            <ChatFolderSidebar {...sidebarProps} />
-          )}
+        <div className="relative h-full w-full overflow-hidden bg-ai-surface">
+          <div className="absolute inset-0">
+            <MindmapNavigator {...sidebarProps} variant="fullscreen" />
+          </div>
 
-          <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
-            <header className="grid grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-ai-border/60 px-4 py-3 sm:px-6">
-              <div className="flex items-center gap-2">
-                {isMobile && (
-                  <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-                    <SheetTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground"
-                      >
-                        <Menu className="h-4 w-4" />
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="w-full max-w-xs p-0 sm:max-w-sm">
-                      <ChatFolderSidebar {...sidebarProps} />
-                    </SheetContent>
-                  </Sheet>
-                )}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-ai-surface/10 via-transparent to-ai-surface/20" />
 
-                {!isMobile && (
-                  <Button
-                    onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground"
-                  >
-                    {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-                  </Button>
-                )}
+          <div className="relative z-10 flex h-full flex-col">
+            <header className="pointer-events-auto flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
+              <div className="flex items-center gap-3 rounded-full bg-ai-surface-muted/70 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm ring-1 ring-ai-border/60">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <span>Mindmap-läge</span>
+                <Badge variant="secondary" className="bg-primary/10 text-[11px] font-semibold text-primary">Ny vy</Badge>
               </div>
 
-              {/* <div className="flex items-center justify-center">
-                <div className="flex flex-col items-center gap-0.5">
-                  <span className="text-sm font-medium text-foreground sm:text-base">AI-assistent</span>
-                  <span className="hidden text-[12px] text-ai-text-muted sm:inline">Marknadsguiden i realtid</span>
-                </div>
-              </div> */}
-
-              <div className="flex items-center justify-end gap-2">
+              <div className="flex items-center gap-2">
                 {isPremium ? (
                   <TooltipProvider delayDuration={120}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Badge className="inline-flex h-7 items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 text-[11px] font-semibold text-white shadow-sm">
-                          <Crown className="h-3.5 w-3.5" aria-hidden />
+                        <Badge className="inline-flex h-8 items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 text-[12px] font-semibold text-white shadow-sm">
+                          <Crown className="h-4 w-4" aria-hidden />
                           Premium
-                          <span className="sr-only"> – Obegränsade meddelanden</span>
                           <span className="inline-flex items-center gap-0.5 text-[10px] font-medium tracking-wide text-white/80">
                             <Infinity className="h-3 w-3" aria-hidden />
                           </span>
@@ -425,73 +515,68 @@ const AIChat = ({
                     </Tooltip>
                   </TooltipProvider>
                 ) : (
-                  <span className="hidden rounded-full border border-ai-border/70 bg-ai-surface-muted/60 px-3 py-1 text-xs font-medium text-ai-text-muted sm:inline-flex">
+                  <span className="hidden rounded-full border border-ai-border/70 bg-ai-surface-muted/70 px-3 py-1 text-xs font-medium text-ai-text-muted sm:inline-flex">
                     {remainingCredits}/{totalCredits} krediter kvar
                   </span>
                 )}
+
+                <Button size="sm" variant="outline" className="rounded-full" onClick={handleNewSession}>
+                  <Plus className="mr-2 h-4 w-4" /> Ny session
+                </Button>
+                <Button
+                  size="sm"
+                  variant={chatPanelOpen ? 'secondary' : 'default'}
+                  className="rounded-full"
+                  onClick={() => setChatPanelOpen((prev) => !prev)}
+                >
+                  <MessageSquare className="mr-2 h-4 w-4" /> {chatPanelOpen ? 'Göm chatten' : 'Visa chatten'}
+                </Button>
               </div>
             </header>
 
-            <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
-              <ChatMessages
-                messages={messages}
-                isLoading={isLoading}
-                isLoadingSession={isLoadingSession}
-                messagesEndRef={messagesEndRef}
-                onExamplePrompt={showExamplePrompts ? handleExamplePrompt : undefined}
-                showGuideBot={isGuideSession}
-              />
-
-              {user && !isGuideSession && (
-                <ChatDocumentManager
-                  documents={uploadedDocuments}
-                  selectedDocumentIds={selectedDocumentIds}
-                  onToggleDocument={handleToggleDocument}
-                  onUpload={handleUploadDocument}
-                  onDelete={handleDeleteDocument}
-                  isLoading={isLoadingDocuments}
-                  isUploading={isUploadingDocument}
-                />
+            <div className="pointer-events-none relative flex h-full w-full items-stretch justify-end px-3 pb-3">
+              {!isMobile && (
+                <div
+                  className={cn(
+                    'pointer-events-auto relative z-10 flex h-[calc(100%-1.5rem)] max-h-[1080px] w-full max-w-[460px] flex-col rounded-xl bg-ai-surface/95 shadow-2xl ring-1 ring-ai-border/60 transition-all duration-300',
+                    chatPanelOpen ? 'translate-x-0 opacity-100' : 'translate-x-[110%] opacity-0'
+                  )}
+                >
+                  {renderChatPanel()}
+                </div>
               )}
 
-              {messages.map((message) => {
-                const profileUpdates = message.context?.profileUpdates;
+              {isMobile && (
+                <Dialog open={chatPanelOpen} onOpenChange={setChatPanelOpen}>
+                  <DialogContent className="pointer-events-auto max-w-full gap-0 border-ai-border/60 p-0 shadow-2xl">
+                    <div className="flex h-[82vh] flex-col overflow-hidden bg-ai-surface">
+                      <div className="flex items-center justify-between border-b border-ai-border/60 px-4 py-3">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                          <MessageSquare className="h-4 w-4 text-primary" /> Chattpanel
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="outline" className="rounded-full" onClick={handleNewSession}>
+                            <Plus className="mr-2 h-4 w-4" /> Ny session
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full" onClick={() => setChatPanelOpen(false)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex-1 overflow-hidden">{renderChatPanel()}</div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
 
-                if (!message.context?.requiresConfirmation || !profileUpdates) {
-                  return null;
-                }
-
-                return (
-                  <ProfileUpdateConfirmation
-                    key={`${message.id}_confirmation`}
-                    profileUpdates={profileUpdates}
-                    summary={typeof message.context?.detectedSummary === 'string' ? message.context?.detectedSummary : undefined}
-                    onConfirm={() => updateUserProfile(profileUpdates, message.id)}
-                    onReject={() => dismissProfileUpdatePrompt(message.id)}
-                  />
-                );
-              })}
+              <div className="pointer-events-none absolute bottom-4 left-4 flex flex-col gap-2 text-xs text-ai-text-muted">
+                <div className="flex items-center gap-2 rounded-full bg-ai-surface/80 px-3 py-1.5 shadow ring-1 ring-ai-border/60">
+                  <Maximize2 className="h-3.5 w-3.5" /> Dra, zooma och öppna noder direkt i mindmapen.
+                </div>
+              </div>
             </div>
-
-            {user && !isGuideSession && (
-              <ChatInput
-                input={input}
-                setInput={setInput}
-                onSubmit={handleSubmit}
-                isLoading={isLoading}
-                quotaExceeded={quotaExceeded}
-                inputRef={inputRef}
-                attachedDocuments={attachedDocuments.map((doc) => ({
-                  id: doc.id,
-                  name: doc.name,
-                  status: doc.status,
-                }))}
-                onRemoveDocument={handleRemoveDocument}
-                isAttachDisabled={isUploadingDocument || quotaExceeded}
-              />
-            )}
           </div>
-        </>
+        </div>
       ) : (
         <div className="flex w-full min-h-0 flex-col overflow-hidden bg-ai-surface">
           <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden">
