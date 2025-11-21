@@ -138,7 +138,7 @@ export const useStockCases = (followedOnlyOrOptions: boolean | UseStockCasesOpti
 };
 
 // Helper function to enrich stock cases with profiles and categories
-const enrichStockCases = async (stockCases: any[]): Promise<StockCase[]> => {
+export const enrichStockCases = async (stockCases: any[]): Promise<StockCase[]> => {
   if (!stockCases || stockCases.length === 0) return [];
 
   // Get unique user IDs and category IDs
