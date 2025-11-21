@@ -209,16 +209,6 @@ const Discover = () => {
                   : 'text-foreground',
         },
         {
-          label: 'Målkurs',
-          value: formatPrice(featuredCase.target_price, featuredCase.currency),
-          icon: LineChart,
-        },
-        {
-          label: 'Stop loss',
-          value: formatPrice(featuredCase.stop_loss, featuredCase.currency),
-          icon: CircleDot,
-        },
-        {
           label: 'Skapad',
           value: featuredCreatedLabel || '—',
           icon: CalendarDays,
