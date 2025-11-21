@@ -1212,7 +1212,8 @@ const StockCaseDetail = ({ embedded = false, embeddedCaseId }: StockCaseDetailPr
     .join(' ');
 
   return renderWithinLayout(
-    <div className="max-w-6xl mx-auto space-y-12 px-4 sm:px-6 lg:px-8">
+    <>
+      <div className="max-w-6xl mx-auto space-y-12 px-4 sm:px-6 lg:px-8">
         {/* Hero Section */}
         {isAiGeneratedCase ? (
           <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.55)]">
@@ -1823,7 +1824,7 @@ const StockCaseDetail = ({ embedded = false, embeddedCaseId }: StockCaseDetailPr
           });
         }}
       />
-    </div>
+    </>
   );
 };
 
