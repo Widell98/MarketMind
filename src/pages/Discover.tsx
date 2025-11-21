@@ -164,6 +164,15 @@ const Discover = () => {
   const featuredCase = featuredCaseId
     ? filteredCases.find((sc) => sc.id === featuredCaseId)
     : filteredCases[0];
+  const featuredCaseIndex = featuredCase
+    ? filteredCases.findIndex((sc) => sc.id === featuredCase.id)
+    : -1;
+  const previousCaseId =
+    featuredCaseIndex > 0 ? filteredCases[featuredCaseIndex - 1]?.id ?? null : null;
+  const nextCaseId =
+    featuredCaseIndex >= 0 && featuredCaseIndex < filteredCases.length - 1
+      ? filteredCases[featuredCaseIndex + 1]?.id ?? null
+      : null;
   const remainingCases = featuredCase
     ? filteredCases.filter((sc) => sc.id !== featuredCase.id)
     : filteredCases;
@@ -214,6 +223,11 @@ const Discover = () => {
         },
       ]
     : [];
+
+  const detailParagraphs = (featuredCase?.long_description || featuredDescription || '')
+    .split(/\n+/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
   return (
     <Layout>
       <div className="w-full pb-12">
@@ -359,32 +373,86 @@ const Discover = () => {
 
                           <div className="flex flex-wrap gap-3">
                             <Button
+                              variant="outline"
+                              size="lg"
+                              className="rounded-xl"
+                              onClick={() => previousCaseId && setFeaturedCaseId(previousCaseId)}
+                              disabled={!previousCaseId}
+                            >
+                              Föregående
+                            </Button>
+                            <Button
+                              size="lg"
+                              className="rounded-xl"
+                              onClick={() => nextCaseId && setFeaturedCaseId(nextCaseId)}
+                              disabled={!nextCaseId}
+                            >
+                              Visa nästa utvalda
+                            </Button>
+                            <Button
+                              variant="ghost"
                               size="lg"
                               className="rounded-xl"
                               onClick={() => handleViewStockCaseDetails(featuredCase.id)}
                             >
-                              Öppna caset
+                              Öppna full vy
                               <ArrowRight className="ml-2 h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="lg"
-                              className="rounded-xl"
-                              onClick={() => setFeaturedCaseId(remainingCases[0]?.id || featuredCase.id)}
-                              disabled={!remainingCases.length}
-                            >
-                              Visa nästa utvalda
                             </Button>
                           </div>
                         </div>
 
-                        <div className="rounded-3xl border border-border/70 bg-card/80 p-4 shadow-sm">
-                          <StockCaseCard
-                            stockCase={featuredCase}
-                            onViewDetails={handleViewStockCaseDetails}
-                            onDelete={isAdmin ? handleDeleteStockCase : undefined}
-                            showMetaBadges={true}
-                          />
+                        <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+                          <div className="space-y-4">
+                            {detailParagraphs.length > 0 && (
+                              <div className="rounded-3xl border border-border/70 bg-card/80 p-4 shadow-sm sm:p-5">
+                                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                  <LineChart className="h-4 w-4 text-primary" />
+                                  Caseinnehåll
+                                </div>
+                                <div className="mt-3 space-y-3 text-sm text-muted-foreground sm:text-base">
+                                  {detailParagraphs.map((paragraph, index) => (
+                                    <p key={index} className="leading-relaxed text-foreground/90">
+                                      {paragraph}
+                                    </p>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-4">
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              {[{
+                                label: 'Inträdespris',
+                                value: formatPrice(featuredCase.entry_price, featuredCase.currency),
+                              }, {
+                                label: 'Nuvarande pris',
+                                value: formatPrice(featuredCase.current_price, featuredCase.currency),
+                              }, {
+                                label: 'Tidsram',
+                                value: featuredCase.timeframe || '—',
+                              }, {
+                                label: 'P/E-tal',
+                                value: featuredCase.pe_ratio || '—',
+                              }, {
+                                label: 'Direktavkastning',
+                                value: featuredCase.dividend_yield ? `${featuredCase.dividend_yield}%` : '—',
+                              }, {
+                                label: 'Börsvärde',
+                                value: featuredCase.market_cap || '—',
+                              }].map((meta) => (
+                                <div
+                                  key={meta.label}
+                                  className="rounded-2xl border border-border/60 bg-background/70 px-4 py-3 shadow-sm"
+                                >
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                    {meta.label}
+                                  </p>
+                                  <p className="mt-1 text-base font-semibold text-foreground">{meta.value}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
