@@ -27,7 +27,7 @@ const Discover = () => {
   const { toast } = useToast();
   const { isAdmin } = useUserRole();
   const { user } = useAuth();
-  const { groupedByCompany, loading: likedCasesLoading } = useLikedStockCases();
+  const { likedStockCases, loading: likedCasesLoading } = useLikedStockCases();
 
   const [caseSearchTerm, setCaseSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('');
@@ -294,7 +294,7 @@ const Discover = () => {
                       </div>
                     )}
 
-                    {!likedCasesLoading && groupedByCompany.length === 0 && (
+                    {!likedCasesLoading && likedStockCases.length === 0 && (
                       <div className="rounded-3xl border border-dashed border-border/70 bg-background/60 px-6 py-16 text-center shadow-inner sm:px-10">
                         <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
                           <Heart className="h-8 w-8 text-muted-foreground" />
@@ -306,36 +306,16 @@ const Discover = () => {
                       </div>
                     )}
 
-                    {!likedCasesLoading && groupedByCompany.length > 0 && (
-                      <div className="space-y-6">
-                        {groupedByCompany.map((group) => (
-                          <section
-                            key={group.companyName}
-                            className="space-y-4 rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6"
-                          >
-                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                              <div>
-                                <p className="text-xs font-semibold uppercase tracking-wide text-primary">Gillade case</p>
-                                <h3 className="text-xl font-semibold text-foreground sm:text-2xl">{group.companyName}</h3>
-                                <p className="text-sm text-muted-foreground">
-                                  {group.cases.length === 1
-                                    ? '1 case du har gillat'
-                                    : `${group.cases.length} case du har gillat`}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:gap-6">
-                              {group.cases.map((stockCase) => (
-                                <StockCaseCard
-                                  key={stockCase.id}
-                                  stockCase={stockCase}
-                                  onViewDetails={handleViewStockCaseDetails}
-                                  onDelete={isAdmin ? handleDeleteStockCase : undefined}
-                                  showMetaBadges={true}
-                                />
-                              ))}
-                            </div>
-                          </section>
+                    {!likedCasesLoading && likedStockCases.length > 0 && (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:gap-6">
+                        {likedStockCases.map((stockCase) => (
+                          <StockCaseCard
+                            key={stockCase.id}
+                            stockCase={stockCase}
+                            onViewDetails={handleViewStockCaseDetails}
+                            onDelete={isAdmin ? handleDeleteStockCase : undefined}
+                            showMetaBadges
+                          />
                         ))}
                       </div>
                     )}
