@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import type { PointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Camera, Heart, Newspaper, Sparkles, X } from 'lucide-react';
 
@@ -67,6 +68,10 @@ const Discover = () => {
   const [activeTab, setActiveTab] = useState<'discover' | 'liked'>('discover');
   const [activeSwipeIndex, setActiveSwipeIndex] = useState(0);
   const [dismissedCaseIds, setDismissedCaseIds] = useState<string[]>([]);
+  const [swipeDelta, setSwipeDelta] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     setDismissedCaseIds(readDismissedCaseIds(user?.id));
@@ -176,6 +181,8 @@ const Discover = () => {
 
   useEffect(() => {
     setActiveSwipeIndex(0);
+    setSwipeDelta({ x: 0, y: 0 });
+    setIsAnimatingOut(false);
   }, [caseViewMode, filteredCases.length]);
 
   const availableSectors = useMemo(() => {
@@ -228,6 +235,70 @@ const Discover = () => {
       title: 'Avfärdade case återställda',
       description: 'Alla case visas nu igen i Discover.',
     });
+  };
+
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (!currentSwipeCase || isAnimatingOut) return;
+    pointerStartRef.current = { x: event.clientX, y: event.clientY };
+    setIsDragging(true);
+    setIsAnimatingOut(false);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (!isDragging || !pointerStartRef.current) return;
+    const deltaX = event.clientX - pointerStartRef.current.x;
+    const deltaY = event.clientY - pointerStartRef.current.y;
+    setSwipeDelta({ x: deltaX, y: deltaY });
+  };
+
+  const runSwipeActionWithAnimation = (
+    direction: 'like' | 'skip',
+    velocityX: number,
+    velocityY: number
+  ) => {
+    setIsAnimatingOut(true);
+    pointerStartRef.current = null;
+    setSwipeDelta({
+      x: direction === 'like' ? Math.max(320, velocityX * 1.1) : Math.min(-320, velocityX * 1.1),
+      y: velocityY,
+    });
+
+    setTimeout(() => {
+      setIsAnimatingOut(false);
+      setSwipeDelta({ x: 0, y: 0 });
+      if (direction === 'like' && currentSwipeCase) {
+        handleSwipeLike(currentSwipeCase.id);
+      } else {
+        handleSwipeSkip();
+      }
+    }, 180);
+  };
+
+  const resetSwipePosition = () => {
+    setSwipeDelta({ x: 0, y: 0 });
+    setIsDragging(false);
+    setIsAnimatingOut(false);
+    pointerStartRef.current = null;
+  };
+
+  const handlePointerEnd = (event: PointerEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+    setIsDragging(false);
+    pointerStartRef.current = null;
+
+    const threshold = 120;
+    if (swipeDelta.x > threshold && currentSwipeCase) {
+      runSwipeActionWithAnimation('like', swipeDelta.x, swipeDelta.y);
+      return;
+    }
+    if (swipeDelta.x < -threshold) {
+      runSwipeActionWithAnimation('skip', swipeDelta.x, swipeDelta.y);
+      return;
+    }
+
+    resetSwipePosition();
   };
   return (
     <Layout>
@@ -347,15 +418,31 @@ const Discover = () => {
                         {filteredCases.slice(activeSwipeIndex, activeSwipeIndex + 3).map((sc, idx) => {
                           const offset = idx * 14;
                           const scale = 1 - idx * 0.03;
+                          const isTopCard = idx === 0;
+                          const rotate = isTopCard ? swipeDelta.x / 14 : 0;
+                          const translateX = isTopCard ? swipeDelta.x : 0;
+                          const translateY = offset + (isTopCard ? swipeDelta.y : 0);
+                          const opacity = isTopCard
+                            ? 1
+                            : Math.max(0.85, 1 - idx * 0.05 + Math.min(Math.abs(swipeDelta.x) / 800, 0.08));
                           return (
                             <div
                               key={sc.id}
-                              className="absolute inset-0"
+                              className={`absolute inset-0 ${
+                                isTopCard ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'
+                              }`}
                               style={{
-                                transform: `translateY(${offset}px) scale(${scale})`,
+                                transform: `translate(${translateX}px, ${translateY}px) scale(${scale}) rotate(${rotate}deg)`,
                                 zIndex: 10 - idx,
-                                opacity: idx === 0 ? 1 : 0.9,
+                                opacity,
+                                transition: isDragging ? 'none' : 'transform 0.2s ease, opacity 0.2s ease',
+                                willChange: isTopCard ? 'transform' : undefined,
                               }}
+                              onPointerDown={isTopCard ? handlePointerDown : undefined}
+                              onPointerMove={isTopCard ? handlePointerMove : undefined}
+                              onPointerUp={isTopCard ? handlePointerEnd : undefined}
+                              onPointerCancel={isTopCard ? handlePointerEnd : undefined}
+                              onPointerLeave={isTopCard && isDragging ? handlePointerEnd : undefined}
                             >
                               <StockCaseCard
                                 stockCase={sc}
