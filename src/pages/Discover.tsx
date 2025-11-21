@@ -211,6 +211,7 @@ const Discover = () => {
                     embeddedCaseId={featuredCase.id}
                     navigationCases={navigationCases}
                     onNavigateCase={(id) => setFeaturedCaseId(id)}
+                    showRiskWarning={false}
                   />
                 )}
 

@@ -201,6 +201,7 @@ type StockCaseDetailProps = {
   embeddedCaseId?: string;
   navigationCases?: NavigationCase[];
   onNavigateCase?: (caseId: string) => void;
+  showRiskWarning?: boolean;
 };
 
 const StockCaseDetail = ({
@@ -208,6 +209,7 @@ const StockCaseDetail = ({
   embeddedCaseId,
   navigationCases: navigationCasesOverride,
   onNavigateCase,
+  showRiskWarning = true,
 }: StockCaseDetailProps) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -1765,20 +1767,22 @@ const StockCaseDetail = ({
         </div>
 
         {/* Risk Warning - moved to bottom */}
-        <Card className="border-orange-200 bg-orange-50 dark:bg-orange-950/30">
-          <CardContent className="p-4">
-            <div className="text-sm">
-              <p className="font-medium mb-2 flex items-center gap-2 text-orange-700 dark:text-orange-300">
-                <AlertTriangle className="w-4 h-4" />
-                Riskvarning
-              </p>
-              <p className="text-orange-600 dark:text-orange-200">
-                Detta är inte finansiell rådgivning. Alla investeringar innebär risk.
-                Konsultera alltid en finansiell rådgivare innan du fattar investeringsbeslut.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        {showRiskWarning ? (
+          <Card className="border-orange-200 bg-orange-50 dark:bg-orange-950/30">
+            <CardContent className="p-4">
+              <div className="text-sm">
+                <p className="font-medium mb-2 flex items-center gap-2 text-orange-700 dark:text-orange-300">
+                  <AlertTriangle className="w-4 h-4" />
+                  Riskvarning
+                </p>
+                <p className="text-orange-600 dark:text-orange-200">
+                  Detta är inte finansiell rådgivning. Alla investeringar innebär risk.
+                  Konsultera alltid en finansiell rådgivare innan du fattar investeringsbeslut.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
 
       <Dialog open={isVersionDialogOpen} onOpenChange={setIsVersionDialogOpen}>
