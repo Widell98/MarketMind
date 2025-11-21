@@ -1,10 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Camera, Heart, Layers, Newspaper, Sparkles } from 'lucide-react';
+import {
+  ArrowRight,
+  Camera,
+  CalendarDays,
+  CircleDot,
+  Heart,
+  Layers,
+  LineChart,
+  Newspaper,
+  Sparkles,
+  TrendingDown,
+  TrendingUp,
+} from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { sv } from 'date-fns/locale';
 
 import Layout from '@/components/Layout';
 import StockCaseCard from '@/components/StockCaseCard';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
 
@@ -153,6 +168,63 @@ const Discover = () => {
   const remainingCases = featuredCase
     ? filteredCases.filter((sc) => sc.id !== featuredCase.id)
     : filteredCases;
+
+  const formatPrice = (value?: number | null, currency?: string | null) => {
+    if (value === null || value === undefined) return '—';
+    return `${new Intl.NumberFormat('sv-SE', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(value)} ${currency || 'SEK'}`;
+  };
+
+  const featuredDescription = featuredCase?.ai_intro
+    || featuredCase?.description
+    || featuredCase?.long_description
+    || '';
+
+  const featuredCreatedLabel = featuredCase?.created_at
+    ? formatDistanceToNow(new Date(featuredCase.created_at), { addSuffix: true, locale: sv })
+    : null;
+
+  const featuredPerformance = featuredCase?.performance_percentage ?? null;
+  const performanceIsPositive = (featuredPerformance ?? 0) > 0;
+  const performanceIsNegative = (featuredPerformance ?? 0) < 0;
+
+  const featuredStats = featuredCase
+    ? [
+        {
+          label: 'Utveckling',
+          value:
+            featuredPerformance !== null
+              ? `${featuredPerformance > 0 ? '+' : ''}${featuredPerformance.toFixed(1)}%`
+              : '—',
+          icon: featuredPerformance === null ? null : performanceIsPositive ? TrendingUp : TrendingDown,
+          valueClassName:
+            featuredPerformance === null
+              ? undefined
+              : performanceIsPositive
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : performanceIsNegative
+                  ? 'text-rose-600 dark:text-rose-400'
+                  : 'text-foreground',
+        },
+        {
+          label: 'Målkurs',
+          value: formatPrice(featuredCase.target_price, featuredCase.currency),
+          icon: LineChart,
+        },
+        {
+          label: 'Stop loss',
+          value: formatPrice(featuredCase.stop_loss, featuredCase.currency),
+          icon: CircleDot,
+        },
+        {
+          label: 'Skapad',
+          value: featuredCreatedLabel || '—',
+          icon: CalendarDays,
+        },
+      ]
+    : [];
   return (
     <Layout>
       <div className="w-full pb-12">
@@ -229,33 +301,129 @@ const Discover = () => {
                 </div>
 
                 {featuredCase && (
-                  <section className="space-y-3 rounded-3xl border border-primary/30 bg-primary/5 p-4 shadow-sm sm:p-6">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-primary">Utvalt case</p>
-                        <h3 className="text-xl font-semibold text-foreground sm:text-2xl">
-                          Vi startar med ett case åt dig
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          Djupdyk i caset direkt och fortsätt utforska fler nedanför.
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="rounded-xl"
-                        onClick={() => handleViewStockCaseDetails(featuredCase.id)}
-                      >
-                        Öppna caset
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
+                  <section className="relative overflow-hidden rounded-3xl border border-primary/40 bg-gradient-to-br from-primary/5 via-background to-background p-5 shadow-sm sm:p-7">
+                    <div className="pointer-events-none absolute inset-0 opacity-70">
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(88,28,135,0.12),transparent_45%)]" />
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_40%)]" />
                     </div>
-                    <StockCaseCard
-                      stockCase={featuredCase}
-                      onViewDetails={handleViewStockCaseDetails}
-                      onDelete={isAdmin ? handleDeleteStockCase : undefined}
-                      showMetaBadges={true}
-                    />
+
+                    <div className="relative z-10 flex flex-col gap-5">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-primary">Utvalt case</p>
+                          <h3 className="text-2xl font-semibold text-foreground sm:text-3xl">Vi startar med ett case åt dig</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Djupdyk i caset direkt med en sammanfattning som liknar detaljvyn och fortsätt utforska fler nedanför.
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {featuredCase.case_categories?.name ? (
+                            <Badge className="rounded-xl bg-primary/10 text-primary hover:bg-primary/15">
+                              {featuredCase.case_categories.name}
+                            </Badge>
+                          ) : null}
+                          {featuredCase.sector ? (
+                            <Badge variant="outline" className="rounded-xl border-border/60 text-muted-foreground">
+                              {featuredCase.sector}
+                            </Badge>
+                          ) : null}
+                          {featuredCase.ai_generated ? (
+                            <Badge variant="secondary" className="rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                              AI-genererat
+                            </Badge>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.9fr] lg:items-start">
+                        <div className="space-y-4">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="space-y-2">
+                              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                                {featuredCase.company_name ? (
+                                  <span className="inline-flex items-center gap-2 rounded-full bg-background/60 px-3 py-1 text-foreground shadow-sm">
+                                    <LineChart className="h-4 w-4 text-primary" />
+                                    <span className="font-semibold text-sm">{featuredCase.company_name}</span>
+                                  </span>
+                                ) : null}
+                                {featuredCreatedLabel ? (
+                                  <span className="inline-flex items-center gap-2 rounded-full border border-border/60 px-3 py-1">
+                                    <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                                    <span>{featuredCreatedLabel}</span>
+                                  </span>
+                                ) : null}
+                              </div>
+                              <h4 className="text-xl font-semibold text-foreground sm:text-2xl">{featuredCase.title}</h4>
+                              {featuredDescription ? (
+                                <p className="text-sm text-muted-foreground sm:text-base line-clamp-3">{featuredDescription}</p>
+                              ) : null}
+                            </div>
+
+                            <div className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-background/70 px-4 py-3 text-sm text-muted-foreground shadow-sm">
+                              <div className="flex items-center justify-between gap-3">
+                                <span>Likes</span>
+                                <span className="text-base font-semibold text-foreground">{featuredCase.likes_count ?? 0}</span>
+                              </div>
+                              <div className="flex items-center justify-between gap-3">
+                                <span>Status</span>
+                                <span className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                  <CircleDot className="h-4 w-4 text-primary" />
+                                  {featuredCase.status === 'winner'
+                                    ? 'Vinnare'
+                                    : featuredCase.status === 'loser'
+                                      ? 'Förlorare'
+                                      : 'Aktiv'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            {featuredStats.map((stat) => (
+                              <div
+                                key={stat.label}
+                                className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card/70 px-4 py-3 shadow-sm"
+                              >
+                                {stat.icon ? <stat.icon className="h-4 w-4 text-muted-foreground" /> : <CircleDot className="h-4 w-4 text-muted-foreground" />}
+                                <div className="space-y-1">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{stat.label}</p>
+                                  <p className={`text-base font-semibold text-foreground ${stat.valueClassName || ''}`}>{stat.value}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="flex flex-wrap gap-3">
+                            <Button
+                              size="lg"
+                              className="rounded-xl"
+                              onClick={() => handleViewStockCaseDetails(featuredCase.id)}
+                            >
+                              Öppna caset
+                              <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="lg"
+                              className="rounded-xl"
+                              onClick={() => setFeaturedCaseId(remainingCases[0]?.id || featuredCase.id)}
+                              disabled={!remainingCases.length}
+                            >
+                              Visa nästa utvalda
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="rounded-3xl border border-border/70 bg-card/80 p-4 shadow-sm">
+                          <StockCaseCard
+                            stockCase={featuredCase}
+                            onViewDetails={handleViewStockCaseDetails}
+                            onDelete={isAdmin ? handleDeleteStockCase : undefined}
+                            showMetaBadges={true}
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </section>
                 )}
 
