@@ -202,6 +202,7 @@ type StockCaseDetailProps = {
   navigationCases?: NavigationCase[];
   onNavigateCase?: (caseId: string) => void;
   showRiskWarning?: boolean;
+  className?: string;
 };
 
 const StockCaseDetail = ({
@@ -210,6 +211,7 @@ const StockCaseDetail = ({
   navigationCases: navigationCasesOverride,
   onNavigateCase,
   showRiskWarning = true,
+  className,
 }: StockCaseDetailProps) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -345,6 +347,17 @@ const StockCaseDetail = ({
 
   const navigationButtonBaseClasses = 'rounded-full border border-border/40 bg-background/70 text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground';
 
+  const containerClasses = cn(
+    'mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8',
+    embedded ? 'space-y-10 sm:space-y-12' : 'space-y-12',
+    className
+  );
+
+  const fallbackContainerClasses = cn(
+    'mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 space-y-6',
+    className
+  );
+
   const renderWithinLayout = (children: React.ReactNode) =>
     embedded ? <>{children}</> : <Layout>{children}</Layout>;
 
@@ -417,7 +430,7 @@ const StockCaseDetail = ({
   // NOW we can have conditional logic and early returns
   if (loading) {
     return renderWithinLayout(
-      <div className="max-w-5xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
+      <div className={fallbackContainerClasses}>
         <div className="animate-pulse">
           <div className="h-8 bg-gray-200 rounded w-1/2 mb-4"></div>
           <div className="h-4 bg-gray-200 rounded w-3/4 mb-6"></div>
@@ -438,7 +451,7 @@ const StockCaseDetail = ({
 
   if (error || !stockCase) {
     return renderWithinLayout(
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-8">
+      <div className={cn('text-center py-8', fallbackContainerClasses)}>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
           Stock Case hittades inte
         </h1>
@@ -1230,7 +1243,7 @@ const StockCaseDetail = ({
 
   return renderWithinLayout(
     <>
-      <div className="max-w-6xl mx-auto space-y-12 px-4 sm:px-6 lg:px-8">
+      <div className={containerClasses}>
         {/* Hero Section */}
         {isAiGeneratedCase ? (
           <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.55)]">

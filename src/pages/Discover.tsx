@@ -178,7 +178,7 @@ const Discover = () => {
   return (
     <Layout>
       <div className="w-full pb-12">
-        <div className="mx-auto w-full max-w-6xl space-y-8 px-1 sm:px-4 lg:px-0">
+        <div className="mx-auto w-full max-w-6xl space-y-8 px-3 sm:px-4 lg:px-0">
           <section className="rounded-3xl border border-border/60 bg-card/70 p-6 text-center shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:p-10">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 sm:h-14 sm:w-14">
               <Sparkles className="h-6 w-6 text-primary" />
@@ -193,7 +193,7 @@ const Discover = () => {
 
           <div className="w-full space-y-6 sm:space-y-8">
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'cases' | 'liked')} className="w-full">
-              <TabsList className="mx-auto grid w-full max-w-md grid-cols-2 gap-1 rounded-2xl bg-muted p-1">
+              <TabsList className="mx-auto grid w-full max-w-md grid-cols-2 gap-1 rounded-2xl bg-muted p-1 shadow-sm sm:gap-2">
                 <TabsTrigger value="cases" className="flex items-center gap-2 rounded-xl">
                   <Layers className="h-4 w-4" />
                   Alla case
@@ -212,6 +212,7 @@ const Discover = () => {
                     navigationCases={navigationCases}
                     onNavigateCase={(id) => setFeaturedCaseId(id)}
                     showRiskWarning={false}
+                    className="px-3 sm:px-6 lg:px-8 space-y-8 sm:space-y-12"
                   />
                 )}
 
