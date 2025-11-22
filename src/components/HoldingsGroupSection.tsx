@@ -56,7 +56,7 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const ITEMS_PER_PAGE = 9;
+  const ITEMS_PER_PAGE = 6;
 
   const totalPages = Math.max(1, Math.ceil(holdings.length / ITEMS_PER_PAGE));
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
