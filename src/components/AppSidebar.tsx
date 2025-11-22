@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Home, MessageSquare, TrendingUp, BarChart3, Lock, Brain, Sparkles, User, Settings, HelpCircle } from 'lucide-react';
+import { Home, TrendingUp, BarChart3, Lock, Brain, Sparkles, User, Settings, HelpCircle } from 'lucide-react';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import HelpButton from '@/components/HelpButton';
@@ -29,10 +29,6 @@ const AppSidebar = () => {
     name: t('nav.discover'),
     href: '/discover',
     icon: Sparkles
-  }, {
-    name: t('nav.news'),
-    href: '/news',
-    icon: MessageSquare
   }];
   const userNavigation = [{
     name: t('nav.profile'),

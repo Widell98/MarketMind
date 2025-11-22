@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Brain, AlertCircle, User, Upload } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
 import { useToast } from '@/hooks/use-toast';
-import { parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
+import { normalizeShareClassTicker, parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
 import { supabase } from '@/integrations/supabase/client';
 const PortfolioImplementation = () => {
   const {
@@ -157,7 +157,9 @@ const PortfolioImplementation = () => {
 
       const nowIso = new Date().toISOString();
       const holdingsToInsert = parsed.map(holding => {
-        const normalizedSymbol = holding.symbol.trim() ? holding.symbol.trim().toUpperCase() : null;
+        const normalizedSymbol = holding.symbol.trim()
+          ? normalizeShareClassTicker(holding.symbol)
+          : null;
         const roundedPurchasePrice = roundToTwo(holding.purchasePrice);
         const quantity = holding.quantity;
         const currentValue = roundToTwo(roundedPurchasePrice * quantity);

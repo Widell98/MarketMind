@@ -38,20 +38,64 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     const suggestions: StockSuggestion[] = [];
     const bannedSymbols = new Set(['ISK', 'KF', 'PPM', 'AP7']);
     const bannedNameRegex = /(Investeringssparkonto|Kapitalförsäkring|Fond(er)?|Index(nära)?|ETF(er)?|Sparkonto)/i;
-    const patterns = [
-      /\*\*([^*]+?)\*\*\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
-      /\*\*([^*()]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)\*\*/g,
-      /(?:Förslag|Rekommendation|Aktie):\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/gi,
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
-      /\d+\.\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
-      /-\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
-      /•\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
-      /([A-Z]{2,6}(?:[-.][A-Z]{1,3})?):\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{3,})\s+\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)(?=[\s.,!?]|$)/g,
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)\s*-\s*Sektor:\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
-      /(?:^\d+\.|\*|-|•)\s*([^()\n]{2,50}?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/gm,
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,50}?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)(?:\s*-|\s*:|\s*,|\s*\.|\s*$)/g,
-      /\b([A-Z]{2,6}(?:[-.][A-Z]{1,3})?)\b\s*-\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,50})/g,
+
+    const patterns: Array<{ regex: RegExp; map: (match: RegExpExecArray) => { name: string; symbol: string; sector?: string } }> = [
+      {
+        regex: /\*\*([^*]+?)\*\*\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /\*\*([^*()]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)\*\*/g,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /(?:Förslag|Rekommendation|Aktie):\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/gi,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /\d+\.\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /-\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /•\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /([A-Z]{2,6}(?:[-.][A-Z]{1,3})?):\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
+        map: (match) => ({ symbol: match[1], name: match[2] }),
+      },
+      {
+        regex: /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{3,})\s+\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)(?=[\s.,!?]|$)/g,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)\s*-\s*Sektor:\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
+        map: (match) => ({ name: match[1], symbol: match[2], sector: match[3] }),
+      },
+      {
+        regex: /(?:^\d+\.|\*|-|•)\s*([^()\n]{2,50}?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/gm,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,50}?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)(?:\s*-|\s*:|\s*,|\s*\.|\s*$)/g,
+        map: (match) => ({ name: match[1], symbol: match[2] }),
+      },
+      {
+        regex: /\b([A-Z]{2,6}(?:[-.][A-Z]{1,3})?)\b\s*-\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,50})/g,
+        map: (match) => ({ symbol: match[1], name: match[2] }),
+      },
+      {
+        regex: /\b([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\s*\(([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,100})\)/g,
+        map: (match) => ({ symbol: match[1], name: match[2] }),
+      },
     ];
 
     const existingSymbols = new Set(
@@ -63,31 +107,43 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     );
     const contentToParse = aktierSection ? aktierSection[1] : content;
 
-    patterns.forEach((pattern, index) => {
-      let match;
-      const regex = new RegExp(pattern.source, pattern.flags);
-      while ((match = regex.exec(contentToParse)) !== null) {
-        let name;
-        let symbol;
-        let sector;
+    const cleanName = (rawName: string) =>
+      rawName
+        .replace(/["'“”‘’]/g, '')
+        .replace(/\s+/g, ' ')
+        .replace(/[,:;]+$/g, '')
+        .trim();
 
-        if (index === 7) {
-          symbol = match[1].trim();
-          name = match[2].trim();
-        } else if (index === 9) {
-          name = match[1].trim();
-          symbol = match[2].trim();
-          sector = match[3]?.trim();
-        } else if (index === 12) {
-          symbol = match[1].trim();
-          name = match[2].trim();
-        } else {
-          name = match[1].trim();
-          symbol = match[2].trim();
+    const resolveNameFromContext = (symbol: string, currentName: string) => {
+      const contextualPatterns = [
+        new RegExp(`([A-ZÅÄÖ][a-zåäöA-Z\\s&.-]{2,})\\s+\\(${symbol}\\)`, 'g'),
+        new RegExp(`([A-ZÅÄÖ][a-zåäöA-Z\\s&.-]{2,})\\s+${symbol}\\b`, 'g'),
+        new RegExp(`${symbol}\\s+\\(([A-ZÅÄÖ][a-zåäöA-Z\\s&.-]{2,})\\)`, 'g'),
+      ];
+
+      for (const contextualRegex of contextualPatterns) {
+        const match = contextualRegex.exec(content);
+        if (match?.[1]) {
+          return cleanName(match[1]);
         }
+      }
+
+      return currentName;
+    };
+
+    patterns.forEach(({ regex, map }) => {
+      let match;
+      const localRegex = new RegExp(regex.source, regex.flags);
+      while ((match = localRegex.exec(contentToParse)) !== null) {
+        const mapped = map(match);
+        let name = cleanName(mapped.name);
+        let symbol = mapped.symbol.trim();
+        const sector = mapped.sector?.trim();
 
         name = name.replace(/^(Aktie|Bolag|AB|Inc|Corp|Ltd)[\s:]/i, '').trim();
         name = name.replace(/[\s:](AB|Inc|Corp|Ltd)$/i, '').trim();
+
+        name = resolveNameFromContext(symbol, name);
 
         const symbolValid = /^[A-Z]{1,6}(?:[-.][A-Z]{1,3})?$/.test(symbol);
         const isValidSuggestion =
@@ -98,6 +154,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
           !bannedSymbols.has(symbol.toUpperCase()) &&
           !bannedNameRegex.test(name) &&
           !suggestions.find((s) => s.symbol === symbol.toUpperCase()) &&
+          (name.toUpperCase() !== name || name === symbol.toUpperCase()) &&
           !name.match(/^(och|eller|samt|med|utan|för|till|från|av|på|i|är|har|kan|ska|måste|borde|skulle)$/i) &&
           !!name.match(/[a-öA-Ö]/);
 
@@ -178,8 +235,23 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     const elements: React.ReactNode[] = [];
     let keyCounter = 0;
     let currentList: { type: 'ol' | 'ul'; marker?: 'disc' | 'dash'; items: string[] } | null = null;
+    let pendingListItem: { type: 'ol' | 'ul'; marker?: 'disc' | 'dash'; content: string } | null = null;
 
     const getKey = () => `message-fragment-${keyCounter++}`;
+
+    const flushPendingAsParagraph = () => {
+      if (!pendingListItem) return;
+
+      elements.push(
+        <p
+          key={getKey()}
+          className="mb-1.5 text-[13px] leading-[1.6] text-foreground last:mb-0"
+          dangerouslySetInnerHTML={{ __html: parseMarkdownSafely(pendingListItem.content) }}
+        />,
+      );
+
+      pendingListItem = null;
+    };
 
     const flushList = () => {
       if (!currentList) return;
@@ -220,6 +292,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       const trimmedLine = line.trim();
 
       if (trimmedLine === '') {
+        flushPendingAsParagraph();
         flushList();
         elements.push(
           <div
@@ -232,6 +305,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       }
 
       if (trimmedLine.startsWith('###')) {
+        flushPendingAsParagraph();
         flushList();
         elements.push(
           <h3
@@ -246,6 +320,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       }
 
       if (trimmedLine.startsWith('##')) {
+        flushPendingAsParagraph();
         flushList();
         elements.push(
           <h2
@@ -262,27 +337,62 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       if (trimmedLine.startsWith('-') || trimmedLine.startsWith('•')) {
         const contentWithoutMarker = trimmedLine.replace(/^[-•]\s*/, '').trim();
 
-        if (!currentList || currentList.type !== 'ul' || currentList.marker !== 'disc') {
-          flushList();
-          currentList = { type: 'ul', marker: 'disc', items: [] };
+        const isContinuation =
+          (currentList && currentList.type === 'ul' && currentList.marker === 'disc') ||
+          (pendingListItem && pendingListItem.type === 'ul' && pendingListItem.marker === 'disc');
+
+        if (currentList && currentList.type === 'ul' && currentList.marker === 'disc') {
+          currentList.items.push(contentWithoutMarker);
+          return;
         }
 
-        currentList.items.push(contentWithoutMarker);
+        if (pendingListItem && pendingListItem.type === 'ul' && pendingListItem.marker === 'disc') {
+          currentList = { type: 'ul', marker: 'disc', items: [pendingListItem.content, contentWithoutMarker] };
+          pendingListItem = null;
+          return;
+        }
+
+        flushList();
+        flushPendingAsParagraph();
+
+        if (isContinuation) {
+          currentList = { type: 'ul', marker: 'disc', items: [contentWithoutMarker] };
+        } else {
+          pendingListItem = { type: 'ul', marker: 'disc', content: contentWithoutMarker };
+        }
         return;
       }
 
       if (/^\d+\./.test(trimmedLine)) {
         const contentWithoutNumber = trimmedLine.replace(/^\d+\.\s*/, '').trim();
 
-        if (!currentList || currentList.type !== 'ul' || currentList.marker !== 'dash') {
-          flushList();
-          currentList = { type: 'ul', marker: 'dash', items: [] };
+        const isContinuation =
+          (currentList && currentList.type === 'ol') ||
+          (pendingListItem && pendingListItem.type === 'ol');
+
+        if (currentList && currentList.type === 'ol') {
+          currentList.items.push(contentWithoutNumber);
+          return;
         }
 
-        currentList.items.push(contentWithoutNumber);
+        if (pendingListItem && pendingListItem.type === 'ol') {
+          currentList = { type: 'ol', items: [pendingListItem.content, contentWithoutNumber] };
+          pendingListItem = null;
+          return;
+        }
+
+        flushList();
+        flushPendingAsParagraph();
+
+        if (isContinuation) {
+          currentList = { type: 'ol', items: [contentWithoutNumber] };
+        } else {
+          pendingListItem = { type: 'ol', content: contentWithoutNumber };
+        }
         return;
       }
 
+      flushPendingAsParagraph();
       flushList();
       elements.push(
         <p
@@ -294,6 +404,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     });
 
     flushList();
+    flushPendingAsParagraph();
 
     return elements;
   };
@@ -316,6 +427,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
 
     const lines = message.content.split('\n');
     const headings: string[] = [];
+    let bulletSequence = 0;
     let bulletPoints = 0;
 
     lines.forEach((line) => {
@@ -329,9 +441,18 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       }
 
       if (trimmed.match(/^(?:[-•]|\d+\.)\s+/)) {
-        bulletPoints += 1;
+        bulletSequence += 1;
+      } else {
+        if (bulletSequence > 1) {
+          bulletPoints += bulletSequence;
+        }
+        bulletSequence = 0;
       }
     });
+
+    if (bulletSequence > 1) {
+      bulletPoints += bulletSequence;
+    }
 
     const chips: string[] = [];
     headings.slice(0, 2).forEach((heading) => chips.push(heading));

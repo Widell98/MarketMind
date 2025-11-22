@@ -3,7 +3,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { User, Target, TrendingUp, DollarSign, Calendar, PieChart, Brain, BarChart3, AlertCircle, CheckCircle, Settings, Plus, Activity } from 'lucide-react';
+import {
+  User,
+  Target,
+  TrendingUp,
+  DollarSign,
+  Calendar,
+  PieChart,
+  Brain,
+  BarChart3,
+  AlertCircle,
+  CheckCircle,
+  Settings,
+  Plus,
+  Activity,
+  Loader2
+} from 'lucide-react';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import ResetProfileConfirmDialog from '@/components/ResetProfileConfirmDialog';
@@ -12,6 +27,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAdvisorPlan } from '@/utils/advisorPlan';
+import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Input } from './ui/input';
+import { Checkbox } from './ui/checkbox';
+import { Slider } from './ui/slider';
 interface UserInvestmentAnalysisProps {
   onUpdateProfile?: () => void;
 }
@@ -21,7 +41,8 @@ const UserInvestmentAnalysis = ({
   const {
     riskProfile,
     loading: riskLoading,
-    clearRiskProfile
+    clearRiskProfile,
+    saveRiskProfile
   } = useRiskProfile();
   const {
     activePortfolio,
@@ -35,6 +56,40 @@ const UserInvestmentAnalysis = ({
   const {
     toast
   } = useToast();
+  const sectorOptions = useMemo(() => [
+    'Technology',
+    'Healthcare',
+    'Finance',
+    'Energy',
+    'Consumer Goods',
+    'Real Estate',
+    'Utilities',
+    'Industrials',
+    'Materials',
+    'Telecommunications'
+  ], []);
+  const [isSavingPreferences, setIsSavingPreferences] = useState(false);
+  const [preferenceForm, setPreferenceForm] = useState({
+    risk_tolerance: '',
+    investment_horizon: '',
+    investment_experience: '',
+    monthly_investment_amount: '' as number | string,
+    sector_interests: [] as string[],
+    risk_comfort_level: 3
+  });
+
+  React.useEffect(() => {
+    if (!riskProfile) return;
+
+    setPreferenceForm({
+      risk_tolerance: riskProfile.risk_tolerance || '',
+      investment_horizon: riskProfile.investment_horizon || '',
+      investment_experience: riskProfile.investment_experience || '',
+      monthly_investment_amount: riskProfile.monthly_investment_amount?.toString() || '',
+      sector_interests: riskProfile.sector_interests || [],
+      risk_comfort_level: riskProfile.risk_comfort_level || 3
+    });
+  }, [riskProfile]);
 
   // Function to format AI strategy text with proper CSS styling
   const formatAIStrategy = (text: string) => {
@@ -255,8 +310,187 @@ const UserInvestmentAnalysis = ({
         return experience || 'Ej angiven';
     }
   };
+
+  const handleSectorToggle = (sector: string) => {
+    setPreferenceForm(prev => ({
+      ...prev,
+      sector_interests: prev.sector_interests.includes(sector)
+        ? prev.sector_interests.filter(s => s !== sector)
+        : [...prev.sector_interests, sector]
+    }));
+  };
+
+  const handleSavePreferences = async () => {
+    if (!riskProfile) return;
+
+    setIsSavingPreferences(true);
+    const { id, user_id, created_at, updated_at, ...rest } = riskProfile;
+    const monthlyAmount = preferenceForm.monthly_investment_amount === ''
+      ? null
+      : Number(preferenceForm.monthly_investment_amount);
+
+    try {
+      const safeRiskComfort = Math.min(5, Math.max(1, preferenceForm.risk_comfort_level || 1));
+
+      const updatedProfile = await saveRiskProfile({
+        ...rest,
+        risk_tolerance: preferenceForm.risk_tolerance || null,
+        investment_horizon: preferenceForm.investment_horizon || null,
+        investment_experience: preferenceForm.investment_experience || null,
+        monthly_investment_amount: Number.isNaN(monthlyAmount) ? null : monthlyAmount,
+        sector_interests: preferenceForm.sector_interests,
+        risk_comfort_level: safeRiskComfort
+      });
+
+      if (updatedProfile && onUpdateProfile) {
+        onUpdateProfile();
+      }
+    } finally {
+      setIsSavingPreferences(false);
+    }
+  };
   return <div className="space-y-10 animate-fade-in">
       <ResetProfileConfirmDialog isOpen={showResetDialog} onClose={() => setShowResetDialog(false)} onConfirm={handleResetProfile} />
+
+      <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-blue-50/40 dark:from-slate-900/90 dark:to-blue-900/10 backdrop-blur-sm border border-blue-200/40 dark:border-blue-800/30">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center border border-blue-200/40 dark:border-blue-800/40">
+                <Settings className="w-6 h-6 text-transparent bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Finjustera riskprofil</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-slate-100">Uppdatera dina preferenser direkt</p>
+              </div>
+            </div>
+            <div className="text-right text-xs text-slate-500 dark:text-slate-400">
+              Ändringar sparas på ditt konto
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Risktolerans</Label>
+              <Select
+                value={preferenceForm.risk_tolerance}
+                onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, risk_tolerance: value }))}
+              >
+                <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                  <SelectValue placeholder="Välj risktolerans" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="conservative">Konservativ</SelectItem>
+                  <SelectItem value="moderate">Måttlig</SelectItem>
+                  <SelectItem value="aggressive">Aggressiv</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Tidshorisont</Label>
+              <Select
+                value={preferenceForm.investment_horizon}
+                onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, investment_horizon: value }))}
+              >
+                <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                  <SelectValue placeholder="Välj tidshorisont" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="short">Kort (0–2 år)</SelectItem>
+                  <SelectItem value="medium">Medel (3–5 år)</SelectItem>
+                  <SelectItem value="long">Lång (5+ år)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Erfarenhetsnivå</Label>
+              <Select
+                value={preferenceForm.investment_experience}
+                onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, investment_experience: value }))}
+              >
+                <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                  <SelectValue placeholder="Välj erfarenhet" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="beginner">Nybörjare</SelectItem>
+                  <SelectItem value="intermediate">Mellannivå</SelectItem>
+                  <SelectItem value="advanced">Avancerad</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Riskkomfort</Label>
+                <span className="text-sm text-slate-500 dark:text-slate-400">{preferenceForm.risk_comfort_level}/5</span>
+              </div>
+              <Slider
+                value={[preferenceForm.risk_comfort_level]}
+                onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, risk_comfort_level: value[0] }))}
+                min={1}
+                max={5}
+                step={1}
+                className="py-3"
+              />
+              <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span>Låg risk</span>
+                <span>Hög risk</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Månadssparande (SEK)</Label>
+              <Input
+                type="number"
+                value={preferenceForm.monthly_investment_amount}
+                onChange={(e) => setPreferenceForm(prev => ({ ...prev, monthly_investment_amount: e.target.value }))}
+                placeholder="Exempelvis 3000"
+                className="rounded-xl bg-white/70 dark:bg-slate-900/60"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Sektorintressen</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {sectorOptions.map((sector) => (
+                <label
+                  key={sector}
+                  className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
+                >
+                  <Checkbox
+                    checked={preferenceForm.sector_interests.includes(sector)}
+                    onCheckedChange={() => handleSectorToggle(sector)}
+                  />
+                  <span className="text-sm text-slate-700 dark:text-slate-200">{sector}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSavePreferences}
+              disabled={isSavingPreferences}
+              className="rounded-xl px-6"
+            >
+              {isSavingPreferences ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sparar...
+                </>
+              ) : (
+                'Spara uppdateringar'
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Profile Summary - Apple-inspired design */}
       <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-slate-50/50 dark:from-slate-900/90 dark:to-slate-800/50 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
@@ -342,11 +576,11 @@ const UserInvestmentAnalysis = ({
                 <div>
                   <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Riskkomfort</p>
                   <div className="flex items-center gap-3">
-                    <Progress 
-                      value={(riskProfile.risk_comfort_level || 0) * 10} 
+                    <Progress
+                      value={(riskProfile.risk_comfort_level || 0) * 20}
                       className="h-3 w-24 bg-slate-200 dark:bg-slate-700"
                     />
-                    <span className="text-xl font-bold text-slate-900 dark:text-slate-100">{riskProfile.risk_comfort_level || 0}/10</span>
+                    <span className="text-xl font-bold text-slate-900 dark:text-slate-100">{riskProfile.risk_comfort_level || 0}/5</span>
                   </div>
                 </div>
               </div>

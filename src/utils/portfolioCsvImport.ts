@@ -7,6 +7,36 @@ export interface ParsedCsvHolding {
   currencyProvided: boolean;
 }
 
+export const normalizeShareClassTicker = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+
+  const upper = trimmed.toUpperCase();
+
+  const suffixMatch = upper.match(/^(.*?)(\.(ST|OL|CO|HE|L))$/);
+  const base = suffixMatch ? suffixMatch[1] : upper;
+  const suffix = suffixMatch ? suffixMatch[2] : '';
+
+  const alreadySeparated = base.match(/^(.*?)[\s\-]([ABCD])$/i);
+  if (alreadySeparated) {
+    const [, main, shareClass] = alreadySeparated;
+    return `${main.trim()}-${shareClass.toUpperCase()}${suffix}`;
+  }
+
+  const compactMatch = base.match(/^(.*?)([ABCD])$/i);
+  const hasNordicSuffix = Boolean(suffix);
+  const isLongEnoughToAvoidCommonUS = base.length >= 5;
+
+  if (compactMatch && (hasNordicSuffix || isLongEnoughToAvoidCommonUS)) {
+    const [, main, shareClass] = compactMatch;
+    if (main.length >= 2) {
+      return `${main}-${shareClass.toUpperCase()}${suffix}`;
+    }
+  }
+
+  return `${base}${suffix}`;
+};
+
 const parseLocaleNumber = (value: string) => {
   const sanitized = value
     .replace(/\s+/g, '')
@@ -307,7 +337,9 @@ export const parsePortfolioHoldingsFromCSV = (text: string): ParsedCsvHolding[] 
     const currencyFromValue = currencyRaw
       ? currencyRaw.replace(/[^a-zA-Z]/g, '').toUpperCase() || undefined
       : undefined;
-    const inferredFromSymbol = inferCurrencyFromSymbol(symbolRaw);
+    const normalizedSymbol = normalizeShareClassTicker(symbolRaw);
+    const normalizedNameFallback = normalizeShareClassTicker(symbolRaw);
+    const inferredFromSymbol = inferCurrencyFromSymbol(normalizedSymbol);
     const resolvedCurrency = (
       currencyFromValue ||
       priceCurrencyHint ||
@@ -317,8 +349,8 @@ export const parsePortfolioHoldingsFromCSV = (text: string): ParsedCsvHolding[] 
     const currencyProvided = Boolean(currencyFromValue || priceCurrencyHint || inferredFromSymbol);
 
     parsedHoldings.push({
-      name: nameRaw.trim() || symbolRaw.trim().toUpperCase(),
-      symbol: symbolRaw.trim().toUpperCase(),
+      name: nameRaw.trim() || normalizedNameFallback,
+      symbol: normalizedSymbol,
       quantity,
       purchasePrice,
       currency: resolvedCurrency,

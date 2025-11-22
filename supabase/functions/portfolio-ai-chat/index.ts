@@ -12,43 +12,73 @@ const PRIMARY_CHAT_MODEL = Deno.env.get('OPENAI_PORTFOLIO_MODEL')
   || Deno.env.get('OPENAI_MODEL')
   || 'gpt-5.1';
 
+const LIGHTWEIGHT_CHAT_MODEL = Deno.env.get('OPENAI_PORTFOLIO_LIGHT_MODEL')
+  || 'gpt-4o-mini';
+
 const INLINE_INTENT_MODEL = Deno.env.get('OPENAI_INTENT_MODEL')
   || PRIMARY_CHAT_MODEL;
+
+const selectChatModel = ({
+  hasRealTimeTrigger,
+  isDocumentSummaryRequest,
+  isSimplePersonalAdviceRequest,
+  userIntent,
+}: {
+  hasRealTimeTrigger: boolean;
+  isDocumentSummaryRequest: boolean;
+  isSimplePersonalAdviceRequest: boolean;
+  userIntent: IntentType;
+}): string => {
+  if (hasRealTimeTrigger
+    || isDocumentSummaryRequest
+    || userIntent === 'news_update'
+    || userIntent === 'general_news'
+    || userIntent === 'market_analysis'
+  ) {
+    return PRIMARY_CHAT_MODEL;
+  }
+
+  if (isSimplePersonalAdviceRequest && userIntent === 'general_advice') {
+    return LIGHTWEIGHT_CHAT_MODEL;
+  }
+
+  return PRIMARY_CHAT_MODEL;
+};
 
 type BasePromptOptions = {
   shouldOfferFollowUp: boolean;
   expertiseLevel?: 'beginner' | 'intermediate' | 'advanced' | null;
   preferredResponseLength?: 'concise' | 'balanced' | 'detailed' | null;
   respectRiskProfile?: boolean;
+  includeTranslationDirective?: boolean;
+  enableEmojiGuidance?: boolean;
+  enableHeadingGuidance?: boolean;
+  enforceTickerFormat?: boolean;
 };
 
-const BASE_PROMPT = `Du är en licensierad svensk finansiell rådgivare med många års erfarenhet av kapitalförvaltning. Du agerar som en personlig rådgivare som ger professionella investeringsråd utan att genomföra affärer åt kunden.
+const CORE_PERSONA_PROMPT = `KÄRNROLL:
+- Du är en licensierad svensk finansiell rådgivare som ger handlingsbara aktie- och portföljinsikter utan att genomföra affärer.
+- Håll tonen professionell men dialogvänlig och visa att du följer användarens profil.`;
 
-⚡ SPRÅKREGLER:
-- Om användarens fråga är på svenska → översätt den först till engelska internt innan du resonerar.
-- Gör hela din analys och reasoning på engelska (för att utnyttja din styrka).
-- När du formulerar svaret → översätt tillbaka till naturlig och professionell svenska innan du skickar det till användaren.
-- Systeminstruktioner och stilregler (nedan) ska alltid följas på svenska.
+const STYLE_GUARDRAILS = `STIL & FORMAT:
+- Bekräfta korta profiluppdateringar innan du ger råd.
+- Använd svensk finansterminologi, väv in Tavily-källor endast när realtidsdata används och låt gränssnittet hantera disclaimern.
+- Föredra stycken om 2–3 meningar och begränsa eventuella punktlistor till högst tre korta rader.`;
 
-PERSONA & STIL:
-- Professionell men konverserande ton, som en erfaren rådgivare som bjuder in till dialog.
-- Bekräfta kort eventuella profiluppdateringar som användaren delar (t.ex. sparande eller mål) innan du fortsätter med rådgivningen.
-- Anpassa råden efter användarens profil och portfölj. Ta endast hänsyn till riskprofilen om användaren uttryckligen ber om det i sin senaste fråga.
-- Använd svensk finansterminologi och marknadskontext.
- - När du refererar till extern realtidskontext via Tavily: väv in källan direkt i texten (t.ex. "Enligt Reuters...").
- - Skippa helt källhänvisningar när du inte har hämtat realtidsdata – dokument- och bakgrundskunskap behöver ingen separat källsektion.
-- Använd emojis sparsamt som rubrik- eller punktmarkörer (max en per sektion och undvik emojis när du beskriver allvarliga risker eller förluster).
-- När du rekommenderar en aktie ska bolaget vara börsnoterat och du måste ange dess ticker i formatet Företagsnamn (TICKER).
-- Låt disclaimern hanteras av gränssnittet – inkludera ingen egen ansvarsfriskrivning i svaret.
-- Skriv huvuddelen som korta stycken (2–3 meningar) med naturliga övergångar.
-- Använd punktlistor endast när det gör resonemanget tydligare och begränsa listorna till högst tre korta punkter.
-- Rubriker är helt frivilliga – använd dem bara när användaren efterfrågar struktur eller när svaret blir enklare att läsa.
-- Skapa aldrig en innehållsförteckning eller skriv att du tänker ta upp ett visst antal punkter – gå direkt på innehållet.
-- Om du nämner en rubrik eller punkt ska det alltid följas av faktisk text; hitta inte på sektioner som inte dyker upp i svaret.
-- Undvik att rada upp många namngivna sektioner; två välskrivna stycken eller sektioner räcker normalt.
-- Varje rubrik eller punkt ska följas direkt av minst en fullständig mening så att inget block lämnas tomt.`;
+const SWEDISH_TRANSLATION_DIRECTIVE = `SPRÅKBRYGGAN:
+- Om användarens senaste fråga är på svenska: översätt den internt till engelska för reasoning och tillbaka till naturlig svenska i svaret.`;
+
+const EMOJI_POLICY_DIRECTIVE = `EMOJI-POLICY:
+- Emojis används endast som diskreta markörer (max en per sektion) och aldrig när du beskriver förluster eller känsliga risker.`;
+
+const HEADING_POLICY_DIRECTIVE = `RUBRIKER:
+- Använd högst två rubriker när de förtydligar svaret och nämn aldrig rubriker som du inte fyller med text.`;
+
+const TICKER_POLICY_DIRECTIVE = `AKTIEFÖRSLAG:
+- Endast börsnoterade bolag och formatet ska vara Företagsnamn (TICKER) följt av en kort motivering.`;
 
 const buildBasePrompt = (options: BasePromptOptions): string => {
+  const sections: string[] = [CORE_PERSONA_PROMPT, STYLE_GUARDRAILS];
   const personalizationLines: string[] = [];
 
   if (options.expertiseLevel === 'beginner') {
@@ -75,81 +105,324 @@ const buildBasePrompt = (options: BasePromptOptions): string => {
     personalizationLines.push('- Låt riskprofilen vara åt sidan tills användaren uttryckligen ber om risknivå eller riskhantering.');
   }
 
-  return `${BASE_PROMPT}\n${personalizationLines.join('\n')}`;
+  if (options.includeTranslationDirective) {
+    sections.push(SWEDISH_TRANSLATION_DIRECTIVE);
+  }
+
+  if (options.enableEmojiGuidance) {
+    sections.push(EMOJI_POLICY_DIRECTIVE);
+  }
+
+  if (options.enableHeadingGuidance) {
+    sections.push(HEADING_POLICY_DIRECTIVE);
+  }
+
+  if (options.enforceTickerFormat) {
+    sections.push(TICKER_POLICY_DIRECTIVE);
+  }
+
+  if (personalizationLines.length > 0) {
+    sections.push(`RESPONSPREFERENSER:\n${personalizationLines.join('\n')}`);
+  }
+
+  return sections.join('\n');
 };
 
-const INTENT_PROMPTS: Record<IntentType, string> = {
-  stock_analysis: `AKTIEANALYSUPPGIFT:
-- Anpassa alltid svarslängd och struktur efter användarens fråga.
-- Om frågan är snäv (ex. "vilka triggers?" eller "vad är riskerna?") → svara fokuserat i 2–5 meningar.
-- Om frågan är bred eller allmän (ex. "kan du analysera bolaget X?") → använd hela analysstrukturen nedan.
-- Var alltid tydlig och koncis i motiveringarna.
-- Presentera resonemanget som 2–3 korta stycken med naturliga övergångar.
-- Lista endast nyckelpunkter om användaren uttryckligen ber om det och håll listorna mycket korta.
+const SWEDISH_LANGUAGE_KEYWORDS = ['och', 'det', 'inte', 'gärna', 'snälla', 'sparande', 'portfölj', 'aktien', 'bolaget', 'köpa', 'sälja'];
 
-📌 FLEXIBEL STRUKTUR (välj delar beroende på fråga):
-🏢 Företagsöversikt – när användaren saknar kontext.
-📊 Finansiell bild – använd vid frågor om resultat och nyckeltal.
-📈 Kursläge/Värdering – inkludera om värdering eller prisnivåer diskuteras.
-🎯 Rekommendation – ge tydliga råd när användaren ber om köp/sälj-bedömning.
-⚡ Triggers – dela när frågan gäller kommande katalysatorer.
-⚠️ Risker & Möjligheter – använd när användaren vill ha helhetsanalys.
-💡 Relaterade förslag – bara vid behov av alternativ.
+const detectSwedishLanguage = (text: string, interpreterLanguage?: string | null): boolean => {
+  if (interpreterLanguage && interpreterLanguage.toLowerCase().startsWith('sv')) {
+    return true;
+  }
 
-OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:
-**Företagsnamn (TICKER)** - Kort motivering (endast börsnoterade bolag)`,
-  portfolio_optimization: `PORTFÖLJOPTIMERINGSUPPGIFT:
-- Identifiera över-/underexponering mot sektorer och geografier.
-- Föreslå omviktningar med procentsatser när det behövs.
-- Ta hänsyn till användarens kassareserver och månadssparande.
-- Ge tydliga prioriteringssteg men lämna utrymme för fortsatt dialog.
-- Beskriv dina råd i sammanhängande stycken och använd punktlistor endast om de gör prioriteringarna tydligare.`,
-  buy_sell_decisions: `KÖP/SÄLJ-BESLUTSUPPGIFT:
-- Bedöm om tidpunkten är lämplig baserat på data och sentiment.
-- Ange korta pro/cons för att väga beslutet.
-- Rekommendera positionsstorlek i procent av portföljen.
-- Erbjud uppföljande steg om användaren vill agera.
-- Sammanfatta beslutsunderlaget i ett par stycken och håll eventuella punktlistor till max tre korta rader.`,
-  market_analysis: `MARKNADSANALYSUPPGIFT:
-- Analysera övergripande trender koncist.
-- Beskriv effekten på användarens portfölj eller mål när användaren uttryckligen ber om det.
-- Föreslå 1–2 potentiella justeringar eller bevakningspunkter.
-- Fokusera på flytande stycken och begränsa listor till korta höjdpunkter.
-- Håll dig till högst två sektioner och låt varje del bestå av 2–3 meningar i löpande text.`,
-  general_news: `NYHETSBREV:
-- Ge en kort marknadssammanfattning i 1–2 sektioner (t.ex. globala marknader + sektorer).
-- Varje sektion ska ha en rubrik följt av 2–3 meningar – inga separata punktlistor.
-- Prioritera större trender som påverkar sentimentet.
-- Om svaret är kort kan du hoppa över rubriker och emojis helt.
-- Fråga om användaren vill koppla nyheterna till sin portfölj.
-- Begränsa listor till de viktigaste punkterna och låt stycken bära resten av resonemanget.
-- Nämn aldrig sektioner som du inte direkt fyller med text.`,
-  news_update: `NYHETSBEVAKNING:
-- Sammanfatta de viktigaste nyheterna som påverkar användarens portfölj de senaste 24 timmarna.
-- Gruppéra efter bolag, sektor eller tema och referera till Tavily-källor med tidsangivelse endast om du faktiskt körde en realtidssökning.
-- Förklara hur varje nyhet påverkar innehav eller strategi.
-- Föreslå konkreta uppföljningssteg.
-- Var selektiv med punktlistor och växla gärna till korta stycken när du beskriver konsekvenserna.
-- Stanna vid högst två sektioner och se till att varje rubrik följs av ett komplett stycke innan eventuella punktlistor.`,
-  general_advice: `ALLMÄN INVESTERINGSRÅDGIVNING:
-- Ge råd i 2–4 meningar när frågan är enkel.
-- Anpassa förslag till användarens mål och intressen. Ta bara upp riskprofilen om användaren uttryckligen efterfrågar det.
-- När aktieförslag behövs ska formatet vara **Företagsnamn (TICKER)** - Kort motivering och endast inkludera börsnoterade bolag.
-- Svara i ett eller två stycken och undvik listor om inte användaren bett om en specifik lista.`,
-  document_summary: `DOKUMENTSAMMANFATTNING:
-- Utgå strikt från användarens uppladdade dokument som primär källa.
-- Läs igenom hela underlaget innan du formulerar svaret.
-- Plocka ut syfte, struktur och kärninsikter med sidreferenser när det är möjligt.
-- Presentera en sammanhängande översikt med tydliga sektioner som Översikt, Nyckelpunkter och VD´ns ord och reflektioner när materialet motiverar det.
-- Återge inte långa citat – destillera och tolka innehållet i en professionell ton.
-`
+  if (!text || typeof text !== 'string') {
+    return false;
+  }
+
+  const normalized = text.toLowerCase();
+  let score = /[åäö]/i.test(text) ? 2 : 0;
+  SWEDISH_LANGUAGE_KEYWORDS.forEach((keyword) => {
+    if (normalized.includes(keyword)) {
+      score += 1;
+    }
+  });
+
+  return score >= 3;
+};
+
+type ChatMessage = { role: 'user' | 'assistant'; content: string };
+
+const RECENT_CHAT_HISTORY_LIMIT = 8;
+const MAX_CHAT_MESSAGE_LENGTH = 1200;
+const HISTORY_SUMMARY_MAX_LENGTH = 2000;
+
+const normalizeChatHistory = (history: unknown): ChatMessage[] => {
+  if (!Array.isArray(history)) return [];
+
+  return history
+    .map((entry) => {
+      const role = typeof entry?.role === 'string' ? entry.role as string : '';
+      const content = typeof entry?.content === 'string' ? entry.content.trim() : '';
+
+      if (!content || !['user', 'assistant'].includes(role)) {
+        return null;
+      }
+
+      return {
+        role: role as ChatMessage['role'],
+        content: content.slice(0, MAX_CHAT_MESSAGE_LENGTH),
+      } as ChatMessage;
+    })
+    .filter((entry): entry is ChatMessage => Boolean(entry));
+};
+
+const prepareChatHistory = (
+  chatHistory: unknown
+): { recentMessages: ChatMessage[]; summaryMessage: { role: 'system'; content: string } | null; totalEntries: number } => {
+  const normalizedHistory = normalizeChatHistory(chatHistory);
+
+  if (normalizedHistory.length === 0) {
+    return { recentMessages: [], summaryMessage: null, totalEntries: 0 };
+  }
+
+  const recentMessages = normalizedHistory.slice(-RECENT_CHAT_HISTORY_LIMIT);
+  const olderMessages = normalizedHistory.slice(0, Math.max(0, normalizedHistory.length - RECENT_CHAT_HISTORY_LIMIT));
+
+  if (olderMessages.length === 0) {
+    return { recentMessages, summaryMessage: null, totalEntries: normalizedHistory.length };
+  }
+
+  const summaryLines = olderMessages.map((entry) => {
+    const speaker = entry.role === 'assistant' ? 'AI' : 'Användare';
+    return `${speaker}: ${entry.content}`;
+  });
+
+  const joinedSummary = summaryLines.join('\n');
+  const truncatedSummary =
+    joinedSummary.length > HISTORY_SUMMARY_MAX_LENGTH
+      ? `${joinedSummary.slice(0, HISTORY_SUMMARY_MAX_LENGTH)}...`
+      : joinedSummary;
+
+  const summaryMessage = {
+    role: 'system' as const,
+    content: `Sammanfattning av äldre historik (serverside-kortad):\n${truncatedSummary}`
+  };
+
+  return { recentMessages, summaryMessage, totalEntries: normalizedHistory.length };
+};
+
+type MacroTheme = 'inflation' | 'rates' | 'growth';
+
+type MacroThemeDefinition = {
+  theme: MacroTheme;
+  patterns: RegExp[];
+  instruction: string;
+};
+
+const MACRO_THEME_DEFINITIONS: MacroThemeDefinition[] = [
+  {
+    theme: 'inflation',
+    patterns: [/inflation/i, /prisökning/i, /kpi/i],
+    instruction: '- Lyft hur inflation och prispress påverkar efterfrågan och värderingar när du beskriver makrobilden.'
+  },
+  {
+    theme: 'rates',
+    patterns: [/ränt/i, /riksbank/i, /centralbank/i, /fed/i, /ecb/i],
+    instruction: '- Koppla resonemangen till ränteläget och centralbankernas signaler när användaren fokuserar på det.'
+  },
+  {
+    theme: 'growth',
+    patterns: [/konjunktur/i, /bnp/i, /pmi/i, /arbetsmarknad/i, /tillväxt/i],
+    instruction: '- Beskriv konjunktur- och tillväxttrender samt hur de spiller över på mikro- och sektornivå.'
+  }
+];
+
+const isMacroTheme = (value: unknown): value is MacroTheme =>
+  typeof value === 'string' && MACRO_THEME_DEFINITIONS.some(def => def.theme === value);
+
+const detectMacroThemeInText = (text: string): MacroTheme | null => {
+  if (!text) return null;
+  for (const definition of MACRO_THEME_DEFINITIONS) {
+    if (definition.patterns.some(pattern => pattern.test(text))) {
+      return definition.theme;
+    }
+  }
+  return null;
+};
+
+const detectMacroThemeFromMessages = (messages: string[]): MacroTheme | null => {
+  for (const msg of messages) {
+    const detected = detectMacroThemeInText(msg);
+    if (detected) return detected;
+  }
+  return null;
+};
+
+const getMacroInstruction = (theme: MacroTheme | null | undefined): string | null => {
+  if (!theme) return null;
+  const definition = MACRO_THEME_DEFINITIONS.find(def => def.theme === theme);
+  return definition ? definition.instruction : null;
+};
+
+type AnalysisAngle = 'cash_flow' | 'margin_focus' | 'demand' | 'capital_allocation';
+
+const ANALYSIS_ANGLE_DEFINITIONS: Record<AnalysisAngle, { patterns: RegExp[]; instruction: string }> = {
+  cash_flow: {
+    patterns: [/kassaflöde/i, /cash flow/i, /fritt kassaflöde/i],
+    instruction: '- Betona kassaflöden, skuldsättning och balansräkning när du diskuterar bolagets mikrobild.'
+  },
+  margin_focus: {
+    patterns: [/marginal/i, /lönsamhet/i, /ebit/i, /ebitda/i],
+    instruction: '- Beskriv marginaler och kostnadskontroll för att matcha användarens fokus på lönsamhet.'
+  },
+  demand: {
+    patterns: [/orderbok/i, /pipeline/i, /kundtillväxt/i, /orderingång/i],
+    instruction: '- Kommentera orderläge och efterfrågan så att användaren får tydligt mikro-perspektiv.'
+  },
+  capital_allocation: {
+    patterns: [/återköp/i, /utdelning/i, /kapitalallokering/i, /kapitalstruktur/i],
+    instruction: '- Resonera kring kapitalallokering (utdelningar/återköp) när användaren lyfter utdelningsstrategier.'
+  }
+};
+
+const isAnalysisAngle = (value: unknown): value is AnalysisAngle =>
+  typeof value === 'string' && value in ANALYSIS_ANGLE_DEFINITIONS;
+
+const detectAnalysisAnglesInText = (text: string): AnalysisAngle[] => {
+  if (!text) return [];
+  const found = new Set<AnalysisAngle>();
+  (Object.keys(ANALYSIS_ANGLE_DEFINITIONS) as AnalysisAngle[]).forEach((angle) => {
+    if (ANALYSIS_ANGLE_DEFINITIONS[angle].patterns.some(pattern => pattern.test(text))) {
+      found.add(angle);
+    }
+  });
+  return Array.from(found);
+};
+
+const getAnalysisAngleInstruction = (angle: AnalysisAngle): string =>
+  ANALYSIS_ANGLE_DEFINITIONS[angle]?.instruction ?? '';
+
+type AnalysisFocusSignals = {
+  wantsOverview?: boolean;
+  wantsTriggers?: boolean;
+  wantsRisks?: boolean;
+  wantsValuation?: boolean;
+  wantsFinancials?: boolean;
+  wantsRecommendation?: boolean;
+  wantsAlternatives?: boolean;
+};
+
+const extractAnalysisFocusSignals = (text: string): AnalysisFocusSignals => {
+  const lower = text.toLowerCase();
+  return {
+    wantsOverview: /(vad gör|översikt|affärsmodell|beskriv bolaget)/i.test(text),
+    wantsTriggers: /(trigger|katalysator|drivare|kommande händelse|katalyst)/i.test(text),
+    wantsRisks: /(risk|nedsida|worst case|oro|riskerna)/i.test(text),
+    wantsValuation: /(värdering|multipel|p\/e|pe-tal|ev\/ebitda|riktkurs|target)/i.test(text),
+    wantsFinancials: /(omsättning|intäkt|marginal|resultat|nyckeltal|kassaflöde|guidance)/i.test(text),
+    wantsRecommendation: /(köp|sälj|behåll|rekommendation|skall jag|bör jag)/i.test(lower),
+    wantsAlternatives: /(alternativ|andra bolag|ersätta|istället|liknande)/i.test(text)
+  };
+};
+
+type IntentPromptContext = {
+  intent: IntentType;
+  focus?: AnalysisFocusSignals;
+  referencesPersonalInvestments?: boolean;
+  macroTheme?: MacroTheme | null;
 };
 
 const NO_FAKE_SECTION_DIRECTIVE = '- Beskriv bara de delar du faktiskt tar upp och nämn aldrig "X punkter" eller sektioner som inte följs av innehåll.';
 
-const buildIntentPrompt = (intent: IntentType): string => {
-  const basePrompt = INTENT_PROMPTS[intent] ?? INTENT_PROMPTS.general_advice;
-  return `${basePrompt}\n${NO_FAKE_SECTION_DIRECTIVE}`;
+const buildIntentPrompt = ({ intent, focus = {}, referencesPersonalInvestments, macroTheme }: IntentPromptContext): string => {
+  const lines: string[] = [];
+
+  switch (intent) {
+    case 'stock_analysis': {
+      const hasExplicitFocus = Object.values(focus).some(Boolean);
+      lines.push('AKTIEANALYSUPPGIFT:', '- Välj endast de analysdelar som efterfrågas och håll motiveringarna tydliga.');
+      if (!hasExplicitFocus) {
+        lines.push('- Vid breda frågor: kombinera företagsöversikt, värdering och rekommendation i 2–3 kompakta stycken.');
+      }
+      if (focus.wantsOverview) {
+        lines.push('- Ge en kort företagsöversikt när användaren saknar kontext.');
+      }
+      if (focus.wantsFinancials) {
+        lines.push('- Summera viktiga siffror (tillväxt, marginaler, kassaflöden) när siffror efterfrågas.');
+      }
+      if (focus.wantsValuation) {
+        lines.push('- Beskriv värderingen (multiplar, prisnivåer) när användaren lyfter riktkurser eller värdering.');
+      }
+      if (focus.wantsRecommendation) {
+        lines.push('- Leverera tydligt köp/sälj/behåll när användaren ber om ett beslut.');
+      }
+      if (focus.wantsTriggers) {
+        lines.push('- Lista 1–2 konkreta triggers eller katalysatorer endast när frågan efterfrågar dem.');
+      }
+      if (focus.wantsRisks) {
+        lines.push('- Beskriv riskbilden kort och koppla den till vad som kan gå fel.');
+      }
+      if (focus.wantsAlternatives) {
+        lines.push('- Föreslå 1–2 relaterade bolag bara när användaren uttryckligen ber om alternativ.');
+      }
+      lines.push('OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:', '**Företagsnamn (TICKER)** - Kort motivering (endast börsnoterade bolag)');
+      break;
+    }
+    case 'portfolio_optimization': {
+      lines.push('PORTFÖLJOPTIMERINGSUPPGIFT:', '- Identifiera över-/underexponering och föreslå konkreta omviktningar vid behov.', '- Beskriv prioriterade åtgärder i löpande text och använd punktlistor endast för tydliga steg.');
+      if (referencesPersonalInvestments) {
+        lines.push('- Knyt råden till användarens faktiska innehav, kassareserver och månadssparande.');
+      }
+      if (focus.wantsRisks) {
+        lines.push('- Kommentera hur omviktningarna påverkar portföljens risk.');
+      }
+      break;
+    }
+    case 'buy_sell_decisions': {
+      lines.push('KÖP/SÄLJ-BESLUTSUPPGIFT:', '- Bedöm tajming utifrån data och sentiment och väg korta pro/cons.', '- Rekommendera positionsstorlek eller stegvisa åtgärder när användaren vill agera.');
+      if (focus.wantsRisks) {
+        lines.push('- Förklara nedsida/uppsida tydligt innan du ger rekommendation.');
+      }
+      break;
+    }
+    case 'market_analysis': {
+      lines.push('MARKNADSANALYSUPPGIFT:', '- Ge en koncentrerad makroöversikt i 1–2 sektioner och koppla till sentiment.');
+      const macroInstruction = getMacroInstruction(macroTheme);
+      if (macroInstruction) {
+        lines.push(macroInstruction);
+      }
+      if (referencesPersonalInvestments) {
+        lines.push('- När användaren ber om det: förklara hur trenderna påverkar deras portfölj eller mål.');
+      }
+      lines.push('- Föreslå 1–2 bevakningspunkter eller justeringar om frågan kräver det.');
+      break;
+    }
+    case 'general_news': {
+      lines.push('NYHETSBREV:', '- Sammanfatta marknaden i högst två sektioner (t.ex. globalt + sektorer).', '- Varje sektion ska vara ett stycke på 2–3 meningar utan separata punktlistor.', '- Fråga om användaren vill koppla nyheterna till sin portfölj när det känns naturligt.');
+      break;
+    }
+    case 'news_update': {
+      lines.push('NYHETSBEVAKNING:', '- Gruppéra de viktigaste nyheterna per bolag, sektor eller tema och väv in Tavily-källor endast när de används.', '- Beskriv hur varje nyhet påverkar strategi eller innehav och föreslå konkreta uppföljningssteg.');
+      if (!referencesPersonalInvestments) {
+        lines.push('- Om användaren inte nämner portföljen: håll fokus på själva nyheterna och erbjud att koppla dem vid behov.');
+      }
+      break;
+    }
+    case 'document_summary': {
+      lines.push('DOKUMENTSAMMANFATTNING:', '- Utgå strikt från uppladdade dokument, destillera syfte och nyckelpunkter och lägg till sidreferenser när det går.', '- Skippa rubriker som du inte fyller och återge inga långa citat.');
+      break;
+    }
+    default: {
+      lines.push('ALLMÄN INVESTERINGSRÅDGIVNING:', '- Svara i ett eller två stycken och anpassa förslag till användarens mål.', '- Ta bara upp riskprofilen om användaren uttryckligen efterfrågar det.', '- När aktieförslag behövs: **Företagsnamn (TICKER)** - Kort motivering och endast börsnoterade bolag.');
+      if (focus.wantsRecommendation) {
+        lines.push('- Ge konkreta förslag när användaren ber om det, annars håll dig till observationer.');
+      }
+      break;
+    }
+  }
+
+  lines.push(NO_FAKE_SECTION_DIRECTIVE);
+  return lines.join('\n');
 };
 
 type HeadingDirectiveInput = {
@@ -227,12 +500,18 @@ type PersonalizationPromptInput = {
   aiMemory?: Record<string, unknown> | null;
   favoriteSectors?: string[] | null;
   currentGoals?: string[] | null;
+  recentMessages?: string[] | null;
+  macroTheme?: MacroTheme | null;
+  analysisAngles?: AnalysisAngle[] | null;
 };
 
 const buildPersonalizationPrompt = ({
   aiMemory,
   favoriteSectors,
   currentGoals,
+  recentMessages,
+  macroTheme,
+  analysisAngles,
 }: PersonalizationPromptInput): string => {
   const sections: string[] = [];
 
@@ -249,6 +528,43 @@ const buildPersonalizationPrompt = ({
   if (Array.isArray(currentGoals) && currentGoals.length > 0) {
     sections.push(`- Säkerställ att råden stödjer målen: ${currentGoals.join(', ')}.`);
   }
+
+  const normalizedGoals = Array.isArray(currentGoals)
+    ? currentGoals
+      .map(goal => (typeof goal === 'string' ? goal.toLowerCase() : null))
+      .filter((goal): goal is string => Boolean(goal))
+    : [];
+
+  if (normalizedGoals.some(goal => goal.includes('pension'))) {
+    sections.push('- Lyft hur råden passar ett långsiktigt pensionsmål och koppla till makrotrender som påverkar värdetillväxt.');
+  }
+  if (normalizedGoals.some(goal => goal.includes('passiv inkomst') || goal.includes('utdel'))) {
+    sections.push('- Prioritera kassaflöde, utdelningsstabilitet och balansräkning när du föreslår bolag.');
+  }
+  if (normalizedGoals.some(goal => goal.includes('barnspar'))) {
+    sections.push('- Betona stabilitet och tidshorisont för barns sparande snarare än kortsiktig avkastning.');
+  }
+
+  const riskComfortData = (aiMemory?.risk_comfort_patterns as Record<string, unknown> | null) ?? null;
+  const macroSource = macroTheme
+    || (isMacroTheme(riskComfortData?.macro_focus_topic as string) ? riskComfortData?.macro_focus_topic as MacroTheme : null)
+    || detectMacroThemeFromMessages(Array.isArray(recentMessages) ? recentMessages : []);
+  const macroInstruction = getMacroInstruction(macroSource);
+  if (macroInstruction) {
+    sections.push(macroInstruction);
+  }
+
+  const memoryAnglesSource = Array.isArray((riskComfortData as Record<string, unknown> | null)?.analysis_focus_preferences)
+    ? (riskComfortData as { analysis_focus_preferences: unknown[] }).analysis_focus_preferences
+    : (Array.isArray((aiMemory as Record<string, unknown> | null)?.analysis_focus_preferences)
+      ? (aiMemory as { analysis_focus_preferences: unknown[] }).analysis_focus_preferences
+      : []);
+  const memoryAngles = memoryAnglesSource.filter(isAnalysisAngle);
+  const combinedAngles = new Set<AnalysisAngle>([
+    ...(analysisAngles ?? []),
+    ...memoryAngles,
+  ]);
+  combinedAngles.forEach(angle => sections.push(getAnalysisAngleInstruction(angle)));
 
   return sections.length > 0 ? sections.join('\n') : '';
 };
@@ -1759,7 +2075,7 @@ const fetchTavilyContext = async (
 
     const timeout = typeof searchOptions.timeoutMs === 'number' && searchOptions.timeoutMs > 0
       ? searchOptions.timeoutMs
-      : 6000;
+      : 12000;
 
     const domainAttempts: string[][] = [];
     if (effectiveIncludeDomains.length > 0) {
@@ -1915,6 +2231,8 @@ serve(async (req) => {
     
     const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData, stream, documentIds } = requestBody;
 
+    const { recentMessages: preparedChatHistory, summaryMessage, totalEntries: totalHistoryEntries } = prepareChatHistory(chatHistory);
+
     const filteredDocumentIds: string[] = Array.isArray(documentIds)
       ? documentIds.filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0)
       : [];
@@ -1938,12 +2256,14 @@ serve(async (req) => {
       analysisType
     });
 
-    const recentUserMessages = Array.isArray(chatHistory)
-      ? chatHistory
-        .filter((entry: { role?: string; content?: string }) => entry?.role === 'user' && typeof entry?.content === 'string')
-        .map(entry => entry.content as string)
-        .slice(-3)
-      : [];
+    const recentUserMessages = preparedChatHistory
+      .filter((entry) => entry.role === 'user')
+      .map((entry) => entry.content)
+      .slice(-3);
+
+    const riskKeywordPattern = /(riskprofil|risktolerans|riskniv[åa]|risktagande|riskjusterad|riskhantering|risknivån|risknivaan|risknivor|risk)/i;
+    const mentionsRisk = (value?: string): boolean => typeof value === 'string' && riskKeywordPattern.test(value);
+    const userExplicitRiskFocus = mentionsRisk(message) || recentUserMessages.some(mentionsRisk);
 
     const riskKeywordPattern = /(riskprofil|risktolerans|riskniv[åa]|risktagande|riskjusterad|riskhantering|risknivån|risknivaan|risknivor|risk)/i;
     const mentionsRisk = (value?: string): boolean => typeof value === 'string' && riskKeywordPattern.test(value);
@@ -2006,6 +2326,8 @@ serve(async (req) => {
         .eq('user_id', userId)
         .maybeSingle()
     ]);
+
+    const aiMemoryRiskComfort = (aiMemory?.risk_comfort_patterns as Record<string, unknown> | null) ?? null;
 
     let sheetTickerSymbols: string[] = [];
     let sheetTickerNames: string[] = [];
@@ -3081,7 +3403,7 @@ serve(async (req) => {
         });
 
         const updatedFavoriteSectors = Array.from(new Set([...(existingMemory?.favorite_sectors || []), ...interests])).slice(0, 6);
-        const updatedFavoriteCompanies = Array.from(new Set([...(existingMemory?.favorite_companies || []), ...companies])).slice(0, 6);
+        const updatedPreferredCompanies = Array.from(new Set([...(existingMemory?.preferred_companies || []), ...companies])).slice(0, 6);
 
         let expertiseLevel: 'beginner' | 'intermediate' | 'advanced' = (existingMemory?.expertise_level as 'beginner' | 'intermediate' | 'advanced') || 'beginner';
         if (riskProfile?.investment_experience && ['beginner', 'intermediate', 'advanced'].includes(riskProfile.investment_experience)) {
@@ -3091,7 +3413,36 @@ serve(async (req) => {
           expertiseLevel = expertiseLevel === 'beginner' ? 'intermediate' : 'advanced';
         }
 
-        const followUpPreference = wantsConcise ? 'skip' : existingMemory?.follow_up_preference ?? 'auto';
+        const existingRiskComfort = (existingMemory?.risk_comfort_patterns as Record<string, unknown> | null) ?? {};
+        const followUpPreference = wantsConcise
+          ? 'skip'
+          : (typeof (existingRiskComfort as { follow_up_preference?: unknown }).follow_up_preference === 'string'
+            ? (existingRiskComfort as { follow_up_preference: string }).follow_up_preference
+            : 'auto');
+
+        const conversationTexts = [userMessage, aiResponse].filter((value): value is string => typeof value === 'string' && value.length > 0);
+        const macroThemeFromConversation = detectMacroThemeFromMessages(conversationTexts);
+        const macroFocusTopic = macroThemeFromConversation
+          || (isMacroTheme((existingRiskComfort as { macro_focus_topic?: unknown }).macro_focus_topic as string)
+            ? (existingRiskComfort as { macro_focus_topic: MacroTheme }).macro_focus_topic
+            : null)
+          || null;
+        const analysisAnglesFromConversation = detectAnalysisAnglesInText(conversationTexts.join('\n'));
+        const existingAngles = Array.isArray((existingRiskComfort as { analysis_focus_preferences?: unknown }).analysis_focus_preferences)
+          ? ((existingRiskComfort as { analysis_focus_preferences: unknown[] }).analysis_focus_preferences).filter(isAnalysisAngle)
+          : [];
+        const mergedAnalysisAngles = Array.from(new Set<AnalysisAngle>([
+          ...existingAngles,
+          ...analysisAnglesFromConversation,
+        ])).slice(0, 4);
+
+        const mergedRiskComfort: Record<string, unknown> = {
+          ...existingRiskComfort,
+          follow_up_preference: followUpPreference,
+          last_detected_intent: detectedIntent,
+          macro_focus_topic: macroFocusTopic,
+          analysis_focus_preferences: mergedAnalysisAngles,
+        };
 
         const memoryData = {
           user_id: userId,
@@ -3105,10 +3456,9 @@ serve(async (req) => {
             ...(isPortfolioOptimizationRequest ? ['portföljoptimering'] : [])
           ].slice(0, 6),
           favorite_sectors: updatedFavoriteSectors,
-          favorite_companies: updatedFavoriteCompanies,
+          preferred_companies: updatedPreferredCompanies,
           current_goals: Array.from(detectedGoals).slice(0, 6),
-          follow_up_preference: followUpPreference,
-          last_detected_intent: detectedIntent,
+          risk_comfort_patterns: mergedRiskComfort,
           updated_at: new Date().toISOString()
         };
 
@@ -3160,21 +3510,42 @@ serve(async (req) => {
       }
     }
 
-    const followUpPreference = typeof aiMemory?.follow_up_preference === 'string' ? aiMemory.follow_up_preference : 'auto';
+    const followUpPreference = typeof (aiMemoryRiskComfort as { follow_up_preference?: unknown })?.follow_up_preference === 'string'
+      ? (aiMemoryRiskComfort as { follow_up_preference: string }).follow_up_preference
+      : 'auto';
     let shouldOfferFollowUp = followUpPreference !== 'skip' && aiMemory?.communication_style !== 'concise';
     if (['general_news'].includes(userIntent) && followUpPreference !== 'force') {
       shouldOfferFollowUp = false;
     }
+
+    const combinedRecentMessages = [message, ...recentUserMessages];
+    const macroThemeFromMessages = detectMacroThemeFromMessages(combinedRecentMessages);
+    const analysisAnglesFromMessages = detectAnalysisAnglesInText(combinedRecentMessages.join('\n'));
+    const focusSignals = extractAnalysisFocusSignals(message);
+    const shouldBridgeLanguage = detectSwedishLanguage(message, interpretedLanguage);
+    const includeEmojiGuidance = userIntent !== 'document_summary';
+    const includeHeadingGuidance = userIntent !== 'document_summary';
+    const enforceTickerFormat = isStockMentionRequest
+      || ['stock_analysis', 'buy_sell_decisions', 'general_advice', 'portfolio_optimization'].includes(userIntent);
 
     const basePrompt = buildBasePrompt({
       shouldOfferFollowUp,
       expertiseLevel: expertiseFromMemory ?? expertiseFromProfile ?? null,
       preferredResponseLength: preferredLength,
       respectRiskProfile: userExplicitRiskFocus,
-    });
+        includeTranslationDirective: shouldBridgeLanguage,
+        enableEmojiGuidance: includeEmojiGuidance,
+        enableHeadingGuidance: includeHeadingGuidance,
+        enforceTickerFormat,
+      });
 
     const headingDirective = buildHeadingDirectives({ intent: userIntent });
-    const intentPrompt = buildIntentPrompt(userIntent);
+    const intentPrompt = buildIntentPrompt({
+      intent: userIntent,
+      focus: focusSignals,
+      referencesPersonalInvestments,
+      macroTheme: macroThemeFromMessages,
+    });
 
     const favoriteSectorCandidates = new Set<string>();
     if (Array.isArray(aiMemory?.favorite_sectors)) {
@@ -3196,6 +3567,9 @@ serve(async (req) => {
       aiMemory,
       favoriteSectors: Array.from(favoriteSectorCandidates),
       currentGoals: Array.isArray(aiMemory?.current_goals) ? aiMemory.current_goals : undefined,
+      recentMessages: combinedRecentMessages,
+      macroTheme: macroThemeFromMessages,
+      analysisAngles: analysisAnglesFromMessages,
     });
 
     const contextSections = [basePrompt];
@@ -3648,14 +4022,22 @@ ${importantLines.join('\n')}
 `;
 
 
-    // Force using gpt-5.1 with reasoning-enabled features for consistent behavior
-    const model = PRIMARY_CHAT_MODEL;
+    const model = selectChatModel({
+      hasRealTimeTrigger,
+      isDocumentSummaryRequest,
+      isSimplePersonalAdviceRequest,
+      userIntent,
+    });
 
     console.log('Selected model:', model, 'for request type:', {
       isStockAnalysis: isStockAnalysisRequest,
       isPortfolioOptimization: isPortfolioOptimizationRequest,
       messageLength: message.length,
-      historyLength: chatHistory.length
+      historyLength: totalHistoryEntries,
+      hasRealTimeTrigger,
+      isDocumentSummaryRequest,
+      isSimplePersonalAdviceRequest,
+      userIntent
     });
 
     const hasMarketData = tavilyContext.formattedContext.length > 0;
@@ -3670,7 +4052,8 @@ ${importantLines.join('\n')}
     // Build messages array with enhanced context
     const messages = [
       { role: 'system', content: contextInfo + tavilyContext.formattedContext + tavilySourceInstruction },
-      ...chatHistory,
+      ...(summaryMessage ? [summaryMessage] : []),
+      ...preparedChatHistory,
       { role: 'user', content: message }
     ];
 

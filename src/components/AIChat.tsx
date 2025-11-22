@@ -157,12 +157,6 @@ const AIChat = ({
     }
   }, [draftStorageKey, input]);
   useEffect(() => {
-    // Auto-scroll when messages change
-    messagesEndRef.current?.scrollIntoView({
-      behavior: 'smooth'
-    });
-  }, [messages]);
-  useEffect(() => {
     // Handle initial stock and message from URL parameters - but only once
     if (initialStock && initialMessage && !hasProcessedInitialMessage) {
       const startPrefilledSession = async () => {
