@@ -37,15 +37,34 @@ const ChatInput = memo(({
 }: ChatInputProps) => {
   const { usage, subscription } = useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [promptIndices, setPromptIndices] = useState<Record<string, number>>({});
   
   const dailyLimit = FREE_DAILY_AI_MESSAGE_LIMIT;
   const currentUsage = usage?.ai_messages_count || 0;
   const isPremium = subscription?.subscribed;
   const isAtLimit = !isPremium && currentUsage >= dailyLimit;
 
-  const handleQuickPromptClick = (prompt: string) => {
-    onQuickPromptSelect?.(prompt);
-    setInput(prompt);
+  const getNextPromptValue = (quickPrompt: QuickPrompt) => {
+    if (Array.isArray(quickPrompt.prompt)) {
+      const prompts = quickPrompt.prompt;
+      const nextIndex = promptIndices[quickPrompt.label] ?? 0;
+      const selectedPrompt = prompts[nextIndex % prompts.length];
+
+      setPromptIndices((prev) => ({
+        ...prev,
+        [quickPrompt.label]: (nextIndex + 1) % prompts.length,
+      }));
+
+      return selectedPrompt;
+    }
+
+    return quickPrompt.prompt;
+  };
+
+  const handleQuickPromptClick = (quickPrompt: QuickPrompt) => {
+    const promptValue = getNextPromptValue(quickPrompt);
+    onQuickPromptSelect?.(promptValue);
+    setInput(promptValue);
     setTimeout(() => {
       inputRef.current?.focus();
     }, 50);
@@ -105,7 +124,7 @@ const ChatInput = memo(({
                     variant="outline"
                     size="sm"
                     className="h-auto rounded-full border-ai-border/60 bg-transparent px-3 py-1.5 text-[13px] font-semibold text-foreground shadow-none transition hover:-translate-y-0.5 hover:border-primary/50 hover:text-primary"
-                    onClick={() => handleQuickPromptClick(quickPrompt.prompt)}
+                    onClick={() => handleQuickPromptClick(quickPrompt)}
                   >
                     <span className="inline-flex items-center gap-1.5">
                       {quickPrompt.icon && (
