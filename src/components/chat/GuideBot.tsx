@@ -39,7 +39,7 @@ interface GuideButton {
   topic?: 'stocks' | 'portfolio' | 'education';
 }
 
-interface QuickPrompt {
+export interface QuickPrompt {
   label: string;
   prompt: string;
   description?: string;
@@ -50,6 +50,7 @@ interface GuideBotProps {
   onPromptExample: (prompt: string) => void;
   onNavigate: (path: string) => void;
   onShowDemo: (demoType: string) => void;
+  initialFlowId?: keyof typeof GUIDE_FLOWS | 'welcome';
 }
 
 const WELCOME_MESSAGE: GuideMessage = {
@@ -553,14 +554,47 @@ const GUIDE_FLOWS: Record<string, GuideMessage> = {
         prompt: 'Identifiera de största riskerna i en portfölj med tech- och energibolag och föreslå hedgar.',
         description: 'Minska nedsidan med konkreta åtgärder',
         icon: <ShieldCheck className="w-4 h-4" />
+      },
+      {
+        label: 'Jämför två bolag',
+        prompt: 'Jämför Volvo och Scania på värdering, marginaler och kassaflöde. Lista styrkor, svagheter och en tydlig rekommendation.',
+        description: 'Snabb bolagsjämförelse med slutsats',
+        icon: <LineChart className="w-4 h-4" />
+      },
+      {
+        label: 'Sektorjämförelse',
+        prompt: 'Sammanfatta styrkor och svagheter för tre ledande bolag inom grön energi (t.ex. Ørsted, Vestas, Siemens Energy) och jämför deras värderingar.',
+        description: 'Se vilka aktörer som står starkast',
+        icon: <Layers className="w-4 h-4" />
+      },
+      {
+        label: 'Värderingskoll',
+        prompt: 'Gör en snabb multiples-jämförelse av två svenska industribolag (P/E, EV/EBITDA, kassaflöde) och bedöm vilket som ser mest attraktivt ut.',
+        description: 'Korta insikter om relativ värdering',
+        icon: <Target className="w-4 h-4" />
       }
     ],
     isBot: true
   }
 };
 
-const GuideBot: React.FC<GuideBotProps> = ({ onPromptExample, onNavigate, onShowDemo }) => {
-  const [currentMessage, setCurrentMessage] = React.useState<GuideMessage>(WELCOME_MESSAGE);
+const getGuideMessage = (flowId?: keyof typeof GUIDE_FLOWS | 'welcome') => {
+  if (flowId && flowId !== 'welcome') {
+    return GUIDE_FLOWS[flowId] ?? WELCOME_MESSAGE;
+  }
+
+  return WELCOME_MESSAGE;
+};
+
+export const AI_CHAT_EXAMPLE_PROMPT = GUIDE_FLOWS['ai-chat'].buttons?.[0]?.value;
+export const PROMPT_PLAYGROUND_PROMPTS = GUIDE_FLOWS['prompt-playground'].quickPrompts ?? [];
+
+const GuideBot: React.FC<GuideBotProps> = ({ onPromptExample, onNavigate, onShowDemo, initialFlowId = 'welcome' }) => {
+  const [currentMessage, setCurrentMessage] = React.useState<GuideMessage>(() => getGuideMessage(initialFlowId));
+
+  React.useEffect(() => {
+    setCurrentMessage(getGuideMessage(initialFlowId));
+  }, [initialFlowId]);
 
   const messageTypeLabel =
     currentMessage.type === 'interactive'

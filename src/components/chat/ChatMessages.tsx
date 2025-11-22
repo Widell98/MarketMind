@@ -113,6 +113,9 @@ const ChatMessages = ({
     },
   ];
 
+  const shouldShowInlineGuide = messages.length === 0 && !isLoading && !isLoadingSession;
+  const shouldRenderGuideBot = showGuideBot || shouldShowInlineGuide;
+
   if (isLoadingSession) {
     return (
       <div
@@ -144,11 +147,12 @@ const ChatMessages = ({
       style={{ scrollbarGutter: 'stable' }}
     >
       <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-5 sm:space-y-7 sm:px-5 sm:py-7 lg:max-w-6xl lg:space-y-9 lg:px-6 lg:py-8 xl:max-w-6xl xl:space-y-10 xl:px-10 xl:py-9 2xl:max-w-7xl 2xl:space-y-11 2xl:px-12 2xl:py-10">
-        {showGuideBot && (
+        {shouldRenderGuideBot && (
           <GuideBot
             onPromptExample={handleGuidePrompt}
             onNavigate={handleNavigate}
             onShowDemo={handleShowDemo}
+            initialFlowId={showGuideBot ? 'welcome' : 'ai-chat'}
           />
         )}
 
