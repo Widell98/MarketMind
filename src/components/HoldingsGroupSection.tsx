@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight } from 'lucide-react';
@@ -54,6 +54,27 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
   refreshingTicker
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const ITEMS_PER_PAGE = 6;
+
+  const totalPages = Math.max(1, Math.ceil(holdings.length / ITEMS_PER_PAGE));
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const currentHoldings = holdings.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [holdings.length]);
+
+  const handlePageChange = (direction: 'prev' | 'next') => {
+    setCurrentPage((prev) => {
+      if (direction === 'prev') {
+        return Math.max(1, prev - 1);
+      }
+      return Math.min(totalPages, prev + 1);
+    });
+  };
 
   // Detect if we're on mobile
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -106,7 +127,7 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
       {isExpanded && (
         <CardContent className="pt-0">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {holdings.map((holding) => {
+            {currentHoldings.map((holding) => {
               const { valueInSEK: computedValue } = resolveHoldingValue(holding);
               const holdingPerformance = holdingPerformanceMap?.[holding.id];
 
@@ -149,6 +170,35 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
               );
             })}
           </div>
+
+          {totalPages > 1 && (
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                Visar {startIndex + 1}-{Math.min(endIndex, holdings.length)} av {holdings.length} innehav
+              </p>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange('prev')}
+                  disabled={currentPage === 1}
+                >
+                  Föregående
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Sida {currentPage} av {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange('next')}
+                  disabled={currentPage === totalPages}
+                >
+                  Nästa
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       )}
     </Card>
