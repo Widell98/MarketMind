@@ -9,6 +9,24 @@ const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
+const extractText = (data: any) => {
+  if (Array.isArray(data?.output)) {
+    for (const block of data.output) {
+      if (block.type === "message") {
+        for (const c of block.content ?? []) {
+          if (c.type === "output_text") return c.text;
+        }
+      }
+    }
+  }
+
+  // fallback (om OpenAI ändrar format)
+  if (data?.output_text) return data.output_text;
+  if (data?.choices?.[0]?.message?.content) return data.choices[0].message.content;
+
+  return null;
+};
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -983,23 +1001,24 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
 
       console.log(`Generating case ${i + 1} for ${sector} - ${style}...`);
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch('https://api.openai.com/v1/responses', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${openAIApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
+          model: 'gpt-5.1',
+          max_output_tokens: 900,
+          temperature: 0.7,
+          reasoning: { effort: 'low' },
+          input: [
             {
               role: 'system',
-              content: 'Du är en erfaren finansanalytiker som skapar investeringsanalyser för svenska investerare. Svara alltid med giltigt JSON.'
+              content: 'Du är en professionell finansanalytiker. Svara alltid med enbart giltig JSON.'
             },
             { role: 'user', content: prompt }
           ],
-          temperature: 0.7,
-          max_tokens: 500,
         }),
       });
 
@@ -1011,32 +1030,32 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
       }
 
       const data = await response.json();
-      const generatedContent = data?.choices?.[0]?.message?.content;
+      const rawContent = extractText(data);
 
       console.log('OpenAI weekly case response content', {
         ticker: selectedTicker,
         sector,
         style,
-        content: generatedContent,
+        content: rawContent,
+        data,
       });
 
-      if (!generatedContent) {
-        const message = 'OpenAI response did not contain content';
+      if (!rawContent) {
+        const message = 'Model returned empty content';
         console.error(message, data);
         warnings.push(message);
         continue;
       }
 
       try {
-        const normalizedContent = extractJsonPayload(generatedContent);
+        const normalizedContent = extractJsonPayload(rawContent);
         let caseData: unknown;
 
         try {
           caseData = JSON.parse(normalizedContent);
         } catch (initialParseError) {
           try {
-            const repairedContent = jsonrepair(normalizedContent);
-            caseData = JSON.parse(repairedContent);
+            caseData = JSON.parse(jsonrepair(normalizedContent));
           } catch (_) {
             throw initialParseError;
           }
@@ -1171,7 +1190,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
       } catch (parseError) {
         const message = 'Error parsing generated case JSON';
         console.error(message, parseError);
-        console.error('Generated content:', generatedContent);
+        console.error('Generated content:', rawContent);
         warnings.push(message);
       }
     }
