@@ -31,6 +31,10 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const breadcrumbWrapperClassName = 'mb-2 sm:mb-4';
 
+  const headerInnerClassName = isChatRoute
+    ? 'w-full px-3 sm:px-4 lg:px-6 xl:px-10 2xl:px-14 py-2 sm:py-3 lg:py-4 flex justify-between items-center'
+    : 'container-responsive py-2 sm:py-3 lg:py-4 flex justify-between items-center';
+
   const contentWrapperClassName = isChatRoute
     ? 'flex-1 flex w-full flex-col min-h-0'
     : 'max-w-full overflow-hidden px-1 sm:px-0';
@@ -48,7 +52,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <div className="flex-1 flex flex-col min-w-0 max-w-full">
             {/* Header */}
             <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border shadow-sm">
-              <div className="container-responsive py-2 sm:py-3 lg:py-4 flex justify-between items-center">
+              <div className={headerInnerClassName}>
                 <div className="flex items-center space-x-2 sm:space-x-4 md:space-x-6 min-w-0">
                   {/* Sidebar trigger for desktop */}
                   <SidebarTrigger className="hidden md:flex flex-shrink-0" />

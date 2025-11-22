@@ -359,7 +359,7 @@ const AIChat = ({
     isMobile,
   ]);
   return (
-    <div className="flex h-full min-h-0 w-full overflow-hidden">
+    <div className="flex w-full min-h-screen overflow-hidden lg:h-screen">
       {user ? (
         <>
           {!isMobile && !desktopSidebarCollapsed && (
@@ -367,7 +367,7 @@ const AIChat = ({
           )}
 
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
-            <header className="grid grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-ai-border/60 px-4 py-3 sm:px-6">
+            <header className="grid grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-ai-border/50 px-3 py-3 sm:px-5 md:px-6 lg:px-8 xl:px-10 2xl:px-14 lg:border-b-0">
               <div className="flex items-center gap-2">
                 {isMobile && (
                   <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -511,7 +511,7 @@ const AIChat = ({
                   </div>
                 </div>
               )}
-              <div className="flex flex-1 flex-col overflow-y-auto bg-ai-surface px-4 py-8 sm:px-10 lg:px-14">
+              <div className="flex flex-1 flex-col overflow-y-auto bg-ai-surface px-4 py-8 sm:px-8 lg:px-10 xl:px-12 2xl:px-14">
                 <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center space-y-6 py-6 sm:py-8">
                   <div className="flex flex-col gap-4">
                     <div className="flex justify-center">
