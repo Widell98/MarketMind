@@ -36,24 +36,42 @@ const extractJsonPayload = (content: string): string => {
 };
 
 function extractText(data: unknown) {
+  if (typeof (data as { output_text?: unknown })?.output_text === 'string') {
+    return (data as { output_text: string }).output_text;
+  }
+
   const output = (data as { output?: unknown })?.output;
   if (Array.isArray(output)) {
     for (const block of output) {
-      if (typeof block === 'object' && block !== null && (block as { type?: string }).type === 'message') {
+      if (typeof block === 'object' && block !== null) {
+        const blockType = (block as { type?: string }).type;
         const content = (block as { content?: unknown })?.content;
+
         if (Array.isArray(content)) {
           for (const part of content) {
-            if (typeof part === 'object' && part !== null && (part as { type?: string }).type === 'output_text') {
-              const text = (part as { text?: unknown })?.text;
-              if (typeof text === 'string') {
-                return text;
+            if (typeof part === 'object' && part !== null) {
+              const partType = (part as { type?: string }).type;
+
+              if (partType === 'output_text' || partType === 'text') {
+                const text = (part as { text?: unknown })?.text;
+                if (typeof text === 'string' && text.trim().length > 0) {
+                  return text;
+                }
               }
             }
+          }
+        }
+
+        if (blockType === 'output_text' && typeof (block as { text?: unknown }).text === 'string') {
+          const direct = (block as { text: string }).text;
+          if (direct.trim().length > 0) {
+            return direct;
           }
         }
       }
     }
   }
+
   return null;
 }
 
@@ -1015,6 +1033,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
           model: 'gpt-5.1-mini',
           temperature: 0.7,
           max_output_tokens: 1600,
+          response_mode: 'blocking',
           reasoning: { effort: 'low' },
           text: { verbosity: 'medium' },
           input: `SYSTEM:
