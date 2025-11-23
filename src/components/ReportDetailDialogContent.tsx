@@ -22,7 +22,7 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
       <div className="relative border-b border-border/60 bg-gradient-to-br from-primary/10 via-transparent to-transparent p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-normal break-words leading-tight">
               <FileText className="h-3.5 w-3.5" />
               AI-genererad analys
             </div>
@@ -73,7 +73,7 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
               <div className="grid gap-3 sm:grid-cols-2">
                 {report.keyMetrics.map((metric, metricIndex) => (
                   <div key={`${report.id}-dialog-metric-${metricIndex}`} className="rounded-2xl border border-border/60 bg-card/70 p-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{metric.label}</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-normal break-words leading-tight">{metric.label}</p>
                     <p className="text-xl font-semibold text-foreground">{metric.value}</p>
                     {metric.trend && <p className="text-xs text-muted-foreground">{metric.trend}</p>}
                   </div>

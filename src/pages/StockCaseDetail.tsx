@@ -691,9 +691,13 @@ const StockCaseDetail = ({
       }
     }
 
+    let riskSectionRendered = false;
+
     return sections.map((section, index) => {
+      const lowerSection = section.toLowerCase();
+
       // Check if section starts with common labels
-      if (section.toLowerCase().startsWith('bull case')) {
+      if (lowerSection.startsWith('bull case')) {
         return (
           <div key={index} className="space-y-2">
             <h3 className="text-lg font-semibold text-green-600 flex items-center gap-2">
@@ -705,7 +709,7 @@ const StockCaseDetail = ({
         );
       }
       
-      if (section.toLowerCase().startsWith('bear case')) {
+      if (lowerSection.startsWith('bear case')) {
         return (
           <div key={index} className="space-y-2">
             <h3 className="text-lg font-semibold text-red-600 flex items-center gap-2">
@@ -717,14 +721,15 @@ const StockCaseDetail = ({
         );
       }
       
-      if (section.toLowerCase().includes('risk')) {
+      if (!riskSectionRendered && (lowerSection.startsWith('risk') || lowerSection.startsWith('risknivå'))) {
+        riskSectionRendered = true;
         return (
           <div key={index} className="space-y-2">
             <h3 className="text-lg font-semibold text-orange-600 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5" />
               Risknivå
             </h3>
-            <p className="text-foreground leading-relaxed">{section}</p>
+            <p className="text-foreground leading-relaxed">{section.replace(/^risknivå[:\-]?\s*/i, '')}</p>
           </div>
         );
       }

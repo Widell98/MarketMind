@@ -35,6 +35,46 @@ const extractJsonPayload = (content: string): string => {
   return trimmed;
 };
 
+function extractText(data: unknown) {
+  if (typeof (data as { output_text?: unknown })?.output_text === 'string') {
+    return (data as { output_text: string }).output_text;
+  }
+
+  const output = (data as { output?: unknown })?.output;
+  if (Array.isArray(output)) {
+    for (const block of output) {
+      if (typeof block === 'object' && block !== null) {
+        const blockType = (block as { type?: string }).type;
+        const content = (block as { content?: unknown })?.content;
+
+        if (Array.isArray(content)) {
+          for (const part of content) {
+            if (typeof part === 'object' && part !== null) {
+              const partType = (part as { type?: string }).type;
+
+              if (partType === 'output_text' || partType === 'text') {
+                const text = (part as { text?: unknown })?.text;
+                if (typeof text === 'string' && text.trim().length > 0) {
+                  return text;
+                }
+              }
+            }
+          }
+        }
+
+        if (blockType === 'output_text' && typeof (block as { text?: unknown }).text === 'string') {
+          const direct = (block as { text: string }).text;
+          if (direct.trim().length > 0) {
+            return direct;
+          }
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 const sanitizeNumber = (value: unknown): number | null => {
   if (value === null || value === undefined) {
     return null;
@@ -440,15 +480,20 @@ const buildAiIntro = (
 };
 
 const sanitizeCaseData = (rawCase: any) => {
+  const logRejection = (reason: string, context?: Record<string, unknown>) => {
+    console.log('sanitizeCaseData rejection:', reason, context ?? {});
+  };
+
   if (!rawCase || typeof rawCase !== 'object') {
+    logRejection('rawCase is not an object');
     return null;
   }
 
   const rawTitle = typeof rawCase.title === 'string' ? rawCase.title.trim() : '';
   const companyName = typeof rawCase.company_name === 'string' ? rawCase.company_name.trim() : '';
   const descriptionRaw = typeof rawCase.description === 'string' ? rawCase.description.trim() : '';
-  const longDescription = sanitizeLongDescription(
-    rawCase.analysis ?? rawCase.long_description ?? rawCase.investment_thesis,
+  let longDescription = sanitizeLongDescription(
+    rawCase.analysis ?? rawCase.long_description ?? rawCase.description,
   );
 
   const lowerCompany = companyName.toLowerCase();
@@ -456,18 +501,27 @@ const sanitizeCaseData = (rawCase: any) => {
   const forbiddenTerms = ['fiktiv', 'fiktivt', 'påhitt', 'låtsas', 'fictional'];
 
   if ((!rawTitle || rawTitle.length === 0) && (!companyName || companyName.length === 0)) {
+    logRejection('missing title and company_name');
     return null;
   }
 
   if (!descriptionRaw) {
+    logRejection('missing description');
     return null;
   }
 
   if (forbiddenTerms.some((term) => lowerCompany.includes(term) || lowerDescription.includes(term))) {
+    logRejection('forbidden terms detected', { companyName, descriptionRaw });
     return null;
   }
 
   if (!longDescription) {
+    // GPT-5.1 can produce more concise summaries; allow a fallback to avoid over-filtering
+    longDescription = descriptionRaw || rawCase.long_description || '';
+  }
+
+  if (!longDescription || longDescription.length < 50) {
+    logRejection('long_description too short', { longDescriptionLength: longDescription.length });
     return null;
   }
 
@@ -903,71 +957,40 @@ usedTickerSymbols.add(selectedTicker);
 
 
       const prompt = `
-Du är en professionell finansanalytiker som skriver inspirerande men faktabaserade aktiepitchar för svenska investerare.
+Du är en senior aktieanalytiker. Skriv ett kort, faktabaserat investeringscase om ett verkligt börsnoterat bolag.
 
-🎯 Uppdrag:
-Skapa ett välformulerat investeringscase för ett bolag inom sektorn "${sector}" med inriktning på "${style}"-strategier.
+Bolag: ${selectedName} (${selectedTicker})
+Sektor: ${sector}
+Investeringsstil: ${style}
+Senaste pris: ${sheetPrice !== null ? `${sheetPrice} ${sheetCurrency ?? 'SEK'}` : "okänt – använd rimligt intervall"}
 
-📊 Fakta att utgå från:
-- Bolag: ${selectedName} (${selectedTicker})
-- Nuvarande pris (från Google Sheet): ${sheetPrice !== null ? `${sheetPrice} ${sheetCurrency ?? 'SEK'}` : 'okänt, använd ett rimligt värde baserat på börsdata'}
-- Analysen ska gälla verkliga, börsnoterade bolag. Kontrollera att bolaget existerar och är listat på en erkänd börs.
+Krav:
+- Endast verkliga fakta om bolaget. Inga påhitt.
+- Inget marknadsföringsspråk. Ingen hype.
+- Ton: professionell, konkret, komprimerad.
+- 4 stycken, separerade med blankrad.
+- Totalt 150–300 ord.
+- Inga listor i texten.
 
-💡 Hiss-pitch (kort presentation):
-Inled texten med en skarp hiss-pitch på 1–2 meningar som sätter kroken. Den ska:
-- visa vad bolaget gör och vilken marknad det adresserar,
-- lyfta fram en unik styrka, produkt eller position som väcker intresse,
-- antyda varför tajmingen är spännande just nu.
-Använd konkreta fakta eller välkända referenser när det är möjligt.
+Stycke 1 (Company Snapshot):
+- 2–4 mycket korta meningar.
+- Vad bolaget gör + vad som är intressant *just nu*.
 
-💰 Prisreferens:
-Om prisdata finns (${sheetPrice ? "ja" : "nej"}), inkludera **en kort mening** som sätter priset i kontext – t.ex. om aktien handlas på en attraktiv nivå, nära årshögsta, eller i linje med sektorkollegor.
-Undvik teknisk analys eller exakta kursmål – håll kommentaren kort, som en del av helhetsanalysen.
+Stycke 2 (Varför bolaget sticker ut):
+- Kärnverksamhet, nyckelprodukter, positionering.
+- En konkret styrka.
 
-🧠 Stil och ton:
-- Skriv på svenska.
-- Professionell, engagerande och lättillgänglig ton — som en erfaren analytiker som vill väcka intresse snarare än överösa med siffror.
-- Undvik jargong, men använd relevanta finansiella begrepp där det stärker trovärdigheten.
-- Fokusera på bolagets affärslogik, tillväxtmöjligheter och branschkontext — inte exakta handelsnivåer.
-- Använd levande, konkreta formuleringar som hjälper läsaren att visualisera bolagets momentum.
+Stycke 3 (Katalysatorer):
+- 2–3 tydliga drivkrafter kommande 6–18 månader.
+- 1 mening som sätter prisnivån i kontext (värdering, volym, årshögsta/lägsta).
+- Ingen teknisk analys och inga kursmål.
 
-🎯 Förväntningar på analyskvalitet:
-Analysen ska vara konkret, faktabaserad och ge verklig insikt i bolaget.
+Stycke 4 (Risker + slutsats):
+- 1–2 realistiska risker.
+- Kort slutsats kopplad till investeringsstilen "${style}".
+- Ingen upprepning.
 
-- Undvik generiska fraser som "stark balansräkning", "solid pipeline" eller "attraktivt läge".
-- Nämn minst ett **konkret exempel** kopplat till bolaget (t.ex. produkt, marknad, projekt, partnerskap eller geografisk expansion).
-- Om bolaget är verksamt inom en forskningsintensiv bransch (bioteknik, energi, teknologi etc.), inkludera en specifik produkt, tjänst eller utveckling som är central för bolaget.
-- Ge en tydlig motivering till **varför aktien kan vara intressant just nu** — t.ex. kommande lansering, förbättrad lönsamhet, orderbok, marknadstrend eller värderingsläge.
-- Lyft gärna fram en datapunkt (t.ex. tillväxttakt, marknadsandel, backlog) som gör caset mer konkret.
-- Skriv i tydliga, korta meningar som skulle fungera i en riktig analytikerpitch.
-- Undvik marknadsföringsspråk och håll fokus på analys och logik.
-
-📈 Innehållskrav och struktur:
-Skriv en analytisk aktiepitch i exakt fyra korta stycken (separerade med tomma rader) som flyter naturligt att läsa.
-
-Stycke 1 – "Hiss-pitch":
-- Den engagerande öppningen enligt instruktionerna ovan.
-
-Stycke 2 – "Varför bolaget sticker ut":
-- Beskriv kärnverksamheten, nyckelprodukter/tjänster och hur bolaget positionerar sig mot konkurrenter.
-- Lyft fram en konkret styrka eller differentierare som gör bolaget intressant för investerare.
-
-Stycke 3 – "Katalysatorer just nu":
-- Lista 2–3 specifika drivkrafter, marknadstrender eller händelser som kan driva aktien kommande 6–18 månader.
-- Minst en katalysator ska vara tidsbunden eller kopplad till ett identifierbart initiativ (t.ex. produktlansering, regulatorisk förändring, expansionsplan, marginalmål).
-- Om prisdata finns, väv in en naturlig mening som sätter värderingen i sammanhang här.
-
-Stycke 4 – "Risker och slutsats":
-- Beskriv kort en eller två risker eller utmaningar och hur bolaget adresserar dem.
-- Avsluta med en tydlig slutsats om varför aktien är attraktiv för investerare med "${style}"-inriktning just nu, och inkludera en motiverande "varför agera"-formulering.
-
-Texten ska vara 180–350 ord, utan punktlistor, och varje stycke ska bestå av 2–4 meningar.
-
-💬 Exempel på ton:
-"Hexatronic är en svensk leverantör av fiberoptiska lösningar som gynnas av den globala utbyggnaden av bredband. Med en växande orderbok och stark marknadsposition i Europa fortsätter bolaget att kapitalisera på digitaliseringsvågen. Aktien handlas kring 97 SEK, vilket ger en intressant ingångsnivå sett till bolagets långsiktiga tillväxtpotential."
-
-📦 Outputformat:
-Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
+Returnera ENDAST giltig JSON:
 
 {
   "title": "string",
@@ -983,44 +1006,56 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
 
       console.log(`Generating case ${i + 1} for ${sector} - ${style}...`);
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch("https://api.openai.com/v1/responses", {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${openAIApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
+          model: 'gpt-5.1',
+          max_output_tokens: 1600,
+          reasoning: { effort: 'low' },
+          text: { verbosity: 'medium' },
+          input: [
             {
               role: 'system',
-              content: 'Du är en erfaren finansanalytiker som skapar investeringsanalyser för svenska investerare. Svara alltid med giltigt JSON.'
+              content:
+                'Du är en erfaren finansanalytiker som skriver analytiska investeringscase. Svara ENDAST med giltig JSON.',
             },
-            { role: 'user', content: prompt }
+            {
+              role: 'user',
+              content: prompt,
+            },
           ],
-          temperature: 0.7,
-          max_tokens: 500,
         }),
       });
 
       if (!response.ok) {
+        let responseText: string | null = null;
+        try {
+          responseText = await response.text();
+        } catch (err) {
+          console.error('Failed to read OpenAI error body', err);
+        }
+
         const message = `OpenAI API error: ${response.status}`;
-        console.error(message);
+        console.error(message, { responseText });
         warnings.push(message);
         continue;
       }
 
       const data = await response.json();
-      const generatedContent = data?.choices?.[0]?.message?.content;
+      const rawText = extractText(data);
 
       console.log('OpenAI weekly case response content', {
         ticker: selectedTicker,
         sector,
         style,
-        content: generatedContent,
+        content: rawText,
       });
 
-      if (!generatedContent) {
+      if (!rawText) {
         const message = 'OpenAI response did not contain content';
         console.error(message, data);
         warnings.push(message);
@@ -1028,17 +1063,23 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
       }
 
       try {
-        const normalizedContent = extractJsonPayload(generatedContent);
+        const normalizedContent = extractJsonPayload(rawText);
+        console.log('Normalized OpenAI content length', normalizedContent.length);
         let caseData: unknown;
 
         try {
           caseData = JSON.parse(normalizedContent);
-        } catch (initialParseError) {
+        } catch {
           try {
             const repairedContent = jsonrepair(normalizedContent);
+            console.log('Repaired JSON content length', repairedContent.length);
             caseData = JSON.parse(repairedContent);
-          } catch (_) {
-            throw initialParseError;
+          } catch (err) {
+            console.error('JSON parse failure', {
+              normalizedPreview: normalizedContent.slice(0, 500),
+              normalizedLength: normalizedContent.length,
+            });
+            continue;
           }
         }
         const sanitized = sanitizeCaseData(caseData);
@@ -1171,13 +1212,14 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
       } catch (parseError) {
         const message = 'Error parsing generated case JSON';
         console.error(message, parseError);
-        console.error('Generated content:', generatedContent);
+        console.error('Generated content:', rawText);
         warnings.push(message);
       }
     }
 
     if (generatedCases.length === 0) {
       const warningMessage = warnings.length > 0 ? warnings.join(' | ') : 'No cases were successfully generated';
+      console.log('No cases persisted; warnings summary', warnings);
       await supabaseClient
         .from('ai_generation_runs')
         .update({

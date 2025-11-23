@@ -66,7 +66,7 @@ const GeneratedReportsSection: React.FC<GeneratedReportsSectionProps> = ({ repor
                   <CardContent className="relative z-10 space-y-4 pt-4">
                     {highlightedMetrics.length > 0 && (
                       <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-normal break-words leading-tight">
                           <LineChart className="h-3.5 w-3.5" />
                           Nyckeltal i fokus
                         </div>
@@ -76,7 +76,7 @@ const GeneratedReportsSection: React.FC<GeneratedReportsSectionProps> = ({ repor
                               key={`${report.id}-preview-metric-${metricIndex}`}
                               className="rounded-2xl border border-border/60 bg-card/70 p-3 transition group-hover:border-primary/40"
                             >
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-normal break-words leading-tight">
                                 {metric.label}
                               </p>
                               <p className="text-base font-semibold text-foreground">{metric.value}</p>
@@ -91,7 +91,7 @@ const GeneratedReportsSection: React.FC<GeneratedReportsSectionProps> = ({ repor
 
                     {previewKeyPoints.length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Snabbt summerat</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-normal break-words leading-tight">Snabbt summerat</p>
                         <ul className="space-y-1.5 text-sm text-muted-foreground">
                           {previewKeyPoints.map((point, keyIndex) => (
                             <li
