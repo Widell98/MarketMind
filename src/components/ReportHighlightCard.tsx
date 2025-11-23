@@ -60,7 +60,7 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
 
             {highlightedMetrics.length > 0 && (
               <div className="rounded-2xl border bg-card/70 p-4 shadow-sm backdrop-blur">
-                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   <LineChart className="h-3.5 w-3.5" />
                   Nyckeltal
                 </div>
@@ -70,7 +70,9 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
                       key={`${report.id}-highlight-metric-${index}`}
                       className="flex flex-col gap-1 border-t pt-2 text-left sm:border-l sm:border-t-0 sm:pl-4"
                     >
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{metric.label}</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground leading-4 break-words">
+                        {metric.label}
+                      </p>
                       <p className="text-lg font-semibold text-foreground sm:text-xl">{metric.value}</p>
                       {metric.trend && <p className="text-xs text-muted-foreground">{metric.trend}</p>}
                     </div>

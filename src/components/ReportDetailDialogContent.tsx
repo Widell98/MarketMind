@@ -33,7 +33,7 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
                 </AvatarFallback>
               </Avatar>
               <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground leading-4">
                   <div className="flex items-center gap-1 rounded-full bg-muted px-3 py-1">
                     <Sparkles className="h-3.5 w-3.5" />
                     AI-genererad analys
@@ -53,7 +53,10 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
                   <Badge variant="secondary" className="rounded-full">
                     {report.companyName}
                   </Badge>
-                  <Badge variant="outline" className="flex items-center gap-1 rounded-full text-[11px] uppercase tracking-wide">
+                  <Badge
+                    variant="outline"
+                    className="flex items-center gap-1 rounded-full text-[11px] uppercase tracking-wide leading-4"
+                  >
                     <Clock3 className="h-3.5 w-3.5" />
                     {generatedAt}
                   </Badge>
@@ -88,7 +91,7 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
             <div className="space-y-4">
               {report.keyPoints && report.keyPoints.length > 0 && (
                 <div className="rounded-2xl border bg-card p-5 shadow-sm dark:bg-slate-900/80">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground leading-4">
                     <Calendar className="h-4 w-4" />
                     Nyckelpunkter
                   </div>
@@ -128,13 +131,13 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
 
             <div className="space-y-4">
               <div className="rounded-2xl border bg-card p-5 shadow-sm dark:bg-slate-900">
-                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Översikt</h3>
+                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground leading-4">Översikt</h3>
                 <p className="mt-3 text-base leading-relaxed text-foreground/90">{report.summary}</p>
               </div>
 
               {report.keyMetrics && report.keyMetrics.length > 0 && (
                 <div className="rounded-2xl border bg-card p-5 shadow-sm dark:bg-slate-900">
-                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground leading-4">
                     <span>Viktiga siffror</span>
                     <LineChart className="h-4 w-4" />
                   </div>
@@ -144,7 +147,7 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
                         key={`${report.id}-dialog-metric-${metricIndex}`}
                         className="flex flex-col gap-2 rounded-xl border bg-card px-4 py-3 text-left sm:flex-row sm:items-center sm:gap-0"
                       >
-                        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{metric.label}</div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground leading-4 break-words">{metric.label}</div>
                         <div className="text-left sm:text-right">
                           <p className="text-lg font-semibold text-foreground sm:text-xl">{metric.value}</p>
                           {metric.trend && <p className="text-xs text-muted-foreground">{metric.trend}</p>}
