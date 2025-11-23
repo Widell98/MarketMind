@@ -38,6 +38,33 @@ const Discover = () => {
   const [featuredCaseId, setFeaturedCaseId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'cases' | 'liked'>('cases');
 
+  const sectorCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allStockCases?.forEach((sc) => {
+      const sector = sc.sector?.trim();
+      if (sector) {
+        counts[sector] = (counts[sector] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [allStockCases]);
+
+  const performanceCounts = useMemo(
+    () =>
+      allStockCases?.reduce(
+        (acc, sc) => {
+          const perf = sc.performance_percentage ?? 0;
+          if (perf > 0) acc.positive += 1;
+          if (perf < 0) acc.negative += 1;
+          if (perf > 10) acc.high += 1;
+          if (perf < 5) acc.low += 1;
+          return acc;
+        },
+        { positive: 0, negative: 0, high: 0, low: 0 }
+      ) || { positive: 0, negative: 0, high: 0, low: 0 },
+    [allStockCases]
+  );
+
   const filteredCases = useMemo(() => {
     let filtered = [...(allStockCases || [])];
     const normalizedSearchTerm = caseSearchTerm.trim().toLowerCase();
@@ -178,7 +205,7 @@ const Discover = () => {
   return (
     <Layout>
       <div className="w-full pb-12">
-        <div className="mx-auto w-full max-w-6xl space-y-8 px-3 sm:px-4 lg:px-0">
+        <div className="mx-auto w-full max-w-6xl space-y-10 px-3 sm:px-4 lg:px-0">
           <section className="rounded-3xl border border-border/60 bg-card/70 p-6 text-center shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:p-10">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 sm:h-14 sm:w-14">
               <Sparkles className="h-6 w-6 text-primary" />
@@ -186,19 +213,27 @@ const Discover = () => {
             <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
               Upptäck & Utforska
             </h1>
-            <p className="mx-auto mt-3 max-w-2xl text-base text-muted-foreground sm:text-lg">
-              Hitta inspiration genom visuella aktiecase och AI-drivna idéer.
+            <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-foreground sm:text-lg">
+              Hitta inspiration genom visuella aktiecase och AI-drivna idéer. Här kan du filtrera, jämföra och spara företag som passar din strategi.
             </p>
           </section>
 
-          <div className="w-full space-y-6 sm:space-y-8">
+          <div className="w-full space-y-8 sm:space-y-10">
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'cases' | 'liked')} className="w-full">
-              <TabsList className="mx-auto grid w-full max-w-md grid-cols-2 gap-1 rounded-2xl bg-muted p-1 shadow-sm sm:gap-2">
-                <TabsTrigger value="cases" className="flex items-center gap-2 rounded-xl">
+              <TabsList className="mx-auto grid w-full max-w-md grid-cols-2 gap-2 rounded-2xl border border-border/70 bg-muted p-1.5 shadow-sm sm:gap-3">
+                <TabsTrigger
+                  value="cases"
+                  className="flex items-center gap-2 rounded-xl text-base data-[state=active]:border data-[state=active]:border-primary/50 data-[state=active]:bg-primary/15 data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                  aria-label="Alla aktiecase"
+                >
                   <Layers className="h-4 w-4" />
                   Alla case
                 </TabsTrigger>
-                <TabsTrigger value="liked" className="flex items-center gap-2 rounded-xl">
+                <TabsTrigger
+                  value="liked"
+                  className="flex items-center gap-2 rounded-xl text-base data-[state=active]:border data-[state=active]:border-primary/50 data-[state=active]:bg-primary/15 data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                  aria-label="Gillade företag"
+                >
                   <Heart className="h-4 w-4" />
                   Gillade företag
                 </TabsTrigger>
@@ -231,6 +266,8 @@ const Discover = () => {
                     viewMode={caseViewMode}
                     onViewModeChange={setCaseViewMode}
                     availableSectors={availableSectors}
+                    sectorCounts={sectorCounts}
+                    performanceCounts={performanceCounts}
                     resultsCount={filteredCases.length}
                     totalCount={allStockCases?.length || 0}
                   />
@@ -254,15 +291,29 @@ const Discover = () => {
                       <Camera className="h-8 w-8 text-muted-foreground" />
                     </div>
                     <h3 className="mb-3 text-xl font-semibold text-foreground">
-                      {caseSearchTerm ? 'Inga case matchar din sökning' : 'Inga case hittades'}
+                      {caseSearchTerm ? 'Inga case matchar din sökning' : 'Inga case hittades ännu'}
                     </h3>
-                    <p className="mx-auto mb-8 max-w-md text-sm text-muted-foreground sm:text-base">
-                      {caseSearchTerm ? 'Prova att justera dina sökkriterier eller rensa filtren.' : 'Kom tillbaka senare för nya case från communityt.'}
+                    <p className="mx-auto mb-8 max-w-2xl text-base leading-relaxed text-muted-foreground">
+                      {caseSearchTerm
+                        ? 'Prova att justera dina sökkriterier eller rensa filtren.'
+                        : 'Logga in för att få skräddarsydda förslag eller utforska våra mest populära företag.'}
                     </p>
                     {caseSearchTerm && (
                       <Button onClick={() => setCaseSearchTerm('')} variant="outline" className="rounded-xl border-border hover:bg-muted/50">
                         Rensa sökning
                       </Button>
+                    )}
+                    {!caseSearchTerm && (
+                      <div className="flex flex-wrap justify-center gap-3">
+                        {!user && (
+                          <Button size="lg" className="rounded-xl" onClick={() => navigate('/auth')}>
+                            Logga in för rekommendationer
+                          </Button>
+                        )}
+                        <Button variant="outline" className="rounded-xl" onClick={() => setPerformanceFilter('positive')}>
+                          Visa populära case
+                        </Button>
+                      </div>
                     )}
                   </div>
                 )}
