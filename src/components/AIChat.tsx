@@ -72,6 +72,7 @@ const AIChat = ({
     isUploading: isUploadingDocument,
     uploadDocument,
     deleteDocument,
+    hasReachedDocumentLimit,
   } = useChatDocuments();
   const [input, setInput] = useState('');
   const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false);
@@ -137,6 +138,14 @@ const AIChat = ({
     await deleteDocument(documentId);
     setSelectedDocumentIds((prev) => prev.filter((id) => id !== documentId));
   }, [deleteDocument]);
+
+  const handleDocumentLimitClick = useCallback(() => {
+    toast({
+      title: 'Dokumentgräns nådd',
+      description: 'Du kan ha max två uppladdade dokument. Ta bort ett innan du laddar upp ett nytt.',
+      variant: 'destructive',
+    });
+  }, [toast]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -488,6 +497,8 @@ const AIChat = ({
                 }))}
                 onRemoveDocument={handleRemoveDocument}
                 isAttachDisabled={isUploadingDocument || quotaExceeded}
+                isDocumentLimitReached={hasReachedDocumentLimit}
+                onDocumentLimitClick={handleDocumentLimitClick}
               />
             )}
           </div>

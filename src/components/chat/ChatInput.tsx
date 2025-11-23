@@ -6,6 +6,7 @@ import { OPEN_CHAT_DOCUMENT_UPLOAD_EVENT } from '@/constants/chatDocuments';
 import { Send, MessageSquare, AlertCircle, Loader2, Sparkles, X, Paperclip } from 'lucide-react';
 import { FREE_DAILY_AI_MESSAGE_LIMIT, useSubscription } from '@/hooks/useSubscription';
 import PremiumUpgradeModal from './PremiumUpgradeModal';
+import { useToast } from '@/hooks/use-toast';
 
 interface ChatInputProps {
   input: string;
@@ -17,6 +18,8 @@ interface ChatInputProps {
   attachedDocuments?: Array<{ id: string; name: string; status?: 'processing' | 'processed' | 'failed' }>;
   onRemoveDocument?: (documentId: string) => void;
   isAttachDisabled?: boolean;
+  isDocumentLimitReached?: boolean;
+  onDocumentLimitClick?: () => void;
 }
 
 const ChatInput = memo(({
@@ -29,9 +32,12 @@ const ChatInput = memo(({
   attachedDocuments = [],
   onRemoveDocument,
   isAttachDisabled = false,
+  isDocumentLimitReached = false,
+  onDocumentLimitClick,
 }: ChatInputProps) => {
   const { usage, subscription } = useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const { toast } = useToast();
   
   const dailyLimit = FREE_DAILY_AI_MESSAGE_LIMIT;
   const currentUsage = usage?.ai_messages_count || 0;
@@ -56,6 +62,16 @@ const ChatInput = memo(({
 
   const handleAttachClick = () => {
     if (isAttachDisabled) {
+      toast({
+        title: 'Uppladdning pausad',
+        description: 'Vänta tills pågående uppladdning eller försök igen när kvoten är tillgänglig.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (isDocumentLimitReached) {
+      onDocumentLimitClick?.();
       return;
     }
 
@@ -142,7 +158,6 @@ const ChatInput = memo(({
               variant="ghost"
               size="icon"
               onClick={handleAttachClick}
-              disabled={isAttachDisabled}
               className="h-10 w-10 rounded-full border border-transparent text-primary transition-colors hover:border-primary/30 hover:bg-primary/10 sm:h-11 sm:w-11 lg:h-12 lg:w-12 dark:text-ai-text-muted dark:hover:text-primary"
               aria-label="Bifoga dokument"
             >
