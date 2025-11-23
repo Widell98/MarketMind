@@ -173,6 +173,11 @@ export const useChatDocuments = () => {
       }
     }
 
+    toast({
+      title: 'Uppladdning påbörjad',
+      description: 'Dokumentet bearbetas – det kan ta några sekunder.',
+    });
+
     setIsUploading(true);
 
     try {
@@ -212,11 +217,6 @@ export const useChatDocuments = () => {
         console.error('Document processing failed', processError || processData);
         throw new Error(message || 'Kunde inte bearbeta dokumentet');
       }
-
-      toast({
-        title: 'Uppladdning påbörjad',
-        description: 'Dokumentet bearbetas – det kan ta några sekunder.',
-      });
 
       await fetchDocuments();
 
