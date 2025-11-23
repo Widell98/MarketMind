@@ -1045,7 +1045,6 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
         },
         body: JSON.stringify({
           model: 'gpt-5.1',
-          temperature: 0.7,
           max_output_tokens: 1600,
           reasoning: { effort: 'low' },
           text: { verbosity: 'medium' },
