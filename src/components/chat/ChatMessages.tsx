@@ -113,8 +113,7 @@ const ChatMessages = ({
     },
   ];
 
-  const shouldShowInlineGuide = messages.length === 0 && !isLoading && !isLoadingSession;
-  const shouldRenderGuideBot = showGuideBot || shouldShowInlineGuide;
+  const shouldRenderGuideBot = showGuideBot;
 
   if (isLoadingSession) {
     return (
