@@ -9,8 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
-import { getReportBrandTheme } from '@/lib/reportBrandTheme';
 import type { GeneratedReport } from '@/types/generatedReport';
 
 interface ReportDetailDialogContentProps {
@@ -19,48 +17,40 @@ interface ReportDetailDialogContentProps {
 
 const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ report }) => {
   const generatedAt = formatDistanceToNow(new Date(report.createdAt), { addSuffix: true, locale: sv });
-  const theme = getReportBrandTheme(report.companyName);
 
   return (
     <DialogContent className="max-w-5xl overflow-hidden rounded-[28px] border border-border/50 bg-slate-50/90 p-0 shadow-2xl dark:bg-slate-950/90">
-      <div
-        className={cn(
-          'relative overflow-hidden p-8 pb-6',
-          `bg-gradient-to-r ${theme.headerGradient}`,
-          'dark:bg-slate-950'
-        )}
-      >
-        <div className={cn('absolute inset-x-4 inset-y-0 rounded-[28px] opacity-80', `bg-gradient-to-r ${theme.glow}`)} />
+      <div className="relative overflow-hidden bg-card p-8 pb-6 dark:bg-slate-950">
         <div className="relative grid gap-6 md:grid-cols-[1.2fr_auto] md:items-start">
           <div className="space-y-3">
             <div className="flex items-start gap-3">
-              <Avatar className={cn('h-14 w-14 ring-2 ring-offset-2 ring-offset-white dark:ring-offset-slate-900', theme.logoRing)}>
+              <Avatar className="h-14 w-14 ring-2 ring-offset-2 ring-offset-white dark:ring-offset-slate-900">
                 {report.companyLogoUrl && (
                   <AvatarImage src={report.companyLogoUrl} alt={report.companyName} className="object-cover" />
                 )}
-                <AvatarFallback className={cn('bg-gradient-to-br text-base font-semibold uppercase text-white', theme.logoGradient)}>
+                <AvatarFallback className="bg-muted text-base font-semibold uppercase text-foreground">
                   {report.companyName?.[0] ?? '?'}
                 </AvatarFallback>
               </Avatar>
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  <div className={cn('flex items-center gap-1 rounded-full px-3 py-1', theme.chipBg)}>
+                  <div className="flex items-center gap-1 rounded-full bg-muted px-3 py-1">
                     <Sparkles className="h-3.5 w-3.5" />
                     AI-genererad analys
                   </div>
                   {report.sourceDocumentName && (
-                    <Badge variant="outline" className={cn('rounded-full border-dashed text-[11px]', theme.chipBorder)}>
+                    <Badge variant="outline" className="rounded-full border-dashed text-[11px]">
                       {report.sourceDocumentName}
                     </Badge>
                   )}
                 </div>
-                <div className={cn('flex flex-wrap items-center gap-2 text-sm', theme.accentText)}>
+                <div className="flex flex-wrap items-center gap-2 text-sm text-foreground">
                   <FileText className="h-4 w-4" />
                   <span className="font-semibold">{report.companyName}</span>
                 </div>
                 <h2 className="text-3xl font-semibold leading-tight text-foreground sm:text-[32px]">{report.reportTitle}</h2>
                 <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <Badge variant="secondary" className={cn('rounded-full', theme.badgeBg)}>
+                  <Badge variant="secondary" className="rounded-full">
                     {report.companyName}
                   </Badge>
                   <Badge variant="outline" className="flex items-center gap-1 rounded-full text-[11px] uppercase tracking-wide">
@@ -89,11 +79,11 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
       </div>
 
       <ScrollArea className="max-h-[70vh]">
-        <div className="grid gap-6 bg-gradient-to-b from-white via-slate-50 to-white px-6 pb-8 pt-6 dark:from-slate-950 dark:via-slate-950 dark:to-slate-950">
+        <div className="grid gap-6 bg-card px-6 pb-8 pt-6 dark:bg-slate-950">
           <div className="grid gap-6 md:grid-cols-[1.15fr_0.85fr]">
             <div className="space-y-4">
               {report.keyPoints && report.keyPoints.length > 0 && (
-                <div className={cn('rounded-2xl border p-5 shadow-sm', theme.panelBorder, theme.mutedPanel, 'dark:bg-slate-900/80')}>
+                <div className="rounded-2xl border bg-card p-5 shadow-sm dark:bg-slate-900/80">
                   <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     <Calendar className="h-4 w-4" />
                     Nyckelpunkter
@@ -110,8 +100,8 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
               )}
 
               {report.ceoCommentary && (
-                <div className={cn('rounded-2xl border p-5 shadow-sm', theme.panelBorder, theme.mutedPanel, 'dark:border-primary/40')}>
-                  <h3 className={cn('text-xs font-semibold uppercase tracking-wide', theme.accentText)}>VD:s ord</h3>
+                <div className="rounded-2xl border bg-card p-5 shadow-sm dark:border-primary/40">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground">VD:s ord</h3>
                   <blockquote className="mt-2 text-base italic text-foreground/90">{report.ceoCommentary}</blockquote>
                 </div>
               )}
@@ -133,13 +123,13 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
             </div>
 
             <div className="space-y-4">
-              <div className={cn('rounded-2xl border p-5 shadow-sm', theme.panelBorder, 'bg-white/90 dark:bg-slate-900')}>
+              <div className="rounded-2xl border bg-card p-5 shadow-sm dark:bg-slate-900">
                 <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Översikt</h3>
                 <p className="mt-3 text-base leading-relaxed text-foreground/90">{report.summary}</p>
               </div>
 
               {report.keyMetrics && report.keyMetrics.length > 0 && (
-                <div className={cn('rounded-2xl border p-5 shadow-sm', theme.panelBorder, 'bg-white/90 dark:bg-slate-900')}>
+                <div className="rounded-2xl border bg-card p-5 shadow-sm dark:bg-slate-900">
                   <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     <span>Viktiga siffror</span>
                     <LineChart className="h-4 w-4" />
@@ -148,11 +138,7 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
                     {report.keyMetrics.map((metric, metricIndex) => (
                       <div
                         key={`${report.id}-dialog-metric-${metricIndex}`}
-                        className={cn(
-                          'flex items-start justify-between rounded-xl border px-4 py-3 text-left',
-                          theme.metricBorder,
-                          theme.mutedPanel
-                        )}
+                        className="flex items-start justify-between rounded-xl border bg-card px-4 py-3 text-left"
                       >
                         <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{metric.label}</div>
                         <div className="text-right">
