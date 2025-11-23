@@ -30,8 +30,8 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
         <Card
           className="group relative h-full cursor-pointer overflow-hidden border bg-card shadow-sm transition hover:-translate-y-1 hover:shadow-md"
         >
-          <CardContent className="relative flex h-full flex-col gap-5 p-5">
-            <div className="flex items-start gap-3">
+          <CardContent className="relative flex h-full flex-col gap-5 p-4 sm:p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
               <Avatar className="h-12 w-12 ring-2 ring-offset-2 ring-offset-white dark:ring-offset-slate-900">
                 {report.companyLogoUrl && (
                   <AvatarImage src={report.companyLogoUrl} alt={report.companyName} className="object-cover" />
@@ -52,7 +52,9 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
                   )}
                 </div>
                 <h3 className="text-xl font-semibold leading-tight text-foreground">{report.reportTitle}</h3>
-                <p className="text-sm leading-relaxed text-muted-foreground line-clamp-3">{truncateText(report.summary)}</p>
+                <p className="text-sm leading-relaxed text-muted-foreground line-clamp-3 sm:line-clamp-none">
+                  {truncateText(report.summary)}
+                </p>
               </div>
             </div>
 
@@ -62,7 +64,7 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
                   <LineChart className="h-3.5 w-3.5" />
                   Nyckeltal
                 </div>
-                <div className="mt-3 grid gap-4 sm:grid-cols-3">
+                <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {highlightedMetrics.map((metric, index) => (
                     <div
                       key={`${report.id}-highlight-metric-${index}`}
@@ -77,7 +79,7 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
               </div>
             )}
 
-            <div className="mt-auto flex items-center justify-between rounded-2xl border bg-card/80 px-4 py-3 text-sm font-medium text-primary transition group-hover:border-primary/50 group-hover:text-primary">
+            <div className="mt-auto flex items-center justify-between rounded-2xl border bg-card/80 px-4 py-3 text-sm font-medium text-primary transition group-hover:border-primary/50 group-hover:text-primary sm:px-5">
               <span className="flex items-center gap-2 font-semibold">
                 <span>Läs hela analysen</span>
               </span>

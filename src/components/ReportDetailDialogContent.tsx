@@ -19,11 +19,11 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
   const generatedAt = formatDistanceToNow(new Date(report.createdAt), { addSuffix: true, locale: sv });
 
   return (
-    <DialogContent className="max-w-5xl overflow-hidden rounded-[28px] border border-border/50 bg-slate-50/90 p-0 shadow-2xl dark:bg-slate-950/90">
-      <div className="relative overflow-hidden bg-card p-8 pb-6 dark:bg-slate-950">
-        <div className="relative grid gap-6 md:grid-cols-[1.2fr_auto] md:items-start">
+    <DialogContent className="w-[min(100vw-1.5rem,1400px)] max-w-6xl overflow-hidden rounded-[28px] border border-border/50 bg-slate-50/90 p-0 shadow-2xl dark:bg-slate-950/90">
+      <div className="relative overflow-hidden bg-card p-6 pb-5 sm:p-7 sm:pb-6 md:p-8 md:pb-6 dark:bg-slate-950">
+        <div className="relative grid gap-6 sm:grid-cols-[1fr_auto] sm:items-start lg:grid-cols-[1.2fr_auto]">
           <div className="space-y-3">
-            <div className="flex items-start gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
               <Avatar className="h-14 w-14 ring-2 ring-offset-2 ring-offset-white dark:ring-offset-slate-900">
                 {report.companyLogoUrl && (
                   <AvatarImage src={report.companyLogoUrl} alt={report.companyName} className="object-cover" />
@@ -61,16 +61,20 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
               </div>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-3">
+          <div className="flex flex-col items-start gap-3 sm:items-end">
             {report.sourceUrl ? (
-              <Button variant="outline" asChild className="rounded-xl border-border/70 text-sm shadow-sm">
+              <Button
+                variant="outline"
+                asChild
+                className="w-full rounded-xl border-border/70 text-sm shadow-sm sm:w-auto"
+              >
                 <a href={report.sourceUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
                   Visa källa
                   <ArrowUpRight className="h-4 w-4" />
                 </a>
               </Button>
             ) : (
-              <div className="rounded-xl border border-dashed border-border/60 px-3 py-2 text-xs text-muted-foreground">
+              <div className="w-full rounded-xl border border-dashed border-border/60 px-3 py-2 text-xs text-muted-foreground sm:w-auto">
                 Ingen källa angiven
               </div>
             )}
@@ -78,9 +82,9 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
         </div>
       </div>
 
-      <ScrollArea className="max-h-[70vh]">
-        <div className="grid gap-6 bg-card px-6 pb-8 pt-6 dark:bg-slate-950">
-          <div className="grid gap-6 md:grid-cols-[1.15fr_0.85fr]">
+      <ScrollArea className="max-h-[75vh]">
+        <div className="grid gap-6 bg-card px-4 pb-8 pt-6 sm:px-6 md:px-8 dark:bg-slate-950">
+          <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] xl:grid-cols-[1.2fr_1fr]">
             <div className="space-y-4">
               {report.keyPoints && report.keyPoints.length > 0 && (
                 <div className="rounded-2xl border bg-card p-5 shadow-sm dark:bg-slate-900/80">
@@ -138,10 +142,10 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
                     {report.keyMetrics.map((metric, metricIndex) => (
                       <div
                         key={`${report.id}-dialog-metric-${metricIndex}`}
-                        className="flex items-start justify-between rounded-xl border bg-card px-4 py-3 text-left"
+                        className="flex flex-col gap-2 rounded-xl border bg-card px-4 py-3 text-left sm:flex-row sm:items-center sm:gap-0"
                       >
                         <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{metric.label}</div>
-                        <div className="text-right">
+                        <div className="text-left sm:text-right">
                           <p className="text-lg font-semibold text-foreground sm:text-xl">{metric.value}</p>
                           {metric.trend && <p className="text-xs text-muted-foreground">{metric.trend}</p>}
                         </div>
