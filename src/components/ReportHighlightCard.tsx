@@ -30,7 +30,7 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
         <Card
           className="group relative h-full cursor-pointer overflow-hidden border bg-card shadow-sm transition hover:-translate-y-1 hover:shadow-md"
         >
-          <CardContent className="relative flex h-full flex-col gap-5 p-4 sm:p-5">
+          <CardContent className="relative grid h-full grid-rows-[auto,1fr,auto] gap-5 p-4 sm:p-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
               <Avatar className="h-12 w-12 ring-2 ring-offset-2 ring-offset-white dark:ring-offset-slate-900">
                 {report.companyLogoUrl && (
@@ -52,7 +52,7 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
                   )}
                 </div>
                 <h3 className="text-xl font-semibold leading-tight text-foreground">{report.reportTitle}</h3>
-                <p className="text-sm leading-relaxed text-muted-foreground line-clamp-3 sm:line-clamp-none">
+                <p className="min-h-[3.75rem] text-sm leading-relaxed text-muted-foreground line-clamp-3">
                   {truncateText(report.summary)}
                 </p>
               </div>
@@ -68,7 +68,7 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
                   {highlightedMetrics.map((metric, index) => (
                     <div
                       key={`${report.id}-highlight-metric-${index}`}
-                      className="flex flex-col gap-1 border-t pt-2 text-left sm:border-l sm:border-t-0 sm:pl-4"
+                      className="flex h-full flex-col gap-1 border-t pt-2 text-left sm:border-l sm:border-t-0 sm:pl-4"
                     >
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground leading-4 break-words">
                         {metric.label}
@@ -81,7 +81,7 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
               </div>
             )}
 
-            <div className="mt-auto flex items-center justify-between rounded-2xl border bg-card/80 px-4 py-3 text-sm font-medium text-primary transition group-hover:border-primary/50 group-hover:text-primary sm:px-5">
+            <div className="flex items-center justify-between rounded-2xl border bg-card/80 px-4 py-3 text-sm font-medium text-primary transition group-hover:border-primary/50 group-hover:text-primary sm:px-5">
               <span className="flex items-center gap-2 font-semibold">
                 <span>Läs hela analysen</span>
               </span>

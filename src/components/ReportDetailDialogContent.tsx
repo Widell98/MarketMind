@@ -145,10 +145,10 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
                     {report.keyMetrics.map((metric, metricIndex) => (
                       <div
                         key={`${report.id}-dialog-metric-${metricIndex}`}
-                        className="flex flex-col gap-2 rounded-xl border bg-card px-4 py-3 text-left sm:flex-row sm:items-center sm:gap-0"
+                        className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 rounded-xl border bg-card px-4 py-3 text-left"
                       >
                         <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground leading-4 break-words">{metric.label}</div>
-                        <div className="text-left sm:text-right">
+                        <div className="text-right">
                           <p className="text-lg font-semibold text-foreground sm:text-xl">{metric.value}</p>
                           {metric.trend && <p className="text-xs text-muted-foreground">{metric.trend}</p>}
                         </div>
