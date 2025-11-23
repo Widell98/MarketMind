@@ -77,28 +77,6 @@ const buildCardPreview = (primary?: string | null, fallback?: string | null): st
   return shortenSentence(normalized);
 };
 
-const getAccentGradient = (sector?: string | null) => {
-  const normalized = sector?.toLowerCase() || '';
-
-  if (normalized.includes('tech') || normalized.includes('it')) {
-    return 'bg-gradient-to-br from-indigo-50 via-sky-50 to-purple-50 dark:from-indigo-950/30 dark:via-sky-900/20 dark:to-purple-950/20';
-  }
-
-  if (normalized.includes('health') || normalized.includes('med')) {
-    return 'bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 dark:from-emerald-950/25 dark:via-teal-900/25 dark:to-cyan-950/20';
-  }
-
-  if (normalized.includes('energy') || normalized.includes('industr')) {
-    return 'bg-gradient-to-br from-amber-50 via-orange-50 to-lime-50 dark:from-amber-950/25 dark:via-orange-900/25 dark:to-lime-950/25';
-  }
-
-  if (normalized.includes('finance') || normalized.includes('bank')) {
-    return 'bg-gradient-to-br from-blue-50 via-slate-50 to-green-50 dark:from-blue-950/25 dark:via-slate-900/30 dark:to-green-950/20';
-  }
-
-  return 'bg-gradient-to-br from-slate-50 via-white to-indigo-50 dark:from-slate-950/40 dark:via-slate-900/30 dark:to-indigo-950/25';
-};
-
 const buildPlaceholderImage = (companyName?: string | null, sector?: string | null) => {
   const queryParts = [companyName, sector, 'finance analyst report'];
   const query = queryParts
@@ -135,7 +113,6 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
   } = useStockCaseLikes(stockCase.id);
   const navigate = useNavigate();
   const isOwner = user && stockCase.user_id === user.id;
-  const accentGradient = getAccentGradient(stockCase.sector);
   const displayImageSrc = stockCase.image_url || buildPlaceholderImage(stockCase.company_name, stockCase.sector);
   
   // Determine card styling based on case status
@@ -151,7 +128,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
     return baseClasses;
   };
 
-  const cardClassNames = `${getCardClassNames()} ${accentGradient}`;
+  const cardClassNames = getCardClassNames();
   
   const getStatusColor = (status: string) => {
     switch (status) {
