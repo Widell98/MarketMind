@@ -480,7 +480,12 @@ const buildAiIntro = (
 };
 
 const sanitizeCaseData = (rawCase: any) => {
+  const logRejection = (reason: string, context?: Record<string, unknown>) => {
+    console.log('sanitizeCaseData rejection:', reason, context ?? {});
+  };
+
   if (!rawCase || typeof rawCase !== 'object') {
+    logRejection('rawCase is not an object');
     return null;
   }
 
@@ -496,14 +501,17 @@ const sanitizeCaseData = (rawCase: any) => {
   const forbiddenTerms = ['fiktiv', 'fiktivt', 'påhitt', 'låtsas', 'fictional'];
 
   if ((!rawTitle || rawTitle.length === 0) && (!companyName || companyName.length === 0)) {
+    logRejection('missing title and company_name');
     return null;
   }
 
   if (!descriptionRaw) {
+    logRejection('missing description');
     return null;
   }
 
   if (forbiddenTerms.some((term) => lowerCompany.includes(term) || lowerDescription.includes(term))) {
+    logRejection('forbidden terms detected', { companyName, descriptionRaw });
     return null;
   }
 
@@ -513,6 +521,7 @@ const sanitizeCaseData = (rawCase: any) => {
   }
 
   if (!longDescription || longDescription.length < 50) {
+    logRejection('long_description too short', { longDescriptionLength: longDescription.length });
     return null;
   }
 
@@ -1054,8 +1063,15 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
       });
 
       if (!response.ok) {
+        let responseText: string | null = null;
+        try {
+          responseText = await response.text();
+        } catch (err) {
+          console.error('Failed to read OpenAI error body', err);
+        }
+
         const message = `OpenAI API error: ${response.status}`;
-        console.error(message);
+        console.error(message, { responseText });
         warnings.push(message);
         continue;
       }
@@ -1079,6 +1095,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
 
       try {
         const normalizedContent = extractJsonPayload(rawText);
+        console.log('Normalized OpenAI content length', normalizedContent.length);
         let caseData: unknown;
 
         try {
@@ -1086,9 +1103,13 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
         } catch {
           try {
             const repairedContent = jsonrepair(normalizedContent);
+            console.log('Repaired JSON content length', repairedContent.length);
             caseData = JSON.parse(repairedContent);
           } catch (err) {
-            console.error('JSON parse failure', normalizedContent);
+            console.error('JSON parse failure', {
+              normalizedPreview: normalizedContent.slice(0, 500),
+              normalizedLength: normalizedContent.length,
+            });
             continue;
           }
         }
@@ -1229,6 +1250,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
 
     if (generatedCases.length === 0) {
       const warningMessage = warnings.length > 0 ? warnings.join(' | ') : 'No cases were successfully generated';
+      console.log('No cases persisted; warnings summary', warnings);
       await supabaseClient
         .from('ai_generation_runs')
         .update({
