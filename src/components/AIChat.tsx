@@ -72,6 +72,7 @@ const AIChat = ({
     isUploading: isUploadingDocument,
     uploadDocument,
     deleteDocument,
+    hasReachedDocumentLimit,
   } = useChatDocuments();
   const [input, setInput] = useState('');
   const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false);
@@ -487,7 +488,7 @@ const AIChat = ({
                   status: doc.status,
                 }))}
                 onRemoveDocument={handleRemoveDocument}
-                isAttachDisabled={isUploadingDocument || quotaExceeded}
+                isAttachDisabled={isUploadingDocument || quotaExceeded || hasReachedDocumentLimit}
               />
             )}
           </div>

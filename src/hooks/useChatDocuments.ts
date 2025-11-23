@@ -20,6 +20,7 @@ export type ChatDocument = {
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
 const SUPPORTED_TYPES = ['application/pdf', 'text/plain'];
 const FREE_DAILY_DOCUMENT_LIMIT = 1;
+const MAX_UPLOADED_DOCUMENTS = 2;
 
 const isSupportedType = (file: File) => {
   if (!file.type) {
@@ -73,6 +74,42 @@ export const useChatDocuments = () => {
         description: 'Logga in för att ladda upp dokument.',
         variant: 'destructive',
       });
+      return undefined;
+    }
+
+    const activeDocumentCount = documents.filter((doc) => doc.status !== 'failed').length;
+    if (activeDocumentCount >= MAX_UPLOADED_DOCUMENTS) {
+      toast({
+        title: 'Dokumentgräns nådd',
+        description: 'Du kan ha max två uppladdade dokument. Ta bort ett innan du laddar upp ett nytt.',
+        variant: 'destructive',
+      });
+      return undefined;
+    }
+
+    const { count: documentCount, error: documentCountError } = await supabase
+      .from('chat_documents')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .neq('status', 'failed');
+
+    if (documentCountError) {
+      console.error('Failed to check document limit', documentCountError);
+      toast({
+        title: 'Uppladdning misslyckades',
+        description: 'Kunde inte verifiera din dokumentgräns just nu. Försök igen senare.',
+        variant: 'destructive',
+      });
+      return undefined;
+    }
+
+    if ((documentCount ?? 0) >= MAX_UPLOADED_DOCUMENTS) {
+      toast({
+        title: 'Dokumentgräns nådd',
+        description: 'Du kan ha max två uppladdade dokument. Ta bort ett innan du laddar upp ett nytt.',
+        variant: 'destructive',
+      });
+      await fetchDocuments();
       return undefined;
     }
 
@@ -195,7 +232,14 @@ export const useChatDocuments = () => {
     } finally {
       setIsUploading(false);
     }
-  }, [user, toast, fetchDocuments, subscription, subscriptionLoading]);
+  }, [
+    user,
+    toast,
+    fetchDocuments,
+    subscription,
+    subscriptionLoading,
+    documents,
+  ]);
 
   const deleteDocument = useCallback(async (documentId: string) => {
     if (!user) return;
@@ -236,6 +280,10 @@ export const useChatDocuments = () => {
   }, [user, toast, documents]);
 
   const activeDocuments = useMemo(() => documents, [documents]);
+  const hasReachedDocumentLimit = useMemo(
+    () => documents.filter((doc) => doc.status !== 'failed').length >= MAX_UPLOADED_DOCUMENTS,
+    [documents]
+  );
 
   return {
     documents: activeDocuments,
@@ -244,5 +292,6 @@ export const useChatDocuments = () => {
     uploadDocument,
     deleteDocument,
     refresh: fetchDocuments,
+    hasReachedDocumentLimit,
   };
 };
