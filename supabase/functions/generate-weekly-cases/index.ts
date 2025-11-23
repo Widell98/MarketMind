@@ -1051,12 +1051,13 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
           text: { verbosity: 'medium' },
           input: [
             {
-              type: 'input_text',
-              text: 'Du är en erfaren finansanalytiker som skriver analytiska investeringscase. Svara ENDAST med giltig JSON.'
+              role: 'system',
+              content:
+                'Du är en erfaren finansanalytiker som skriver analytiska investeringscase. Svara ENDAST med giltig JSON.',
             },
             {
-              type: 'input_text',
-              text: prompt,
+              role: 'user',
+              content: prompt,
             },
           ],
         }),
