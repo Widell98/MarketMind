@@ -30,6 +30,8 @@ interface EnhancedStockCasesSearchProps {
   viewMode: string;
   onViewModeChange: (value: string) => void;
   availableSectors: string[];
+  sectorCounts: Record<string, number>;
+  performanceCounts: Record<string, number>;
   resultsCount: number;
   totalCount: number;
 }
@@ -63,6 +65,8 @@ const EnhancedStockCasesSearch: React.FC<EnhancedStockCasesSearchProps> = ({
   viewMode,
   onViewModeChange,
   availableSectors,
+  sectorCounts,
+  performanceCounts,
   resultsCount,
   totalCount,
 }) => {
@@ -77,6 +81,13 @@ const EnhancedStockCasesSearch: React.FC<EnhancedStockCasesSearchProps> = ({
     onSectorChange('');
     onPerformanceFilterChange('');
   };
+
+  const renderOption = (label: string, count?: number) => (
+    <div className="flex w-full items-center justify-between text-left">
+      <span>{label}</span>
+      <span className="text-xs font-semibold text-muted-foreground">{count ?? 0}</span>
+    </div>
+  );
 
   const ViewModeToggle = ({ className }: { className?: string }) => (
     <div
@@ -109,14 +120,15 @@ const EnhancedStockCasesSearch: React.FC<EnhancedStockCasesSearchProps> = ({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 sm:space-y-6">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Sök aktiefall, företag eller användare..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-10 pr-4"
+          aria-label="Sök aktiefall"
+          className="pl-10 pr-4 text-base"
         />
         {searchTerm && (
           <Button
@@ -169,10 +181,10 @@ const EnhancedStockCasesSearch: React.FC<EnhancedStockCasesSearchProps> = ({
                         <SelectValue placeholder="Välj sektor" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all-sectors">Alla sektorer</SelectItem>
+                        <SelectItem value="all-sectors">{renderOption('Alla sektorer', totalCount)}</SelectItem>
                         {availableSectors.map((sector) => (
                           <SelectItem key={sector} value={sector}>
-                            {sector}
+                            {renderOption(sector, sectorCounts[sector] || 0)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -186,11 +198,11 @@ const EnhancedStockCasesSearch: React.FC<EnhancedStockCasesSearchProps> = ({
                         <SelectValue placeholder="Prestanda" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all-results">Alla resultat</SelectItem>
-                        <SelectItem value="positive">Positiva (+)</SelectItem>
-                        <SelectItem value="negative">Negativa (-)</SelectItem>
-                        <SelectItem value="high">Höga (&gt;10%)</SelectItem>
-                        <SelectItem value="low">Låga (&lt;5%)</SelectItem>
+                        <SelectItem value="all-results">{renderOption('Alla resultat', totalCount)}</SelectItem>
+                        <SelectItem value="positive">{renderOption('Positiva (+)', performanceCounts.positive)}</SelectItem>
+                        <SelectItem value="negative">{renderOption('Negativa (-)', performanceCounts.negative)}</SelectItem>
+                        <SelectItem value="high">{renderOption('Höga (>10%)', performanceCounts.high)}</SelectItem>
+                        <SelectItem value="low">{renderOption('Låga (<5%)', performanceCounts.low)}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -255,36 +267,36 @@ const EnhancedStockCasesSearch: React.FC<EnhancedStockCasesSearchProps> = ({
       <div className="hidden items-start justify-between gap-3 sm:flex">
         <div className="flex flex-1 flex-col gap-3 sm:flex-row">
           <Select value={selectedSector || ''} onValueChange={onSectorChange}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Välj sektor" />
+            <SelectTrigger className="w-full sm:w-[200px] text-base">
+              <SelectValue placeholder="Välj sektor" aria-label="Välj sektor" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all-sectors">Alla sektorer</SelectItem>
+              <SelectItem value="all-sectors">{renderOption('Alla sektorer', totalCount)}</SelectItem>
               {availableSectors.map((sector) => (
                 <SelectItem key={sector} value={sector}>
-                  {sector}
+                  {renderOption(sector, sectorCounts[sector] || 0)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
           <Select value={performanceFilter || ''} onValueChange={onPerformanceFilterChange}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Prestanda" />
+            <SelectTrigger className="w-full sm:w-[190px] text-base">
+              <SelectValue placeholder="Prestanda" aria-label="Filtrera på prestanda" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all-results">Alla resultat</SelectItem>
-              <SelectItem value="positive">Positiva (+)</SelectItem>
-              <SelectItem value="negative">Negativa (-)</SelectItem>
-              <SelectItem value="high">Höga (&gt;10%)</SelectItem>
-              <SelectItem value="low">Låga (&lt;5%)</SelectItem>
+              <SelectItem value="all-results">{renderOption('Alla resultat', totalCount)}</SelectItem>
+              <SelectItem value="positive">{renderOption('Positiva (+)', performanceCounts.positive)}</SelectItem>
+              <SelectItem value="negative">{renderOption('Negativa (-)', performanceCounts.negative)}</SelectItem>
+              <SelectItem value="high">{renderOption('Höga (>10%)', performanceCounts.high)}</SelectItem>
+              <SelectItem value="low">{renderOption('Låga (<5%)', performanceCounts.low)}</SelectItem>
             </SelectContent>
           </Select>
 
           <div className="flex gap-2">
             <Select value={sortBy} onValueChange={onSortChange}>
-              <SelectTrigger className="w-full sm:w-[140px]">
-                <SelectValue placeholder="Sortera" />
+              <SelectTrigger className="w-full sm:w-[150px] text-base">
+                <SelectValue placeholder="Sortera" aria-label="Sortera resultat" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="created_at">Senaste</SelectItem>
@@ -373,7 +385,7 @@ const EnhancedStockCasesSearch: React.FC<EnhancedStockCasesSearchProps> = ({
           )}
         </div>
 
-        <div className="text-sm text-muted-foreground sm:text-right">
+        <div className="text-sm font-medium text-muted-foreground sm:text-right">
           Visar {resultsCount} av {totalCount} aktiefall
         </div>
       </div>

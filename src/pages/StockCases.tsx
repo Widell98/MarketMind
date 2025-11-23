@@ -70,6 +70,32 @@ const StockCases = () => {
     return Array.from(sectors).sort();
   }, [stockCases]);
 
+  const sectorCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    stockCases.forEach((stockCase) => {
+      if (stockCase.sector) {
+        counts[stockCase.sector] = (counts[stockCase.sector] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [stockCases]);
+
+  const performanceCounts = useMemo(
+    () =>
+      stockCases.reduce(
+        (acc, stockCase) => {
+          const performance = stockCase.performance_percentage || 0;
+          if (performance > 0) acc.positive += 1;
+          if (performance < 0) acc.negative += 1;
+          if (performance > 10) acc.high += 1;
+          if (performance < 5) acc.low += 1;
+          return acc;
+        },
+        { positive: 0, negative: 0, high: 0, low: 0 }
+      ),
+    [stockCases]
+  );
+
   // Filter and sort stock cases
   const filteredStockCases = useMemo(() => {
     let filtered = [...stockCases];
@@ -226,6 +252,8 @@ const StockCases = () => {
               viewMode={viewMode}
               onViewModeChange={setViewMode}
               availableSectors={availableSectors}
+              sectorCounts={sectorCounts}
+              performanceCounts={performanceCounts}
               resultsCount={filteredStockCases.length}
               totalCount={stockCases.length}
             />
