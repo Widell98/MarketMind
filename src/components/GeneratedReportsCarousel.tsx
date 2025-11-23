@@ -117,7 +117,7 @@ const GeneratedReportsCarousel: React.FC<GeneratedReportsCarouselProps> = ({ rep
                                   key={`${report.id}-carousel-metric-${index}`}
                                   className="rounded-2xl border border-border/60 bg-card/60 p-3"
                                 >
-                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-normal break-words leading-tight">
                                     {metric.label}
                                   </p>
                                   <p className="text-base font-semibold text-foreground">{metric.value}</p>
