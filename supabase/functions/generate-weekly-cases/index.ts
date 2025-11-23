@@ -35,6 +35,28 @@ const extractJsonPayload = (content: string): string => {
   return trimmed;
 };
 
+function extractText(data: unknown) {
+  const output = (data as { output?: unknown })?.output;
+  if (Array.isArray(output)) {
+    for (const block of output) {
+      if (typeof block === 'object' && block !== null && (block as { type?: string }).type === 'message') {
+        const content = (block as { content?: unknown })?.content;
+        if (Array.isArray(content)) {
+          for (const part of content) {
+            if (typeof part === 'object' && part !== null && (part as { type?: string }).type === 'output_text') {
+              const text = (part as { text?: unknown })?.text;
+              if (typeof text === 'string') {
+                return text;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
 const sanitizeNumber = (value: unknown): number | null => {
   if (value === null || value === undefined) {
     return null;
@@ -983,23 +1005,24 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
 
       console.log(`Generating case ${i + 1} for ${sector} - ${style}...`);
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch("https://api.openai.com/v1/responses", {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${openAIApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content: 'Du är en erfaren finansanalytiker som skapar investeringsanalyser för svenska investerare. Svara alltid med giltigt JSON.'
-            },
-            { role: 'user', content: prompt }
-          ],
+          model: 'gpt-5.1-mini',
           temperature: 0.7,
-          max_tokens: 500,
+          max_output_tokens: 600,
+          text: { verbosity: 'medium' },
+          input: `
+SYSTEM:
+Du är en erfaren finansanalytiker som skapar investeringsanalyser för svenska investerare. Svara alltid med giltigt JSON.
+
+USER:
+${prompt}
+`
         }),
       });
 
@@ -1011,16 +1034,16 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
       }
 
       const data = await response.json();
-      const generatedContent = data?.choices?.[0]?.message?.content;
+      const rawText = extractText(data);
 
       console.log('OpenAI weekly case response content', {
         ticker: selectedTicker,
         sector,
         style,
-        content: generatedContent,
+        content: rawText,
       });
 
-      if (!generatedContent) {
+      if (!rawText) {
         const message = 'OpenAI response did not contain content';
         console.error(message, data);
         warnings.push(message);
@@ -1028,17 +1051,18 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
       }
 
       try {
-        const normalizedContent = extractJsonPayload(generatedContent);
+        const normalizedContent = extractJsonPayload(rawText);
         let caseData: unknown;
 
         try {
           caseData = JSON.parse(normalizedContent);
-        } catch (initialParseError) {
+        } catch {
           try {
             const repairedContent = jsonrepair(normalizedContent);
             caseData = JSON.parse(repairedContent);
-          } catch (_) {
-            throw initialParseError;
+          } catch (err) {
+            console.error('JSON parse failure', normalizedContent);
+            continue;
           }
         }
         const sanitized = sanitizeCaseData(caseData);
@@ -1171,7 +1195,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
       } catch (parseError) {
         const message = 'Error parsing generated case JSON';
         console.error(message, parseError);
-        console.error('Generated content:', generatedContent);
+        console.error('Generated content:', rawText);
         warnings.push(message);
       }
     }
