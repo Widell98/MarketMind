@@ -6,6 +6,7 @@ import { OPEN_CHAT_DOCUMENT_UPLOAD_EVENT } from '@/constants/chatDocuments';
 import { Send, MessageSquare, AlertCircle, Loader2, Sparkles, X, Paperclip } from 'lucide-react';
 import { FREE_DAILY_AI_MESSAGE_LIMIT, useSubscription } from '@/hooks/useSubscription';
 import PremiumUpgradeModal from './PremiumUpgradeModal';
+import type { QuickPrompt } from './GuideBot';
 
 interface ChatInputProps {
   input: string;
@@ -17,6 +18,8 @@ interface ChatInputProps {
   attachedDocuments?: Array<{ id: string; name: string; status?: 'processing' | 'processed' | 'failed' }>;
   onRemoveDocument?: (documentId: string) => void;
   isAttachDisabled?: boolean;
+  quickPrompts?: QuickPrompt[];
+  onQuickPromptSelect?: (prompt: string) => void;
 }
 
 const ChatInput = memo(({
@@ -29,14 +32,43 @@ const ChatInput = memo(({
   attachedDocuments = [],
   onRemoveDocument,
   isAttachDisabled = false,
+  quickPrompts = [],
+  onQuickPromptSelect,
 }: ChatInputProps) => {
   const { usage, subscription } = useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [promptIndices, setPromptIndices] = useState<Record<string, number>>({});
   
   const dailyLimit = FREE_DAILY_AI_MESSAGE_LIMIT;
   const currentUsage = usage?.ai_messages_count || 0;
   const isPremium = subscription?.subscribed;
   const isAtLimit = !isPremium && currentUsage >= dailyLimit;
+
+  const getNextPromptValue = (quickPrompt: QuickPrompt) => {
+    if (Array.isArray(quickPrompt.prompt)) {
+      const prompts = quickPrompt.prompt;
+      const nextIndex = promptIndices[quickPrompt.label] ?? 0;
+      const selectedPrompt = prompts[nextIndex % prompts.length];
+
+      setPromptIndices((prev) => ({
+        ...prev,
+        [quickPrompt.label]: (nextIndex + 1) % prompts.length,
+      }));
+
+      return selectedPrompt;
+    }
+
+    return quickPrompt.prompt;
+  };
+
+  const handleQuickPromptClick = (quickPrompt: QuickPrompt) => {
+    const promptValue = getNextPromptValue(quickPrompt);
+    onQuickPromptSelect?.(promptValue);
+    setInput(promptValue);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,6 +115,29 @@ const ChatInput = memo(({
           className="mx-auto flex w-full max-w-5xl items-end gap-2 sm:gap-3 lg:max-w-6xl xl:max-w-6xl xl:gap-4 2xl:max-w-7xl 2xl:gap-5"
         >
           <div className="flex-1 relative min-w-0">
+            {quickPrompts.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {quickPrompts.map((quickPrompt) => (
+                  <Button
+                    key={quickPrompt.label}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-auto rounded-full border-ai-border/60 bg-transparent px-3 py-1.5 text-[13px] font-semibold text-foreground shadow-none transition hover:-translate-y-0.5 hover:border-primary/50 hover:text-primary"
+                    onClick={() => handleQuickPromptClick(quickPrompt)}
+                  >
+                    <span className="inline-flex items-center gap-1.5">
+                      {quickPrompt.icon && (
+                        <span className="flex h-4 w-4 items-center justify-center text-primary">
+                          {quickPrompt.icon}
+                        </span>
+                      )}
+                      <span>{quickPrompt.label}</span>
+                    </span>
+                  </Button>
+                ))}
+              </div>
+            )}
             {attachedDocuments.length > 0 && (
               <div className="mb-2 space-y-1.5">
                 <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-primary">

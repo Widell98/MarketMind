@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { AI_CHAT_EXAMPLE_PROMPT, PROMPT_PLAYGROUND_PROMPTS } from './chat/GuideBot';
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -79,6 +80,7 @@ const AIChat = ({
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [isGuideSession, setIsGuideSession] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
+  const [hasUsedExamplePrompt, setHasUsedExamplePrompt] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -327,6 +329,12 @@ const AIChat = ({
       }, 100);
     }
   };
+  const handleQuickStart = () => {
+    if (!AI_CHAT_EXAMPLE_PROMPT) return;
+
+    setHasUsedExamplePrompt(true);
+    handleExamplePrompt(AI_CHAT_EXAMPLE_PROMPT);
+  };
   const handleLoadGuideSession = useCallback(() => {
     // Clear regular chat and show guide
     setIsGuideSession(true);
@@ -406,6 +414,17 @@ const AIChat = ({
               </div> */}
 
               <div className="flex items-center justify-end gap-2">
+                {!hasUsedExamplePrompt && AI_CHAT_EXAMPLE_PROMPT && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="hidden rounded-full border-ai-border/70 bg-ai-surface-muted/60 text-xs font-semibold text-foreground shadow-sm transition hover:-translate-y-0.5 hover:border-primary/60 hover:text-primary sm:inline-flex"
+                    onClick={handleQuickStart}
+                  >
+                    <Sparkles className="mr-2 h-3.5 w-3.5" />
+                    Testa med exempelfråga
+                  </Button>
+                )}
                 {isPremium ? (
                   <TooltipProvider delayDuration={120}>
                     <Tooltip>
@@ -488,6 +507,8 @@ const AIChat = ({
                 }))}
                 onRemoveDocument={handleRemoveDocument}
                 isAttachDisabled={isUploadingDocument || quotaExceeded}
+                quickPrompts={PROMPT_PLAYGROUND_PROMPTS}
+                onQuickPromptSelect={handleExamplePrompt}
               />
             )}
           </div>
