@@ -95,6 +95,9 @@ const ChatInput = memo(({
     window.dispatchEvent(event);
   };
 
+  const MAX_VISIBLE_QUICK_PROMPTS = 4;
+  const visibleQuickPrompts = quickPrompts.slice(0, MAX_VISIBLE_QUICK_PROMPTS);
+
   return (
     <>
       <div className="flex-shrink-0 border-t border-[#144272]/15 bg-white/95 px-4 py-3 shadow-[0_-12px_35px_rgba(15,23,42,0.05)] backdrop-blur-sm transition-colors sm:px-6 sm:py-3.5 lg:px-10 lg:py-5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:pb-[calc(1rem+env(safe-area-inset-bottom))] dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none">
@@ -115,9 +118,9 @@ const ChatInput = memo(({
           className="mx-auto flex w-full max-w-5xl items-end gap-2 sm:gap-3 lg:max-w-6xl xl:max-w-6xl xl:gap-4 2xl:max-w-7xl 2xl:gap-5"
         >
           <div className="flex-1 relative min-w-0">
-            {quickPrompts.length > 0 && (
-              <div className="mb-3 flex flex-wrap gap-2">
-                {quickPrompts.map((quickPrompt) => (
+            {visibleQuickPrompts.length > 0 && (
+              <div className="mb-3 flex gap-2 overflow-x-auto pb-1 pr-1 sm:pr-2 whitespace-nowrap">
+                {visibleQuickPrompts.map((quickPrompt) => (
                   <Button
                     key={quickPrompt.label}
                     type="button"
