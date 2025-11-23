@@ -957,71 +957,40 @@ usedTickerSymbols.add(selectedTicker);
 
 
       const prompt = `
-Du är en professionell finansanalytiker som skriver inspirerande men faktabaserade aktiepitchar för svenska investerare.
+Du är en senior aktieanalytiker. Skriv ett kort, faktabaserat investeringscase om ett verkligt börsnoterat bolag.
 
-🎯 Uppdrag:
-Skapa ett välformulerat investeringscase för ett bolag inom sektorn "${sector}" med inriktning på "${style}"-strategier.
+Bolag: ${selectedName} (${selectedTicker})
+Sektor: ${sector}
+Investeringsstil: ${style}
+Senaste pris: ${sheetPrice !== null ? `${sheetPrice} ${sheetCurrency ?? 'SEK'}` : "okänt – använd rimligt intervall"}
 
-📊 Fakta att utgå från:
-- Bolag: ${selectedName} (${selectedTicker})
-- Nuvarande pris (från Google Sheet): ${sheetPrice !== null ? `${sheetPrice} ${sheetCurrency ?? 'SEK'}` : 'okänt, använd ett rimligt värde baserat på börsdata'}
-- Analysen ska gälla verkliga, börsnoterade bolag. Kontrollera att bolaget existerar och är listat på en erkänd börs.
+Krav:
+- Endast verkliga fakta om bolaget. Inga påhitt.
+- Inget marknadsföringsspråk. Ingen hype.
+- Ton: professionell, konkret, komprimerad.
+- 4 stycken, separerade med blankrad.
+- Totalt 150–300 ord.
+- Inga listor i texten.
 
-💡 Hiss-pitch (kort presentation):
-Inled texten med en skarp hiss-pitch på 1–2 meningar som sätter kroken. Den ska:
-- visa vad bolaget gör och vilken marknad det adresserar,
-- lyfta fram en unik styrka, produkt eller position som väcker intresse,
-- antyda varför tajmingen är spännande just nu.
-Använd konkreta fakta eller välkända referenser när det är möjligt.
+Stycke 1 (Company Snapshot):
+- 2–4 mycket korta meningar.
+- Vad bolaget gör + vad som är intressant *just nu*.
 
-💰 Prisreferens:
-Om prisdata finns (${sheetPrice ? "ja" : "nej"}), inkludera **en kort mening** som sätter priset i kontext – t.ex. om aktien handlas på en attraktiv nivå, nära årshögsta, eller i linje med sektorkollegor.
-Undvik teknisk analys eller exakta kursmål – håll kommentaren kort, som en del av helhetsanalysen.
+Stycke 2 (Varför bolaget sticker ut):
+- Kärnverksamhet, nyckelprodukter, positionering.
+- En konkret styrka.
 
-🧠 Stil och ton:
-- Skriv på svenska.
-- Professionell, engagerande och lättillgänglig ton — som en erfaren analytiker som vill väcka intresse snarare än överösa med siffror.
-- Undvik jargong, men använd relevanta finansiella begrepp där det stärker trovärdigheten.
-- Fokusera på bolagets affärslogik, tillväxtmöjligheter och branschkontext — inte exakta handelsnivåer.
-- Använd levande, konkreta formuleringar som hjälper läsaren att visualisera bolagets momentum.
+Stycke 3 (Katalysatorer):
+- 2–3 tydliga drivkrafter kommande 6–18 månader.
+- 1 mening som sätter prisnivån i kontext (värdering, volym, årshögsta/lägsta).
+- Ingen teknisk analys och inga kursmål.
 
-🎯 Förväntningar på analyskvalitet:
-Analysen ska vara konkret, faktabaserad och ge verklig insikt i bolaget.
+Stycke 4 (Risker + slutsats):
+- 1–2 realistiska risker.
+- Kort slutsats kopplad till investeringsstilen "${style}".
+- Ingen upprepning.
 
-- Undvik generiska fraser som "stark balansräkning", "solid pipeline" eller "attraktivt läge".
-- Nämn minst ett **konkret exempel** kopplat till bolaget (t.ex. produkt, marknad, projekt, partnerskap eller geografisk expansion).
-- Om bolaget är verksamt inom en forskningsintensiv bransch (bioteknik, energi, teknologi etc.), inkludera en specifik produkt, tjänst eller utveckling som är central för bolaget.
-- Ge en tydlig motivering till **varför aktien kan vara intressant just nu** — t.ex. kommande lansering, förbättrad lönsamhet, orderbok, marknadstrend eller värderingsläge.
-- Lyft gärna fram en datapunkt (t.ex. tillväxttakt, marknadsandel, backlog) som gör caset mer konkret.
-- Skriv i tydliga, korta meningar som skulle fungera i en riktig analytikerpitch.
-- Undvik marknadsföringsspråk och håll fokus på analys och logik.
-
-📈 Innehållskrav och struktur:
-Skriv en analytisk aktiepitch i exakt fyra korta stycken (separerade med tomma rader) som flyter naturligt att läsa.
-
-Stycke 1 – "Hiss-pitch":
-- Den engagerande öppningen enligt instruktionerna ovan.
-
-Stycke 2 – "Varför bolaget sticker ut":
-- Beskriv kärnverksamheten, nyckelprodukter/tjänster och hur bolaget positionerar sig mot konkurrenter.
-- Lyft fram en konkret styrka eller differentierare som gör bolaget intressant för investerare.
-
-Stycke 3 – "Katalysatorer just nu":
-- Lista 2–3 specifika drivkrafter, marknadstrender eller händelser som kan driva aktien kommande 6–18 månader.
-- Minst en katalysator ska vara tidsbunden eller kopplad till ett identifierbart initiativ (t.ex. produktlansering, regulatorisk förändring, expansionsplan, marginalmål).
-- Om prisdata finns, väv in en naturlig mening som sätter värderingen i sammanhang här.
-
-Stycke 4 – "Risker och slutsats":
-- Beskriv kort en eller två risker eller utmaningar och hur bolaget adresserar dem.
-- Avsluta med en tydlig slutsats om varför aktien är attraktiv för investerare med "${style}"-inriktning just nu, och inkludera en motiverande "varför agera"-formulering.
-
-Texten ska vara 180–350 ord, utan punktlistor, och varje stycke ska bestå av 2–4 meningar.
-
-💬 Exempel på ton:
-"Hexatronic är en svensk leverantör av fiberoptiska lösningar som gynnas av den globala utbyggnaden av bredband. Med en växande orderbok och stark marknadsposition i Europa fortsätter bolaget att kapitalisera på digitaliseringsvågen. Aktien handlas kring 97 SEK, vilket ger en intressant ingångsnivå sett till bolagets långsiktiga tillväxtpotential."
-
-📦 Outputformat:
-Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
+Returnera ENDAST giltig JSON:
 
 {
   "title": "string",
