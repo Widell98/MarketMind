@@ -1014,15 +1014,15 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
         body: JSON.stringify({
           model: 'gpt-5.1-mini',
           temperature: 0.7,
-          max_output_tokens: 600,
+          max_output_tokens: 1600,
+          reasoning: { effort: 'low' },
           text: { verbosity: 'medium' },
-          input: `
-SYSTEM:
-Du är en erfaren finansanalytiker som skapar investeringsanalyser för svenska investerare. Svara alltid med giltigt JSON.
+          input: `SYSTEM:
+Du är en erfaren finansanalytiker som levererar koncisa, professionella rapportsammanfattningar på svenska.
+Du returnerar alltid strikt giltig JSON utan någon text utanför JSON-strukturen.
 
 USER:
-${prompt}
-`
+${prompt}`
         }),
       });
 
