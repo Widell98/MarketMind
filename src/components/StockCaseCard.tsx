@@ -76,6 +76,40 @@ const buildCardPreview = (primary?: string | null, fallback?: string | null): st
 
   return shortenSentence(normalized);
 };
+
+const getAccentGradient = (sector?: string | null) => {
+  const normalized = sector?.toLowerCase() || '';
+
+  if (normalized.includes('tech') || normalized.includes('it')) {
+    return 'bg-gradient-to-br from-indigo-50 via-sky-50 to-purple-50 dark:from-indigo-950/30 dark:via-sky-900/20 dark:to-purple-950/20';
+  }
+
+  if (normalized.includes('health') || normalized.includes('med')) {
+    return 'bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 dark:from-emerald-950/25 dark:via-teal-900/25 dark:to-cyan-950/20';
+  }
+
+  if (normalized.includes('energy') || normalized.includes('industr')) {
+    return 'bg-gradient-to-br from-amber-50 via-orange-50 to-lime-50 dark:from-amber-950/25 dark:via-orange-900/25 dark:to-lime-950/25';
+  }
+
+  if (normalized.includes('finance') || normalized.includes('bank')) {
+    return 'bg-gradient-to-br from-blue-50 via-slate-50 to-green-50 dark:from-blue-950/25 dark:via-slate-900/30 dark:to-green-950/20';
+  }
+
+  return 'bg-gradient-to-br from-slate-50 via-white to-indigo-50 dark:from-slate-950/40 dark:via-slate-900/30 dark:to-indigo-950/25';
+};
+
+const buildPlaceholderImage = (companyName?: string | null, sector?: string | null) => {
+  const queryParts = [companyName, sector, 'finance analyst report'];
+  const query = queryParts
+    .filter((value): value is string => Boolean(value && value.trim()))
+    .map((value) => value.trim())
+    .join(', ');
+
+  const encodedQuery = encodeURIComponent(query || 'financial markets');
+
+  return `https://source.unsplash.com/800x600/?${encodedQuery}`;
+};
 interface StockCaseCardProps {
   stockCase: StockCase;
   onViewDetails: (id: string) => void;
@@ -101,19 +135,23 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
   } = useStockCaseLikes(stockCase.id);
   const navigate = useNavigate();
   const isOwner = user && stockCase.user_id === user.id;
+  const accentGradient = getAccentGradient(stockCase.sector);
+  const displayImageSrc = stockCase.image_url || buildPlaceholderImage(stockCase.company_name, stockCase.sector);
   
   // Determine card styling based on case status
   const getCardClassNames = () => {
-    let baseClasses = "group flex h-full flex-col rounded-2xl border border-border/60 bg-card/80 transition-all duration-200 hover:shadow-md";
-    
+    let baseClasses = "group flex h-full flex-col rounded-2xl border border-border/60 bg-card/80 transition-all duration-200 hover:shadow-lg";
+
     if (stockCase.target_reached) {
       baseClasses += " border-green-500/50 bg-gradient-to-br from-green-50/80 to-card dark:from-green-950/30 dark:to-card shadow-green-500/20";
     } else if (stockCase.stop_loss_hit) {
       baseClasses += " border-red-500/50 bg-gradient-to-br from-red-50/80 to-card dark:from-red-950/30 dark:to-card shadow-red-500/20";
     }
-    
+
     return baseClasses;
   };
+
+  const cardClassNames = `${getCardClassNames()} ${accentGradient}`;
   
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -215,7 +253,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
   const cleanedLongDescription = stripFiftyTwoWeekSummary(stockCase.long_description);
   const previewText = buildCardPreview(shortDescription, cleanedLongDescription);
 
-  return <Card className={getCardClassNames()} onClick={() => onViewDetails(stockCase.id)}>
+  return <Card className={cardClassNames} onClick={() => onViewDetails(stockCase.id)}>
       <CardHeader className="px-4 pb-3 sm:px-6 sm:pb-4">
         <div className="flex flex-col gap-3">
           <div className="flex items-start justify-between gap-3">
@@ -291,14 +329,15 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
 
       <CardContent className="flex flex-1 flex-col gap-4 px-4 pb-4 pt-0 sm:px-6 sm:pb-6">
         {/* Stock Image - Responsive */}
-        {stockCase.image_url && <div className="relative w-full h-40 sm:h-48 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group/image">
-            <img
-              src={stockCase.image_url}
-              alt={stockCase.company_name ? `${stockCase.company_name} illustration` : 'Investeringscase'}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105"
-            />
-            <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/10 transition-all duration-300" />
-          </div>}
+        <div className="relative w-full h-40 sm:h-48 rounded-xl overflow-hidden bg-gradient-to-br from-white/70 via-slate-50 to-indigo-50 dark:from-slate-900/60 dark:via-slate-950/60 dark:to-indigo-950/40 group/image">
+          <img
+            src={displayImageSrc}
+            alt={stockCase.company_name ? `${stockCase.company_name} illustration` : 'Investeringscase'}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/10 to-transparent opacity-80 group-hover/image:opacity-100 transition-all duration-300" />
+        </div>
 
         {previewText && <p className="flex-1 text-sm text-muted-foreground line-clamp-3 sm:line-clamp-4">
             {previewText}

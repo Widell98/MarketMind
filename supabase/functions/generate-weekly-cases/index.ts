@@ -487,8 +487,8 @@ const sanitizeCaseData = (rawCase: any) => {
   const rawTitle = typeof rawCase.title === 'string' ? rawCase.title.trim() : '';
   const companyName = typeof rawCase.company_name === 'string' ? rawCase.company_name.trim() : '';
   const descriptionRaw = typeof rawCase.description === 'string' ? rawCase.description.trim() : '';
-  const longDescription = sanitizeLongDescription(
-    rawCase.analysis ?? rawCase.long_description ?? rawCase.investment_thesis,
+  let longDescription = sanitizeLongDescription(
+    rawCase.analysis ?? rawCase.long_description ?? rawCase.description,
   );
 
   const lowerCompany = companyName.toLowerCase();
@@ -508,6 +508,11 @@ const sanitizeCaseData = (rawCase: any) => {
   }
 
   if (!longDescription) {
+    // GPT-5.1 can produce more concise summaries; allow a fallback to avoid over-filtering
+    longDescription = descriptionRaw || rawCase.long_description || '';
+  }
+
+  if (!longDescription || longDescription.length < 50) {
     return null;
   }
 
@@ -1030,18 +1035,21 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-5.1-mini',
+          model: 'gpt-5.1',
           temperature: 0.7,
           max_output_tokens: 1600,
-          response_mode: 'blocking',
           reasoning: { effort: 'low' },
           text: { verbosity: 'medium' },
-          input: `SYSTEM:
-Du är en erfaren finansanalytiker som levererar koncisa, professionella rapportsammanfattningar på svenska.
-Du returnerar alltid strikt giltig JSON utan någon text utanför JSON-strukturen.
-
-USER:
-${prompt}`
+          input: [
+            {
+              type: 'input_text',
+              text: 'Du är en erfaren finansanalytiker som skriver analytiska investeringscase. Svara ENDAST med giltig JSON.'
+            },
+            {
+              type: 'input_text',
+              text: prompt,
+            },
+          ],
         }),
       });
 
