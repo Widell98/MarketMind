@@ -31,6 +31,20 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
           className="group relative h-full cursor-pointer overflow-hidden border bg-card shadow-sm transition hover:-translate-y-1 hover:shadow-md"
         >
           <CardContent className="relative flex h-full flex-col gap-5 p-5">
+            <div className="overflow-hidden rounded-2xl border bg-muted/40">
+              {report.companyLogoUrl ? (
+                <img
+                  src={report.companyLogoUrl}
+                  alt={`${report.companyName} logotyp`}
+                  className="h-full w-full max-h-44 object-contain bg-white"
+                />
+              ) : (
+                <div className="flex h-44 items-center justify-center bg-muted/40 text-lg font-semibold text-muted-foreground">
+                  {report.companyName}
+                </div>
+              )}
+            </div>
+
             <div className="flex items-start gap-3">
               <Avatar className="h-12 w-12 ring-2 ring-offset-2 ring-offset-white dark:ring-offset-slate-900">
                 {report.companyLogoUrl && (

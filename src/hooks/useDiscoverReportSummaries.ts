@@ -66,6 +66,7 @@ const parseKeyMetrics = (value: DiscoverReportSummaryRow['key_metrics']): Genera
 const mapRowToGeneratedReport = (row: DiscoverReportSummaryRow): GeneratedReport => ({
   id: row.id,
   companyName: row.company_name,
+  companyLogoUrl: (row as { company_logo_url?: string | null }).company_logo_url ?? undefined,
   reportTitle: row.report_title,
   summary: row.summary,
   keyPoints: parseKeyPoints(row.key_points),

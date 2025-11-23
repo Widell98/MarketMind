@@ -1,7 +1,7 @@
 import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
-import { ArrowUpRight, Calendar, Clock3, FileText, LineChart, Sparkles } from 'lucide-react';
+import { ArrowUpRight, Calendar, Clock3, FileText, Image as ImageIcon, LineChart, Sparkles } from 'lucide-react';
 
 import { DialogContent } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -80,6 +80,26 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
 
       <ScrollArea className="max-h-[70vh]">
         <div className="grid gap-6 bg-card px-6 pb-8 pt-6 dark:bg-slate-950">
+          <div className="overflow-hidden rounded-2xl border bg-card shadow-sm dark:bg-slate-900/70">
+            <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <ImageIcon className="h-4 w-4" />
+              Rapportbild
+            </div>
+            <div className="flex items-center justify-center bg-white px-4 py-6 dark:bg-slate-900">
+              {report.companyLogoUrl ? (
+                <img
+                  src={report.companyLogoUrl}
+                  alt={`${report.companyName} logotyp`}
+                  className="max-h-44 w-full object-contain"
+                />
+              ) : (
+                <div className="flex h-40 w-full items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/30 text-sm font-medium text-muted-foreground">
+                  {report.companyName}
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="grid gap-6 md:grid-cols-[1.15fr_0.85fr]">
             <div className="space-y-4">
               {report.keyPoints && report.keyPoints.length > 0 && (
