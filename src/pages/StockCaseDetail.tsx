@@ -373,7 +373,7 @@ const StockCaseDetail = ({
 
     return (
       <div
-        className="pointer-events-none absolute left-1/2 top-36 z-40 flex w-full max-w-[min(1200px,calc(100vw-1.5rem))] -translate-x-1/2 items-center justify-between px-1 sm:top-40 sm:px-4 lg:top-44 lg:px-6"
+        className="pointer-events-none absolute left-1/2 top-1/2 z-40 flex w-full max-w-[min(1200px,calc(100vw-1.5rem))] -translate-x-1/2 -translate-y-1/2 items-center justify-between px-1 sm:px-4 lg:px-6"
       >
         <TooltipProvider delayDuration={120} skipDelayDuration={0}>
           <Tooltip>
@@ -1355,78 +1355,172 @@ const StockCaseDetail = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <div className={cn(containerClasses, 'relative')}>
-        <CaseNavigationSlideButtons />
-        {/* Hero Section */}
-        {isAiGeneratedCase ? (
-          <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.55)]">
-            <div className="absolute inset-0 bg-gradient-to-br from-muted/15 via-transparent to-muted/5 dark:from-muted/20 dark:via-transparent dark:to-muted/10" />
+      <div className={cn(containerClasses)}>
+        <div className="relative">
+          <CaseNavigationSlideButtons />
+          {/* Hero Section */}
+          {isAiGeneratedCase ? (
+            <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.55)]">
+              <div className="absolute inset-0 bg-gradient-to-br from-muted/15 via-transparent to-muted/5 dark:from-muted/20 dark:via-transparent dark:to-muted/10" />
 
-            <div className="relative z-10 space-y-8">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate('/discover')}
-                    className="h-9 rounded-full border border-border/40 bg-background/70 px-4 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground"
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Tillbaka
-                  </Button>
-                  {embedded ? (
+              <div className="relative z-10 space-y-8">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
-                      variant="secondary"
+                      variant="ghost"
                       size="sm"
-                      onClick={() => navigate(`/stock-cases/${resolvedCaseId}`)}
-                      className="h-9 rounded-full px-4 text-xs font-semibold shadow-sm"
+                      onClick={() => navigate('/discover')}
+                      className="h-9 rounded-full border border-border/40 bg-background/70 px-4 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground"
                     >
-                      Öppna caset
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Tillbaka
                     </Button>
-                  ) : null}
-                </div>
-
-                {performanceBadge ? (
-                  <div className="flex items-center justify-end gap-2">
-                    {performanceBadge}
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)]">
-                <div className="space-y-5">
-                  <div className="flex flex-wrap items-center gap-3">
-                    {aiBadge}
+                    {embedded ? (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => navigate(`/stock-cases/${resolvedCaseId}`)}
+                        className="h-9 rounded-full px-4 text-xs font-semibold shadow-sm"
+                      >
+                        Öppna caset
+                      </Button>
+                    ) : null}
                   </div>
 
-                  <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{displayTitle}</h1>
-
-                  {heroSubtitle ? (
-                    <p className="text-base text-muted-foreground sm:text-lg">
-                      {heroSubtitle}
-                    </p>
-                  ) : null}
-
-                  {heroMetadataItems.length > 0 ? (
-                    <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
-                      {heroMetadataItems.map((item) => item)}
+                  {performanceBadge ? (
+                    <div className="flex items-center justify-end gap-2">
+                      {performanceBadge}
                     </div>
                   ) : null}
+                </div>
 
-                  <div className="space-y-3">
-                    {aiHeroIntroHtml ? (
-                      <p
-                        className="text-base leading-relaxed text-foreground sm:text-lg"
-                        dangerouslySetInnerHTML={{ __html: aiHeroIntroHtml }}
-                      />
+                <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)]">
+                  <div className="space-y-5">
+                    <div className="flex flex-wrap items-center gap-3">
+                      {aiBadge}
+                    </div>
+
+                    <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{displayTitle}</h1>
+
+                    {heroSubtitle ? (
+                      <p className="text-base text-muted-foreground sm:text-lg">
+                        {heroSubtitle}
+                      </p>
                     ) : null}
+
+                    {heroMetadataItems.length > 0 ? (
+                      <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
+                        {heroMetadataItems.map((item) => item)}
+                      </div>
+                    ) : null}
+
+                    <div className="space-y-3">
+                      {aiHeroIntroHtml ? (
+                        <p
+                          className="text-base leading-relaxed text-foreground sm:text-lg"
+                          dangerouslySetInnerHTML={{ __html: aiHeroIntroHtml }}
+                        />
+                      ) : null}
                       {renderAnalysisCta()}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {overviewLogoSrc ? (
+                      <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-border/30 bg-background/80 shadow-sm sm:mx-0 sm:ml-auto sm:flex-none">
+                        <img
+                          src={overviewLogoSrc}
+                          alt={`${overviewCompanyName} logotyp`}
+                          className="h-full w-full object-cover"
+                          onError={() => setIsHeroLogoError(true)}
+                        />
+                      </div>
+                    ) : null}
+
+                    {summaryStats.length > 0 ? (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {summaryStats.map((stat) => (
+                          <div
+                            key={stat.key}
+                            className="rounded-2xl border border-border/40 bg-background/80 p-4 shadow-sm"
+                          >
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">
+                              {stat.label}
+                            </p>
+                            <div className="mt-2 text-lg font-semibold text-foreground">
+                              {renderStatValue(stat)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="rounded-[28px] border border-border/30 bg-muted/20 px-6 py-6 shadow-[0_24px_60px_-60px_rgba(15,23,42,0.45)]">
+                  {renderPrimaryActionContent()}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.65)]">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent dark:from-primary/15 dark:via-transparent dark:to-transparent" />
+
+              <div className="relative z-10 flex flex-col gap-8">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate('/discover')}
+                      className="h-9 rounded-full border border-border/40 bg-background/70 px-4 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground"
+                    >
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Tillbaka
+                    </Button>
+                    {embedded ? (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => navigate(`/stock-cases/${resolvedCaseId}`)}
+                        className="h-9 rounded-full px-4 text-xs font-semibold shadow-sm"
+                      >
+                        Öppna caset
+                      </Button>
+                    ) : null}
+                  </div>
+
+                  {performanceBadge ? (
+                    <div className="flex items-center justify-end gap-2">
+                      {performanceBadge}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="flex flex-col gap-6 text-center sm:flex-row sm:items-start sm:justify-between sm:gap-8 sm:text-left">
+                  <div className="space-y-3 sm:max-w-2xl">
+                    <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start">
+                      <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{displayTitle}</h1>
+                      {aiBadge}
+                    </div>
+
+                    {heroSubtitle ? (
+                      <p className="text-base text-muted-foreground sm:text-lg">
+                        {heroSubtitle}
+                      </p>
+                    ) : null}
+
+                    {heroMetadataItems.length > 0 ? (
+                      <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                        {heroMetadataItems.map((item) => item)}
+                      </div>
+                    ) : null}
+
+                    {renderAnalysisCta()}
+                  </div>
+
                   {overviewLogoSrc ? (
-                    <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-border/30 bg-background/80 shadow-sm sm:mx-0 sm:ml-auto sm:flex-none">
+                    <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-border/30 bg-background/80 shadow-sm sm:mx-0 sm:ml-6 sm:flex-none sm:self-start">
                       <img
                         src={overviewLogoSrc}
                         alt={`${overviewCompanyName} logotyp`}
@@ -1435,103 +1529,11 @@ const StockCaseDetail = ({
                       />
                     </div>
                   ) : null}
-
-                  {summaryStats.length > 0 ? (
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {summaryStats.map((stat) => (
-                        <div
-                          key={stat.key}
-                          className="rounded-2xl border border-border/40 bg-background/80 p-4 shadow-sm"
-                        >
-                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">
-                            {stat.label}
-                          </p>
-                          <div className="mt-2 text-lg font-semibold text-foreground">
-                            {renderStatValue(stat)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
                 </div>
-              </div>
-
-              <div className="rounded-[28px] border border-border/30 bg-muted/20 px-6 py-6 shadow-[0_24px_60px_-60px_rgba(15,23,42,0.45)]">
-                {renderPrimaryActionContent()}
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.65)]">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent dark:from-primary/15 dark:via-transparent dark:to-transparent" />
-
-            <div className="relative z-10 flex flex-col gap-8">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate('/discover')}
-                    className="h-9 rounded-full border border-border/40 bg-background/70 px-4 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground"
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Tillbaka
-                  </Button>
-                  {embedded ? (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => navigate(`/stock-cases/${resolvedCaseId}`)}
-                      className="h-9 rounded-full px-4 text-xs font-semibold shadow-sm"
-                    >
-                      Öppna caset
-                    </Button>
-                  ) : null}
-                </div>
-
-                {performanceBadge ? (
-                  <div className="flex items-center justify-end gap-2">
-                    {performanceBadge}
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="flex flex-col gap-6 text-center sm:flex-row sm:items-start sm:justify-between sm:gap-8 sm:text-left">
-                <div className="space-y-3 sm:max-w-2xl">
-                  <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start">
-                    <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{displayTitle}</h1>
-                    {aiBadge}
-                  </div>
-
-                  {heroSubtitle ? (
-                    <p className="text-base text-muted-foreground sm:text-lg">
-                      {heroSubtitle}
-                    </p>
-                  ) : null}
-
-                  {heroMetadataItems.length > 0 ? (
-                    <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                      {heroMetadataItems.map((item) => item)}
-                    </div>
-                  ) : null}
-
-                  {renderAnalysisCta()}
-                </div>
-
-                {overviewLogoSrc ? (
-                  <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-border/30 bg-background/80 shadow-sm sm:mx-0 sm:ml-6 sm:flex-none sm:self-start">
-                    <img
-                      src={overviewLogoSrc}
-                      alt={`${overviewCompanyName} logotyp`}
-                      className="h-full w-full object-cover"
-                      onError={() => setIsHeroLogoError(true)}
-                    />
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Hero Content */}
         <div className="space-y-6">
