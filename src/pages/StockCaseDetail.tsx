@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
@@ -219,7 +219,6 @@ const StockCaseDetail = ({
   const resolvedCaseId = embeddedCaseId || id || '';
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const analysisSectionRef = useRef<HTMLDivElement | null>(null);
   const [updateToDelete, setUpdateToDelete] = useState<string | null>(null);
   const [showFullFinancialDetails, setShowFullFinancialDetails] = useState(false);
   const [sheetMetrics, setSheetMetrics] = useState<SheetTickerMetrics | null>(null);
@@ -640,12 +639,6 @@ const StockCaseDetail = ({
     setCurrentImageIndex(index);
   };
 
-  const scrollToAnalysisSection = () => {
-    if (analysisSectionRef.current) {
-      analysisSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
-
   // Delete handler
   const handleDeleteUpdate = async () => {
     if (updateToDelete && !timeline.find(v => v.id === updateToDelete)?.isOriginal) {
@@ -827,58 +820,6 @@ const StockCaseDetail = ({
 
   const formattedAnalysisContent = formatCaseDescription(displayedAnalysisDescription);
   const hasAnalysisContent = Boolean(formattedAnalysisContent?.length);
-
-  const { analysisPreviewText, hasMoreAnalysisContent } = (() => {
-    if (!displayedAnalysisDescription) {
-      return { analysisPreviewText: null as string | null, hasMoreAnalysisContent: false };
-    }
-
-    const htmlAwareText = displayedAnalysisDescription
-      .replace(/<li[^>]*>/gi, '• ')
-      .replace(/<\/(p|div|li|ul|ol|br|h[1-6])>/gi, '. ')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    const plainTextFallback = displayedAnalysisDescription
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    const normalizedText = htmlAwareText || plainTextFallback;
-
-    if (!normalizedText) {
-      return { analysisPreviewText: null as string | null, hasMoreAnalysisContent: false };
-    }
-
-    const sentenceLikeParts = normalizedText
-      .split(/(?<=[.!?])\s+|•\s+/)
-      .map((part) => part.trim())
-      .filter((part) => part.length > 0);
-
-    const previewParts = sentenceLikeParts.slice(0, Math.min(sentenceLikeParts.length, 3));
-    let preview = previewParts.join(' ');
-
-    if (!preview && normalizedText) {
-      preview = normalizedText.slice(0, 200).trim();
-    }
-
-    if (!preview) {
-      return { analysisPreviewText: null as string | null, hasMoreAnalysisContent: false };
-    }
-
-    const hasMoreCandidates = sentenceLikeParts.length > previewParts.length || normalizedText.length > preview.length;
-
-    if (preview.length > 320) {
-      preview = `${preview.slice(0, 320).trim()}…`;
-    } else if (hasMoreCandidates) {
-      preview = `${preview}…`;
-    }
-
-    return {
-      analysisPreviewText: preview,
-      hasMoreAnalysisContent: hasMoreCandidates,
-    };
-  })();
 
   const resolvedMarketCap = formatApproximateMarketCap(
     sheetMetrics?.marketCap ?? stockCase.market_cap ?? null,
@@ -1203,49 +1144,29 @@ const StockCaseDetail = ({
     </div>
   );
 
-  const renderAnalysisPreview = () => {
-    if (!hasAnalysisContent || !analysisPreviewText) {
+  const renderAnalysisCta = () => {
+    if (!hasAnalysisContent) {
       return null;
     }
 
     return (
-      <div className="rounded-2xl border border-border/30 bg-muted/15 px-4 py-4 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.35)]">
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          {analysisPreviewText}
-        </p>
-        {hasMoreAnalysisContent ? (
-          <p className="mt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground/80">
-            Förhandsgranskning av analysen
-          </p>
-        ) : null}
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-          <TooltipProvider delayDuration={150}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="lg"
-                  className="w-full rounded-full px-5 font-semibold shadow-sm sm:w-auto"
-                  onClick={() => setIsAnalysisDialogOpen(true)}
-                  aria-label="Öppna fullständig analys som modal"
-                >
-                  <LineChart className="mr-2 h-4 w-4" />
-                  Visa full analys
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Öppna analysen i ett större fönster</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="inline-flex items-center justify-center gap-2 text-sm text-primary hover:text-primary/90"
-            onClick={scrollToAnalysisSection}
-            aria-label="Scrolla till analysavsnittet"
-          >
-            Läs mer
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+      <div className="flex justify-center sm:justify-start">
+        <TooltipProvider delayDuration={150}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="lg"
+                className="rounded-full px-5 font-semibold shadow-sm"
+                onClick={() => setIsAnalysisDialogOpen(true)}
+                aria-label="Öppna fullständig analys som modal"
+              >
+                <LineChart className="mr-2 h-4 w-4" />
+                Visa full analys
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Öppna analysen i ett större fönster</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     );
   };
@@ -1498,7 +1419,7 @@ const StockCaseDetail = ({
                         dangerouslySetInnerHTML={{ __html: aiHeroIntroHtml }}
                       />
                     ) : null}
-                    {renderAnalysisPreview()}
+                      {renderAnalysisCta()}
                   </div>
                 </div>
 
@@ -1594,7 +1515,7 @@ const StockCaseDetail = ({
                     </div>
                   ) : null}
 
-                  {renderAnalysisPreview()}
+                  {renderAnalysisCta()}
                 </div>
 
                 {overviewLogoSrc ? (
@@ -1865,20 +1786,6 @@ const StockCaseDetail = ({
                 ) : null}
               </section>
             )}
-
-            {/* Case Description with Structured Sections */}
-            {hasAnalysisContent ? (
-              <div ref={analysisSectionRef}>
-                <Card>
-                  <CardHeader className="flex flex-wrap items-center justify-between gap-3">
-                    <CardTitle className="flex items-center gap-2">Analys</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {formattedAnalysisContent}
-                  </CardContent>
-                </Card>
-              </div>
-            ) : null}
 
             {/* Admin Comment */}
             {stockCase.admin_comment && (
