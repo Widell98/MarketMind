@@ -36,7 +36,7 @@ const Discover = () => {
   const [caseSortOrder, setCaseSortOrder] = useState<'asc' | 'desc'>('desc');
   const [caseViewMode, setCaseViewMode] = useState<'grid' | 'list'>('grid');
   const [featuredCaseId, setFeaturedCaseId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'cases' | 'liked'>('cases');
+  const [activeTab, setActiveTab] = useState<'cases' | 'liked' | 'upptack'>('upptack');
 
   const filteredCases = useMemo(() => {
     let filtered = [...(allStockCases || [])];
@@ -178,22 +178,18 @@ const Discover = () => {
   return (
     <Layout>
       <div className="w-full pb-12">
-        <div className="mx-auto w-full max-w-6xl space-y-8 px-3 sm:px-4 lg:px-0">
-          <section className="rounded-3xl border border-border/60 bg-card/70 p-6 text-center shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:p-10">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 sm:h-14 sm:w-14">
-              <Sparkles className="h-6 w-6 text-primary" />
-            </div>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
-              Upptäck & Utforska
-            </h1>
-            <p className="mx-auto mt-3 max-w-2xl text-base text-muted-foreground sm:text-lg">
-              Hitta inspiration genom visuella aktiecase och AI-drivna idéer.
-            </p>
-          </section>
-
+        <div className="mx-auto w-full max-w-6xl space-y-8 px-4 sm:px-6 lg:px-0">
           <div className="w-full space-y-6 sm:space-y-8">
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'cases' | 'liked')} className="w-full">
-              <TabsList className="mx-auto grid w-full max-w-md grid-cols-2 gap-1 rounded-2xl bg-muted p-1 shadow-sm sm:gap-2">
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) => setActiveTab(value as 'cases' | 'liked' | 'upptack')}
+              className="w-full"
+            >
+              <TabsList className="mx-auto grid w-full max-w-md grid-cols-3 gap-1 rounded-2xl bg-muted p-1 shadow-sm sm:gap-2">
+                <TabsTrigger value="upptack" className="flex items-center gap-2 rounded-xl">
+                  <Sparkles className="h-4 w-4" />
+                  Upptäck
+                </TabsTrigger>
                 <TabsTrigger value="cases" className="flex items-center gap-2 rounded-xl">
                   <Layers className="h-4 w-4" />
                   Alla case
@@ -204,7 +200,7 @@ const Discover = () => {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="cases" className="space-y-6 sm:space-y-8">
+              <TabsContent value="upptack" className="space-y-6 sm:space-y-8">
                 {featuredCase && (
                   <StockCaseDetail
                     embedded
@@ -212,10 +208,12 @@ const Discover = () => {
                     navigationCases={navigationCases}
                     onNavigateCase={(id) => setFeaturedCaseId(id)}
                     showRiskWarning={false}
-                    className="px-3 sm:px-6 lg:px-8 space-y-8 sm:space-y-12"
+                    className="rounded-3xl px-3 sm:px-6 lg:px-8 space-y-8 sm:space-y-12"
                   />
                 )}
+              </TabsContent>
 
+              <TabsContent value="cases" className="space-y-6 sm:space-y-8">
                 <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">
                   <EnhancedStockCasesSearch
                     searchTerm={caseSearchTerm}
@@ -236,7 +234,9 @@ const Discover = () => {
                   />
                 </div>
 
-                <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+                <div
+                  className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}
+                >
                   {remainingCases.map((sc) => (
                     <StockCaseCard
                       key={sc.id}

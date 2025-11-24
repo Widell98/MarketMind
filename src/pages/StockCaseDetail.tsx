@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ToastAction } from '@/components/ui/toast';
-import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Building, BarChart3, Users, AlertTriangle, Target, StopCircle, Brain, ShoppingCart, Plus, UserPlus, PlusCircle, History, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Trash2, MessageSquare, LineChart, Coins, Percent, User, Clock, Tag, Sparkles } from 'lucide-react';
+import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Building, BarChart3, Users, AlertTriangle, Target, StopCircle, Brain, ShoppingCart, Plus, UserPlus, PlusCircle, History, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Trash2, MessageSquare, LineChart, Coins, Percent, User, Clock, Tag, Sparkles, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -21,15 +21,15 @@ import { highlightNumbersSafely } from '@/utils/sanitizer';
 import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 import AddStockCaseUpdateDialog from '@/components/AddStockCaseUpdateDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatCurrency } from '@/utils/currencyUtils';
 import { cn } from '@/lib/utils';
 import type { StockCase } from '@/types/stockCase';
 import { fetchSheetTickerMetrics, type SheetTickerMetrics } from '@/utils/sheetMetrics';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const parseNumericFromString = (value: string): number | null => {
   if (!value) {
@@ -219,12 +219,12 @@ const StockCaseDetail = ({
   const resolvedCaseId = embeddedCaseId || id || '';
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const analysisSectionRef = useRef<HTMLDivElement | null>(null);
   const [updateToDelete, setUpdateToDelete] = useState<string | null>(null);
   const [showFullFinancialDetails, setShowFullFinancialDetails] = useState(false);
   const [sheetMetrics, setSheetMetrics] = useState<SheetTickerMetrics | null>(null);
   const [isHeroLogoError, setIsHeroLogoError] = useState(false);
   const [isVersionDialogOpen, setIsVersionDialogOpen] = useState(false);
+  const [isAnalysisDialogOpen, setIsAnalysisDialogOpen] = useState(false);
 
   const {
     data: navigationCases = [],
@@ -345,11 +345,12 @@ const StockCaseDetail = ({
     }
   }, [embedded, stockCase?.id]);
 
-  const navigationButtonBaseClasses = 'rounded-full border border-border/40 bg-background/70 text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground';
+  const navigationButtonBaseClasses =
+    'rounded-full border-2 border-primary/50 bg-gradient-to-b from-primary/95 via-primary to-primary/90 text-primary-foreground shadow-xl shadow-primary/30 backdrop-blur transition-all duration-200 hover:shadow-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-0';
 
   const containerClasses = cn(
-    'mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8',
-    embedded ? 'space-y-10 sm:space-y-12' : 'space-y-12',
+    'mx-auto w-full px-3 sm:px-5 md:px-6 lg:px-8',
+    embedded ? 'max-w-[min(1200px,100%)] space-y-10 sm:space-y-12' : 'max-w-6xl space-y-12',
     className
   );
 
@@ -361,18 +362,9 @@ const StockCaseDetail = ({
   const renderWithinLayout = (children: React.ReactNode) =>
     embedded ? <>{children}</> : <Layout>{children}</Layout>;
 
-  const CaseNavigationControls = () => {
-    if (navigationError) {
+  const CaseNavigationSlideButtons = () => {
+    if (navigationError || navigationLoading) {
       return null;
-    }
-
-    if (navigationLoading) {
-      return (
-        <div className="flex items-center gap-2">
-          <div className="h-9 w-9 animate-pulse rounded-full border border-border/30 bg-muted/40" />
-          <div className="h-9 w-9 animate-pulse rounded-full border border-border/30 bg-muted/40" />
-        </div>
-      );
     }
 
     if (!previousCase && !nextCase) {
@@ -380,50 +372,59 @@ const StockCaseDetail = ({
     }
 
     return (
-      <TooltipProvider delayDuration={150}>
-        <div className="flex items-center gap-2">
+      <div
+        className="pointer-events-none absolute left-1/2 top-1/2 z-40 flex w-full max-w-[min(1200px,calc(100vw-1.5rem))] -translate-x-1/2 -translate-y-1/2 items-center justify-between px-1 sm:px-4 lg:px-6"
+      >
+        <TooltipProvider delayDuration={120} skipDelayDuration={0}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="inline-flex">
+              <span className="pointer-events-auto inline-flex">
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className={cn('h-9 w-9', navigationButtonBaseClasses)}
+                  className={cn(
+                    'h-9 w-9 sm:h-10 sm:w-10 lg:h-12 lg:w-12 shadow-lg shadow-black/10 -translate-x-1/2',
+                    navigationButtonBaseClasses,
+                  )}
                   disabled={!previousCase}
                   onClick={() => handleNavigateToNeighbor(previousCase?.id)}
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
                   <span className="sr-only">Föregående case</span>
                 </Button>
               </span>
             </TooltipTrigger>
-            <TooltipContent sideOffset={6}>
+            <TooltipContent sideOffset={10}>
               {previousCaseTitle ? `Föregående: ${previousCaseTitle}` : 'Föregående case'}
             </TooltipContent>
           </Tooltip>
+
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="inline-flex">
+              <span className="pointer-events-auto inline-flex">
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className={cn('h-9 w-9', navigationButtonBaseClasses)}
+                  className={cn(
+                    'h-9 w-9 sm:h-10 sm:w-10 lg:h-12 lg:w-12 shadow-lg shadow-black/10 translate-x-1/2',
+                    navigationButtonBaseClasses,
+                  )}
                   disabled={!nextCase}
                   onClick={() => handleNavigateToNeighbor(nextCase?.id)}
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
                   <span className="sr-only">Nästa case</span>
                 </Button>
               </span>
             </TooltipTrigger>
-            <TooltipContent sideOffset={6}>
+            <TooltipContent sideOffset={10}>
               {nextCaseTitle ? `Nästa: ${nextCaseTitle}` : 'Nästa case'}
             </TooltipContent>
           </Tooltip>
-        </div>
-      </TooltipProvider>
+        </TooltipProvider>
+      </div>
     );
   };
 
@@ -1144,6 +1145,33 @@ const StockCaseDetail = ({
     </div>
   );
 
+  const renderAnalysisCta = () => {
+    if (!hasAnalysisContent) {
+      return null;
+    }
+
+    return (
+      <div className="flex justify-center sm:justify-start">
+        <TooltipProvider delayDuration={150}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="lg"
+                className="rounded-full px-5 font-semibold shadow-sm"
+                onClick={() => setIsAnalysisDialogOpen(true)}
+                aria-label="Öppna fullständig analys som modal"
+              >
+                <LineChart className="mr-2 h-4 w-4" />
+                Visa full analys
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Öppna analysen i ett större fönster</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+    );
+  };
+
   const fallbackAiIntro = displayedAnalysisDescription
     ? displayedAnalysisDescription.split(/\n{2,}/)[0]?.trim() ?? null
     : null;
@@ -1248,98 +1276,245 @@ const StockCaseDetail = ({
 
   return renderWithinLayout(
     <>
-      <div className={containerClasses}>
-        {/* Hero Section */}
-        {isAiGeneratedCase ? (
-          <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.55)]">
-            <div className="absolute inset-0 bg-gradient-to-br from-muted/15 via-transparent to-muted/5 dark:from-muted/20 dark:via-transparent dark:to-muted/10" />
+      <Dialog open={isAnalysisDialogOpen} onOpenChange={setIsAnalysisDialogOpen}>
+        <DialogContent className="max-w-4xl p-0 sm:max-w-5xl" hideCloseButton>
+          <div className="flex items-start justify-between border-b border-border/60 bg-background/95 px-6 py-4 backdrop-blur">
+            <div className="space-y-1">
+              <DialogTitle className="text-xl font-semibold tracking-tight sm:text-2xl">
+                Full analys
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground">
+                {stockCase.company_name}
+                {overviewTicker ? ` • ${overviewTicker}` : ''}
+                {stockCase.timeframe ? ` • ${stockCase.timeframe}` : ''}
+              </DialogDescription>
+            </div>
+            <DialogClose asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full"
+                aria-label="Stäng analysdialog"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogClose>
+          </div>
 
-            <div className="relative z-10 space-y-8">
+          <div className="px-6 pb-6 pt-4">
+            <div className="sticky top-0 z-10 -mx-6 mb-4 border-b border-border/50 bg-background/90 px-6 py-3 backdrop-blur">
               <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Snabbåtgärder
+                </p>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate('/discover')}
-                    className="h-9 rounded-full border border-border/40 bg-background/70 px-4 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground"
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Tillbaka
-                  </Button>
-                  <CaseNavigationControls />
-                  {embedded ? (
-                    <Button
+                  <TooltipProvider delayDuration={150}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-full"
+                          onClick={handleShare}
+                          aria-label="Dela analysen"
+                        >
+                          <Share2 className="mr-2 h-4 w-4" />
+                          Dela
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Kopiera länk eller dela caset</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  {user ? (
+                    <SaveOpportunityButton
+                      itemType="stock_case"
+                      itemId={stockCase.id}
+                      itemTitle={displayTitle}
+                      onSaveSuccess={handleSaveSuccess}
                       variant="secondary"
                       size="sm"
-                      onClick={() => navigate(`/stock-cases/${resolvedCaseId}`)}
-                      className="h-9 rounded-full px-4 text-xs font-semibold shadow-sm"
-                    >
-                      Öppna caset
-                    </Button>
+                      className="rounded-full"
+                    />
                   ) : null}
                 </div>
-
-                {performanceBadge ? (
-                  <div className="flex items-center justify-end gap-2">
-                    {performanceBadge}
-                  </div>
-                ) : null}
               </div>
+            </div>
 
-              <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)]">
-                <div className="space-y-5">
-                  <div className="flex flex-wrap items-center gap-3">
-                    {aiBadge}
+            <ScrollArea className="max-h-[70vh] rounded-3xl border border-border/40 bg-muted/10 px-5 py-5">
+              <div className="space-y-4 text-base leading-relaxed text-foreground">
+                {formattedAnalysisContent}
+              </div>
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <div className={cn(containerClasses)}>
+        <div className="relative">
+          <CaseNavigationSlideButtons />
+          {/* Hero Section */}
+          {isAiGeneratedCase ? (
+            <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.55)]">
+              <div className="absolute inset-0 bg-gradient-to-br from-muted/15 via-transparent to-muted/5 dark:from-muted/20 dark:via-transparent dark:to-muted/10" />
+
+              <div className="relative z-10 space-y-8">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate('/discover')}
+                      className="h-9 rounded-full border border-border/40 bg-background/70 px-4 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground"
+                    >
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Tillbaka
+                    </Button>
+                    {embedded ? (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => navigate(`/stock-cases/${resolvedCaseId}`)}
+                        className="h-9 rounded-full px-4 text-xs font-semibold shadow-sm"
+                      >
+                        Öppna caset
+                      </Button>
+                    ) : null}
                   </div>
 
-                  <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{displayTitle}</h1>
-
-                  {heroSubtitle ? (
-                    <p className="text-base text-muted-foreground sm:text-lg">
-                      {heroSubtitle}
-                    </p>
-                  ) : null}
-
-                  {heroMetadataItems.length > 0 ? (
-                    <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
-                      {heroMetadataItems.map((item) => item)}
-                    </div>
-                  ) : null}
-
-                  {aiHeroIntroHtml ? (
-                    <div className="space-y-2">
-                      <p
-                        className="text-base leading-relaxed text-foreground sm:text-lg"
-                        dangerouslySetInnerHTML={{ __html: aiHeroIntroHtml }}
-                      />
-                      {hasAnalysisContent ? (
-                        <DropdownMenu modal={false}>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              type="button"
-                              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 py-2 h-auto px-0 text-sm font-semibold text-muted-foreground underline-offset-4 hover:underline"
-                            >
-                              Visa full analys
-                              <ChevronDown className="h-4 w-4" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="start"
-                            className="w-[min(90vw,640px)] max-h-[70vh] overflow-y-auto border border-border/40 bg-background/95 p-0 shadow-lg"
-                          >
-                            <div className="space-y-4 px-4 py-4 text-left">
-                              {formattedAnalysisContent}
-                            </div>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      ) : null}
+                  {performanceBadge ? (
+                    <div className="flex items-center justify-end gap-2">
+                      {performanceBadge}
                     </div>
                   ) : null}
                 </div>
 
-                <div className="space-y-4">
+                <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)]">
+                  <div className="space-y-5">
+                    <div className="flex flex-wrap items-center gap-3">
+                      {aiBadge}
+                    </div>
+
+                    <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{displayTitle}</h1>
+
+                    {heroSubtitle ? (
+                      <p className="text-base text-muted-foreground sm:text-lg">
+                        {heroSubtitle}
+                      </p>
+                    ) : null}
+
+                    {heroMetadataItems.length > 0 ? (
+                      <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
+                        {heroMetadataItems.map((item) => item)}
+                      </div>
+                    ) : null}
+
+                    <div className="space-y-3">
+                      {aiHeroIntroHtml ? (
+                        <p
+                          className="text-base leading-relaxed text-foreground sm:text-lg"
+                          dangerouslySetInnerHTML={{ __html: aiHeroIntroHtml }}
+                        />
+                      ) : null}
+                      {renderAnalysisCta()}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {overviewLogoSrc ? (
+                      <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-border/30 bg-background/80 shadow-sm sm:mx-0 sm:ml-auto sm:flex-none">
+                        <img
+                          src={overviewLogoSrc}
+                          alt={`${overviewCompanyName} logotyp`}
+                          className="h-full w-full object-cover"
+                          onError={() => setIsHeroLogoError(true)}
+                        />
+                      </div>
+                    ) : null}
+
+                    {summaryStats.length > 0 ? (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {summaryStats.map((stat) => (
+                          <div
+                            key={stat.key}
+                            className="rounded-2xl border border-border/40 bg-background/80 p-4 shadow-sm"
+                          >
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">
+                              {stat.label}
+                            </p>
+                            <div className="mt-2 text-lg font-semibold text-foreground">
+                              {renderStatValue(stat)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="rounded-[28px] border border-border/30 bg-muted/20 px-6 py-6 shadow-[0_24px_60px_-60px_rgba(15,23,42,0.45)]">
+                  {renderPrimaryActionContent()}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.65)]">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent dark:from-primary/15 dark:via-transparent dark:to-transparent" />
+
+              <div className="relative z-10 flex flex-col gap-8">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate('/discover')}
+                      className="h-9 rounded-full border border-border/40 bg-background/70 px-4 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground"
+                    >
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Tillbaka
+                    </Button>
+                    {embedded ? (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => navigate(`/stock-cases/${resolvedCaseId}`)}
+                        className="h-9 rounded-full px-4 text-xs font-semibold shadow-sm"
+                      >
+                        Öppna caset
+                      </Button>
+                    ) : null}
+                  </div>
+
+                  {performanceBadge ? (
+                    <div className="flex items-center justify-end gap-2">
+                      {performanceBadge}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="flex flex-col gap-6 text-center sm:flex-row sm:items-start sm:justify-between sm:gap-8 sm:text-left">
+                  <div className="space-y-3 sm:max-w-2xl">
+                    <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start">
+                      <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{displayTitle}</h1>
+                      {aiBadge}
+                    </div>
+
+                    {heroSubtitle ? (
+                      <p className="text-base text-muted-foreground sm:text-lg">
+                        {heroSubtitle}
+                      </p>
+                    ) : null}
+
+                    {heroMetadataItems.length > 0 ? (
+                      <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                        {heroMetadataItems.map((item) => item)}
+                      </div>
+                    ) : null}
+
+                    {renderAnalysisCta()}
+                  </div>
+
                   {overviewLogoSrc ? (
-                    <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-border/30 bg-background/80 shadow-sm sm:mx-0 sm:ml-auto sm:flex-none">
+                    <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-border/30 bg-background/80 shadow-sm sm:mx-0 sm:ml-6 sm:flex-none sm:self-start">
                       <img
                         src={overviewLogoSrc}
                         alt={`${overviewCompanyName} logotyp`}
@@ -1348,102 +1523,11 @@ const StockCaseDetail = ({
                       />
                     </div>
                   ) : null}
-
-                  {summaryStats.length > 0 ? (
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {summaryStats.map((stat) => (
-                        <div
-                          key={stat.key}
-                          className="rounded-2xl border border-border/40 bg-background/80 p-4 shadow-sm"
-                        >
-                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">
-                            {stat.label}
-                          </p>
-                          <div className="mt-2 text-lg font-semibold text-foreground">
-                            {renderStatValue(stat)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
                 </div>
-              </div>
-
-              <div className="rounded-[28px] border border-border/30 bg-muted/20 px-6 py-6 shadow-[0_24px_60px_-60px_rgba(15,23,42,0.45)]">
-                {renderPrimaryActionContent()}
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.65)]">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent dark:from-primary/15 dark:via-transparent dark:to-transparent" />
-
-            <div className="relative z-10 flex flex-col gap-8">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate('/discover')}
-                    className="h-9 rounded-full border border-border/40 bg-background/70 px-4 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground"
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Tillbaka
-                  </Button>
-                  <CaseNavigationControls />
-                  {embedded ? (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => navigate(`/stock-cases/${resolvedCaseId}`)}
-                      className="h-9 rounded-full px-4 text-xs font-semibold shadow-sm"
-                    >
-                      Öppna caset
-                    </Button>
-                  ) : null}
-                </div>
-
-                {performanceBadge ? (
-                  <div className="flex items-center justify-end gap-2">
-                    {performanceBadge}
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="flex flex-col gap-6 text-center sm:flex-row sm:items-start sm:justify-between sm:gap-8 sm:text-left">
-                <div className="space-y-3 sm:max-w-2xl">
-                  <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start">
-                    <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{displayTitle}</h1>
-                    {aiBadge}
-                  </div>
-
-                  {heroSubtitle ? (
-                    <p className="text-base text-muted-foreground sm:text-lg">
-                      {heroSubtitle}
-                    </p>
-                  ) : null}
-
-                  {heroMetadataItems.length > 0 ? (
-                    <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                      {heroMetadataItems.map((item) => item)}
-                    </div>
-                  ) : null}
-                </div>
-
-                {overviewLogoSrc ? (
-                  <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-border/30 bg-background/80 shadow-sm sm:mx-0 sm:ml-6 sm:flex-none sm:self-start">
-                    <img
-                      src={overviewLogoSrc}
-                      alt={`${overviewCompanyName} logotyp`}
-                      className="h-full w-full object-cover"
-                      onError={() => setIsHeroLogoError(true)}
-                    />
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Hero Content */}
         <div className="space-y-6">
@@ -1698,20 +1782,6 @@ const StockCaseDetail = ({
                 ) : null}
               </section>
             )}
-
-            {/* Case Description with Structured Sections */}
-            {hasAnalysisContent && !isAiGeneratedCase ? (
-              <div ref={analysisSectionRef}>
-                <Card>
-                  <CardHeader className="flex flex-wrap items-center justify-between gap-3">
-                    <CardTitle className="flex items-center gap-2">Analys</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {formattedAnalysisContent}
-                  </CardContent>
-                </Card>
-              </div>
-            ) : null}
 
             {/* Admin Comment */}
             {stockCase.admin_comment && (
