@@ -250,6 +250,9 @@ const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
   const tickerIdx = headers.findIndex((header) => /ticker/i.test(header) && !/simple/i.test(header));
   const currencyIdx = headers.findIndex((header) => /(currency|valuta)/i.test(header));
   const priceIdx = headers.findIndex((header) => /(price|senast|last)/i.test(header));
+  const segmentIdx = headers.findIndex((header) =>
+    /segment/i.test(header)
+  );
   const peIdx = headers.findIndex((header) => {
     const normalized = header.toLowerCase();
     return normalized.includes('p/e')
@@ -295,6 +298,7 @@ const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
     const rawSymbol = tickerIdx !== -1 ? normalizeSheetValue(columns[tickerIdx]) : null;
     const rawCurrency = currencyIdx !== -1 ? normalizeSheetValue(columns[currencyIdx]) : null;
     const rawPrice = priceIdx !== -1 ? normalizeSheetValue(columns[priceIdx]) : null;
+    const rawSegment = segmentIdx !== -1 ? normalizeSheetValue(columns[segmentIdx]) : null;
     const rawPeRatio = peIdx !== -1 ? normalizeSheetValue(columns[peIdx]) : null;
     const rawDividendYield = dividendIdx !== -1 ? normalizeSheetValue(columns[dividendIdx]) : null;
     const rawMarketCap = marketCapIdx !== -1 ? normalizeSheetValue(columns[marketCapIdx]) : null;
@@ -334,6 +338,7 @@ const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
       name: rawName ?? cleanedSymbol,
       currency: rawCurrency ?? null,
       price,
+      segment: rawSegment ?? null,
       peRatio,
       marketCap: rawMarketCap ?? null,
       dividendYield: formatDividendYield(rawDividendYield),
@@ -573,6 +578,7 @@ type SheetTickerInfo = {
   symbol: string;
   price: number | null;
   currency: string | null;
+  segment?: string | null;
   name?: string | null;
   peRatio?: string | null;
   marketCap?: string | null;
@@ -823,7 +829,6 @@ serve(async (req) => {
       throw new Error('Failed to create AI generation run record');
     }
 
-    const sectors = ['Technology'];
     const investmentStyles = ['Growth', 'Value', 'Dividend'];
 
     const { data: existingCaseRows, error: existingCasesError } = await supabaseClient
@@ -910,50 +915,50 @@ serve(async (req) => {
         break;
       }
 
-const sector = sectors[Math.floor(Math.random() * sectors.length)];
-const style = investmentStyles[Math.floor(Math.random() * investmentStyles.length)];
+      const style = investmentStyles[Math.floor(Math.random() * investmentStyles.length)];
 
-// Sortera tickers efter Market Cap (störst först)
-const sortedTickers = Array.from(
-  new Map(
-    eligibleTickers
-      .map((t) => {
-        const mc = t.marketCap ? Number(String(t.marketCap).replace(/[^0-9]/g, '')) : 0;
-        return { ...t, marketCapValue: mc };
-      })
-      // Sortera högst till lägst Market Cap
-      .sort((a, b) => b.marketCapValue - a.marketCapValue)
-      // Filtrera bort dubbletter baserat på företagsnamn (t.ex. Investor A/B)
-      .filter((t, idx, self) => {
-        if (!t.name) return true;
-        const baseName = t.name.split(' ')[0];
-        return self.findIndex(x => x.name?.split(' ')[0] === baseName) === idx;
-      })
-      // Lägg i Map för att ta bort identiska symboler
-      .map((t) => [t.symbol, t])
-  ).values()
-);
+      // Sortera tickers efter Market Cap (störst först)
+      const sortedTickers = Array.from(
+        new Map(
+          eligibleTickers
+            .map((t) => {
+              const mc = t.marketCap ? Number(String(t.marketCap).replace(/[^0-9]/g, '')) : 0;
+              return { ...t, marketCapValue: mc };
+            })
+            // Sortera högst till lägst Market Cap
+            .sort((a, b) => b.marketCapValue - a.marketCapValue)
+            // Filtrera bort dubbletter baserat på företagsnamn (t.ex. Investor A/B)
+            .filter((t, idx, self) => {
+              if (!t.name) return true;
+              const baseName = t.name.split(' ')[0];
+              return self.findIndex(x => x.name?.split(' ')[0] === baseName) === idx;
+            })
+            // Lägg i Map för att ta bort identiska symboler
+            .map((t) => [t.symbol, t])
+        ).values()
+      );
 
-// Begränsa till topp 50 största bolagen
-const topTickers = sortedTickers.slice(0, 50);
+      // Begränsa till topp 50 största bolagen
+      const topTickers = sortedTickers.slice(0, 50);
 
-// Välj nästa ticker i listan (eller fallback till första om listan tar slut)
-const selectedTickerInfo = topTickers[Math.floor(Math.random() * topTickers.length)];
+      // Välj nästa ticker i listan (eller fallback till första om listan tar slut)
+      const selectedTickerInfo = topTickers[Math.floor(Math.random() * topTickers.length)];
+      const sector = selectedTickerInfo.segment?.trim() || "Unknown";
 
-// Hämta metadata för valt bolag
-const selectedTicker = normalizeTickerKey(selectedTickerInfo.symbol);
-const selectedName = selectedTickerInfo.name?.trim() || selectedTicker;
-const sheetPrice =
-  typeof selectedTickerInfo.price === 'number' && Number.isFinite(selectedTickerInfo.price)
-    ? Number(selectedTickerInfo.price.toFixed(2))
-    : null;
-const sheetCurrency =
-  typeof selectedTickerInfo.currency === 'string' && selectedTickerInfo.currency.trim().length > 0
-    ? selectedTickerInfo.currency.trim().toUpperCase()
-    : null;
+      // Hämta metadata för valt bolag
+      const selectedTicker = normalizeTickerKey(selectedTickerInfo.symbol);
+      const selectedName = selectedTickerInfo.name?.trim() || selectedTicker;
+      const sheetPrice =
+        typeof selectedTickerInfo.price === 'number' && Number.isFinite(selectedTickerInfo.price)
+          ? Number(selectedTickerInfo.price.toFixed(2))
+          : null;
+      const sheetCurrency =
+        typeof selectedTickerInfo.currency === 'string' && selectedTickerInfo.currency.trim().length > 0
+          ? selectedTickerInfo.currency.trim().toUpperCase()
+          : null;
 
-// Markera tickern som använd
-usedTickerSymbols.add(selectedTicker);
+      // Markera tickern som använd
+      usedTickerSymbols.add(selectedTicker);
 
 
       const prompt = `
