@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,7 @@ const Auth = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const { user, loading, signIn, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -52,11 +53,20 @@ const Auth = () => {
   });
 
   useEffect(() => {
-    // If user is already logged in, redirect to home
-    if (user && !loading) {
-      navigate('/');
+    if (!user || loading) return;
+
+    const shouldRedirectToProfile = sessionStorage.getItem('redirectToProfile') === 'true';
+    const targetPath = shouldRedirectToProfile ? '/profile' : '/';
+    const targetState = shouldRedirectToProfile ? { tab: 'riskprofile' } : undefined;
+
+    if (shouldRedirectToProfile) {
+      sessionStorage.removeItem('redirectToProfile');
     }
-  }, [user, loading, navigate]);
+
+    if (location.pathname !== targetPath) {
+      navigate(targetPath, { replace: true, state: targetState });
+    }
+  }, [user, loading, navigate, location.pathname]);
 
   const onLoginSubmit = async (data: LoginFormValues) => {
     try {
@@ -73,7 +83,8 @@ const Auth = () => {
         username: data.username,
         displayName: data.displayName
       });
-      setActiveTab('login');
+      sessionStorage.setItem('redirectToProfile', 'true');
+      navigate('/profile', { state: { tab: 'riskprofile' } });
     } catch (error) {
       console.error("Signup error:", error);
     }
