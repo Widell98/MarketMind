@@ -15,7 +15,6 @@ import {
   AlertCircle,
   CheckCircle,
   Settings,
-  Plus,
   Activity,
   Loader2
 } from 'lucide-react';
@@ -32,6 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
 import { Slider } from './ui/slider';
+import EnhancedRiskAssessmentForm from './EnhancedRiskAssessmentForm';
 interface UserInvestmentAnalysisProps {
   onUpdateProfile?: () => void;
 }
@@ -168,8 +168,7 @@ const UserInvestmentAnalysis = ({
           if (onUpdateProfile) {
             onUpdateProfile();
           }
-          // Navigate to portfolio advisor to create new profile
-          navigate('/portfolio-advisor');
+          navigate('/profile?tab=riskprofile');
         }
       }
     } catch (error) {
@@ -181,9 +180,6 @@ const UserInvestmentAnalysis = ({
       });
     }
     setShowResetDialog(false);
-  };
-  const handleCreateNewProfile = () => {
-    navigate('/portfolio-advisor');
   };
   const aiStrategyData = activePortfolio?.asset_allocation?.ai_strategy;
   const aiStrategyRaw = activePortfolio?.asset_allocation?.ai_strategy_raw;
@@ -243,35 +239,35 @@ const UserInvestmentAnalysis = ({
   }
   if (!riskProfile) {
     return <div className="space-y-8 animate-fade-in">
-        {/* No Profile State - Apple-inspired */}
-        <Card className="border-dashed border-2 rounded-3xl shadow-lg bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-900 dark:to-slate-800/50 border-slate-200/60 dark:border-slate-700/60 hover:shadow-xl transition-all duration-500 hover:-translate-y-1">
-          <CardContent className="flex flex-col items-center justify-center py-16 px-8">
-            <div className="text-center">
-              <div className="relative mb-8">
-                <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center mx-auto shadow-inner border border-blue-200/30 dark:border-blue-700/30">
-                  <Brain className="w-12 h-12 text-transparent bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text" />
-                </div>
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                  <Plus className="w-3 h-3 text-white" />
-                </div>
+        <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-blue-50/40 dark:from-slate-900/90 dark:to-blue-900/10 backdrop-blur-sm border border-blue-200/40 dark:border-blue-800/30">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center border border-blue-200/40 dark:border-blue-800/40">
+                <Brain className="w-6 h-6 text-transparent bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text" />
               </div>
-              <h3 className="text-2xl font-bold mb-4 text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text">
-                Ingen riskprofil hittades
-              </h3>
-              <p className="text-lg mb-8 max-w-lg text-slate-600 dark:text-slate-400 leading-relaxed">
-                Du behöver skapa en riskprofil för att få personliga investeringsrekommendationer och AI-analys.
-              </p>
-              <Button 
-                onClick={handleCreateNewProfile} 
-                className="flex items-center gap-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 rounded-2xl px-8 py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                size="lg"
-              >
-                <Plus className="w-5 h-5" />
-                Skapa ny riskprofil
-              </Button>
-            </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Riskprofil krävs</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-slate-100">Starta din riskprofil direkt här</p>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-slate-600 dark:text-slate-400">
+            <p>
+              Fyll i frågorna nedan för att låsa upp AI-rådgivning och personliga rekommendationer. Dina svar sparas direkt i profilen.
+            </p>
+            <p className="text-sm text-slate-500 dark:text-slate-500">
+              Du kan alltid återkomma och uppdatera uppgifterna senare.
+            </p>
           </CardContent>
         </Card>
+
+        <EnhancedRiskAssessmentForm
+          onComplete={() => {
+            if (onUpdateProfile) {
+              onUpdateProfile();
+            }
+          }}
+        />
       </div>;
   }
   const getRiskToleranceLabel = (tolerance: string) => {

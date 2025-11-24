@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import PortfolioOverview from '@/components/PortfolioOverview';
-import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolioAdvisor';
 import LoginPromptModal from '@/components/LoginPromptModal';
 import PortfolioValueCards from '@/components/PortfolioValueCards';
 import CommunityRecommendations from '@/components/CommunityRecommendations';
@@ -48,7 +47,6 @@ const PortfolioImplementation = () => {
     totalCash
   } = useCashHoldings();
   const navigate = useNavigate();
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const hasTriggeredAutoUpdate = useRef(false);
@@ -63,10 +61,6 @@ const PortfolioImplementation = () => {
       setShowLoginModal(false);
     }
   }, [user, authLoading]);
-  useEffect(() => {
-    if (!user || loading) return;
-    setShowOnboarding(false);
-  }, [user, activePortfolio, loading]);
   useEffect(() => {
     // Set last updated time
     setLastUpdated(new Date().toLocaleTimeString('sv-SE', {
@@ -120,7 +114,7 @@ const PortfolioImplementation = () => {
     // Future enhancement: trigger contextual workflows based on action
   };
   const handleUpdateProfile = () => {
-    setShowOnboarding(true);
+    navigate('/profile?tab=riskprofile');
   };
 
   const roundToTwo = (value: number) => Math.round(value * 100) / 100;
@@ -223,27 +217,6 @@ const PortfolioImplementation = () => {
       </Layout>;
   }
 
-  // Show onboarding if user explicitly wants to create a profile
-  if (showOnboarding) {
-    return <Layout>
-        <div className="min-h-screen py-6 px-4">
-          <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-8">
-              <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 bg-primary shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
-                <Brain className="w-10 h-10 text-primary-foreground" />
-              </div>
-              <h1 className="text-3xl font-bold mb-4 text-foreground">
-                {t('portfolio.createProfile')}
-              </h1>
-              <p className="text-lg max-w-2xl mx-auto text-muted-foreground px-4">
-                {t('portfolio.createProfileDesc')}
-              </p>
-            </div>
-            <ConversationalPortfolioAdvisor />
-          </div>
-        </div>
-      </Layout>;
-  }
   const totalPortfolioValue = performance.totalPortfolioValue;
   const investedValue = performance.totalValue;
 
@@ -323,7 +296,7 @@ const PortfolioImplementation = () => {
                       </p>
                     </div>
                   </div>
-                  <Button onClick={() => navigate('/portfolio-advisor')} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl px-6 py-3 shadow-lg hover:shadow-xl transition-all duration-200">
+                  <Button onClick={handleUpdateProfile} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl px-6 py-3 shadow-lg hover:shadow-xl transition-all duration-200">
                     <User className="w-4 h-4 mr-2" />
                     {t('portfolio.createProfile.button')}
                   </Button>

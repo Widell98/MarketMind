@@ -2,51 +2,15 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
-import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolioAdvisor';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 
 const PortfolioAdvisor = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-
   useEffect(() => {
-    const checkExistingProfile = async () => {
-      if (!user) return;
+    if (!user) return;
 
-      try {
-        // Check if user has an existing risk profile
-        const { data: riskProfile } = await supabase
-          .from('user_risk_profiles')
-          .select('id')
-          .eq('user_id', user.id)
-          .single();
-
-        // If user already has a risk profile, redirect to implementation
-        if (riskProfile) {
-          navigate('/portfolio-implementation', { replace: true });
-          return;
-        }
-
-        // Also check if user has any portfolios
-        const { data: portfolios } = await supabase
-          .from('user_portfolios')
-          .select('id')
-          .eq('user_id', user.id)
-          .limit(1);
-
-        if (portfolios && portfolios.length > 0) {
-          navigate('/portfolio-implementation', { replace: true });
-          return;
-        }
-      } catch (error) {
-        console.error('Error checking existing profile:', error);
-      }
-    };
-
-    checkExistingProfile();
+    navigate('/profile?tab=riskprofile', { replace: true });
   }, [user, navigate]);
 
   if (!user) {
@@ -63,7 +27,19 @@ const PortfolioAdvisor = () => {
     <Layout>
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
-          <ConversationalPortfolioAdvisor />
+          <div className="rounded-3xl border border-border/60 bg-card/70 p-8 shadow-sm">
+            <h1 className="text-2xl font-semibold mb-4">Riskprofil flyttad</h1>
+            <p className="text-muted-foreground mb-4">
+              Vi har flyttat riskprofilen till din profil. Du kommer strax att dirigeras om till
+              fliken för riskprofil så att du kan uppdatera dina inställningar där.
+            </p>
+            <button
+              className="rounded-xl px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 transition"
+              onClick={() => navigate('/profile?tab=riskprofile')}
+            >
+              Gå till riskprofil
+            </button>
+          </div>
         </div>
       </div>
     </Layout>
