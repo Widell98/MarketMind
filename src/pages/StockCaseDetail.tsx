@@ -384,7 +384,7 @@ const StockCaseDetail = ({
                   variant="ghost"
                   size="icon"
                   className={cn(
-                    'h-9 w-9 sm:h-10 sm:w-10 lg:h-12 lg:w-12 shadow-lg shadow-black/10',
+                    'h-9 w-9 sm:h-10 sm:w-10 lg:h-12 lg:w-12 shadow-lg shadow-black/10 -translate-x-1/2',
                     navigationButtonBaseClasses,
                   )}
                   disabled={!previousCase}
@@ -408,7 +408,7 @@ const StockCaseDetail = ({
                   variant="ghost"
                   size="icon"
                   className={cn(
-                    'h-9 w-9 sm:h-10 sm:w-10 lg:h-12 lg:w-12 shadow-lg shadow-black/10',
+                    'h-9 w-9 sm:h-10 sm:w-10 lg:h-12 lg:w-12 shadow-lg shadow-black/10 translate-x-1/2',
                     navigationButtonBaseClasses,
                   )}
                   disabled={!nextCase}
