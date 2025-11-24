@@ -1,82 +1,146 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
-import { useRiskProfile } from '@/hooks/useRiskProfile';
-import { ArrowLeft, ArrowRight, CheckCircle, AlertCircle, TrendingUp, Shield, Target, Brain, PiggyBank, RotateCcw } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { RiskProfile, useRiskProfile } from '@/hooks/useRiskProfile';
+import { parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
+import { ArrowLeft, ArrowRight, CheckCircle, AlertCircle, Brain, Target, RotateCcw, Upload, Plus, Trash2, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface EnhancedRiskAssessmentFormProps {
   onComplete: (riskProfileId: string) => void;
+  initialProfile?: RiskProfile | null;
 }
 
 const STORAGE_KEY = 'enhanced_risk_assessment_form_data';
 const STORAGE_STEP_KEY = 'enhanced_risk_assessment_current_step';
 
-const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({ onComplete }) => {
+const DEFAULT_HOLDING = {
+  id: 'holding-1',
+  name: '',
+  symbol: '',
+  quantity: 0,
+  purchasePrice: 0,
+  currency: 'SEK',
+  currencyManuallyEdited: false,
+  nameManuallyEdited: false,
+  priceManuallyEdited: false,
+};
+
+const getDefaultHoldings = () => [{ ...DEFAULT_HOLDING }];
+
+const mapProfileToFormData = (profile: RiskProfile) => ({
+  investment_purpose: profile.investment_purpose || [],
+  investment_horizon: profile.investment_horizon || '',
+  investment_goal: profile.investment_goal || '',
+  preferred_stock_count: profile.preferred_stock_count?.toString() || '',
+  investment_style_preference: profile.investment_style_preference || '',
+  investment_experience: profile.investment_experience || '',
+  portfolio_help_focus: profile.portfolio_help_focus || '',
+
+  activity_preference: profile.activity_preference || '',
+  optimization_preference: profile.optimization_preference || '',
+
+  risk_tolerance: profile.risk_tolerance || '',
+  risk_comfort_level: [profile.risk_comfort_level ?? 3],
+  panic_selling_history: profile.panic_selling_history ?? false,
+  control_importance: [profile.control_importance ?? 3],
+  market_crash_reaction: profile.market_crash_reaction || '',
+  overexposure_awareness: profile.overexposure_awareness || '',
+  sector_interests: profile.sector_interests || [],
+  holdings:
+    profile.current_holdings?.length
+      ? profile.current_holdings.map((holding, index) => ({
+          id: `holding-${index + 1}`,
+          name: holding?.name || '',
+          symbol: holding?.symbol || '',
+          quantity: Number(holding?.quantity) || 0,
+          purchasePrice: Number(holding?.purchase_price) || 0,
+          currency: holding?.currency || 'SEK',
+          currencyManuallyEdited: !!holding?.currency,
+          nameManuallyEdited: !!holding?.name,
+          priceManuallyEdited: !!holding?.purchase_price,
+        }))
+      : getDefaultHoldings(),
+});
+
+const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({ onComplete, initialProfile }) => {
   const { saveRiskProfile, loading } = useRiskProfile();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const tickerDatalistId = useId();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    // Grundläggande information
-    age: '',
-    annual_income: '',
-    housing_situation: '',
-    has_loans: false,
-    loan_details: '',
-    has_children: false,
-    liquid_capital: '',
-    
-    // Sparmål och tidshorisont
+    // Analys- och caseinriktning
     investment_purpose: [] as string[],
-    target_amount: '',
-    target_date: '',
     investment_horizon: '',
     investment_goal: '',
-    monthly_investment_amount: '',
-    
-    // Portföljpreferenser
     preferred_stock_count: '',
-    
-    // Riskprofil och psykologi
+    investment_style_preference: '',
+    investment_experience: '',
+    portfolio_help_focus: '',
+
+    // Arbetssätt
+    activity_preference: '',
+    optimization_preference: '',
+
+    // Risk och bevakning
     risk_tolerance: '',
     risk_comfort_level: [3],
     panic_selling_history: false,
     control_importance: [3],
     market_crash_reaction: '',
-    
-    // Investeringsstil
-    portfolio_change_frequency: '',
-    activity_preference: '',
-    investment_style_preference: '',
-    investment_experience: '',
-    
-    // Nuvarande innehav
-    current_portfolio_value: '',
     overexposure_awareness: '',
-    sector_interests: [] as string[]
+    sector_interests: [] as string[],
+    holdings: getDefaultHoldings() as {
+      id: string;
+      name: string;
+      symbol: string;
+      quantity: number;
+      purchasePrice: number;
+      currency: string;
+      currencyManuallyEdited: boolean;
+      nameManuallyEdited: boolean;
+      priceManuallyEdited: boolean;
+    }[],
   });
+
+  const storageKey = initialProfile?.id
+    ? `${STORAGE_KEY}_${initialProfile.id}`
+    : STORAGE_KEY;
+  const storageStepKey = initialProfile?.id
+    ? `${STORAGE_STEP_KEY}_${initialProfile.id}`
+    : STORAGE_STEP_KEY;
 
   // Load saved data on component mount
   useEffect(() => {
     try {
-      const savedData = localStorage.getItem(STORAGE_KEY);
-      const savedStep = localStorage.getItem(STORAGE_STEP_KEY);
-      
+      const savedData = localStorage.getItem(storageKey);
+      const savedStep = localStorage.getItem(storageStepKey);
+
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        setFormData(parsedData);
+        setFormData({
+          ...parsedData,
+          holdings:
+            parsedData.holdings && Array.isArray(parsedData.holdings) && parsedData.holdings.length > 0
+              ? parsedData.holdings
+              : getDefaultHoldings(),
+        });
 
         toast({
           title: "Formulärdata återställt",
           description: "Din tidigare ifyllda information har återställts",
         });
+      } else if (initialProfile) {
+        setFormData(mapProfileToFormData(initialProfile));
       }
 
       if (savedStep) {
@@ -85,69 +149,66 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
     } catch (error) {
       console.error('Error loading saved form data:', error);
     }
-  }, [toast]);
+  }, [initialProfile, storageKey, storageStepKey, toast]);
 
   // Save data to localStorage whenever formData or currentStep changes
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
-      localStorage.setItem(STORAGE_STEP_KEY, currentStep.toString());
+      localStorage.setItem(storageKey, JSON.stringify(formData));
+      localStorage.setItem(storageStepKey, currentStep.toString());
     } catch (error) {
       console.error('Error saving form data to localStorage:', error);
     }
-  }, [formData, currentStep]);
+  }, [formData, currentStep, storageKey, storageStepKey]);
 
   // Clear saved data function
-  const clearSavedData = () => {
+  const clearSavedData = useCallback((showToast = true) => {
     try {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(STORAGE_STEP_KEY);
-      
+      localStorage.removeItem(storageKey);
+      localStorage.removeItem(storageStepKey);
+
       // Reset form to initial state
-      setFormData({
-        age: '',
-        annual_income: '',
-        housing_situation: '',
-        has_loans: false,
-        loan_details: '',
-        has_children: false,
-        liquid_capital: '',
+      setFormData(initialProfile ? mapProfileToFormData(initialProfile) : {
         investment_purpose: [] as string[],
-        target_amount: '',
-        target_date: '',
         investment_horizon: '',
         investment_goal: '',
-        monthly_investment_amount: '',
         preferred_stock_count: '',
+        investment_style_preference: '',
+        investment_experience: '',
+        portfolio_help_focus: '',
+        activity_preference: '',
+        optimization_preference: '',
         risk_tolerance: '',
         risk_comfort_level: [3],
         panic_selling_history: false,
         control_importance: [3],
         market_crash_reaction: '',
-        portfolio_change_frequency: '',
-        activity_preference: '',
-        investment_style_preference: '',
-        investment_experience: '',
-        current_portfolio_value: '',
         overexposure_awareness: '',
-        sector_interests: [] as string[]
+        sector_interests: [] as string[],
+        holdings: getDefaultHoldings(),
       });
-      
+
       setCurrentStep(0);
       setValidationErrors({});
-      
-      toast({
-        title: "Formulär återställt",
-        description: "All ifylld data har raderats",
-      });
+
+      if (showToast) {
+        toast({
+          title: "Formulär återställt",
+          description: "All ifylld data har raderats",
+        });
+      }
     } catch (error) {
       console.error('Error clearing saved data:', error);
     }
-  };
+  }, [initialProfile, storageKey, storageStepKey, toast]);
 
   const investmentPurposes = [
-    'Bostad', 'Pension', 'Ekonomisk frihet', 'Barnens framtid', 
-    'Passiv inkomst', 'Buffert', 'Upplevelser', 'Annat'
+    'Djup fundamental bolagsanalys',
+    'Teknisk setup och prisnivåer',
+    'Momentum- och flödesinsikter',
+    'Kassaflöde och värderingskänslighet',
+    'Makro- och sektortrender',
+    'Risker och bevakningspunkter'
   ];
 
   const sectors = [
@@ -157,35 +218,20 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
 
   const steps = [
     {
-      title: 'Person & Kontext',
-      description: 'Berätta om din ekonomiska situation',
-      icon: <PiggyBank className="w-5 h-5" />
-    },
-    {
-      title: 'Sparmål & Tidshorisont',
-      description: 'Vad investerar du för?',
-      icon: <Target className="w-5 h-5" />
-    },
-    {
-      title: 'Riskprofil & Psykologi',
-      description: 'Hur hanterar du risk?',
+      title: 'Kom igång',
+      description: 'Obligatoriska svar för att starta chatten',
       icon: <Brain className="w-5 h-5" />
     },
     {
-      title: 'Investeringsstil',
-      description: 'Hur aktiv vill du vara?',
-      icon: <TrendingUp className="w-5 h-5" />
-    },
-    {
-      title: 'Nuvarande Innehav',
-      description: 'Vad äger du idag?',
-      icon: <Shield className="w-5 h-5" />
+      title: 'Fördjupa (valfritt)',
+      description: 'Ge fler signaler för mer träffsäkra analyser',
+      icon: <Target className="w-5 h-5" />
     }
   ];
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
+
     if (validationErrors[field]) {
       setValidationErrors(prev => ({ ...prev, [field]: '' }));
     }
@@ -211,29 +257,19 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
 
   const validateCurrentStep = (): boolean => {
     const errors: Record<string, string> = {};
-    
+
     switch (currentStep) {
       case 0:
-        if (!formData.age) errors.age = 'Ålder krävs';
-        if (!formData.annual_income) errors.annual_income = 'Årsinkomst krävs';
-        if (!formData.housing_situation) errors.housing_situation = 'Bostadssituation krävs';
+        if (formData.investment_purpose.length === 0) errors.investment_purpose = 'Välj minst en analysinriktning';
+        if (!formData.investment_style_preference) errors.investment_style_preference = 'Välj analysstil';
+        if (!formData.investment_experience) errors.investment_experience = 'Välj erfarenhetsnivå';
+        if (!formData.risk_tolerance) errors.risk_tolerance = 'Välj din risktolerans';
+        if (!formData.market_crash_reaction) errors.market_crash_reaction = 'Hur agerar du vid kraftiga fall?';
         break;
-      case 1:
-        if (formData.investment_purpose.length === 0) errors.investment_purpose = 'Välj minst ett sparmål';
-        if (!formData.investment_horizon) errors.investment_horizon = 'Tidshorisont krävs';
-        if (!formData.monthly_investment_amount) errors.monthly_investment_amount = 'Månadssparande krävs';
-        if (!formData.preferred_stock_count) errors.preferred_stock_count = 'Antal aktier krävs';
-        break;
-      case 2:
-        if (!formData.risk_tolerance) errors.risk_tolerance = 'Risktolerans krävs';
-        if (!formData.market_crash_reaction) errors.market_crash_reaction = 'Kraschreaktion krävs';
-        break;
-      case 3:
-        if (!formData.activity_preference) errors.activity_preference = 'Aktivitetspreferens krävs';
-        if (!formData.investment_experience) errors.investment_experience = 'Investeringserfarenh krävs';
+      default:
         break;
     }
-    
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -246,56 +282,136 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
 
   const handleSubmit = async () => {
     if (!validateCurrentStep()) return;
-    
+
     try {
+      const validHoldings = formData.holdings
+        .filter(h => h.name.trim() && h.quantity > 0 && h.purchasePrice > 0)
+        .map(h => ({
+          name: h.name.trim(),
+          symbol: h.symbol?.trim() || null,
+          quantity: h.quantity,
+          purchase_price: h.purchasePrice,
+          currency: h.currency || 'SEK',
+        }));
+
+      const baseProfileData = initialProfile
+        ? (({ id, user_id, created_at, updated_at, ...rest }: RiskProfile) => ({ ...rest }))(initialProfile)
+        : {
+            age: null,
+            annual_income: null,
+            housing_situation: null,
+            has_loans: null,
+            loan_details: null,
+            has_children: null,
+            liquid_capital: null,
+            emergency_buffer_months: null,
+            investment_purpose: [],
+            target_amount: null,
+            target_date: null,
+            investment_horizon: null,
+            investment_goal: null,
+            monthly_investment_amount: null,
+            preferred_stock_count: null,
+            preferred_assets: null,
+            risk_tolerance: null,
+            risk_comfort_level: null,
+            panic_selling_history: null,
+            control_importance: null,
+            market_crash_reaction: null,
+            portfolio_help_focus: null,
+            current_portfolio_strategy: null,
+            optimization_goals: [],
+            optimization_risk_focus: null,
+            optimization_diversification_focus: [],
+            optimization_preference: null,
+            optimization_timeline: null,
+            portfolio_change_frequency: null,
+            activity_preference: null,
+            investment_style_preference: null,
+            investment_experience: null,
+            current_portfolio_value: null,
+            overexposure_awareness: null,
+            sector_interests: [],
+            current_holdings: null,
+            current_allocation: {},
+          } as Omit<RiskProfile, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+
       const profileData = {
-        // Grundläggande
-        age: formData.age ? parseInt(formData.age) : null,
-        annual_income: formData.annual_income ? parseFloat(formData.annual_income) : null,
-        housing_situation: formData.housing_situation,
-        has_loans: formData.has_loans,
-        loan_details: formData.loan_details || null,
-        has_children: formData.has_children,
-        liquid_capital: formData.liquid_capital ? parseFloat(formData.liquid_capital) : null,
-        emergency_buffer_months: null, // Removed this field
-        
-        // Sparmål
+        ...baseProfileData,
+        // Sparmål & inriktning
         investment_purpose: formData.investment_purpose,
-        target_amount: formData.target_amount ? parseFloat(formData.target_amount) : null,
-        target_date: formData.target_date || null,
-        investment_horizon: formData.investment_horizon as any,
-        investment_goal: formData.investment_goal as any,
-        monthly_investment_amount: formData.monthly_investment_amount ? parseFloat(formData.monthly_investment_amount) : null,
-        
-        // Portfolio preferences
-        preferred_stock_count: formData.preferred_stock_count ? parseInt(formData.preferred_stock_count) : null,
-        
+        investment_horizon: (formData.investment_horizon as RiskProfile['investment_horizon'])
+          || baseProfileData.investment_horizon
+          || null,
+        investment_goal: (formData.investment_goal as RiskProfile['investment_goal'])
+          || baseProfileData.investment_goal
+          || null,
+
+        // Portföljpreferenser
+        preferred_stock_count: formData.preferred_stock_count
+          ? parseInt(formData.preferred_stock_count)
+          : baseProfileData.preferred_stock_count ?? null,
+
         // Risk
         risk_tolerance: formData.risk_tolerance as any,
         risk_comfort_level: formData.risk_comfort_level[0],
         panic_selling_history: formData.panic_selling_history,
         control_importance: formData.control_importance[0],
         market_crash_reaction: formData.market_crash_reaction,
-        
+
+        // Analys- och optimeringspreferenser
+        portfolio_help_focus: formData.portfolio_help_focus || null,
+        optimization_preference: formData.optimization_preference || null,
+
         // Stil
-        portfolio_change_frequency: formData.portfolio_change_frequency,
-        activity_preference: formData.activity_preference,
+        activity_preference: formData.activity_preference || baseProfileData.activity_preference || null,
         investment_style_preference: formData.investment_style_preference,
         investment_experience: formData.investment_experience as any,
-        
+
         // Innehav
-        current_portfolio_value: formData.current_portfolio_value ? parseFloat(formData.current_portfolio_value) : null,
-        overexposure_awareness: formData.overexposure_awareness,
+        current_portfolio_value:
+          validHoldings.length > 0
+            ? validHoldings.reduce((total, holding) => total + holding.quantity * holding.purchase_price, 0)
+            : baseProfileData.current_portfolio_value || null,
+        overexposure_awareness: formData.overexposure_awareness || baseProfileData.overexposure_awareness || null,
         sector_interests: formData.sector_interests,
-        current_holdings: [],
-        current_allocation: {}
+        current_holdings: validHoldings.length > 0 ? validHoldings : baseProfileData.current_holdings || null,
+        current_allocation: baseProfileData.current_allocation || {}
       };
 
       const result = await saveRiskProfile(profileData);
       if (result) {
         // Clear saved data on successful submission
-        clearSavedData();
-        onComplete('profile-created');
+        clearSavedData(false);
+        setFormData(mapProfileToFormData(result));
+        setCurrentStep(0);
+        onComplete(result.id);
+
+        const purposeText = formData.investment_purpose.join(', ');
+        const sectorText = formData.sector_interests.length > 0 ? formData.sector_interests.join(', ') : 'Ingen specifik sektor';
+        const experienceText = formData.investment_experience || 'Ej angiven';
+        const styleText = formData.investment_style_preference || 'Ej angiven';
+        const riskToleranceText = formData.risk_tolerance || 'Ej angiven';
+        const crashReactionText = formData.market_crash_reaction || 'Ej angiven';
+        const activityText = formData.activity_preference || 'Ej angiven';
+        const optimizationText = formData.optimization_preference || 'Ej angiven';
+        const horizonText = formData.investment_horizon || 'Ej angiven';
+        const goalText = formData.investment_goal || 'Ej angiven';
+        const preferredStockCountText = formData.preferred_stock_count || 'Ej angivet';
+        const riskComfortText = formData.risk_comfort_level?.[0] ?? null;
+
+        const baseProfileSummary = `Riskprofil:\n- Analysinriktning: ${purposeText || 'Ej angivet'}\n- Analysstil: ${styleText}\n- Erfarenhetsnivå: ${experienceText}\n- Risktolerans: ${riskToleranceText}\n- Bekvämlighetsnivå: ${riskComfortText ?? 'Ej angiven'} av 5\n- Reaktion vid börsfall: ${crashReactionText}\n- Aktivitet: ${activityText}\n- Optimeringsfokus: ${optimizationText}\n- Investeringshorisont: ${horizonText}\n- Övergripande mål: ${goalText}\n- Antal aktier som föredras: ${preferredStockCountText}\n- Sektorintressen: ${sectorText}`;
+
+        const holdingsSummary = validHoldings
+          .map(holding => `• ${holding.name}${holding.symbol ? ` (${holding.symbol})` : ''}: ${holding.quantity} st @ ${holding.purchase_price} ${holding.currency}`)
+          .join('\n');
+
+        const message = validHoldings.length > 0
+          ? `Analysera min befintliga portfölj utifrån riskprofilen nedan och ge en tydlig åtgärdsplan med rebalansering, riskjustering och bevakningspunkter.\n\n${baseProfileSummary}\n\nPortfölj att analysera:\n${holdingsSummary || 'Inga innehav angivna'}`
+          : `Skapa en komplett portfölj åt mig baserat på riskprofilen nedan. Ge ett konkret förslag med viktning, 5–10 aktier/ETF:er samt kort motivering per val och hur det matchar min risk.\n\n${baseProfileSummary}`;
+
+        const encodedMessage = encodeURIComponent(message);
+        navigate(`/ai-chatt?message=${encodedMessage}`);
       }
     } catch (error: any) {
       toast({
@@ -311,114 +427,9 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
       case 0:
         return (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="age">Ålder *</Label>
-                <Input
-                  id="age"
-                  type="number"
-                  placeholder="Din ålder"
-                  value={formData.age}
-                  onChange={(e) => handleInputChange('age', e.target.value)}
-                />
-                {validationErrors.age && (
-                  <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                    <AlertCircle className="w-4 h-4" />
-                    {validationErrors.age}
-                  </div>
-                )}
-              </div>
-              
-              <div>
-                <Label htmlFor="income">Årsinkomst (SEK) *</Label>
-                <Input
-                  id="income"
-                  type="number"
-                  placeholder="Din årsinkomst"
-                  value={formData.annual_income}
-                  onChange={(e) => handleInputChange('annual_income', e.target.value)}
-                />
-                {validationErrors.annual_income && (
-                  <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                    <AlertCircle className="w-4 h-4" />
-                    {validationErrors.annual_income}
-                  </div>
-                )}
-              </div>
-            </div>
-
             <div>
-              <Label>Bostadssituation *</Label>
-              <Select value={formData.housing_situation} onValueChange={(value) => handleInputChange('housing_situation', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Välj bostadssituation" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="owns_no_loan">Äger bostad utan lån</SelectItem>
-                  <SelectItem value="owns_with_loan">Äger bostad med lån</SelectItem>
-                  <SelectItem value="rents">Hyr bostad</SelectItem>
-                  <SelectItem value="lives_with_parents">Bor hos föräldrar</SelectItem>
-                </SelectContent>
-              </Select>
-              {validationErrors.housing_situation && (
-                <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  {validationErrors.housing_situation}
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="has_loans"
-                  checked={formData.has_loans}
-                  onCheckedChange={(checked) => handleInputChange('has_loans', checked)}
-                />
-                <Label htmlFor="has_loans">Har lån (utöver bostad)</Label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="has_children"
-                  checked={formData.has_children}
-                  onCheckedChange={(checked) => handleInputChange('has_children', checked)}
-                />
-                <Label htmlFor="has_children">Har barn</Label>
-              </div>
-            </div>
-
-            {formData.has_loans && (
-              <div>
-                <Label htmlFor="loan_details">Beskrivning av lån</Label>
-                <Textarea
-                  id="loan_details"
-                  placeholder="Beskriv dina lån (typ, belopp, ränta)"
-                  value={formData.loan_details}
-                  onChange={(e) => handleInputChange('loan_details', e.target.value)}
-                />
-              </div>
-            )}
-
-            <div>
-              <Label htmlFor="liquid_capital">Likvidt kapital (SEK)</Label>
-              <Input
-                id="liquid_capital"
-                type="number"
-                placeholder="Kontanter och sparkonto"
-                value={formData.liquid_capital}
-                onChange={(e) => handleInputChange('liquid_capital', e.target.value)}
-              />
-            </div>
-          </div>
-        );
-
-      case 1:
-        return (
-          <div className="space-y-6">
-            <div>
-              <Label>Vad investerar du för? (Välj alla som stämmer) *</Label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
+              <Label>Vilka typer av analyser vill du ha? *</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
                 {investmentPurposes.map((purpose) => (
                   <div key={purpose} className="flex items-center space-x-2">
                     <Checkbox
@@ -440,180 +451,227 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="target_amount">Målbelopp (SEK)</Label>
-                <Input
-                  id="target_amount"
-                  type="number"
-                  placeholder="Hur mycket vill du nå?"
-                  value={formData.target_amount}
-                  onChange={(e) => handleInputChange('target_amount', e.target.value)}
-                />
+                <Label>Analysstil *</Label>
+                <Select value={formData.investment_style_preference} onValueChange={(value) => handleInputChange('investment_style_preference', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Välj analysstil" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fundamental_deep">Fundamental: balansräkning, kassaflöde, värdering</SelectItem>
+                    <SelectItem value="technical_momentum">Teknisk: prisnivåer, momentum, volym</SelectItem>
+                    <SelectItem value="quant_screening">Kvantitativ screening med nyckeltal</SelectItem>
+                    <SelectItem value="thematic_quality">Teman/kvalitet: moat, ledning, marknadsposition</SelectItem>
+                  </SelectContent>
+                </Select>
+                {validationErrors.investment_style_preference && (
+                  <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
+                    <AlertCircle className="w-4 h-4" />
+                    {validationErrors.investment_style_preference}
+                  </div>
+                )}
               </div>
-              
+
               <div>
-                <Label htmlFor="target_date">Måldatum</Label>
-                <Input
-                  id="target_date"
-                  type="date"
-                  value={formData.target_date}
-                  onChange={(e) => handleInputChange('target_date', e.target.value)}
-                />
+                <Label>Erfarenhetsnivå *</Label>
+                <Select value={formData.investment_experience} onValueChange={(value) => handleInputChange('investment_experience', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Välj erfarenhetsnivå" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="beginner">Nybörjare</SelectItem>
+                    <SelectItem value="intermediate">Erfaren hobbyinvesterare</SelectItem>
+                    <SelectItem value="advanced">Mycket erfaren / professionell</SelectItem>
+                  </SelectContent>
+                </Select>
+                {validationErrors.investment_experience && (
+                  <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
+                    <AlertCircle className="w-4 h-4" />
+                    {validationErrors.investment_experience}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Risktolerans *</Label>
+                <Select value={formData.risk_tolerance} onValueChange={(value) => handleInputChange('risk_tolerance', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Välj risktolerans" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="conservative">Försiktig – vill minimera drawdowns</SelectItem>
+                    <SelectItem value="moderate">Balans mellan risk och avkastning</SelectItem>
+                    <SelectItem value="aggressive">Aggressiv – accepterar hög volatilitet</SelectItem>
+                  </SelectContent>
+                </Select>
+                {validationErrors.risk_tolerance && (
+                  <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
+                    <AlertCircle className="w-4 h-4" />
+                    {validationErrors.risk_tolerance}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <Label>Hur reagerar du på stora nedgångar? *</Label>
+                <Select value={formData.market_crash_reaction} onValueChange={(value) => handleInputChange('market_crash_reaction', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Välj din reaktion" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="panic_sell">Säljer snabbt och minskar exponeringen</SelectItem>
+                    <SelectItem value="worried_hold">Behåller men följer noga</SelectItem>
+                    <SelectItem value="calm_hold">Lugn – följer planen</SelectItem>
+                    <SelectItem value="buy_more">Ökar om caset håller</SelectItem>
+                  </SelectContent>
+                </Select>
+                {validationErrors.market_crash_reaction && (
+                  <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
+                    <AlertCircle className="w-4 h-4" />
+                    {validationErrors.market_crash_reaction}
+                  </div>
+                )}
               </div>
             </div>
 
             <div>
-              <Label>Tidshorisont *</Label>
-              <Select value={formData.investment_horizon} onValueChange={(value) => handleInputChange('investment_horizon', value)}>
+              <Label>Vad vill du att chatten ska fokusera på först?</Label>
+              <Select value={formData.portfolio_help_focus} onValueChange={(value) => handleInputChange('portfolio_help_focus', value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Välj tidshorisont" />
+                  <SelectValue placeholder="Valfritt: välj fokus" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="short">Kort (0–2 år)</SelectItem>
-                  <SelectItem value="medium">Medellång (3–5 år)</SelectItem>
-                  <SelectItem value="long">Lång (5+ år)</SelectItem>
+                  <SelectItem value="find_ideas">Hitta case/idéer</SelectItem>
+                  <SelectItem value="thesis_testing">Testa mina case/teser</SelectItem>
+                  <SelectItem value="portfolio_review">Genomgång av min portfölj</SelectItem>
+                  <SelectItem value="risk_checks">Riskkoll och bevakningslistor</SelectItem>
                 </SelectContent>
               </Select>
-              {validationErrors.investment_horizon && (
-                <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  {validationErrors.investment_horizon}
-                </div>
-              )}
+            </div>
+          </div>
+        );
+
+      case 1:
+        return (
+          <div className="space-y-6">
+            <Card className="bg-slate-50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm text-slate-700">Valfria svar för bättre analyser</CardTitle>
+                <CardDescription className="text-xs text-slate-600">Hoppa över om du vill börja chatta direkt.</CardDescription>
+              </CardHeader>
+            </Card>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Arbetssätt</Label>
+                <Select value={formData.activity_preference} onValueChange={(value) => handleInputChange('activity_preference', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Hur vill du jobba?" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="deep_dive">Djupdyk i färre case</SelectItem>
+                    <SelectItem value="broad_scan">Bred scanning av många case</SelectItem>
+                    <SelectItem value="signals_only">Snabba signaler och checklistor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Typisk ägarhorisont</Label>
+                <Select value={formData.investment_horizon} onValueChange={(value) => handleInputChange('investment_horizon', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Välj horisont" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="short">Kort (swing/0–2 år)</SelectItem>
+                    <SelectItem value="medium">Medellång (3–5 år)</SelectItem>
+                    <SelectItem value="long">Långsiktig (5+ år)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Hur många case vill du följa aktivt?</Label>
+                <Select value={formData.preferred_stock_count} onValueChange={(value) => handleInputChange('preferred_stock_count', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Välj antal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="3">3–5 case (koncentrerat)</SelectItem>
+                    <SelectItem value="8">6–10 case (balanserat)</SelectItem>
+                    <SelectItem value="15">11–20 case (diversifierat)</SelectItem>
+                    <SelectItem value="25">20+ case (bred bevakning)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div>
-              <Label>Primärt investeringsmål</Label>
-              <Select value={formData.investment_goal} onValueChange={(value) => handleInputChange('investment_goal', value)}>
+              <Label>Analysdjup</Label>
+              <Select value={formData.optimization_preference} onValueChange={(value) => handleInputChange('optimization_preference', value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Välj huvudmål" />
+                  <SelectValue placeholder="Välj nivå" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="growth">Tillväxt - Maximera långsiktig avkastning</SelectItem>
-                  <SelectItem value="income">Inkomst - Generera utdelningar</SelectItem>
-                  <SelectItem value="preservation">Bevarande - Skydda befintligt kapital</SelectItem>
-                  <SelectItem value="balanced">Balanserat - Mix av tillväxt och inkomst</SelectItem>
+                  <SelectItem value="concise">Kort beslutsunderlag (1–2 starkaste datapunkter)</SelectItem>
+                  <SelectItem value="balanced">Balanserat: huvudtes + risker + viktiga nyckeltal</SelectItem>
+                  <SelectItem value="deep_dive">Djupdyk: känslighetsanalys, scenarion, multipelspänning</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Vilket huvudfokus har du i dina case?</Label>
+              <Select value={formData.investment_goal} onValueChange={(value) => handleInputChange('investment_goal', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Välj fokus" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="growth">Tillväxtcase</SelectItem>
+                  <SelectItem value="income">Utdelnings-/kassaflödescase</SelectItem>
+                  <SelectItem value="preservation">Kapitalbevarande/låg volatilitet</SelectItem>
+                  <SelectItem value="balanced">Blandning av ovan</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="monthly_investment">Månadssparande (SEK) *</Label>
-                <Input
-                  id="monthly_investment"
-                  type="number"
-                  placeholder="Hur mycket kan du spara per månad?"
-                  value={formData.monthly_investment_amount}
-                  onChange={(e) => handleInputChange('monthly_investment_amount', e.target.value)}
-                />
-                {validationErrors.monthly_investment_amount && (
-                  <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                    <AlertCircle className="w-4 h-4" />
-                    {validationErrors.monthly_investment_amount}
+                <Label>Riskkomfort (1–5): {formData.risk_comfort_level[0]}</Label>
+                <div className="mt-2">
+                  <Slider
+                    value={formData.risk_comfort_level}
+                    onValueChange={(value) => handleInputChange('risk_comfort_level', value)}
+                    max={5}
+                    min={1}
+                    step={1}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>Låg risk</span>
+                    <span>Hög risk</span>
                   </div>
-                )}
+                </div>
               </div>
 
               <div>
-                <Label htmlFor="preferred_stock_count">Antal aktier i portfölj *</Label>
-                <Select value={formData.preferred_stock_count} onValueChange={(value) => handleInputChange('preferred_stock_count', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Välj antal aktier" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="3">3-5 aktier (koncentrerad)</SelectItem>
-                    <SelectItem value="8">6-10 aktier (balanserad)</SelectItem>
-                    <SelectItem value="15">11-20 aktier (diversifierad)</SelectItem>
-                    <SelectItem value="25">20+ aktier (bred spridning)</SelectItem>
-                  </SelectContent>
-                </Select>
-                {validationErrors.preferred_stock_count && (
-                  <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                    <AlertCircle className="w-4 h-4" />
-                    {validationErrors.preferred_stock_count}
+                <Label>Kontrollbehov (1–5): {formData.control_importance[0]}</Label>
+                <div className="mt-2">
+                  <Slider
+                    value={formData.control_importance}
+                    onValueChange={(value) => handleInputChange('control_importance', value)}
+                    max={5}
+                    min={1}
+                    step={1}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>Låg kontroll</span>
+                    <span>Hög kontroll</span>
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 2:
-        return (
-          <div className="space-y-6">
-            <div>
-              <Label>Hur skulle du känna om din portfölj minskar med 20% på kort tid? *</Label>
-              <Select value={formData.market_crash_reaction} onValueChange={(value) => handleInputChange('market_crash_reaction', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Välj din reaktion" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="panic_sell">Panik - skulle sälja allt direkt</SelectItem>
-                  <SelectItem value="worried_hold">Orolig men håller kvar</SelectItem>
-                  <SelectItem value="calm_hold">Lugn och håller kvar</SelectItem>
-                  <SelectItem value="buy_more">Ser det som en köpmöjlighet</SelectItem>
-                </SelectContent>
-              </Select>
-              {validationErrors.market_crash_reaction && (
-                <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  {validationErrors.market_crash_reaction}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <Label>Risktolerans *</Label>
-              <Select value={formData.risk_tolerance} onValueChange={(value) => handleInputChange('risk_tolerance', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Välj risktolerans" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="conservative">Konservativ - Föredrar stabilitet</SelectItem>
-                  <SelectItem value="moderate">Måttlig - Accepterar viss risk</SelectItem>
-                  <SelectItem value="aggressive">Aggressiv - Villig att ta hög risk</SelectItem>
-                </SelectContent>
-              </Select>
-              {validationErrors.risk_tolerance && (
-                <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  {validationErrors.risk_tolerance}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <Label>Riskkomfort (1-5): {formData.risk_comfort_level[0]}</Label>
-              <div className="mt-2">
-                <Slider
-                  value={formData.risk_comfort_level}
-                  onValueChange={(value) => handleInputChange('risk_comfort_level', value)}
-                  max={5}
-                  min={1}
-                  step={1}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>Låg risk</span>
-                  <span>Hög risk</span>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <Label>Kontrollbehov (1-5): {formData.control_importance[0]}</Label>
-              <div className="mt-2">
-                <Slider
-                  value={formData.control_importance}
-                  onValueChange={(value) => handleInputChange('control_importance', value)}
-                  max={5}
-                  min={1}
-                  step={1}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>Låg kontroll</span>
-                  <span>Hög kontroll</span>
                 </div>
               </div>
             </div>
@@ -624,100 +682,7 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
                 checked={formData.panic_selling_history}
                 onCheckedChange={(checked) => handleInputChange('panic_selling_history', checked)}
               />
-              <Label htmlFor="panic_selling">Har sålt investeringar i panik tidigare</Label>
-            </div>
-          </div>
-        );
-
-      case 3:
-        return (
-          <div className="space-y-6">
-            <div>
-              <Label>Hur aktiv vill du vara? *</Label>
-              <Select value={formData.activity_preference} onValueChange={(value) => handleInputChange('activity_preference', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Välj aktivitetsnivå" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="passive">Passiv - Följer strategi automatiskt</SelectItem>
-                  <SelectItem value="semi_active">Semi-aktiv - Gör mindre justeringar</SelectItem>
-                  <SelectItem value="active">Aktiv - Gör egna beslut regelbundet</SelectItem>
-                </SelectContent>
-              </Select>
-              {validationErrors.activity_preference && (
-                <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  {validationErrors.activity_preference}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <Label>Investeringserfarenh *</Label>
-              <Select value={formData.investment_experience} onValueChange={(value) => handleInputChange('investment_experience', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Välj erfarenhetsnivå" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="beginner">Nybörjare - Ny på investeringar</SelectItem>
-                  <SelectItem value="intermediate">Mellan - Viss erfarenhet</SelectItem>
-                  <SelectItem value="advanced">Avancerad - Erfaren investerare</SelectItem>
-                </SelectContent>
-              </Select>
-              {validationErrors.investment_experience && (
-                <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  {validationErrors.investment_experience}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <Label>Hur ofta gör du förändringar i portföljen?</Label>
-              <Select value={formData.portfolio_change_frequency} onValueChange={(value) => handleInputChange('portfolio_change_frequency', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Välj frekvens" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="never">Aldrig - Köp och håll</SelectItem>
-                  <SelectItem value="rarely">Sällan - Några gånger per år</SelectItem>
-                  <SelectItem value="sometimes">Ibland - Månadsvis</SelectItem>
-                  <SelectItem value="often">Ofta - Veckovis</SelectItem>
-                  <SelectItem value="daily">Dagligen</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Investeringsstil</Label>
-              <Select value={formData.investment_style_preference} onValueChange={(value) => handleInputChange('investment_style_preference', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Välj stil" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="value">Värde - Köper undervärderade tillgångar</SelectItem>
-                  <SelectItem value="growth">Tillväxt - Fokuserar på växande företag</SelectItem>
-                  <SelectItem value="dividend">Utdelning - Prioriterar utdelningsaktier</SelectItem>
-                  <SelectItem value="index">Index - Följer marknadsindex</SelectItem>
-                  <SelectItem value="mix">Blandning av olika stilar</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        );
-
-      case 4:
-        return (
-          <div className="space-y-6">
-            <div>
-              <Label htmlFor="current_portfolio">Nuvarande portföljvärde (SEK)</Label>
-              <Input
-                id="current_portfolio"
-                type="number"
-                placeholder="Värdet på dina nuvarande investeringar"
-                value={formData.current_portfolio_value}
-                onChange={(e) => handleInputChange('current_portfolio_value', e.target.value)}
-              />
+              <Label htmlFor="panic_selling">Jag har tidigare sålt i panik</Label>
             </div>
 
             <div>
@@ -738,7 +703,7 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
             </div>
 
             <div>
-              <Label>Sektorintressen (Välj alla som intresserar dig)</Label>
+              <Label>Sektorintressen (för att prioritera bevakning)</Label>
               <div className="grid grid-cols-2 gap-3 mt-2">
                 {sectors.map((sector) => (
                   <div key={sector} className="flex items-center space-x-2">
@@ -751,6 +716,225 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div className="border-t pt-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Registrera din portfölj (valfritt)</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Lägg till dina nuvarande innehav för att få mer träffsäkra analyser. Uppgifterna sparas i din profil.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,text/csv"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) return;
+
+                      const reader = new FileReader();
+                      reader.onload = (e) => {
+                        try {
+                          const text = e.target?.result as string;
+                          const parsed = parsePortfolioHoldingsFromCSV(text).map((holding, index) => ({
+                            id: `holding-${Date.now()}-${index}`,
+                            name: holding.name || '',
+                            symbol: holding.symbol || '',
+                            quantity: holding.quantity || 0,
+                            purchasePrice: holding.purchasePrice || 0,
+                            currency: holding.currency || 'SEK',
+                            currencyManuallyEdited: Boolean(holding.currency),
+                            nameManuallyEdited: Boolean(holding.name),
+                            priceManuallyEdited: Boolean(holding.purchasePrice),
+                          }));
+
+                          if (parsed.length === 0) {
+                            throw new Error('Inga innehav kunde tolkas från CSV-filen');
+                          }
+
+                          setFormData(prev => ({
+                            ...prev,
+                            holdings: parsed,
+                          }));
+
+                          toast({
+                            title: 'Innehav importerade',
+                            description: `${parsed.length} innehav har lagts till från CSV-filen.`,
+                          });
+                        } catch (error) {
+                          console.error('Failed to parse holdings CSV:', error);
+                          toast({
+                            title: 'Kunde inte läsa CSV',
+                            description: error instanceof Error ? error.message : 'Kontrollera formatet och försök igen.',
+                            variant: 'destructive',
+                          });
+                        } finally {
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = '';
+                          }
+                        }
+                      };
+
+                      reader.readAsText(file);
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="w-4 h-4" />
+                    Importera CSV
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                    onClick={() =>
+                      setFormData(prev => ({
+                        ...prev,
+                        holdings: [
+                          ...prev.holdings,
+                          {
+                            id: `holding-${Date.now()}`,
+                            name: '',
+                            symbol: '',
+                            quantity: 0,
+                            purchasePrice: 0,
+                            currency: 'SEK',
+                            currencyManuallyEdited: false,
+                            nameManuallyEdited: false,
+                            priceManuallyEdited: false,
+                          },
+                        ],
+                      }))
+                    }
+                  >
+                    <Plus className="w-4 h-4" />
+                    Lägg till rad
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {formData.holdings.map((holding, index) => (
+                  <div key={holding.id} className="grid grid-cols-1 md:grid-cols-6 gap-2 p-3 border rounded-lg bg-muted/30">
+                    <Input
+                      placeholder="Företagsnamn *"
+                      value={holding.name}
+                      onChange={(e) =>
+                        setFormData(prev => {
+                          const nextHoldings = [...prev.holdings];
+                          nextHoldings[index] = { ...holding, name: e.target.value, nameManuallyEdited: true };
+                          return { ...prev, holdings: nextHoldings };
+                        })
+                      }
+                      className="text-sm"
+                    />
+                    <Input
+                      placeholder="Symbol (t.ex. AAPL)"
+                      value={holding.symbol}
+                      onChange={(e) =>
+                        setFormData(prev => {
+                          const nextHoldings = [...prev.holdings];
+                          nextHoldings[index] = { ...holding, symbol: e.target.value };
+                          return { ...prev, holdings: nextHoldings };
+                        })
+                      }
+                      className="text-sm"
+                      list={tickerDatalistId}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Antal *"
+                      value={holding.quantity || ''}
+                      onChange={(e) =>
+                        setFormData(prev => {
+                          const nextHoldings = [...prev.holdings];
+                          nextHoldings[index] = { ...holding, quantity: Number(e.target.value) };
+                          return { ...prev, holdings: nextHoldings };
+                        })
+                      }
+                      min="0"
+                      className="text-sm"
+                    />
+                    <Input
+                      type="number"
+                      placeholder={`Köppris (${holding.currency || 'SEK'}) *`}
+                      value={holding.purchasePrice || ''}
+                      onChange={(e) =>
+                        setFormData(prev => {
+                          const nextHoldings = [...prev.holdings];
+                          nextHoldings[index] = { ...holding, purchasePrice: Number(e.target.value), priceManuallyEdited: true };
+                          return { ...prev, holdings: nextHoldings };
+                        })
+                      }
+                      min="0"
+                      step="0.01"
+                      className="text-sm"
+                    />
+                    <Select
+                      value={holding.currencyManuallyEdited ? holding.currency : 'SEK'}
+                      onValueChange={(value) =>
+                        setFormData(prev => {
+                          const nextHoldings = [...prev.holdings];
+                          nextHoldings[index] = { ...holding, currency: value === 'AUTO' ? 'SEK' : value, currencyManuallyEdited: true };
+                          return { ...prev, holdings: nextHoldings };
+                        })
+                      }
+                    >
+                      <SelectTrigger className="text-sm">
+                        <SelectValue placeholder="Valuta" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="AUTO">Auto (SEK)</SelectItem>
+                        <SelectItem value="SEK">SEK</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                        <SelectItem value="NOK">NOK</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      disabled={formData.holdings.length === 1}
+                      onClick={() =>
+                        setFormData(prev => ({
+                          ...prev,
+                          holdings: prev.holdings.filter(h => h.id !== holding.id),
+                        }))
+                      }
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <datalist id={tickerDatalistId} />
+
+              {formData.holdings.some(h => h.name.trim() && h.quantity > 0 && h.purchasePrice > 0) && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <p className="text-sm font-medium text-green-800 mb-2">Innehav att spara</p>
+                  <div className="space-y-1 text-xs text-green-700">
+                    {formData.holdings
+                      .filter(h => h.name.trim() && h.quantity > 0 && h.purchasePrice > 0)
+                      .map(h => (
+                        <div key={`summary-${h.id}`} className="flex items-center gap-1">
+                          <Check className="w-3 h-3" />
+                          {h.name}
+                          {h.symbol?.trim() ? ` (${h.symbol})` : ''}: {h.quantity} st à {h.purchasePrice} {h.currency || 'SEK'}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );
@@ -784,19 +968,19 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="w-full bg-gray-200 rounded-full h-2">
-          <div 
+          <div
             className="bg-blue-600 h-2 rounded-full transition-all duration-300"
             style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
           />
         </div>
 
-        <div className="grid grid-cols-5 gap-2 mb-6">
+        <div className="grid grid-cols-2 gap-2 mb-6">
           {steps.map((step, index) => (
             <div
               key={index}
               className={`text-center p-2 rounded-lg transition-colors ${
-                index <= currentStep 
-                  ? 'bg-blue-100 text-blue-800' 
+                index <= currentStep
+                  ? 'bg-blue-100 text-blue-800'
                   : 'bg-gray-100 text-gray-500'
               }`}
             >
@@ -836,7 +1020,7 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
               onClick={handleSubmit}
               disabled={Object.keys(validationErrors).length > 0 || loading}
             >
-              Skapa Portfölj
+              Gå till AI-chatten
               <CheckCircle className="w-4 h-4 ml-2" />
             </Button>
           )}
