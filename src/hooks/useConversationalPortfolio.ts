@@ -1062,6 +1062,44 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
 
     return prompt;
   };
+  const buildPortfolioAnalysisPrompt = (
+    data: ConversationData,
+    holdings: ReturnType<typeof computeHoldingsWithPercentages>,
+    currentAllocation: Record<string, any> | { self_reported: string }
+  ) => {
+    const holdingSummaries = holdings
+      .map(holding => {
+        const name = holding?.name || holding?.symbol || 'Okänt innehav';
+        const symbol = holding?.symbol ? ` (${holding.symbol})` : '';
+        const allocation = typeof holding?.allocation === 'number' ? ` - ${holding.allocation}%` : '';
+        return `- ${name}${symbol}${allocation}`;
+      })
+      .join('\n');
+
+    const rawOptimizationGoals = Array.isArray(data.optimizationGoals)
+      ? data.optimizationGoals
+      : typeof data.optimizationGoals === 'string'
+        ? data.optimizationGoals.split(/[,;]+/).map(goal => goal.trim()).filter(Boolean)
+        : [];
+
+    const uniqueOptimizationGoals = Array.from(new Set(rawOptimizationGoals));
+    const optimizationFocus = uniqueOptimizationGoals.length > 0
+      ? uniqueOptimizationGoals.join(', ')
+      : 'Ingen specifik optimeringsfokus angavs';
+    const allocationDescription = Object.keys(currentAllocation || {}).length > 0
+      ? JSON.stringify(currentAllocation, null, 2)
+      : 'Ingen nuvarande allokering angavs';
+
+    return [
+      'Analysera den befintliga portföljen och ge konkreta förbättringsförslag baserat på riskprofilen.',
+      `Riskprofil: ${data.riskTolerance || 'okänd'}, Investeringsmål: ${data.investmentGoal || 'wealth'}, Tidshorisont: ${data.timeHorizon || 'okänd'}.`,
+      `Aktuella innehav:\n${holdingSummaries || 'Inga specifika innehav listades.'}`,
+      `Självrapporterad allokering: ${allocationDescription}`,
+      `Optimeringsfokus: ${optimizationFocus}`,
+      'Fokusera på diversifiering, riskjustering och tydliga åtgärder. Leverera svar i JSON-formatet {"recommendations": [...], "summary": "..."}.'
+    ].join('\n\n');
+  };
+
   const generatePortfolioFromConversation = async (
     conversationData: ConversationData,
     options?: { mode?: PortfolioGenerationMode }
@@ -2257,21 +2295,28 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         return null;
       }
 
-      // Generate AI response with enhanced risk profile using proper endpoint.
-      // The backend now owns the full system directive for OpenAI, so we only pass
-      // through structured conversation data here to avoid conflicting prompts.
-      const { data: aiResponse, error: aiError } = await supabase.functions.invoke('generate-portfolio', {
-        body: {
+      const aiPrompt = mode === 'optimize'
+        ? buildPortfolioAnalysisPrompt(mergedConversationData, holdingsWithPercentages, currentAllocationValue)
+        : enhancedPrompt;
+
+      const aiChatResponse = await fetch('/ai-chatt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt: aiPrompt,
+          mode,
           riskProfileId: riskProfile.id,
           userId: user.id,
           conversationData: mergedConversationData,
-          conversationPrompt: enhancedPrompt,
-          mode
-        }
+          currentAllocation: currentAllocationValue,
+          holdings: holdingsWithPercentages
+        })
       });
 
-      if (aiError || !aiResponse) {
-        console.error('Error generating AI response:', aiError);
+      if (!aiChatResponse.ok) {
+        console.error('Error generating AI response:', aiChatResponse.statusText);
         toast({
           title: "Error",
           description: "Kunde inte generera portföljstrategi",
@@ -2279,6 +2324,8 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         });
         return null;
       }
+
+      const aiResponse = await aiChatResponse.json();
       let structuredPlan = aiResponse.plan;
 
       if (typeof structuredPlan === 'string') {
@@ -2449,7 +2496,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         original_conversation_data: JSON.parse(JSON.stringify(conversationData)),
         ai_strategy: structuredPlan || aiRecommendationText,
         ai_strategy_raw: aiRecommendationText,
-        ai_prompt_used: enhancedPrompt,
+        ai_prompt_used: aiPrompt,
         structured_plan: structuredPlan,
         stock_recommendations: stockRecommendations,
         complementary_ideas: complementaryIdeas,
@@ -2463,7 +2510,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         },
         analysis_metadata: {
           created_at: new Date().toISOString(),
-          prompt_length: enhancedPrompt.length,
+          prompt_length: aiPrompt.length,
           response_length: aiRecommendationText?.length || 0,
           ai_model: 'gpt-4o',
           analysis_type: 'comprehensive_portfolio_strategy'
@@ -2520,7 +2567,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         plan: structuredPlan || null,
         portfolio: aiResponse.portfolio || portfolioRecord,
         riskProfile,
-        enhancedPrompt,
+        enhancedPrompt: aiPrompt,
         stockRecommendations,
         complementaryIdeas,
         mode
