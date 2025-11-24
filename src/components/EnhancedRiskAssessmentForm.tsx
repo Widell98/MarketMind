@@ -33,7 +33,6 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
 
     // Arbetssätt
     activity_preference: '',
-    portfolio_change_frequency: '',
     optimization_preference: '',
 
     // Risk och bevakning
@@ -96,7 +95,6 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
         investment_experience: '',
         portfolio_help_focus: '',
         activity_preference: '',
-        portfolio_change_frequency: '',
         optimization_preference: '',
         risk_tolerance: '',
         risk_comfort_level: [3],
@@ -241,7 +239,6 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
         optimization_timeline: null,
 
         // Stil
-        portfolio_change_frequency: formData.portfolio_change_frequency,
         activity_preference: formData.activity_preference,
         investment_style_preference: formData.investment_style_preference,
         investment_experience: formData.investment_experience as any,
@@ -420,21 +417,6 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
                     <SelectItem value="deep_dive">Djupdyk i färre case</SelectItem>
                     <SelectItem value="broad_scan">Bred scanning av många case</SelectItem>
                     <SelectItem value="signals_only">Snabba signaler och checklistor</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Hur ofta vill du ta beslut?</Label>
-                <Select value={formData.portfolio_change_frequency} onValueChange={(value) => handleInputChange('portfolio_change_frequency', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Välj frekvens" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="thesis_driven">Endast när tesen förändras</SelectItem>
-                    <SelectItem value="quarterly">Vid kvartalsrapporter</SelectItem>
-                    <SelectItem value="monthly">Månadsvis uppföljning</SelectItem>
-                    <SelectItem value="weekly">Veckovis justering</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
