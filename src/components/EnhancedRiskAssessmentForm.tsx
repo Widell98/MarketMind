@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -6,19 +6,69 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
-import { useRiskProfile } from '@/hooks/useRiskProfile';
+import { RiskProfile, useRiskProfile } from '@/hooks/useRiskProfile';
 import { parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
 import { ArrowLeft, ArrowRight, CheckCircle, AlertCircle, Brain, Target, RotateCcw, Upload, Plus, Trash2, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface EnhancedRiskAssessmentFormProps {
   onComplete: (riskProfileId: string) => void;
+  initialProfile?: RiskProfile | null;
 }
 
 const STORAGE_KEY = 'enhanced_risk_assessment_form_data';
 const STORAGE_STEP_KEY = 'enhanced_risk_assessment_current_step';
 
-const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({ onComplete }) => {
+const DEFAULT_HOLDING = {
+  id: 'holding-1',
+  name: '',
+  symbol: '',
+  quantity: 0,
+  purchasePrice: 0,
+  currency: 'SEK',
+  currencyManuallyEdited: false,
+  nameManuallyEdited: false,
+  priceManuallyEdited: false,
+};
+
+const getDefaultHoldings = () => [{ ...DEFAULT_HOLDING }];
+
+const mapProfileToFormData = (profile: RiskProfile) => ({
+  investment_purpose: profile.investment_purpose || [],
+  investment_horizon: profile.investment_horizon || '',
+  investment_goal: profile.investment_goal || '',
+  preferred_stock_count: profile.preferred_stock_count?.toString() || '',
+  investment_style_preference: profile.investment_style_preference || '',
+  investment_experience: profile.investment_experience || '',
+  portfolio_help_focus: profile.portfolio_help_focus || '',
+
+  activity_preference: profile.activity_preference || '',
+  optimization_preference: profile.optimization_preference || '',
+
+  risk_tolerance: profile.risk_tolerance || '',
+  risk_comfort_level: [profile.risk_comfort_level ?? 3],
+  panic_selling_history: profile.panic_selling_history ?? false,
+  control_importance: [profile.control_importance ?? 3],
+  market_crash_reaction: profile.market_crash_reaction || '',
+  overexposure_awareness: profile.overexposure_awareness || '',
+  sector_interests: profile.sector_interests || [],
+  holdings:
+    profile.current_holdings?.length
+      ? profile.current_holdings.map((holding, index) => ({
+          id: `holding-${index + 1}`,
+          name: holding?.name || '',
+          symbol: holding?.symbol || '',
+          quantity: Number(holding?.quantity) || 0,
+          purchasePrice: Number(holding?.purchase_price) || 0,
+          currency: holding?.currency || 'SEK',
+          currencyManuallyEdited: !!holding?.currency,
+          nameManuallyEdited: !!holding?.name,
+          priceManuallyEdited: !!holding?.purchase_price,
+        }))
+      : getDefaultHoldings(),
+});
+
+const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({ onComplete, initialProfile }) => {
   const { saveRiskProfile, loading } = useRiskProfile();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
@@ -47,19 +97,7 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
     market_crash_reaction: '',
     overexposure_awareness: '',
     sector_interests: [] as string[],
-    holdings: [
-      {
-        id: 'holding-1',
-        name: '',
-        symbol: '',
-        quantity: 0,
-        purchasePrice: 0,
-        currency: 'SEK',
-        currencyManuallyEdited: false,
-        nameManuallyEdited: false,
-        priceManuallyEdited: false,
-      },
-    ] as {
+    holdings: getDefaultHoldings() as {
       id: string;
       name: string;
       symbol: string;
@@ -72,11 +110,18 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
     }[],
   });
 
+  const storageKey = initialProfile?.id
+    ? `${STORAGE_KEY}_${initialProfile.id}`
+    : STORAGE_KEY;
+  const storageStepKey = initialProfile?.id
+    ? `${STORAGE_STEP_KEY}_${initialProfile.id}`
+    : STORAGE_STEP_KEY;
+
   // Load saved data on component mount
   useEffect(() => {
     try {
-      const savedData = localStorage.getItem(STORAGE_KEY);
-      const savedStep = localStorage.getItem(STORAGE_STEP_KEY);
+      const savedData = localStorage.getItem(storageKey);
+      const savedStep = localStorage.getItem(storageStepKey);
 
       if (savedData) {
         const parsedData = JSON.parse(savedData);
@@ -85,25 +130,15 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
           holdings:
             parsedData.holdings && Array.isArray(parsedData.holdings) && parsedData.holdings.length > 0
               ? parsedData.holdings
-              : [
-                  {
-                    id: 'holding-1',
-                    name: '',
-                    symbol: '',
-                    quantity: 0,
-                    purchasePrice: 0,
-                    currency: 'SEK',
-                    currencyManuallyEdited: false,
-                    nameManuallyEdited: false,
-                    priceManuallyEdited: false,
-                  },
-                ],
+              : getDefaultHoldings(),
         });
 
         toast({
           title: "Formulärdata återställt",
           description: "Din tidigare ifyllda information har återställts",
         });
+      } else if (initialProfile) {
+        setFormData(mapProfileToFormData(initialProfile));
       }
 
       if (savedStep) {
@@ -112,26 +147,26 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
     } catch (error) {
       console.error('Error loading saved form data:', error);
     }
-  }, [toast]);
+  }, [initialProfile, storageKey, storageStepKey, toast]);
 
   // Save data to localStorage whenever formData or currentStep changes
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
-      localStorage.setItem(STORAGE_STEP_KEY, currentStep.toString());
+      localStorage.setItem(storageKey, JSON.stringify(formData));
+      localStorage.setItem(storageStepKey, currentStep.toString());
     } catch (error) {
       console.error('Error saving form data to localStorage:', error);
     }
-  }, [formData, currentStep]);
+  }, [formData, currentStep, storageKey, storageStepKey]);
 
   // Clear saved data function
-  const clearSavedData = () => {
+  const clearSavedData = useCallback((showToast = true) => {
     try {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(STORAGE_STEP_KEY);
+      localStorage.removeItem(storageKey);
+      localStorage.removeItem(storageStepKey);
 
       // Reset form to initial state
-      setFormData({
+      setFormData(initialProfile ? mapProfileToFormData(initialProfile) : {
         investment_purpose: [] as string[],
         investment_horizon: '',
         investment_goal: '',
@@ -148,32 +183,22 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
         market_crash_reaction: '',
         overexposure_awareness: '',
         sector_interests: [] as string[],
-        holdings: [
-          {
-            id: 'holding-1',
-            name: '',
-            symbol: '',
-            quantity: 0,
-            purchasePrice: 0,
-            currency: 'SEK',
-            currencyManuallyEdited: false,
-            nameManuallyEdited: false,
-            priceManuallyEdited: false,
-          },
-        ],
+        holdings: getDefaultHoldings(),
       });
 
       setCurrentStep(0);
       setValidationErrors({});
 
-      toast({
-        title: "Formulär återställt",
-        description: "All ifylld data har raderats",
-      });
+      if (showToast) {
+        toast({
+          title: "Formulär återställt",
+          description: "All ifylld data har raderats",
+        });
+      }
     } catch (error) {
       console.error('Error clearing saved data:', error);
     }
-  };
+  }, [initialProfile, storageKey, storageStepKey, toast]);
 
   const investmentPurposes = [
     'Djup fundamental bolagsanalys',
@@ -267,28 +292,63 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
           currency: h.currency || 'SEK',
         }));
 
-      const profileData = {
-        // Grundläggande (inte efterfrågade i analystflödet)
-        age: null,
-        annual_income: null,
-        housing_situation: null,
-        has_loans: null,
-        loan_details: null,
-        has_children: null,
-        liquid_capital: null,
-        emergency_buffer_months: null,
+      const baseProfileData = initialProfile
+        ? (({ id, user_id, created_at, updated_at, ...rest }: RiskProfile) => ({ ...rest }))(initialProfile)
+        : {
+            age: null,
+            annual_income: null,
+            housing_situation: null,
+            has_loans: null,
+            loan_details: null,
+            has_children: null,
+            liquid_capital: null,
+            emergency_buffer_months: null,
+            investment_purpose: [],
+            target_amount: null,
+            target_date: null,
+            investment_horizon: null,
+            investment_goal: null,
+            monthly_investment_amount: null,
+            preferred_stock_count: null,
+            preferred_assets: null,
+            risk_tolerance: null,
+            risk_comfort_level: null,
+            panic_selling_history: null,
+            control_importance: null,
+            market_crash_reaction: null,
+            portfolio_help_focus: null,
+            current_portfolio_strategy: null,
+            optimization_goals: [],
+            optimization_risk_focus: null,
+            optimization_diversification_focus: [],
+            optimization_preference: null,
+            optimization_timeline: null,
+            portfolio_change_frequency: null,
+            activity_preference: null,
+            investment_style_preference: null,
+            investment_experience: null,
+            current_portfolio_value: null,
+            overexposure_awareness: null,
+            sector_interests: [],
+            current_holdings: null,
+            current_allocation: {},
+          } as Omit<RiskProfile, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
+      const profileData = {
+        ...baseProfileData,
         // Sparmål & inriktning
         investment_purpose: formData.investment_purpose,
-        target_amount: null,
-        target_date: null,
-        investment_horizon: formData.investment_horizon as any,
-        investment_goal: formData.investment_goal as any,
-        monthly_investment_amount: null,
+        investment_horizon: (formData.investment_horizon as RiskProfile['investment_horizon'])
+          || baseProfileData.investment_horizon
+          || null,
+        investment_goal: (formData.investment_goal as RiskProfile['investment_goal'])
+          || baseProfileData.investment_goal
+          || null,
 
         // Portföljpreferenser
-        preferred_stock_count: formData.preferred_stock_count ? parseInt(formData.preferred_stock_count) : null,
-        preferred_assets: null,
+        preferred_stock_count: formData.preferred_stock_count
+          ? parseInt(formData.preferred_stock_count)
+          : baseProfileData.preferred_stock_count ?? null,
 
         // Risk
         risk_tolerance: formData.risk_tolerance as any,
@@ -299,15 +359,10 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
 
         // Analys- och optimeringspreferenser
         portfolio_help_focus: formData.portfolio_help_focus || null,
-        current_portfolio_strategy: null,
-        optimization_goals: [],
-        optimization_risk_focus: null,
-        optimization_diversification_focus: [],
         optimization_preference: formData.optimization_preference || null,
-        optimization_timeline: null,
 
         // Stil
-        activity_preference: formData.activity_preference,
+        activity_preference: formData.activity_preference || baseProfileData.activity_preference || null,
         investment_style_preference: formData.investment_style_preference,
         investment_experience: formData.investment_experience as any,
 
@@ -315,18 +370,20 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
         current_portfolio_value:
           validHoldings.length > 0
             ? validHoldings.reduce((total, holding) => total + holding.quantity * holding.purchase_price, 0)
-            : null,
-        overexposure_awareness: formData.overexposure_awareness,
+            : baseProfileData.current_portfolio_value || null,
+        overexposure_awareness: formData.overexposure_awareness || baseProfileData.overexposure_awareness || null,
         sector_interests: formData.sector_interests,
-        current_holdings: validHoldings,
-        current_allocation: {}
+        current_holdings: validHoldings.length > 0 ? validHoldings : baseProfileData.current_holdings || null,
+        current_allocation: baseProfileData.current_allocation || {}
       };
 
       const result = await saveRiskProfile(profileData);
       if (result) {
         // Clear saved data on successful submission
-        clearSavedData();
-        onComplete('profile-created');
+        clearSavedData(false);
+        setFormData(mapProfileToFormData(result));
+        setCurrentStep(0);
+        onComplete(result.id);
       }
     } catch (error: any) {
       toast({
