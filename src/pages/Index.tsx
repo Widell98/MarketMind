@@ -37,6 +37,7 @@ import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAIInsights } from '@/hooks/useAIInsights';
 import { useFinancialProgress } from '@/hooks/useFinancialProgress';
+import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 
@@ -81,6 +82,10 @@ const Index = () => {
     loading
   } = usePortfolio();
   const {
+    riskProfile,
+    loading: riskProfileLoading,
+  } = useRiskProfile();
+  const {
     performance
   } = usePortfolioPerformance();
   const {
@@ -97,6 +102,7 @@ const Index = () => {
   } = useAIInsights();
   const progressData = useFinancialProgress();
   const hasPortfolio = !loading && !!activePortfolio;
+  const hasPortfolioOrRiskProfile = hasPortfolio || (!riskProfileLoading && !!riskProfile);
   const totalPortfolioValue = performance.totalPortfolioValue;
   const greetingName = user?.user_metadata?.first_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || t('common.user');
   const holdingsCount = actualHoldings?.length ?? 0;
@@ -318,7 +324,7 @@ const Index = () => {
             </div>}
 
           {/* Clean Dashboard for logged-in users */}
-          {user && hasPortfolio && <div className="min-h-0 bg-background">
+          {user && hasPortfolioOrRiskProfile && <div className="min-h-0 bg-background">
               <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-3 sm:py-6">
                 <div className="space-y-6 sm:space-y-8">
                   <div className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
@@ -488,7 +494,7 @@ const Index = () => {
             </div>}
 
           {/* Enhanced personal welcome for users without portfolio */}
-          {user && !hasPortfolio && !loading && <div className="mb-12 sm:mb-16">
+          {user && !hasPortfolioOrRiskProfile && !loading && !riskProfileLoading && <div className="mb-12 sm:mb-16">
               <Card className="rounded-3xl border-slate-200 bg-gradient-to-r from-slate-50 to-indigo-50 shadow-lg dark:border-slate-700 dark:from-slate-800 dark:to-indigo-900/20">
                 <div className="rounded-3xl border bg-card/60 p-6 text-center shadow-lg backdrop-blur-sm sm:p-12">
                   <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 sm:mb-8 sm:h-20 sm:w-20">
