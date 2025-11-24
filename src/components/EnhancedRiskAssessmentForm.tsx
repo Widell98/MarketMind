@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
-import { ArrowLeft, ArrowRight, CheckCircle, AlertCircle, Brain, Target, RotateCcw } from 'lucide-react';
+import { parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
+import { ArrowLeft, ArrowRight, CheckCircle, AlertCircle, Brain, Target, RotateCcw, Upload, Plus, Trash2, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface EnhancedRiskAssessmentFormProps {
@@ -21,6 +23,8 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const tickerDatalistId = useId();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [formData, setFormData] = useState({
     // Analys- och caseinriktning
     investment_purpose: [] as string[],
@@ -42,7 +46,30 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
     control_importance: [3],
     market_crash_reaction: '',
     overexposure_awareness: '',
-    sector_interests: [] as string[]
+    sector_interests: [] as string[],
+    holdings: [
+      {
+        id: 'holding-1',
+        name: '',
+        symbol: '',
+        quantity: 0,
+        purchasePrice: 0,
+        currency: 'SEK',
+        currencyManuallyEdited: false,
+        nameManuallyEdited: false,
+        priceManuallyEdited: false,
+      },
+    ] as {
+      id: string;
+      name: string;
+      symbol: string;
+      quantity: number;
+      purchasePrice: number;
+      currency: string;
+      currencyManuallyEdited: boolean;
+      nameManuallyEdited: boolean;
+      priceManuallyEdited: boolean;
+    }[],
   });
 
   // Load saved data on component mount
@@ -53,7 +80,25 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
 
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        setFormData(parsedData);
+        setFormData({
+          ...parsedData,
+          holdings:
+            parsedData.holdings && Array.isArray(parsedData.holdings) && parsedData.holdings.length > 0
+              ? parsedData.holdings
+              : [
+                  {
+                    id: 'holding-1',
+                    name: '',
+                    symbol: '',
+                    quantity: 0,
+                    purchasePrice: 0,
+                    currency: 'SEK',
+                    currencyManuallyEdited: false,
+                    nameManuallyEdited: false,
+                    priceManuallyEdited: false,
+                  },
+                ],
+        });
 
         toast({
           title: "Formulärdata återställt",
@@ -102,7 +147,20 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
         control_importance: [3],
         market_crash_reaction: '',
         overexposure_awareness: '',
-        sector_interests: [] as string[]
+        sector_interests: [] as string[],
+        holdings: [
+          {
+            id: 'holding-1',
+            name: '',
+            symbol: '',
+            quantity: 0,
+            purchasePrice: 0,
+            currency: 'SEK',
+            currencyManuallyEdited: false,
+            nameManuallyEdited: false,
+            priceManuallyEdited: false,
+          },
+        ],
       });
 
       setCurrentStep(0);
@@ -199,6 +257,16 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
     if (!validateCurrentStep()) return;
 
     try {
+      const validHoldings = formData.holdings
+        .filter(h => h.name.trim() && h.quantity > 0 && h.purchasePrice > 0)
+        .map(h => ({
+          name: h.name.trim(),
+          symbol: h.symbol?.trim() || null,
+          quantity: h.quantity,
+          purchase_price: h.purchasePrice,
+          currency: h.currency || 'SEK',
+        }));
+
       const profileData = {
         // Grundläggande (inte efterfrågade i analystflödet)
         age: null,
@@ -244,10 +312,13 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
         investment_experience: formData.investment_experience as any,
 
         // Innehav
-        current_portfolio_value: null,
+        current_portfolio_value:
+          validHoldings.length > 0
+            ? validHoldings.reduce((total, holding) => total + holding.quantity * holding.purchase_price, 0)
+            : null,
         overexposure_awareness: formData.overexposure_awareness,
         sector_interests: formData.sector_interests,
-        current_holdings: [],
+        current_holdings: validHoldings,
         current_allocation: {}
       };
 
@@ -560,6 +631,225 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div className="border-t pt-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Registrera din portfölj (valfritt)</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Lägg till dina nuvarande innehav för att få mer träffsäkra analyser. Uppgifterna sparas i din profil.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,text/csv"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) return;
+
+                      const reader = new FileReader();
+                      reader.onload = (e) => {
+                        try {
+                          const text = e.target?.result as string;
+                          const parsed = parsePortfolioHoldingsFromCSV(text).map((holding, index) => ({
+                            id: `holding-${Date.now()}-${index}`,
+                            name: holding.name || '',
+                            symbol: holding.symbol || '',
+                            quantity: holding.quantity || 0,
+                            purchasePrice: holding.purchasePrice || 0,
+                            currency: holding.currency || 'SEK',
+                            currencyManuallyEdited: Boolean(holding.currency),
+                            nameManuallyEdited: Boolean(holding.name),
+                            priceManuallyEdited: Boolean(holding.purchasePrice),
+                          }));
+
+                          if (parsed.length === 0) {
+                            throw new Error('Inga innehav kunde tolkas från CSV-filen');
+                          }
+
+                          setFormData(prev => ({
+                            ...prev,
+                            holdings: parsed,
+                          }));
+
+                          toast({
+                            title: 'Innehav importerade',
+                            description: `${parsed.length} innehav har lagts till från CSV-filen.`,
+                          });
+                        } catch (error) {
+                          console.error('Failed to parse holdings CSV:', error);
+                          toast({
+                            title: 'Kunde inte läsa CSV',
+                            description: error instanceof Error ? error.message : 'Kontrollera formatet och försök igen.',
+                            variant: 'destructive',
+                          });
+                        } finally {
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = '';
+                          }
+                        }
+                      };
+
+                      reader.readAsText(file);
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="w-4 h-4" />
+                    Importera CSV
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                    onClick={() =>
+                      setFormData(prev => ({
+                        ...prev,
+                        holdings: [
+                          ...prev.holdings,
+                          {
+                            id: `holding-${Date.now()}`,
+                            name: '',
+                            symbol: '',
+                            quantity: 0,
+                            purchasePrice: 0,
+                            currency: 'SEK',
+                            currencyManuallyEdited: false,
+                            nameManuallyEdited: false,
+                            priceManuallyEdited: false,
+                          },
+                        ],
+                      }))
+                    }
+                  >
+                    <Plus className="w-4 h-4" />
+                    Lägg till rad
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {formData.holdings.map((holding, index) => (
+                  <div key={holding.id} className="grid grid-cols-1 md:grid-cols-6 gap-2 p-3 border rounded-lg bg-muted/30">
+                    <Input
+                      placeholder="Företagsnamn *"
+                      value={holding.name}
+                      onChange={(e) =>
+                        setFormData(prev => {
+                          const nextHoldings = [...prev.holdings];
+                          nextHoldings[index] = { ...holding, name: e.target.value, nameManuallyEdited: true };
+                          return { ...prev, holdings: nextHoldings };
+                        })
+                      }
+                      className="text-sm"
+                    />
+                    <Input
+                      placeholder="Symbol (t.ex. AAPL)"
+                      value={holding.symbol}
+                      onChange={(e) =>
+                        setFormData(prev => {
+                          const nextHoldings = [...prev.holdings];
+                          nextHoldings[index] = { ...holding, symbol: e.target.value };
+                          return { ...prev, holdings: nextHoldings };
+                        })
+                      }
+                      className="text-sm"
+                      list={tickerDatalistId}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Antal *"
+                      value={holding.quantity || ''}
+                      onChange={(e) =>
+                        setFormData(prev => {
+                          const nextHoldings = [...prev.holdings];
+                          nextHoldings[index] = { ...holding, quantity: Number(e.target.value) };
+                          return { ...prev, holdings: nextHoldings };
+                        })
+                      }
+                      min="0"
+                      className="text-sm"
+                    />
+                    <Input
+                      type="number"
+                      placeholder={`Köppris (${holding.currency || 'SEK'}) *`}
+                      value={holding.purchasePrice || ''}
+                      onChange={(e) =>
+                        setFormData(prev => {
+                          const nextHoldings = [...prev.holdings];
+                          nextHoldings[index] = { ...holding, purchasePrice: Number(e.target.value), priceManuallyEdited: true };
+                          return { ...prev, holdings: nextHoldings };
+                        })
+                      }
+                      min="0"
+                      step="0.01"
+                      className="text-sm"
+                    />
+                    <Select
+                      value={holding.currencyManuallyEdited ? holding.currency : 'SEK'}
+                      onValueChange={(value) =>
+                        setFormData(prev => {
+                          const nextHoldings = [...prev.holdings];
+                          nextHoldings[index] = { ...holding, currency: value === 'AUTO' ? 'SEK' : value, currencyManuallyEdited: true };
+                          return { ...prev, holdings: nextHoldings };
+                        })
+                      }
+                    >
+                      <SelectTrigger className="text-sm">
+                        <SelectValue placeholder="Valuta" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="AUTO">Auto (SEK)</SelectItem>
+                        <SelectItem value="SEK">SEK</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                        <SelectItem value="NOK">NOK</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      disabled={formData.holdings.length === 1}
+                      onClick={() =>
+                        setFormData(prev => ({
+                          ...prev,
+                          holdings: prev.holdings.filter(h => h.id !== holding.id),
+                        }))
+                      }
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <datalist id={tickerDatalistId} />
+
+              {formData.holdings.some(h => h.name.trim() && h.quantity > 0 && h.purchasePrice > 0) && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <p className="text-sm font-medium text-green-800 mb-2">Innehav att spara</p>
+                  <div className="space-y-1 text-xs text-green-700">
+                    {formData.holdings
+                      .filter(h => h.name.trim() && h.quantity > 0 && h.purchasePrice > 0)
+                      .map(h => (
+                        <div key={`summary-${h.id}`} className="flex items-center gap-1">
+                          <Check className="w-3 h-3" />
+                          {h.name}
+                          {h.symbol?.trim() ? ` (${h.symbol})` : ''}: {h.quantity} st à {h.purchasePrice} {h.currency || 'SEK'}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );
