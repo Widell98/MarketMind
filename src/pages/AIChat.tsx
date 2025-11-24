@@ -18,7 +18,12 @@ const AIChatPage = () => {
   const { t } = useLanguage();
   const { riskProfile, loading: riskProfileLoading } = useRiskProfile();
   const { activePortfolio } = usePortfolio();
-  const state = location.state as { createNewSession?: boolean; initialMessage?: string } | null;
+  const state = location.state as {
+    createNewSession?: boolean;
+    initialMessage?: string;
+    sessionName?: string;
+    autoSendInitialMessage?: boolean;
+  } | null;
   const onboardingSession = Boolean(state?.createNewSession || state?.initialMessage);
 
   const stockName = searchParams.get('stock');

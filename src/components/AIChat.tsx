@@ -205,6 +205,7 @@ const AIChat = ({
       createNewSession?: boolean;
       sessionName?: string;
       initialMessage?: string;
+      autoSendInitialMessage?: boolean;
     } | undefined;
 
     if (navigationState?.createNewSession) {
@@ -216,16 +217,31 @@ const AIChat = ({
 
       const {
         sessionName,
-        initialMessage
+        initialMessage,
+        autoSendInitialMessage
       } = navigationState;
       const startNewSession = async () => {
         await createNewSession(sessionName);
 
         if (initialMessage) {
-          setInput(initialMessage);
-          setTimeout(() => {
-            inputRef.current?.focus();
-          }, 100);
+          if (autoSendInitialMessage) {
+            const wasSent = await sendMessage(initialMessage, {
+              documentIds: [],
+              documents: [],
+            });
+
+            if (!wasSent) {
+              setInput(initialMessage);
+              setTimeout(() => {
+                inputRef.current?.focus();
+              }, 100);
+            }
+          } else {
+            setInput(initialMessage);
+            setTimeout(() => {
+              inputRef.current?.focus();
+            }, 100);
+          }
         }
 
         const currentUrl = `${location.pathname}${location.search}${location.hash ?? ''}`;
@@ -242,6 +258,7 @@ const AIChat = ({
     location.search,
     location.hash,
     createNewSession,
+    sendMessage,
     navigate
   ]);
   useEffect(() => {

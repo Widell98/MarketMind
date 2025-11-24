@@ -473,12 +473,13 @@ const ChatPortfolioAdvisor = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const startAiChatSession = useCallback(
-    (sessionName: string, initialMessage: string) => {
+    (sessionName: string, initialMessage: string, autoSendInitialMessage = false) => {
       navigate('/ai-chatt', {
         state: {
           createNewSession: true,
           sessionName,
           initialMessage,
+          autoSendInitialMessage,
         },
       });
     },
@@ -2191,7 +2192,7 @@ const ChatPortfolioAdvisor = () => {
       }
 
       setIsGenerating(true);
-      startAiChatSession(pendingSessionName, pendingSystemPrompt);
+      startAiChatSession(pendingSessionName, pendingSystemPrompt, true);
     } catch (error) {
       console.error('Failed to save risk profile and start AI chat', error);
       toast({
