@@ -427,6 +427,70 @@ const StockCaseDetail = ({
     );
   };
 
+  const CaseNavigationSlideButtons = () => {
+    if (navigationError || navigationLoading) {
+      return null;
+    }
+
+    if (!previousCase && !nextCase) {
+      return null;
+    }
+
+    return (
+      <div className="pointer-events-none absolute inset-y-4 left-0 right-0 flex items-center justify-between px-2 sm:px-3">
+        <TooltipProvider delayDuration={120} skipDelayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="pointer-events-auto inline-flex">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    'h-11 w-11 sm:h-12 sm:w-12 shadow-lg shadow-black/10',
+                    navigationButtonBaseClasses,
+                  )}
+                  disabled={!previousCase}
+                  onClick={() => handleNavigateToNeighbor(previousCase?.id)}
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                  <span className="sr-only">Föregående case</span>
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent sideOffset={10}>
+              {previousCaseTitle ? `Föregående: ${previousCaseTitle}` : 'Föregående case'}
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="pointer-events-auto inline-flex">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    'h-11 w-11 sm:h-12 sm:w-12 shadow-lg shadow-black/10',
+                    navigationButtonBaseClasses,
+                  )}
+                  disabled={!nextCase}
+                  onClick={() => handleNavigateToNeighbor(nextCase?.id)}
+                >
+                  <ChevronRight className="h-5 w-5" />
+                  <span className="sr-only">Nästa case</span>
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent sideOffset={10}>
+              {nextCaseTitle ? `Nästa: ${nextCaseTitle}` : 'Nästa case'}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+    );
+  };
+
   // NOW we can have conditional logic and early returns
   if (loading) {
     return renderWithinLayout(
@@ -1354,7 +1418,8 @@ const StockCaseDetail = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <div className={containerClasses}>
+      <div className={cn(containerClasses, 'relative')}>
+        <CaseNavigationSlideButtons />
         {/* Hero Section */}
         {isAiGeneratedCase ? (
           <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.55)]">
