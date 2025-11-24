@@ -828,7 +828,7 @@ const StockCaseDetail = ({
   const formattedAnalysisContent = formatCaseDescription(displayedAnalysisDescription);
   const hasAnalysisContent = Boolean(formattedAnalysisContent?.length);
 
-  const { analysisPreviewText, hasMoreAnalysisContent } = useMemo(() => {
+  const { analysisPreviewText, hasMoreAnalysisContent } = (() => {
     if (!displayedAnalysisDescription) {
       return { analysisPreviewText: null as string | null, hasMoreAnalysisContent: false };
     }
@@ -878,7 +878,7 @@ const StockCaseDetail = ({
       analysisPreviewText: preview,
       hasMoreAnalysisContent: hasMoreCandidates,
     };
-  }, [displayedAnalysisDescription]);
+  })();
 
   const resolvedMarketCap = formatApproximateMarketCap(
     sheetMetrics?.marketCap ?? stockCase.market_cap ?? null,
