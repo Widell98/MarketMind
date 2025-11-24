@@ -764,12 +764,13 @@ const StockCaseDetail = ({
 
       extractedFiftyTwoWeekSummary = normalizedSummary;
 
-      const withoutSummary = rawAnalysisDescription
-        .replace(summaryMatch[0], '')
+      const normalizedDescription = rawAnalysisDescription.replace(/\r\n/g, '\n');
+      const withNormalizedSummary = normalizedDescription
+        .replace(summaryMatch[0], normalizedSummary)
         .replace(/\n{3,}/g, '\n\n')
         .trim();
 
-      cleanedAnalysisDescription = withoutSummary.length > 0 ? withoutSummary : null;
+      cleanedAnalysisDescription = withNormalizedSummary.length > 0 ? withNormalizedSummary : null;
     }
   }
 
@@ -1348,11 +1349,6 @@ const StockCaseDetail = ({
             </ScrollArea>
           </div>
 
-          <DialogFooter className="border-t border-border/60 bg-background/90 px-6 py-4 backdrop-blur">
-            <Button variant="ghost" onClick={() => setIsAnalysisDialogOpen(false)}>
-              Stäng
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
       <div className={cn(containerClasses)}>
