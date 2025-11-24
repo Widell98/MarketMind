@@ -10,6 +10,7 @@ import { RiskProfile, useRiskProfile } from '@/hooks/useRiskProfile';
 import { parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
 import { ArrowLeft, ArrowRight, CheckCircle, AlertCircle, Brain, Target, RotateCcw, Upload, Plus, Trash2, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface EnhancedRiskAssessmentFormProps {
   onComplete: (riskProfileId: string) => void;
@@ -75,6 +76,7 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const tickerDatalistId = useId();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     // Analys- och caseinriktning
     investment_purpose: [] as string[],
@@ -384,6 +386,32 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
         setFormData(mapProfileToFormData(result));
         setCurrentStep(0);
         onComplete(result.id);
+
+        const purposeText = formData.investment_purpose.join(', ');
+        const sectorText = formData.sector_interests.length > 0 ? formData.sector_interests.join(', ') : 'Ingen specifik sektor';
+        const experienceText = formData.investment_experience || 'Ej angiven';
+        const styleText = formData.investment_style_preference || 'Ej angiven';
+        const riskToleranceText = formData.risk_tolerance || 'Ej angiven';
+        const crashReactionText = formData.market_crash_reaction || 'Ej angiven';
+        const activityText = formData.activity_preference || 'Ej angiven';
+        const optimizationText = formData.optimization_preference || 'Ej angiven';
+        const horizonText = formData.investment_horizon || 'Ej angiven';
+        const goalText = formData.investment_goal || 'Ej angiven';
+        const preferredStockCountText = formData.preferred_stock_count || 'Ej angivet';
+        const riskComfortText = formData.risk_comfort_level?.[0] ?? null;
+
+        const baseProfileSummary = `Riskprofil:\n- Analysinriktning: ${purposeText || 'Ej angivet'}\n- Analysstil: ${styleText}\n- Erfarenhetsnivå: ${experienceText}\n- Risktolerans: ${riskToleranceText}\n- Bekvämlighetsnivå: ${riskComfortText ?? 'Ej angiven'} av 5\n- Reaktion vid börsfall: ${crashReactionText}\n- Aktivitet: ${activityText}\n- Optimeringsfokus: ${optimizationText}\n- Investeringshorisont: ${horizonText}\n- Övergripande mål: ${goalText}\n- Antal aktier som föredras: ${preferredStockCountText}\n- Sektorintressen: ${sectorText}`;
+
+        const holdingsSummary = validHoldings
+          .map(holding => `• ${holding.name}${holding.symbol ? ` (${holding.symbol})` : ''}: ${holding.quantity} st @ ${holding.purchase_price} ${holding.currency}`)
+          .join('\n');
+
+        const message = validHoldings.length > 0
+          ? `Analysera min befintliga portfölj utifrån riskprofilen nedan och ge en tydlig åtgärdsplan med rebalansering, riskjustering och bevakningspunkter.\n\n${baseProfileSummary}\n\nPortfölj att analysera:\n${holdingsSummary || 'Inga innehav angivna'}`
+          : `Skapa en komplett portfölj åt mig baserat på riskprofilen nedan. Ge ett konkret förslag med viktning, 5–10 aktier/ETF:er samt kort motivering per val och hur det matchar min risk.\n\n${baseProfileSummary}`;
+
+        const encodedMessage = encodeURIComponent(message);
+        navigate(`/ai-chatt?message=${encodedMessage}`);
       }
     } catch (error: any) {
       toast({
@@ -992,7 +1020,7 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
               onClick={handleSubmit}
               disabled={Object.keys(validationErrors).length > 0 || loading}
             >
-              Skapa Portfölj
+              Gå till AI-chatten
               <CheckCircle className="w-4 h-4 ml-2" />
             </Button>
           )}
