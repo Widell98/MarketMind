@@ -962,7 +962,8 @@ serve(async (req) => {
 
 
       const prompt = `
-Du är en senior aktieanalytiker. Skriv ett kort, faktabaserat investeringscase om ett verkligt börsnoterat bolag.
+Du är en senior aktieanalytiker som skriver extremt koncisa, faktabaserade och moderna investeringscase för retail-investerare. 
+Skriv alltid med en snabb, vass och tydlig ton – inga långa meningar, inget bankjargong och ingen hype.
 
 Bolag: ${selectedName} (${selectedTicker})
 Sektor: ${sector}
@@ -970,30 +971,24 @@ Investeringsstil: ${style}
 Senaste pris: ${sheetPrice !== null ? `${sheetPrice} ${sheetCurrency ?? 'SEK'}` : "okänt – använd rimligt intervall"}
 
 Krav:
-- Endast verkliga fakta om bolaget. Inga påhitt.
-- Inget marknadsföringsspråk. Ingen hype.
-- Ton: professionell, konkret, komprimerad.
-- 4 stycken, separerade med blankrad.
-- Totalt 150–300 ord.
-- Inga listor i texten.
+- Endast verkliga fakta. Inga påhitt.
+- Kort, konkret, lättläst språk.
+- Totalt 90–130 ord.
+- 4 stycken, separerade med en blankrad.
+- Inga listor eller punkter i själva caset.
+- Inga kursmål, ingen teknisk analys, inga generiska buzzwords.
 
-Stycke 1 (Company Snapshot):
-- 2–4 mycket korta meningar.
-- Vad bolaget gör + vad som är intressant *just nu*.
+Stycke 1 (Snapshot):
+Beskriv kort vad bolaget gör och varför det är relevant just nu.
 
-Stycke 2 (Varför bolaget sticker ut):
-- Kärnverksamhet, nyckelprodukter, positionering.
-- En konkret styrka.
+Stycke 2 (Edge):
+Förklara vad som driver bolaget, dess konkurrensfördel, produkt eller strategi. En tydlig styrka.
 
 Stycke 3 (Katalysatorer):
-- 2–3 tydliga drivkrafter kommande 6–18 månader.
-- 1 mening som sätter prisnivån i kontext (värdering, volym, årshögsta/lägsta).
-- Ingen teknisk analys och inga kursmål.
+Två till tre verkliga drivkrafter kommande 6–18 månader. Sätt priset i kontext (t.ex. värdering, nivå mot historik, eller fundamenta).
 
-Stycke 4 (Risker + slutsats):
-- 1–2 realistiska risker.
-- Kort slutsats kopplad till investeringsstilen "${style}".
-- Ingen upprepning.
+Stycke 4 (Risk + stilslutsats):
+En eller två realistiska risker. Avsluta med en kort slutsats kopplad till stilen "${style}".
 
 Returnera ENDAST giltig JSON:
 
