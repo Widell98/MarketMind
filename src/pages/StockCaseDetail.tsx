@@ -1277,7 +1277,7 @@ const StockCaseDetail = ({
   return renderWithinLayout(
     <>
       <Dialog open={isAnalysisDialogOpen} onOpenChange={setIsAnalysisDialogOpen}>
-        <DialogContent className="max-w-4xl p-0 sm:max-w-5xl">
+        <DialogContent className="max-w-4xl p-0 sm:max-w-5xl" hideCloseButton>
           <div className="flex items-start justify-between border-b border-border/60 bg-background/95 px-6 py-4 backdrop-blur">
             <div className="space-y-1">
               <DialogTitle className="text-xl font-semibold tracking-tight sm:text-2xl">
