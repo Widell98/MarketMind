@@ -34,6 +34,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
+import { useRiskProfile, type RiskProfile } from '@/hooks/useRiskProfile';
 import useSheetTickers, { RawSheetTicker, SheetTicker, sanitizeSheetTickerList } from '@/hooks/useSheetTickers';
 import StockReplacementDialog from '@/components/StockReplacementDialog';
 import { mapEdgeFunctionErrorMessage } from '@/utils/mapEdgeFunctionError';
@@ -454,6 +455,9 @@ const ChatPortfolioAdvisor = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [waitingForAnswer, setWaitingForAnswer] = useState(false);
   const [holdings, setHoldings] = useState<Holding[]>([]);
+  const [pendingSystemPrompt, setPendingSystemPrompt] = useState<string | null>(null);
+  const [pendingSessionName, setPendingSessionName] = useState<string | null>(null);
+  const [isSavingRiskProfile, setIsSavingRiskProfile] = useState(false);
   const [holdingToRemove, setHoldingToRemove] = useState<Holding | null>(null);
   const [showHoldingsInput, setShowHoldingsInput] = useState(false);
   const [localLoading, setLoading] = useState(false);
@@ -482,6 +486,7 @@ const ChatPortfolioAdvisor = () => {
   );
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+  const { saveRiskProfile } = useRiskProfile();
   const { tickers, isLoading: tickersLoading, error: tickersError } = useSheetTickers();
   const rawTickerListId = useId();
   const tickerDatalistId = `advisor-sheet-tickers-${rawTickerListId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
@@ -2023,7 +2028,75 @@ const ChatPortfolioAdvisor = () => {
     return sectorMap[stockName] || 'Övrigt';
   };
 
-  const completeConversation = async () => {
+  const mapRiskTolerance = (value?: string | null): RiskProfile['risk_tolerance'] | null => {
+    if (!value) return null;
+
+    if (value === 'conservative') return 'conservative';
+    if (value === 'balanced') return 'moderate';
+    if (value === 'aggressive') return 'aggressive';
+
+    return null;
+  };
+
+  const mapInvestmentGoal = (value?: string | null): RiskProfile['investment_goal'] | null => {
+    switch (value) {
+      case 'long_term_growth':
+        return 'growth';
+      case 'dividend_income':
+        return 'income';
+      case 'specific_goal':
+        return 'balanced';
+      case 'quick_return':
+        return 'growth';
+      default:
+        return null;
+    }
+  };
+
+  const buildRiskProfilePayload = (): Omit<
+    RiskProfile,
+    'id' | 'user_id' | 'created_at' | 'updated_at'
+  > => ({
+    age: null,
+    annual_income: null,
+    housing_situation: null,
+    has_loans: null,
+    loan_details: null,
+    has_children: null,
+    liquid_capital: null,
+    emergency_buffer_months: null,
+    investment_purpose: null,
+    target_amount: null,
+    target_date: null,
+    investment_horizon: (conversationData.timeHorizon as RiskProfile['investment_horizon']) ?? null,
+    investment_goal: mapInvestmentGoal(conversationData.investmentGoal as string),
+    monthly_investment_amount: null,
+    preferred_stock_count: null,
+    preferred_assets: null,
+    risk_tolerance: mapRiskTolerance(conversationData.riskTolerance as string),
+    risk_comfort_level: null,
+    panic_selling_history: null,
+    control_importance: null,
+    market_crash_reaction: null,
+    portfolio_help_focus: null,
+    current_portfolio_strategy: null,
+    optimization_goals: null,
+    optimization_risk_focus: null,
+    optimization_diversification_focus: null,
+    optimization_preference: null,
+    optimization_timeline: null,
+    portfolio_change_frequency: null,
+    activity_preference: null,
+    investment_style_preference: null,
+    investment_experience: (conversationData.investmentExperienceLevel as RiskProfile['investment_experience']) ?? null,
+    current_portfolio_value: null,
+    overexposure_awareness: null,
+    sector_interests: [],
+    current_holdings: conversationData.currentHoldings ?? null,
+    current_allocation: null,
+  });
+
+  const completeConversation = () => {
     const riskLabels: Record<string, string> = {
       conservative: 'Låg risk',
       balanced: 'Medelrisk',
@@ -2084,29 +2157,50 @@ const ChatPortfolioAdvisor = () => {
       objective
     ].join('\n');
 
-    setIsGenerating(true);
+    setIsGenerating(false);
     setWaitingForAnswer(false);
     setIsComplete(true);
     setRecommendedStocks([]);
     hasInitializedRecommendations.current = false;
+    setPendingSystemPrompt(systemPrompt);
+    setPendingSessionName(hasPortfolio ? 'Portföljanalys' : 'Portföljförslag');
+  };
+
+  const handleSaveProfileAndStartChat = async () => {
+    if (!pendingSystemPrompt || !pendingSessionName) {
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: 'Logga in för att fortsätta',
+        description: 'Du behöver vara inloggad för att spara din riskprofil.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSavingRiskProfile(true);
 
     try {
+      const riskProfilePayload = buildRiskProfilePayload();
+      await saveRiskProfile(riskProfilePayload);
+
       if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
         await saveUserHoldings(conversationData.currentHoldings);
       }
 
-      const sessionName = hasPortfolio ? 'Portföljanalys' : 'Portföljförslag';
-      startAiChatSession(sessionName, systemPrompt);
+      setIsGenerating(true);
+      startAiChatSession(pendingSessionName, pendingSystemPrompt);
     } catch (error) {
-      console.error('Failed to start AI chat session from onboarding', error);
+      console.error('Failed to save risk profile and start AI chat', error);
       toast({
-        title: 'Kunde inte starta AI-chatten',
-        description: 'Försök igen eller gå till AI-chatten manuellt.',
+        title: 'Kunde inte spara riskprofilen',
+        description: 'Försök igen eller uppdatera sidan.',
         variant: 'destructive',
       });
-      setIsComplete(false);
     } finally {
-      setIsGenerating(false);
+      setIsSavingRiskProfile(false);
     }
   };
 
@@ -3066,6 +3160,36 @@ const ChatPortfolioAdvisor = () => {
                       </Button>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isComplete && pendingSystemPrompt && (
+            <div className="flex gap-2 sm:gap-3 items-start">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="bg-primary/5 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border border-primary/20 shadow-sm flex flex-col gap-3">
+                  <div>
+                    <p className="text-sm sm:text-base font-semibold text-foreground">Redo att starta AI-chatten</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                      Spara din riskprofil baserat på dina svar för att låsa upp AI-chatten och fortsätta med din skräddarsydda portföljanalys.
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                    <Button
+                      onClick={handleSaveProfileAndStartChat}
+                      disabled={isSavingRiskProfile || isGenerating}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                    >
+                      {isSavingRiskProfile ? 'Sparar riskprofil...' : 'Spara riskprofil och starta chatten'}
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Dina svar: tidshorisont, risk, erfarenhet, mål och portföljstatus används för profilen.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
