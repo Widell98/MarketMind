@@ -349,8 +349,8 @@ const StockCaseDetail = ({
     'rounded-full border-2 border-primary/50 bg-gradient-to-b from-primary/95 via-primary to-primary/90 text-primary-foreground shadow-xl shadow-primary/30 backdrop-blur transition-all duration-200 hover:shadow-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-0';
 
   const containerClasses = cn(
-    'mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8',
-    embedded ? 'space-y-10 sm:space-y-12' : 'space-y-12',
+    'mx-auto w-full px-3 sm:px-5 md:px-6 lg:px-8',
+    embedded ? 'max-w-[min(1200px,100%)] space-y-10 sm:space-y-12' : 'max-w-6xl space-y-12',
     className
   );
 
@@ -373,7 +373,7 @@ const StockCaseDetail = ({
 
     return (
       <div
-        className="pointer-events-none absolute inset-x-1 top-1/2 flex -translate-y-1/2 items-center justify-between px-1 sm:inset-x-3 sm:px-2 lg:inset-x-6 lg:px-3"
+        className="pointer-events-none absolute inset-y-0 -left-2 -right-2 z-30 flex items-center justify-between sm:-left-4 sm:-right-4 lg:-left-7 lg:-right-7"
       >
         <TooltipProvider delayDuration={120} skipDelayDuration={0}>
           <Tooltip>
