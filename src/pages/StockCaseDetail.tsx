@@ -372,7 +372,9 @@ const StockCaseDetail = ({
     }
 
     return (
-      <div className="pointer-events-none absolute inset-y-4 left-0 right-0 flex items-center justify-between px-2 sm:px-3">
+      <div
+        className="pointer-events-none absolute left-[-0.75rem] right-[-0.75rem] top-1/2 flex -translate-y-1/2 items-center justify-between px-1 sm:left-[-1.5rem] sm:right-[-1.5rem] sm:px-2 lg:left-[-2.75rem] lg:right-[-2.75rem]"
+      >
         <TooltipProvider delayDuration={120} skipDelayDuration={0}>
           <Tooltip>
             <TooltipTrigger asChild>
