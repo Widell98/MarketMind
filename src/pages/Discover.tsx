@@ -201,22 +201,16 @@ const Discover = () => {
               </TabsList>
 
               <TabsContent value="upptack" className="space-y-6 sm:space-y-8">
-                <div className="grid gap-4 sm:gap-6 lg:grid-cols-3 lg:items-stretch lg:gap-8">
-                  {featuredCase && (
-                    <StockCaseDetail
-                      embedded
-                      embeddedCaseId={featuredCase.id}
-                      navigationCases={navigationCases}
-                      onNavigateCase={(id) => setFeaturedCaseId(id)}
-                      showRiskWarning={false}
-                      className="order-2 col-span-1 rounded-3xl px-3 sm:order-1 sm:px-6 lg:col-span-2 lg:px-8 space-y-8 sm:space-y-12"
-                    />
-                  )}
-
-                  <div className="order-1 relative min-h-[180px] overflow-hidden rounded-[28px] border border-border/60 bg-card/80 p-5 sm:order-2 sm:min-h-[220px] lg:min-h-full lg:rounded-[32px] lg:p-6">
-                    <div className="absolute inset-0 rounded-[28px] bg-gradient-to-br from-muted/15 via-transparent to-muted/5 dark:from-muted/20 dark:via-transparent dark:to-muted/10 lg:rounded-[32px]" />
-                  </div>
-                </div>
+                {featuredCase && (
+                  <StockCaseDetail
+                    embedded
+                    embeddedCaseId={featuredCase.id}
+                    navigationCases={navigationCases}
+                    onNavigateCase={(id) => setFeaturedCaseId(id)}
+                    showRiskWarning={false}
+                    className="rounded-3xl px-3 sm:px-6 lg:px-8 space-y-8 sm:space-y-12"
+                  />
+                )}
               </TabsContent>
 
               <TabsContent value="cases" className="space-y-6 sm:space-y-8">

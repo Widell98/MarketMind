@@ -373,7 +373,7 @@ const StockCaseDetail = ({
 
     return (
       <div
-        className="pointer-events-none absolute left-[-0.75rem] right-[-0.75rem] top-1/2 flex -translate-y-1/2 items-center justify-between px-1 sm:left-[-1.5rem] sm:right-[-1.5rem] sm:px-2 lg:left-[-2.75rem] lg:right-[-2.75rem]"
+        className="pointer-events-none absolute inset-x-1 top-1/2 flex -translate-y-1/2 items-center justify-between px-1 sm:inset-x-3 sm:px-2 lg:inset-x-6 lg:px-3"
       >
         <TooltipProvider delayDuration={120} skipDelayDuration={0}>
           <Tooltip>
@@ -384,13 +384,13 @@ const StockCaseDetail = ({
                   variant="ghost"
                   size="icon"
                   className={cn(
-                    'h-11 w-11 sm:h-12 sm:w-12 shadow-lg shadow-black/10',
+                    'h-9 w-9 sm:h-10 sm:w-10 lg:h-12 lg:w-12 shadow-lg shadow-black/10',
                     navigationButtonBaseClasses,
                   )}
                   disabled={!previousCase}
                   onClick={() => handleNavigateToNeighbor(previousCase?.id)}
                 >
-                  <ChevronLeft className="h-5 w-5" />
+                  <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
                   <span className="sr-only">Föregående case</span>
                 </Button>
               </span>
@@ -408,13 +408,13 @@ const StockCaseDetail = ({
                   variant="ghost"
                   size="icon"
                   className={cn(
-                    'h-11 w-11 sm:h-12 sm:w-12 shadow-lg shadow-black/10',
+                    'h-9 w-9 sm:h-10 sm:w-10 lg:h-12 lg:w-12 shadow-lg shadow-black/10',
                     navigationButtonBaseClasses,
                   )}
                   disabled={!nextCase}
                   onClick={() => handleNavigateToNeighbor(nextCase?.id)}
                 >
-                  <ChevronRight className="h-5 w-5" />
+                  <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
                   <span className="sr-only">Nästa case</span>
                 </Button>
               </span>
