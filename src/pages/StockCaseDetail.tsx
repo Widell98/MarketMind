@@ -345,7 +345,8 @@ const StockCaseDetail = ({
     }
   }, [embedded, stockCase?.id]);
 
-  const navigationButtonBaseClasses = 'rounded-full border border-border/40 bg-background/70 text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground';
+  const navigationButtonBaseClasses =
+    'rounded-full border-2 border-primary/50 bg-gradient-to-b from-primary/95 via-primary to-primary/90 text-primary-foreground shadow-xl shadow-primary/30 backdrop-blur transition-all duration-200 hover:shadow-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-0';
 
   const containerClasses = cn(
     'mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8',
@@ -360,72 +361,6 @@ const StockCaseDetail = ({
 
   const renderWithinLayout = (children: React.ReactNode) =>
     embedded ? <>{children}</> : <Layout>{children}</Layout>;
-
-  const CaseNavigationControls = () => {
-    if (navigationError) {
-      return null;
-    }
-
-    if (navigationLoading) {
-      return (
-        <div className="flex items-center gap-2">
-          <div className="h-9 w-9 animate-pulse rounded-full border border-border/30 bg-muted/40" />
-          <div className="h-9 w-9 animate-pulse rounded-full border border-border/30 bg-muted/40" />
-        </div>
-      );
-    }
-
-    if (!previousCase && !nextCase) {
-      return null;
-    }
-
-    return (
-      <TooltipProvider delayDuration={150}>
-        <div className="flex items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="inline-flex">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className={cn('h-9 w-9', navigationButtonBaseClasses)}
-                  disabled={!previousCase}
-                  onClick={() => handleNavigateToNeighbor(previousCase?.id)}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span className="sr-only">Föregående case</span>
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent sideOffset={6}>
-              {previousCaseTitle ? `Föregående: ${previousCaseTitle}` : 'Föregående case'}
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="inline-flex">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className={cn('h-9 w-9', navigationButtonBaseClasses)}
-                  disabled={!nextCase}
-                  onClick={() => handleNavigateToNeighbor(nextCase?.id)}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                  <span className="sr-only">Nästa case</span>
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent sideOffset={6}>
-              {nextCaseTitle ? `Nästa: ${nextCaseTitle}` : 'Nästa case'}
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      </TooltipProvider>
-    );
-  };
 
   const CaseNavigationSlideButtons = () => {
     if (navigationError || navigationLoading) {
@@ -1437,7 +1372,6 @@ const StockCaseDetail = ({
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Tillbaka
                   </Button>
-                  <CaseNavigationControls />
                   {embedded ? (
                     <Button
                       variant="secondary"
@@ -1541,7 +1475,6 @@ const StockCaseDetail = ({
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Tillbaka
                   </Button>
-                  <CaseNavigationControls />
                   {embedded ? (
                     <Button
                       variant="secondary"
