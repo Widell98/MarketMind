@@ -271,15 +271,26 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
                   </Badge>}
               </div>}
 
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <CardTitle className="text-lg font-semibold leading-tight tracking-tight transition-colors group-hover:text-primary sm:text-xl">
                   {stockCase.title}
                 </CardTitle>
 
                 {stockCase.company_name && (
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {stockCase.company_name}
-                  </p>
+                  <div className="flex items-center gap-3">
+                    <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-full border border-border/70 bg-muted/50 ring-2 ring-background shadow-sm">
+                      <img
+                        src={displayImageSrc}
+                        alt={stockCase.company_name ? `${stockCase.company_name} profil` : 'Investeringscase'}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                    </div>
+
+                    <p className="text-sm font-medium text-muted-foreground truncate">
+                      {stockCase.company_name}
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
@@ -305,56 +316,47 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
       </CardHeader>
 
       <CardContent className="flex flex-1 flex-col gap-4 px-4 pb-4 pt-0 sm:px-6 sm:pb-6">
-        {/* Stock Image - Responsive */}
-        <div className="relative w-full h-40 sm:h-48 rounded-xl overflow-hidden bg-gradient-to-br from-white/70 via-slate-50 to-indigo-50 dark:from-slate-900/60 dark:via-slate-950/60 dark:to-indigo-950/40 group/image">
-          <img
-            src={displayImageSrc}
-            alt={stockCase.company_name ? `${stockCase.company_name} illustration` : 'Investeringscase'}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105"
-            loading="lazy"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/10 to-transparent opacity-80 group-hover/image:opacity-100 transition-all duration-300" />
-        </div>
+        <div className="flex flex-1 flex-col gap-3">
+          {previewText && <p className="text-sm text-muted-foreground line-clamp-3 sm:line-clamp-4">
+              {previewText}
+            </p>}
 
-        {previewText && <p className="flex-1 text-sm text-muted-foreground line-clamp-3 sm:line-clamp-4">
-            {previewText}
-          </p>}
-
-        <div className="mt-auto space-y-4">
-          <div className="flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <Calendar className="h-3 w-3 flex-shrink-0" />
-              <span className="truncate">{formatDate(stockCase.created_at)}</span>
+          <div className="mt-auto space-y-4">
+            <div className="flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <Calendar className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">{formatDate(stockCase.created_at)}</span>
+              </div>
+              <div className="flex min-w-0 items-center gap-1.5 sm:justify-end">
+                {stockCase.ai_generated ? <>
+                    <Bot className="h-3 w-3 flex-shrink-0" />
+                    <span className="truncate">AI Assistant</span>
+                  </> : <>
+                    <User className="h-3 w-3 flex-shrink-0" />
+                    <span className="truncate">{stockCase.profiles?.display_name || stockCase.profiles?.username || 'Expert'}</span>
+                  </>}
+              </div>
             </div>
-            <div className="flex min-w-0 items-center gap-1.5 sm:justify-end">
-              {stockCase.ai_generated ? <>
-                  <Bot className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">AI Assistant</span>
-                </> : <>
-                  <User className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">{stockCase.profiles?.display_name || stockCase.profiles?.username || 'Expert'}</span>
-                </>}
-            </div>
-          </div>
 
-          {user && isOwner && <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <Button size="sm" variant="outline" onClick={handleEditCase} className="w-full justify-center gap-2 sm:w-auto">
-                <Edit className="h-4 w-4" />
-                <span className="truncate">Redigera case</span>
-              </Button>
-            </div>}
+            {user && isOwner && <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <Button size="sm" variant="outline" onClick={handleEditCase} className="w-full justify-center gap-2 sm:w-auto">
+                  <Edit className="h-4 w-4" />
+                  <span className="truncate">Redigera case</span>
+                </Button>
+              </div>}
 
-          <div className="border-t pt-3 sm:pt-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <Button size="sm" variant={isLiked ? "default" : "outline"} onClick={e => {
-                e.stopPropagation();
-                toggleLike();
-              }} className="w-full justify-center gap-2 sm:w-auto">
-                <Heart className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
-                <span>{likeCount}</span>
-              </Button>
+            <div className="border-t pt-3 sm:pt-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button size="sm" variant={isLiked ? "default" : "outline"} onClick={e => {
+                  e.stopPropagation();
+                  toggleLike();
+                }} className="w-full justify-center gap-2 sm:w-auto">
+                  <Heart className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
+                  <span>{likeCount}</span>
+                </Button>
 
-              <ShareStockCase stockCaseId={stockCase.id} title={stockCase.title} />
+                <ShareStockCase stockCaseId={stockCase.id} title={stockCase.title} />
+              </div>
             </div>
           </div>
         </div>
