@@ -36,7 +36,7 @@ const Discover = () => {
   const [caseSortOrder, setCaseSortOrder] = useState<'asc' | 'desc'>('desc');
   const [caseViewMode, setCaseViewMode] = useState<'grid' | 'list'>('grid');
   const [featuredCaseId, setFeaturedCaseId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'cases' | 'liked' | 'upptack'>('cases');
+  const [activeTab, setActiveTab] = useState<'cases' | 'liked' | 'upptack'>('upptack');
 
   const filteredCases = useMemo(() => {
     let filtered = [...(allStockCases || [])];
@@ -186,6 +186,10 @@ const Discover = () => {
               className="w-full"
             >
               <TabsList className="mx-auto grid w-full max-w-md grid-cols-3 gap-1 rounded-2xl bg-muted p-1 shadow-sm sm:gap-2">
+                <TabsTrigger value="upptack" className="flex items-center gap-2 rounded-xl">
+                  <Sparkles className="h-4 w-4" />
+                  Upptäck
+                </TabsTrigger>
                 <TabsTrigger value="cases" className="flex items-center gap-2 rounded-xl">
                   <Layers className="h-4 w-4" />
                   Alla case
@@ -193,10 +197,6 @@ const Discover = () => {
                 <TabsTrigger value="liked" className="flex items-center gap-2 rounded-xl">
                   <Heart className="h-4 w-4" />
                   Gillade företag
-                </TabsTrigger>
-                <TabsTrigger value="upptack" className="flex items-center gap-2 rounded-xl">
-                  <Sparkles className="h-4 w-4" />
-                  Upptäck
                 </TabsTrigger>
               </TabsList>
 
