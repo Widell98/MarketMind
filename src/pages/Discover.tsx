@@ -1,27 +1,25 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Heart, Layers, Sparkles } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
+import {
+  Camera,
+  Heart,
+  Layers,
+  Sparkles,
+} from 'lucide-react';
 
 import Layout from '@/components/Layout';
 import StockCaseCard from '@/components/StockCaseCard';
-import SwipeableCaseDeck from '@/components/SwipeableCaseDeck';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 import { useStockCases } from '@/hooks/useStockCases';
 import { useToast } from '@/hooks/use-toast';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLikedStockCases } from '@/hooks/useLikedStockCases';
-import { supabase } from '@/integrations/supabase/client';
-import { StockCase } from '@/types/stockCase';
 import StockCaseDetail from './StockCaseDetail';
-
-type LikedStockCaseCache = StockCase & { liked_at?: string };
 
 const Discover = () => {
   const navigate = useNavigate();
@@ -29,12 +27,7 @@ const Discover = () => {
   const { toast } = useToast();
   const { isAdmin } = useUserRole();
   const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const {
-    likedStockCases,
-    loading: likedCasesLoading,
-    refetch: refetchLikedCases,
-  } = useLikedStockCases();
+  const { likedStockCases, loading: likedCasesLoading } = useLikedStockCases();
 
   const [caseSearchTerm, setCaseSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('');
@@ -42,8 +35,8 @@ const Discover = () => {
   const [caseSortBy, setCaseSortBy] = useState('created_at');
   const [caseSortOrder, setCaseSortOrder] = useState<'asc' | 'desc'>('desc');
   const [caseViewMode, setCaseViewMode] = useState<'grid' | 'list'>('grid');
+  const [featuredCaseId, setFeaturedCaseId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'cases' | 'liked' | 'upptack'>('upptack');
-  const [detailCaseId, setDetailCaseId] = useState<string | null>(null);
 
   const filteredCases = useMemo(() => {
     let filtered = [...(allStockCases || [])];
@@ -131,6 +124,18 @@ const Discover = () => {
     return filtered;
   }, [allStockCases, caseSearchTerm, selectedSector, performanceFilter, caseSortBy, caseSortOrder]);
 
+  const navigationCases = useMemo(
+    () =>
+      filteredCases.map((stockCase) => ({
+        id: stockCase.id,
+        title: stockCase.title,
+        company_name: stockCase.company_name,
+        ai_generated: stockCase.ai_generated,
+        created_at: stockCase.created_at,
+      })),
+    [filteredCases]
+  );
+
   const availableSectors = useMemo(() => {
     const sectors = new Set<string>();
     allStockCases?.forEach((sc) => sc.sector && sectors.add(sc.sector));
@@ -138,7 +143,6 @@ const Discover = () => {
   }, [allStockCases]);
 
   const handleViewStockCaseDetails = (id: string) => navigate(`/stock-cases/${id}`);
-  const handleDeckViewDetails = (id: string) => setDetailCaseId(id);
   const handleDeleteStockCase = (id: string) => {
     toast({
       title: 'Funktion kommer snart',
@@ -146,102 +150,31 @@ const Discover = () => {
     });
   };
 
-  const handleSwipeLike = async (stockCase: StockCase) => {
-    if (!user) {
-      toast({
-        title: 'Logga in för att gilla',
-        description: 'Du behöver vara inloggad för att spara företag du gillar.',
-        variant: 'destructive',
-      });
+  useEffect(() => {
+    if (stockCasesLoading) {
       return;
     }
 
-    const likedAt = new Date().toISOString();
-    const likedQueryKey = ['liked-stock-cases', user?.id];
-    const previousLiked =
-      queryClient.getQueryData<LikedStockCaseCache[]>(likedQueryKey) || [];
-
-    queryClient.setQueryData<LikedStockCaseCache[]>(likedQueryKey, (prev = []) => {
-      if (prev.some((item) => item.id === stockCase.id)) {
-        return prev;
-      }
-
-      return [{ ...stockCase, liked_at: likedAt }, ...prev];
-    });
-
-    const { error } = await supabase.from('stock_case_likes').insert({
-      user_id: user.id,
-      stock_case_id: stockCase.id,
-    });
-
-    if (error && error.code !== '23505') {
-      queryClient.setQueryData(likedQueryKey, previousLiked);
-      toast({
-        title: 'Kunde inte gilla',
-        description: 'Försök igen senare.',
-        variant: 'destructive',
-      });
+    if (!filteredCases.length) {
+      setFeaturedCaseId(null);
       return;
     }
 
-    toast({
-      title: 'Case sparat',
-      description: `${stockCase.company_name || 'Företaget'} ligger nu i Gillade företag.`,
-    });
-
-    refetchLikedCases();
-  };
-
-  const handleSwipeSkip = (stockCase: StockCase) => {
-    toast({
-      title: 'Case hoppat över',
-      description: `${stockCase.company_name || 'Företaget'} har markerats som passerat.`,
-    });
-  };
-
-  const handleUndoSwipe = async ({ stockCase, direction }: { stockCase: StockCase; direction: 'left' | 'right' }) => {
-    if (direction === 'right' && user) {
-      const likedQueryKey = ['liked-stock-cases', user?.id];
-      const previousLiked =
-        queryClient.getQueryData<LikedStockCaseCache[]>(likedQueryKey) || [];
-
-      queryClient.setQueryData<LikedStockCaseCache[]>(likedQueryKey, (prev = []) =>
-        prev.filter((item) => item.id !== stockCase.id)
-      );
-
-      const { error } = await supabase
-        .from('stock_case_likes')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('stock_case_id', stockCase.id);
-
-      if (error) {
-        queryClient.setQueryData(likedQueryKey, previousLiked);
-        toast({
-          title: 'Kunde inte ångra gilla',
-          description: 'Försök igen senare.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      toast({
-        title: 'Gilla ångrat',
-        description: `${stockCase.company_name || 'Företaget'} har tagits bort från Gillade företag.`,
-      });
-
-      refetchLikedCases();
+    const existingFeatured = filteredCases.find((sc) => sc.id === featuredCaseId);
+    if (!existingFeatured) {
+      setFeaturedCaseId(filteredCases[0].id);
     }
+  }, [filteredCases, featuredCaseId, stockCasesLoading]);
 
-    if (direction === 'left') {
-      toast({
-        title: 'Swajp ångrad',
-        description: `${stockCase.company_name || 'Företaget'} är tillbaka i din kortlek.`,
-      });
-    }
-  };
-
-  const remainingCases = filteredCases;
+  const featuredCase = featuredCaseId
+    ? filteredCases.find((sc) => sc.id === featuredCaseId)
+    : filteredCases[0];
+  const featuredCaseIndex = featuredCase
+    ? filteredCases.findIndex((sc) => sc.id === featuredCase.id)
+    : -1;
+  const remainingCases = featuredCase
+    ? filteredCases.filter((sc) => sc.id !== featuredCase.id)
+    : filteredCases;
   return (
     <Layout>
       <div className="w-full pb-12">
@@ -268,41 +201,16 @@ const Discover = () => {
               </TabsList>
 
               <TabsContent value="upptack" className="space-y-6 sm:space-y-8">
-                <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">
-                  {stockCasesLoading ? (
-                    <div className="space-y-3">
-                      <div className="h-4 w-28 rounded bg-muted" />
-                      <div className="h-[420px] w-full rounded-2xl bg-muted/70" />
-                    </div>
-                  ) : filteredCases.length === 0 ? (
-                    <div className="rounded-3xl border border-dashed border-border/70 bg-background/60 px-6 py-16 text-center shadow-inner sm:px-10">
-                      <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
-                        <Camera className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                      <h3 className="mb-3 text-xl font-semibold text-foreground">
-                        {caseSearchTerm ? 'Inga case matchar din sökning' : 'Inga case hittades'}
-                      </h3>
-                      <p className="mx-auto mb-8 max-w-md text-sm text-muted-foreground sm:text-base">
-                        {caseSearchTerm
-                          ? 'Prova att justera dina sökkriterier eller rensa filtren.'
-                          : 'Kom tillbaka senare för nya case från communityt.'}
-                      </p>
-                      {caseSearchTerm && (
-                        <Button onClick={() => setCaseSearchTerm('')} variant="outline" className="rounded-xl border-border hover:bg-muted/50">
-                          Rensa sökning
-                        </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <SwipeableCaseDeck
-                      cases={filteredCases}
-                      onLike={handleSwipeLike}
-                      onSkip={handleSwipeSkip}
-                      onViewDetails={handleDeckViewDetails}
-                      onUndoSwipe={handleUndoSwipe}
-                    />
-                  )}
-                </div>
+                {featuredCase && (
+                  <StockCaseDetail
+                    embedded
+                    embeddedCaseId={featuredCase.id}
+                    navigationCases={navigationCases}
+                    onNavigateCase={(id) => setFeaturedCaseId(id)}
+                    showRiskWarning={false}
+                    className="rounded-3xl px-3 sm:px-6 lg:px-8 space-y-8 sm:space-y-12"
+                  />
+                )}
               </TabsContent>
 
               <TabsContent value="cases" className="space-y-6 sm:space-y-8">
@@ -418,12 +326,6 @@ const Discover = () => {
           </div>
         </div>
       </div>
-
-      <Dialog open={!!detailCaseId} onOpenChange={(open) => !open && setDetailCaseId(null)}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto border-border/60 bg-background p-0">
-          {detailCaseId && <StockCaseDetail embedded embeddedCaseId={detailCaseId} showRiskWarning={false} />}
-        </DialogContent>
-      </Dialog>
     </Layout>
   );
 };
