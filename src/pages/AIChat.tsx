@@ -23,7 +23,7 @@ const AIChatPage = () => {
 
   useEffect(() => {
     if (user && !riskProfileLoading && !riskProfile) {
-      navigate('/portfolio-advisor');
+      navigate('/profile?tab=riskprofile');
     }
   }, [user, riskProfile, riskProfileLoading, navigate]);
 
@@ -53,7 +53,7 @@ const AIChatPage = () => {
               </div>
               <h3 className="mt-4 text-lg font-semibold text-foreground">{t('aiChat.riskProfileRequired')}</h3>
               <p className="mt-2 text-sm text-ai-text-muted">{t('aiChat.riskProfileDesc')}</p>
-              <Button onClick={() => navigate('/portfolio-advisor')} className="mt-6">
+              <Button onClick={() => navigate('/profile?tab=riskprofile')} className="mt-6">
                 <User className="mr-2 h-4 w-4" />
                 {t('aiChat.createRiskProfile')}
               </Button>
