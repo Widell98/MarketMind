@@ -178,7 +178,7 @@ const Discover = () => {
   return (
     <Layout>
       <div className="w-full pb-12">
-        <div className="mx-auto w-full max-w-6xl space-y-8 px-3 sm:px-4 lg:px-0">
+        <div className="mx-auto w-full max-w-6xl space-y-8 px-4 sm:px-6 lg:px-0">
           <div className="w-full space-y-6 sm:space-y-8">
             <Tabs
               value={activeTab}
@@ -201,19 +201,21 @@ const Discover = () => {
               </TabsList>
 
               <TabsContent value="upptack" className="space-y-6 sm:space-y-8">
-                {featuredCase && (
-                  <StockCaseDetail
-                    embedded
-                    embeddedCaseId={featuredCase.id}
-                    navigationCases={navigationCases}
-                    onNavigateCase={(id) => setFeaturedCaseId(id)}
-                    showRiskWarning={false}
-                    className="px-3 sm:px-6 lg:px-8 space-y-8 sm:space-y-12"
-                  />
-                )}
+                <div className="grid gap-4 sm:gap-6 lg:grid-cols-3 lg:items-stretch lg:gap-8">
+                  {featuredCase && (
+                    <StockCaseDetail
+                      embedded
+                      embeddedCaseId={featuredCase.id}
+                      navigationCases={navigationCases}
+                      onNavigateCase={(id) => setFeaturedCaseId(id)}
+                      showRiskWarning={false}
+                      className="order-2 col-span-1 rounded-3xl px-3 sm:order-1 sm:px-6 lg:col-span-2 lg:px-8 space-y-8 sm:space-y-12"
+                    />
+                  )}
 
-                <div className="relative h-48 overflow-hidden rounded-[36px] border border-border/60 bg-card/80 p-6 sm:h-60">
-                  <div className="absolute inset-0 bg-gradient-to-br from-muted/15 via-transparent to-muted/5 dark:from-muted/20 dark:via-transparent dark:to-muted/10" />
+                  <div className="order-1 relative min-h-[180px] overflow-hidden rounded-[28px] border border-border/60 bg-card/80 p-5 sm:order-2 sm:min-h-[220px] lg:min-h-full lg:rounded-[32px] lg:p-6">
+                    <div className="absolute inset-0 rounded-[28px] bg-gradient-to-br from-muted/15 via-transparent to-muted/5 dark:from-muted/20 dark:via-transparent dark:to-muted/10 lg:rounded-[32px]" />
+                  </div>
                 </div>
               </TabsContent>
 
@@ -238,7 +240,9 @@ const Discover = () => {
                   />
                 </div>
 
-                <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+                <div
+                  className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}
+                >
                   {remainingCases.map((sc) => (
                     <StockCaseCard
                       key={sc.id}
