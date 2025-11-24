@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
-import { ArrowLeft, ArrowRight, CheckCircle, AlertCircle, Shield, Target, Brain, RotateCcw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, AlertCircle, Brain, Target, RotateCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface EnhancedRiskAssessmentFormProps {
@@ -53,7 +51,7 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
     try {
       const savedData = localStorage.getItem(STORAGE_KEY);
       const savedStep = localStorage.getItem(STORAGE_STEP_KEY);
-      
+
       if (savedData) {
         const parsedData = JSON.parse(savedData);
         setFormData(parsedData);
@@ -87,7 +85,7 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
     try {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(STORAGE_STEP_KEY);
-      
+
       // Reset form to initial state
       setFormData({
         investment_purpose: [] as string[],
@@ -108,10 +106,10 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
         overexposure_awareness: '',
         sector_interests: [] as string[]
       });
-      
+
       setCurrentStep(0);
       setValidationErrors({});
-      
+
       toast({
         title: "Formulär återställt",
         description: "All ifylld data har raderats",
@@ -137,25 +135,20 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
 
   const steps = [
     {
-      title: 'Analysinriktning',
-      description: 'Vilka typer av case och insikter vill du ha?',
+      title: 'Kom igång',
+      description: 'Obligatoriska svar för att starta chatten',
       icon: <Brain className="w-5 h-5" />
     },
     {
-      title: 'Arbetssätt',
-      description: 'Hur vill du jobba med analys och uppföljning?',
+      title: 'Fördjupa (valfritt)',
+      description: 'Ge fler signaler för mer träffsäkra analyser',
       icon: <Target className="w-5 h-5" />
-    },
-    {
-      title: 'Risk & Bevakning',
-      description: 'Hur vill du hantera volatilitet och exponering?',
-      icon: <Shield className="w-5 h-5" />
     }
   ];
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
+
     if (validationErrors[field]) {
       setValidationErrors(prev => ({ ...prev, [field]: '' }));
     }
@@ -181,27 +174,19 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
 
   const validateCurrentStep = (): boolean => {
     const errors: Record<string, string> = {};
-    
+
     switch (currentStep) {
       case 0:
         if (formData.investment_purpose.length === 0) errors.investment_purpose = 'Välj minst en analysinriktning';
         if (!formData.investment_style_preference) errors.investment_style_preference = 'Välj analysstil';
         if (!formData.investment_experience) errors.investment_experience = 'Välj erfarenhetsnivå';
-        if (!formData.portfolio_help_focus.trim()) errors.portfolio_help_focus = 'Beskriv vilken analys du vill ha';
+        if (!formData.risk_tolerance) errors.risk_tolerance = 'Välj din risktolerans';
+        if (!formData.market_crash_reaction) errors.market_crash_reaction = 'Hur agerar du vid kraftiga fall?';
         break;
-      case 1:
-        if (!formData.activity_preference) errors.activity_preference = 'Aktivitetsnivå krävs';
-        if (!formData.portfolio_change_frequency) errors.portfolio_change_frequency = 'Beslutsfrekvens krävs';
-        if (!formData.investment_horizon) errors.investment_horizon = 'Tidshorisont krävs';
-        if (!formData.preferred_stock_count) errors.preferred_stock_count = 'Antal bevakade case krävs';
-        if (!formData.optimization_preference) errors.optimization_preference = 'Ange analysdjup';
-        break;
-      case 2:
-        if (!formData.risk_tolerance) errors.risk_tolerance = 'Risktolerans krävs';
-        if (!formData.market_crash_reaction) errors.market_crash_reaction = 'Kraschreaktion krävs';
+      default:
         break;
     }
-    
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -214,7 +199,7 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
 
   const handleSubmit = async () => {
     if (!validateCurrentStep()) return;
-    
+
     try {
       const profileData = {
         // Grundläggande (inte efterfrågade i analystflödet)
@@ -340,9 +325,9 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
                     <SelectValue placeholder="Välj erfarenhetsnivå" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="beginner">Nybörjare – vill ha guidning steg för steg</SelectItem>
-                    <SelectItem value="intermediate">Mellan – kan grunderna, vill fördjupa</SelectItem>
-                    <SelectItem value="advanced">Avancerad – vill ha sparring och datapunkter</SelectItem>
+                    <SelectItem value="beginner">Nybörjare</SelectItem>
+                    <SelectItem value="intermediate">Erfaren hobbyinvesterare</SelectItem>
+                    <SelectItem value="advanced">Mycket erfaren / professionell</SelectItem>
                   </SelectContent>
                 </Select>
                 {validationErrors.investment_experience && (
@@ -354,20 +339,62 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Risktolerans *</Label>
+                <Select value={formData.risk_tolerance} onValueChange={(value) => handleInputChange('risk_tolerance', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Välj risktolerans" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="conservative">Försiktig – vill minimera drawdowns</SelectItem>
+                    <SelectItem value="moderate">Balans mellan risk och avkastning</SelectItem>
+                    <SelectItem value="aggressive">Aggressiv – accepterar hög volatilitet</SelectItem>
+                  </SelectContent>
+                </Select>
+                {validationErrors.risk_tolerance && (
+                  <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
+                    <AlertCircle className="w-4 h-4" />
+                    {validationErrors.risk_tolerance}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <Label>Hur reagerar du på stora nedgångar? *</Label>
+                <Select value={formData.market_crash_reaction} onValueChange={(value) => handleInputChange('market_crash_reaction', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Välj din reaktion" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="panic_sell">Säljer snabbt och minskar exponeringen</SelectItem>
+                    <SelectItem value="worried_hold">Behåller men följer noga</SelectItem>
+                    <SelectItem value="calm_hold">Lugn – följer planen</SelectItem>
+                    <SelectItem value="buy_more">Ökar om caset håller</SelectItem>
+                  </SelectContent>
+                </Select>
+                {validationErrors.market_crash_reaction && (
+                  <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
+                    <AlertCircle className="w-4 h-4" />
+                    {validationErrors.market_crash_reaction}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div>
-              <Label>Vad ska AI fokusera på i sina analyser? *</Label>
-              <Textarea
-                id="portfolio_help_focus"
-                placeholder="Ex: scenarion för kassaflöde, tekniska nivåer jag bör bevaka, risker som kan slå mot caset"
-                value={formData.portfolio_help_focus}
-                onChange={(e) => handleInputChange('portfolio_help_focus', e.target.value)}
-              />
-              {validationErrors.portfolio_help_focus && (
-                <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  {validationErrors.portfolio_help_focus}
-                </div>
-              )}
+              <Label>Vad vill du att chatten ska fokusera på först?</Label>
+              <Select value={formData.portfolio_help_focus} onValueChange={(value) => handleInputChange('portfolio_help_focus', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Valfritt: välj fokus" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="find_ideas">Hitta case/idéer</SelectItem>
+                  <SelectItem value="thesis_testing">Testa mina case/teser</SelectItem>
+                  <SelectItem value="portfolio_review">Genomgång av min portfölj</SelectItem>
+                  <SelectItem value="risk_checks">Riskkoll och bevakningslistor</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         );
@@ -375,50 +402,47 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
       case 1:
         return (
           <div className="space-y-6">
-            <div>
-              <Label>Hur ofta vill du få nya analyser/uppdateringar? *</Label>
-              <Select value={formData.activity_preference} onValueChange={(value) => handleInputChange('activity_preference', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Välj frekvens" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="news_driven">Vid nyheter, rapporter eller stora rörelser</SelectItem>
-                  <SelectItem value="weekly">Veckovis samlad uppdatering</SelectItem>
-                  <SelectItem value="monthly">Månadsvis sammanfattning</SelectItem>
-                </SelectContent>
-              </Select>
-              {validationErrors.activity_preference && (
-                <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  {validationErrors.activity_preference}
-                </div>
-              )}
-            </div>
+            <Card className="bg-slate-50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm text-slate-700">Valfria svar för bättre analyser</CardTitle>
+                <CardDescription className="text-xs text-slate-600">Hoppa över om du vill börja chatta direkt.</CardDescription>
+              </CardHeader>
+            </Card>
 
-            <div>
-              <Label>Hur ofta omvärderar du dina case? *</Label>
-              <Select value={formData.portfolio_change_frequency} onValueChange={(value) => handleInputChange('portfolio_change_frequency', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Välj frekvens" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="thesis_driven">Endast när tesen förändras</SelectItem>
-                  <SelectItem value="quarterly">Vid kvartalsrapporter</SelectItem>
-                  <SelectItem value="monthly">Månadsvis uppföljning</SelectItem>
-                  <SelectItem value="weekly">Veckovis justering</SelectItem>
-                </SelectContent>
-              </Select>
-              {validationErrors.portfolio_change_frequency && (
-                <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  {validationErrors.portfolio_change_frequency}
-                </div>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Arbetssätt</Label>
+                <Select value={formData.activity_preference} onValueChange={(value) => handleInputChange('activity_preference', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Hur vill du jobba?" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="deep_dive">Djupdyk i färre case</SelectItem>
+                    <SelectItem value="broad_scan">Bred scanning av många case</SelectItem>
+                    <SelectItem value="signals_only">Snabba signaler och checklistor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Hur ofta vill du ta beslut?</Label>
+                <Select value={formData.portfolio_change_frequency} onValueChange={(value) => handleInputChange('portfolio_change_frequency', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Välj frekvens" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="thesis_driven">Endast när tesen förändras</SelectItem>
+                    <SelectItem value="quarterly">Vid kvartalsrapporter</SelectItem>
+                    <SelectItem value="monthly">Månadsvis uppföljning</SelectItem>
+                    <SelectItem value="weekly">Veckovis justering</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label>Typisk ägarhorisont *</Label>
+                <Label>Typisk ägarhorisont</Label>
                 <Select value={formData.investment_horizon} onValueChange={(value) => handleInputChange('investment_horizon', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Välj horisont" />
@@ -429,16 +453,10 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
                     <SelectItem value="long">Långsiktig (5+ år)</SelectItem>
                   </SelectContent>
                 </Select>
-                {validationErrors.investment_horizon && (
-                  <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                    <AlertCircle className="w-4 h-4" />
-                    {validationErrors.investment_horizon}
-                  </div>
-                )}
               </div>
 
               <div>
-                <Label>Hur många case vill du följa aktivt? *</Label>
+                <Label>Hur många case vill du följa aktivt?</Label>
                 <Select value={formData.preferred_stock_count} onValueChange={(value) => handleInputChange('preferred_stock_count', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Välj antal" />
@@ -450,17 +468,11 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
                     <SelectItem value="25">20+ case (bred bevakning)</SelectItem>
                   </SelectContent>
                 </Select>
-                {validationErrors.preferred_stock_count && (
-                  <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                    <AlertCircle className="w-4 h-4" />
-                    {validationErrors.preferred_stock_count}
-                  </div>
-                )}
               </div>
             </div>
 
             <div>
-              <Label>Analysdjup *</Label>
+              <Label>Analysdjup</Label>
               <Select value={formData.optimization_preference} onValueChange={(value) => handleInputChange('optimization_preference', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Välj nivå" />
@@ -471,12 +483,6 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
                   <SelectItem value="deep_dive">Djupdyk: känslighetsanalys, scenarion, multipelspänning</SelectItem>
                 </SelectContent>
               </Select>
-              {validationErrors.optimization_preference && (
-                <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  {validationErrors.optimization_preference}
-                </div>
-              )}
             </div>
 
             <div>
@@ -493,85 +499,41 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
                 </SelectContent>
               </Select>
             </div>
-          </div>
-        );
 
-      case 2:
-        return (
-          <div className="space-y-6">
-            <div>
-              <Label>Hur reagerar du på stora nedgångar? *</Label>
-              <Select value={formData.market_crash_reaction} onValueChange={(value) => handleInputChange('market_crash_reaction', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Välj din reaktion" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="panic_sell">Säljer snabbt och minskar exponeringen</SelectItem>
-                  <SelectItem value="worried_hold">Behåller men följer noga</SelectItem>
-                  <SelectItem value="calm_hold">Lugn – följer planen</SelectItem>
-                  <SelectItem value="buy_more">Ökar om caset håller</SelectItem>
-                </SelectContent>
-              </Select>
-              {validationErrors.market_crash_reaction && (
-                <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  {validationErrors.market_crash_reaction}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <Label>Risktolerans *</Label>
-              <Select value={formData.risk_tolerance} onValueChange={(value) => handleInputChange('risk_tolerance', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Välj risktolerans" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="conservative">Försiktig – vill minimera drawdowns</SelectItem>
-                  <SelectItem value="moderate">Balans mellan risk och avkastning</SelectItem>
-                  <SelectItem value="aggressive">Aggressiv – accepterar hög volatilitet</SelectItem>
-                </SelectContent>
-              </Select>
-              {validationErrors.risk_tolerance && (
-                <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  {validationErrors.risk_tolerance}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <Label>Riskkomfort (1–5): {formData.risk_comfort_level[0]}</Label>
-              <div className="mt-2">
-                <Slider
-                  value={formData.risk_comfort_level}
-                  onValueChange={(value) => handleInputChange('risk_comfort_level', value)}
-                  max={5}
-                  min={1}
-                  step={1}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>Låg risk</span>
-                  <span>Hög risk</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Riskkomfort (1–5): {formData.risk_comfort_level[0]}</Label>
+                <div className="mt-2">
+                  <Slider
+                    value={formData.risk_comfort_level}
+                    onValueChange={(value) => handleInputChange('risk_comfort_level', value)}
+                    max={5}
+                    min={1}
+                    step={1}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>Låg risk</span>
+                    <span>Hög risk</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div>
-              <Label>Kontrollbehov (1–5): {formData.control_importance[0]}</Label>
-              <div className="mt-2">
-                <Slider
-                  value={formData.control_importance}
-                  onValueChange={(value) => handleInputChange('control_importance', value)}
-                  max={5}
-                  min={1}
-                  step={1}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>Låg kontroll</span>
-                  <span>Hög kontroll</span>
+              <div>
+                <Label>Kontrollbehov (1–5): {formData.control_importance[0]}</Label>
+                <div className="mt-2">
+                  <Slider
+                    value={formData.control_importance}
+                    onValueChange={(value) => handleInputChange('control_importance', value)}
+                    max={5}
+                    min={1}
+                    step={1}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>Låg kontroll</span>
+                    <span>Hög kontroll</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -649,19 +611,19 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="w-full bg-gray-200 rounded-full h-2">
-          <div 
+          <div
             className="bg-blue-600 h-2 rounded-full transition-all duration-300"
             style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
           />
         </div>
 
-        <div className="grid grid-cols-5 gap-2 mb-6">
+        <div className="grid grid-cols-2 gap-2 mb-6">
           {steps.map((step, index) => (
             <div
               key={index}
               className={`text-center p-2 rounded-lg transition-colors ${
-                index <= currentStep 
-                  ? 'bg-blue-100 text-blue-800' 
+                index <= currentStep
+                  ? 'bg-blue-100 text-blue-800'
                   : 'bg-gray-100 text-gray-500'
               }`}
             >
