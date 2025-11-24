@@ -39,7 +39,7 @@ import StockReplacementDialog from '@/components/StockReplacementDialog';
 import { mapEdgeFunctionErrorMessage } from '@/utils/mapEdgeFunctionError';
 import { normalizeShareClassTicker, parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
 
-interface QuestionOption {
+export interface QuestionOption {
   value: string;
   label: string;
 }
@@ -54,6 +54,51 @@ interface Question {
   processAnswer?: (answer: string | string[]) => any;
   multiSelect?: boolean;
 }
+
+export const investmentExperienceOptions: QuestionOption[] = [
+  { value: 'beginner', label: 'Nybörjare (<1 år)' },
+  { value: 'intermediate', label: 'Några år (1–3 år)' },
+  { value: 'advanced', label: 'Erfaren (3+ år)' }
+];
+
+export const investmentGoalBeginnerOptions: QuestionOption[] = [
+  { value: 'long_term_savings', label: 'Bygga ett långsiktigt sparande' },
+  { value: 'learn_and_test', label: 'Lära mig mer och testa på' },
+  { value: 'specific_goal', label: 'Spara till något specifikt (t.ex. bostad, resa)' },
+  { value: 'quick_return', label: 'Snabb avkastning' }
+];
+
+export const investmentGoalExperiencedOptions: QuestionOption[] = [
+  { value: 'quick_return', label: 'Snabb avkastning / trading' },
+  { value: 'long_term_growth', label: 'Bygga långsiktigt sparande' },
+  { value: 'dividend_income', label: 'Extra inkomst via utdelningar' },
+  { value: 'other', label: 'Annat' }
+];
+
+export const timeHorizonBeginnerOptions: QuestionOption[] = [
+  { value: 'short', label: 'Kortsiktigt (0–2 år)' },
+  { value: 'medium', label: 'Medellång sikt (3–5 år)' },
+  { value: 'long', label: 'Långsiktigt (5+ år)' },
+  { value: 'unknown', label: 'Vet inte än' }
+];
+
+export const timeHorizonExperiencedOptions: QuestionOption[] = [
+  { value: 'short', label: 'Kortsiktigt (0–2 år)' },
+  { value: 'medium', label: 'Medellång sikt (3–5 år)' },
+  { value: 'long', label: 'Långsiktigt (5+ år)' }
+];
+
+export const riskToleranceBeginnerOptions: QuestionOption[] = [
+  { value: 'conservative', label: 'Vill undvika risk – hellre stabilt och tryggt' },
+  { value: 'balanced', label: 'Kan ta viss risk för chans till högre avkastning' },
+  { value: 'aggressive', label: 'Gillar risk – vill ha möjlighet till riktigt hög avkastning' }
+];
+
+export const riskToleranceExperiencedOptions: QuestionOption[] = [
+  { value: 'conservative', label: 'Låg risk' },
+  { value: 'balanced', label: 'Medelrisk' },
+  { value: 'aggressive', label: 'Hög risk' }
+];
 
 interface Message {
   id: string;
@@ -852,11 +897,7 @@ const ChatPortfolioAdvisor = () => {
       question: 'Hur länge har du investerat på börsen?',
       key: 'investmentExperienceLevel',
       hasOptions: true,
-      options: [
-        { value: 'beginner', label: 'Nybörjare (<1 år)' },
-        { value: 'intermediate', label: 'Några år (1–3 år)' },
-        { value: 'advanced', label: 'Erfaren (3+ år)' }
-      ]
+      options: investmentExperienceOptions
     },
     {
       id: 'age',
@@ -1048,12 +1089,7 @@ const ChatPortfolioAdvisor = () => {
       key: 'investmentGoal',
       hasOptions: true,
       showIf: () => conversationData.isBeginnerInvestor === true && conversationData.hasCurrentPortfolio !== true,
-      options: [
-        { value: 'long_term_savings', label: 'Bygga ett långsiktigt sparande' },
-        { value: 'learn_and_test', label: 'Lära mig mer och testa på' },
-        { value: 'specific_goal', label: 'Spara till något specifikt (t.ex. bostad, resa)' },
-        { value: 'quick_return', label: 'Snabb avkastning' }
-      ]
+      options: investmentGoalBeginnerOptions
     },
     {
       id: 'investmentGoalExperienced',
@@ -1061,12 +1097,7 @@ const ChatPortfolioAdvisor = () => {
       key: 'investmentGoal',
       hasOptions: true,
       showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio !== true,
-      options: [
-        { value: 'quick_return', label: 'Snabb avkastning / trading' },
-        { value: 'long_term_growth', label: 'Bygga långsiktigt sparande' },
-        { value: 'dividend_income', label: 'Extra inkomst via utdelningar' },
-        { value: 'other', label: 'Annat' }
-      ]
+      options: investmentGoalExperiencedOptions
     },
     {
       id: 'timeHorizonBeginner',
@@ -1074,12 +1105,7 @@ const ChatPortfolioAdvisor = () => {
       key: 'timeHorizon',
       hasOptions: true,
       showIf: () => conversationData.isBeginnerInvestor === true && conversationData.hasCurrentPortfolio !== true,
-      options: [
-        { value: 'short', label: 'Kortsiktigt (0–2 år)' },
-        { value: 'medium', label: 'Medellång sikt (3–5 år)' },
-        { value: 'long', label: 'Långsiktigt (5+ år)' },
-        { value: 'unknown', label: 'Vet inte än' }
-      ]
+      options: timeHorizonBeginnerOptions
     },
     {
       id: 'timeHorizonExperienced',
@@ -1087,11 +1113,7 @@ const ChatPortfolioAdvisor = () => {
       key: 'timeHorizon',
       hasOptions: true,
       showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio !== true,
-      options: [
-        { value: 'short', label: 'Kortsiktigt (0–2 år)' },
-        { value: 'medium', label: 'Medellång sikt (3–5 år)' },
-        { value: 'long', label: 'Långsiktigt (5+ år)' }
-      ]
+      options: timeHorizonExperiencedOptions
     },
     {
       id: 'preferredAssets',
@@ -1111,11 +1133,7 @@ const ChatPortfolioAdvisor = () => {
       key: 'riskTolerance',
       hasOptions: true,
       showIf: () => conversationData.isBeginnerInvestor === true,
-      options: [
-        { value: 'conservative', label: 'Vill undvika risk – hellre stabilt och tryggt' },
-        { value: 'balanced', label: 'Kan ta viss risk för chans till högre avkastning' },
-        { value: 'aggressive', label: 'Gillar risk – vill ha möjlighet till riktigt hög avkastning' }
-      ]
+      options: riskToleranceBeginnerOptions
     },
     {
       id: 'riskExperienced',
@@ -1123,11 +1141,7 @@ const ChatPortfolioAdvisor = () => {
       key: 'riskTolerance',
       hasOptions: true,
       showIf: () => conversationData.isBeginnerInvestor === false,
-      options: [
-        { value: 'conservative', label: 'Låg risk' },
-        { value: 'balanced', label: 'Medelrisk' },
-        { value: 'aggressive', label: 'Hög risk' }
-      ]
+      options: riskToleranceExperiencedOptions
     },
     {
       id: 'monthlyInvestment',
