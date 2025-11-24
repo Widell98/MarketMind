@@ -201,12 +201,6 @@ const Discover = () => {
               </TabsList>
 
               <TabsContent value="upptack" className="space-y-6 sm:space-y-8">
-                <div className="relative h-48 overflow-hidden rounded-[36px] border border-border/60 bg-card/80 p-6 sm:h-60">
-                  <div className="absolute inset-0 bg-gradient-to-br from-muted/15 via-transparent to-muted/5 dark:from-muted/20 dark:via-transparent dark:to-muted/10" />
-                </div>
-              </TabsContent>
-
-              <TabsContent value="cases" className="space-y-6 sm:space-y-8">
                 {featuredCase && (
                   <StockCaseDetail
                     embedded
@@ -218,6 +212,12 @@ const Discover = () => {
                   />
                 )}
 
+                <div className="relative h-48 overflow-hidden rounded-[36px] border border-border/60 bg-card/80 p-6 sm:h-60">
+                  <div className="absolute inset-0 bg-gradient-to-br from-muted/15 via-transparent to-muted/5 dark:from-muted/20 dark:via-transparent dark:to-muted/10" />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="cases" className="space-y-6 sm:space-y-8">
                 <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">
                   <EnhancedStockCasesSearch
                     searchTerm={caseSearchTerm}
