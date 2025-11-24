@@ -1347,12 +1347,6 @@ const StockCaseDetail = ({
               </div>
             </ScrollArea>
           </div>
-
-          <DialogFooter className="border-t border-border/60 bg-background/90 px-6 py-4 backdrop-blur">
-            <Button variant="ghost" onClick={() => setIsAnalysisDialogOpen(false)}>
-              Stäng
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
       <div className={cn(containerClasses)}>
