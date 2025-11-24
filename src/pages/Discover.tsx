@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Camera,
   Heart,
@@ -12,14 +13,18 @@ import StockCaseCard from '@/components/StockCaseCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
+import SwipeableCaseDeck from '@/components/SwipeableCaseDeck';
 
 import { useStockCases } from '@/hooks/useStockCases';
 import { useToast } from '@/hooks/use-toast';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLikedStockCases } from '@/hooks/useLikedStockCases';
+import { supabase } from '@/integrations/supabase/client';
 import StockCaseDetail from './StockCaseDetail';
+import { StockCase } from '@/types/stockCase';
 
 const Discover = () => {
   const navigate = useNavigate();
@@ -28,6 +33,7 @@ const Discover = () => {
   const { isAdmin } = useUserRole();
   const { user } = useAuth();
   const { likedStockCases, loading: likedCasesLoading } = useLikedStockCases();
+  const queryClient = useQueryClient();
 
   const [caseSearchTerm, setCaseSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('');
@@ -37,6 +43,7 @@ const Discover = () => {
   const [caseViewMode, setCaseViewMode] = useState<'grid' | 'list'>('grid');
   const [featuredCaseId, setFeaturedCaseId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'cases' | 'liked' | 'upptack'>('upptack');
+  const [swipeDetailCaseId, setSwipeDetailCaseId] = useState<string | null>(null);
 
   const filteredCases = useMemo(() => {
     let filtered = [...(allStockCases || [])];
@@ -142,6 +149,8 @@ const Discover = () => {
     return [...sectors].sort();
   }, [allStockCases]);
 
+  const swipeableCases = useMemo(() => filteredCases, [filteredCases]);
+
   const handleViewStockCaseDetails = (id: string) => navigate(`/stock-cases/${id}`);
   const handleDeleteStockCase = (id: string) => {
     toast({
@@ -149,6 +158,81 @@ const Discover = () => {
       description: 'Det går ännu inte att ta bort aktiecase från denna vy.',
     });
   };
+
+  const handleSwipeLike = async (stockCase: StockCase) => {
+    if (!user) {
+      toast({
+        title: 'Logga in för att gilla',
+        description: 'Spara bolag du gillar till fliken "Gillade företag" genom att logga in.',
+      });
+      return;
+    }
+
+    const queryKey = ['liked-stock-cases', user.id];
+    const previousLiked = (queryClient.getQueryData(queryKey) as (StockCase & { liked_at?: string })[]) || [];
+    const alreadyLiked = previousLiked.some((liked) => liked.id === stockCase.id);
+
+    if (!alreadyLiked) {
+      queryClient.setQueryData(queryKey, [
+        { ...stockCase, liked_at: new Date().toISOString() },
+        ...previousLiked,
+      ]);
+    }
+
+    const { error } = await supabase.from('stock_case_likes').insert({
+      stock_case_id: stockCase.id,
+      user_id: user.id,
+    });
+
+    if (error && error.code !== '23505') {
+      queryClient.setQueryData(queryKey, previousLiked);
+      toast({
+        title: 'Kunde inte gilla bolaget',
+        description: 'Försök igen eller kontrollera din anslutning.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    await queryClient.invalidateQueries({ queryKey });
+  };
+
+  const handleUndoSwipe = async ({
+    stockCase,
+    direction,
+  }: {
+    stockCase: StockCase;
+    direction: 'left' | 'right';
+  }) => {
+    if (direction !== 'right' || !user) return;
+
+    const queryKey = ['liked-stock-cases', user.id];
+    const previousLiked = (queryClient.getQueryData(queryKey) as (StockCase & { liked_at?: string })[]) || [];
+
+    queryClient.setQueryData(
+      queryKey,
+      previousLiked.filter((liked) => liked.id !== stockCase.id)
+    );
+
+    const { error } = await supabase
+      .from('stock_case_likes')
+      .delete()
+      .eq('stock_case_id', stockCase.id)
+      .eq('user_id', user.id);
+
+    if (error) {
+      queryClient.setQueryData(queryKey, previousLiked);
+      toast({
+        title: 'Kunde inte ångra gillning',
+        description: 'Försök igen senare.',
+        variant: 'destructive',
+      });
+    }
+
+    await queryClient.invalidateQueries({ queryKey });
+  };
+
+  const handleSwipeViewDetails = (id: string) => setSwipeDetailCaseId(id);
 
   useEffect(() => {
     if (stockCasesLoading) {
@@ -210,6 +294,31 @@ const Discover = () => {
                     showRiskWarning={false}
                     className="rounded-3xl px-3 sm:px-6 lg:px-8 space-y-8 sm:space-y-12"
                   />
+                )}
+
+                {swipeableCases.length > 0 && (
+                  <div className="space-y-4 rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Snabbare upptäck</p>
+                        <h3 className="text-lg font-semibold text-foreground">Svajpa genom bolag utan att lämna designen</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Behåll den nuvarande upplevelsen men gilla eller hoppa över bolag direkt här.
+                        </p>
+                      </div>
+                      <Badge variant="secondary" className="w-fit rounded-full bg-primary/10 text-primary">
+                        Ny funktion
+                      </Badge>
+                    </div>
+
+                    <SwipeableCaseDeck
+                      cases={swipeableCases}
+                      onLike={handleSwipeLike}
+                      onSkip={() => null}
+                      onViewDetails={handleSwipeViewDetails}
+                      onUndoSwipe={handleUndoSwipe}
+                    />
+                  </div>
                 )}
               </TabsContent>
 
@@ -326,6 +435,21 @@ const Discover = () => {
           </div>
         </div>
       </div>
+
+      <Dialog open={!!swipeDetailCaseId} onOpenChange={(open) => !open && setSwipeDetailCaseId(null)}>
+        <DialogContent className="max-w-5xl overflow-hidden p-0 sm:max-w-6xl">
+          {swipeDetailCaseId && (
+            <StockCaseDetail
+              embedded
+              embeddedCaseId={swipeDetailCaseId}
+              navigationCases={navigationCases}
+              onNavigateCase={(id) => setSwipeDetailCaseId(id)}
+              showRiskWarning={false}
+              className="rounded-none"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };
