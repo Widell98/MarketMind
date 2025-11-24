@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,6 +46,8 @@ const Profile = () => {
   const { stockCases, loading: stockCasesLoading, refetch } = useStockCases();
   const { deleteStockCase } = useStockCaseOperations();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState('riskprofile');
 
   // Fetch profile data
   React.useEffect(() => {
@@ -73,6 +75,18 @@ const Profile = () => {
 
     fetchProfileData();
   }, [user]);
+
+  React.useEffect(() => {
+    if (roleLoading) return;
+
+    const tabParam = searchParams.get('tab');
+    const fallbackTab = isAdmin ? 'content' : 'riskprofile';
+    const desiredTab = tabParam || fallbackTab;
+
+    if (desiredTab !== activeTab) {
+      setActiveTab(desiredTab);
+    }
+  }, [roleLoading, isAdmin, searchParams, activeTab]);
 
   if (loading || profileLoading || roleLoading) {
     return (
@@ -189,7 +203,16 @@ const Profile = () => {
 
         {/* Main Content */}
         <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6 lg:py-8">
-          <Tabs defaultValue={isAdmin ? "content" : "riskprofile"} className="w-full">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => {
+              setActiveTab(value);
+              const params = new URLSearchParams(searchParams);
+              params.set('tab', value);
+              setSearchParams(params);
+            }}
+            className="w-full"
+          >
             <TabsList
               className={`grid w-full ${
                 isAdmin ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'
