@@ -464,11 +464,12 @@ const ChatPortfolioAdvisor = () => {
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
   const [pendingMultiSelect, setPendingMultiSelect] = useState<string[]>([]);
   const [pendingQuestionId, setPendingQuestionId] = useState<string | null>(null);
+  const [isImplementingStrategy, setIsImplementingStrategy] = useState(false);
   const isInitialized = useRef(false);
   const hasInitializedRecommendations = useRef(false);
 
   const { loading } = useConversationalPortfolio();
-  const { refetch } = usePortfolio();
+  const { refetch, generatePortfolio } = usePortfolio();
   const { refetch: refetchHoldings } = useUserHoldings();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -2214,40 +2215,43 @@ const ChatPortfolioAdvisor = () => {
   };
 
   const handleImplementStrategy = async () => {
-    try {
-      // Show immediate feedback
+    if (!user) {
       toast({
-        title: "Implementerar strategi",
-        description: "Din portföljstrategi implementeras och profilen uppdateras...",
+        title: 'Logga in för att fortsätta',
+        description: 'Du behöver vara inloggad för att generera och implementera portföljen.',
+        variant: 'destructive',
       });
+      return;
+    }
 
-      // Refresh both portfolio and holdings data to ensure we have the latest
-      await Promise.all([
-        refetch(),
-        refetchHoldings()
-      ]);
-      
-      // Navigate to implementation page
+    try {
+      setIsImplementingStrategy(true);
+
+      const riskProfilePayload = buildRiskProfilePayload();
+      const savedProfile = await saveRiskProfile(riskProfilePayload);
+
+      if (!savedProfile || savedProfile === false) {
+        throw new Error('Riskprofilen kunde inte sparas.');
+      }
+
+      if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
+        await saveUserHoldings(conversationData.currentHoldings);
+      }
+
+      await generatePortfolio(savedProfile.id);
+
+      await Promise.all([refetch(), refetchHoldings()]);
+
       navigate('/portfolio-implementation');
-      
-      // Show success message after navigation
-      setTimeout(() => {
-        toast({
-          title: "Strategi implementerad!",
-          description: "Din portföljstrategi är nu aktiv och redo att användas. Innehaven visas nu i översikten.",
-        });
-      }, 1000);
-      
     } catch (error) {
       console.error('Error implementing strategy:', error);
       toast({
-        title: "Ett fel uppstod",
-        description: "Kunde inte implementera strategin helt. Kontrollera din profil på implementeringssidan.",
-        variant: "destructive",
+        title: 'Ett fel uppstod',
+        description: 'Kunde inte implementera strategin. Försök igen.',
+        variant: 'destructive',
       });
-      
-      // Navigate anyway since the portfolio might still be created
-      navigate('/portfolio-implementation');
+    } finally {
+      setIsImplementingStrategy(false);
     }
   };
 
@@ -3154,10 +3158,10 @@ const ChatPortfolioAdvisor = () => {
                       <Button
                         onClick={handleImplementStrategy}
                         className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-                        disabled={loading}
+                        disabled={loading || isImplementingStrategy}
                       >
                         <TrendingUp className="w-4 h-4 mr-2" />
-                        {loading ? "Implementerar..." : "Implementera Strategin"}
+                        {isImplementingStrategy ? "Genererar..." : "Implementera Strategin"}
                       </Button>
                     </div>
                   )}
