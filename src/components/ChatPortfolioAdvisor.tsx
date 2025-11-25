@@ -26,6 +26,8 @@ import {
   Upload,
   MessageSquare,
   RefreshCcw,
+  Sparkles,
+  AlertTriangle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationalPortfolio, type ConversationData } from '@/hooks/useConversationalPortfolio';
@@ -2438,16 +2440,53 @@ const ChatPortfolioAdvisor = () => {
       });
 
     if (!plan) {
+      const renderFallbackParagraph = (paragraph: string, index: number) => {
+        const lines = paragraph
+          .split('\n')
+          .map(line => line.trim())
+          .filter(Boolean);
+
+        const bulletLines = lines.filter(line => /^[-–•]/.test(line));
+
+        if (bulletLines.length > 0 && bulletLines.length === lines.length) {
+          return (
+            <ul
+              key={`fallback-list-${index}`}
+              className="list-disc list-inside space-y-1 text-base leading-7 text-foreground"
+            >
+              {lines.map((line, lineIndex) => (
+                <li key={`fallback-line-${index}-${lineIndex}`}>{line.replace(/^[-–•]\s*/, '')}</li>
+              ))}
+            </ul>
+          );
+        }
+
+        return (
+          <p key={`fallback-${index}`} className="text-base leading-7 text-foreground">
+            {paragraph}
+          </p>
+        );
+      };
+
       return (
-        <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-          {aiContent
-            .split(/\n{2,}/)
-            .map(paragraph => paragraph.trim())
-            .filter(Boolean)
-            .map((paragraph, index) => (
-              <p key={`fallback-${index}`}>{paragraph}</p>
-            ))}
-        </div>
+        <Card className="border-primary/10 bg-card/80 shadow-sm">
+          <CardHeader className="flex flex-row items-center gap-3 space-y-0">
+            <div className="rounded-lg bg-primary/15 p-2 text-primary">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <CardTitle className="text-base font-semibold">AI-svar</CardTitle>
+              <p className="text-sm text-muted-foreground">Förhandsgranskning av rekommendationen</p>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3 text-base leading-7">
+            {aiContent
+              .split(/\n{2,}/)
+              .map(paragraph => paragraph.trim())
+              .filter(Boolean)
+              .map(renderFallbackParagraph)}
+          </CardContent>
+        </Card>
       );
     }
 
@@ -2463,7 +2502,7 @@ const ChatPortfolioAdvisor = () => {
       'Följ upp resultatet efter genomförd justering tillsammans med AI-assistenten.',
     ];
 
-    const displayNextSteps = plan.nextSteps.length > 0
+    const displayNextSteps = plan.nextSteps?.length > 0
       ? plan.nextSteps
       : (isOptimization ? defaultOptimizationSteps : defaultNewPortfolioSteps);
 
@@ -2589,25 +2628,56 @@ const ChatPortfolioAdvisor = () => {
 
     return (
       <div className="space-y-5 text-sm leading-relaxed text-foreground">
-        {plan.actionSummary && (
-          <p className="text-base font-medium text-foreground">{plan.actionSummary}</p>
-        )}
-
-        {plan.riskAlignment && (
-          <p className="text-muted-foreground">{plan.riskAlignment}</p>
-        )}
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="rounded-lg bg-primary text-primary-foreground p-2 shadow-sm">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                {plan.actionSummary && (
+                  <p className="text-base font-semibold text-foreground">{plan.actionSummary}</p>
+                )}
+                {plan.riskAlignment && (
+                  <p className="text-sm text-primary/80">{plan.riskAlignment}</p>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs font-medium uppercase tracking-wide text-primary">
+              {isOptimization ? (
+                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+                  Optimering på befintlig portfölj
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+                  Ny portföljplan
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
 
         {displayNextSteps.length > 0 && (
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Så går du vidare</h4>
-            <ol className="mt-2 space-y-1 list-decimal list-inside">
-              {displayNextSteps.map((step, index) => (
-                <li key={`step-${index}`} className="text-foreground">
-                  {step}
-                </li>
-              ))}
-            </ol>
-          </div>
+          <Card className="border-border/80 bg-card/70 shadow-sm">
+            <CardHeader className="flex flex-row items-start gap-3 space-y-0 pb-3">
+              <div className="rounded-md bg-amber-50 p-2 text-amber-700">
+                <AlertTriangle className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Så går du vidare</p>
+                <CardTitle className="text-base font-semibold text-foreground">Prioriterade nästa steg</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <ol className="mt-1 space-y-2 list-decimal list-inside text-base leading-7">
+                {displayNextSteps.map((step, index) => (
+                  <li key={`step-${index}`} className="text-foreground">
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            </CardContent>
+          </Card>
         )}
 
         <div className="flex flex-col gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -2669,64 +2739,59 @@ const ChatPortfolioAdvisor = () => {
         )}
 
         {plan.assets.length > 0 && (
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {isOptimization ? 'Optimeringsförslag & åtgärder' : 'Köpplan & allokering'}
-            </h4>
-            <div className="mt-2 space-y-2">
-              {assetsToDisplay.map((displayAsset, index) => {
+          <div className="space-y-3 rounded-lg border border-border/80 bg-background/50 p-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Föreslagna åtgärder per tillgång</h4>
+              <Badge variant="secondary" className="text-[10px]">
+                {plan.assets.length} förslag
+              </Badge>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {plan.assets.map((_asset, index) => {
+                const displayAsset = assetsToDisplay[index];
                 const originalAsset = plan.assets[index];
-                const actionLabel = getActionLabel(originalAsset?.actionType ?? displayAsset.actionType);
+                const actionLabel = displayAsset.actionType ? getActionLabel(displayAsset.actionType) : null;
+                const allocationDisplay = formatPercentValue(displayAsset.allocationPercent);
+                const changeDisplay = formatSignedPercent(displayAsset.changePercent);
 
                 return (
-                  <div
-                    key={`${displayAsset.name}-${displayAsset.ticker ?? index}`}
-                    className="rounded-lg border border-border/60 bg-background/70 p-3"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="flex flex-col gap-1 min-w-0">
-                        <div className="flex flex-wrap items-baseline gap-2">
-                          <span className="font-semibold text-foreground truncate max-w-[220px] sm:max-w-[280px]">
-                            {displayAsset.name}
-                          </span>
+                  <div key={`${displayAsset.name}-${index}`} className="flex h-full flex-col gap-3 rounded-xl border bg-card/70 p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-base font-semibold text-foreground">{displayAsset.name}</p>
                           {displayAsset.ticker && (
-                            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                            <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
                               {displayAsset.ticker}
-                            </span>
+                            </Badge>
                           )}
                         </div>
-                        {isOptimization && actionLabel && (
-                          <Badge
-                            variant="outline"
-                            className="w-fit border-primary/40 bg-primary/10 text-primary text-[10px] uppercase tracking-wide"
-                          >
-                            Åtgärd: {actionLabel}
-                          </Badge>
+                        {displayAsset.riskRole && (
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            Roll i portföljen: {displayAsset.riskRole}
+                          </p>
                         )}
                       </div>
-
-                      <div className="flex flex-col items-end gap-2 text-right sm:flex-row sm:items-start sm:gap-3">
-                        <div className="flex flex-col items-end gap-1 text-right">
-                          {(() => {
-                            const changeDisplay = formatSignedPercent(displayAsset.changePercent);
-                            if (!changeDisplay) return null;
-                            return (
-                              <span className={`text-xs font-medium ${getChangeBadgeClass(displayAsset.changePercent)}`}>
-                                Förändring: {changeDisplay}
-                              </span>
-                            );
-                          })()}
-                          {(() => {
-                            if (
-                              isOptimization &&
-                              (!displayAsset.allocationPercent || displayAsset.allocationPercent === 0)
-                            ) {
-                              return null;
-                            }
-                            const allocationDisplay = formatPercentValue(displayAsset.allocationPercent);
-                            if (!allocationDisplay) return null;
-                            return <span className="text-sm font-semibold text-primary">{allocationDisplay}</span>;
-                          })()}
+                      <div className="flex flex-col items-end gap-2 text-xs">
+                        <div className="flex flex-wrap justify-end gap-1.5">
+                          {actionLabel && (
+                            <Badge variant="secondary" className="text-[11px]">
+                              Åtgärd: {actionLabel}
+                            </Badge>
+                          )}
+                          {allocationDisplay && !(isOptimization && (!displayAsset.allocationPercent || displayAsset.allocationPercent === 0)) && (
+                            <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">
+                              Vikt: {allocationDisplay}
+                            </Badge>
+                          )}
+                          {changeDisplay && (
+                            <Badge
+                              variant="outline"
+                              className={`${getChangeBadgeClass(displayAsset.changePercent)} border-border/60 bg-background/80`}
+                            >
+                              Förändring {changeDisplay}
+                            </Badge>
+                          )}
                         </div>
                         <Button
                           type="button"
@@ -2740,15 +2805,12 @@ const ChatPortfolioAdvisor = () => {
                       </div>
                     </div>
                     {displayAsset.rationale && (
-                      <p className="mt-2 text-sm text-muted-foreground">{displayAsset.rationale}</p>
-                    )}
-                    {displayAsset.riskRole && (
-                      <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
-                        Roll i portföljen: {displayAsset.riskRole}
-                      </p>
+                      <p className="text-sm leading-6 text-muted-foreground">{displayAsset.rationale}</p>
                     )}
                     {displayAsset.notes && (
-                      <p className="mt-1 text-xs text-muted-foreground">{displayAsset.notes}</p>
+                      <div className="rounded-md border border-dashed border-border/80 bg-muted/20 p-2 text-xs text-muted-foreground">
+                        {displayAsset.notes}
+                      </div>
                     )}
                   </div>
                 );
@@ -2758,17 +2820,18 @@ const ChatPortfolioAdvisor = () => {
         )}
 
         {isOptimization && complementaryIdeas.length > 0 && (
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Kompletterande idéer som passar din portfölj
-            </h4>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span>Kompletterande idéer som passar din portfölj</span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
               {complementaryIdeas.map((idea, idx) => (
                 <div
                   key={`${idea.name}-${idea.symbol ?? idx}`}
-                  className="rounded-lg border border-dashed border-primary/30 bg-background/60 p-3"
+                  className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-3 shadow-sm"
                 >
-                  <div className="flex items-baseline justify-between gap-2">
+                  <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="font-medium text-foreground">{idea.name}</p>
                       {idea.symbol && (
@@ -2779,14 +2842,14 @@ const ChatPortfolioAdvisor = () => {
                       const allocationSuggestion = formatPercentValue(idea.allocation);
                       if (!allocationSuggestion) return null;
                       return (
-                        <span className="text-xs font-semibold text-primary">
+                        <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">
                           Förslag: {allocationSuggestion}
-                        </span>
+                        </Badge>
                       );
                     })()}
                   </div>
                   {idea.reasoning && (
-                    <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{idea.reasoning}</p>
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{idea.reasoning}</p>
                   )}
                 </div>
               ))}
@@ -3110,11 +3173,38 @@ const ChatPortfolioAdvisor = () => {
                   </div>
                   
                   {portfolioResult?.mode === 'optimize' ? (
-                    <div className="mt-4 pt-4 border-t border-primary/20 text-sm text-muted-foreground">
-                      Använd rekommendationerna för att justera dina nuvarande innehav i din portföljöversikt.
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-primary/20 pt-4 text-sm text-muted-foreground">
+                      <p className="min-w-[200px] flex-1">
+                        Använd rekommendationerna för att justera dina nuvarande innehav i din portföljöversikt.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            startAiChatSession(
+                              'Planera ombalansering',
+                              'Hjälp mig att tidsätta och prioritera ombalanseringen baserat på de senaste AI-rekommendationerna.'
+                            )
+                          }
+                        >
+                          Planera ombalansering
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={handleImplementStrategy}
+                          disabled={loading}
+                        >
+                          Uppdatera översikten
+                        </Button>
+                      </div>
                     </div>
                   ) : (
-                    <div className="mt-4 pt-4 border-t border-primary/20">
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-primary/20 pt-4">
+                      <p className="text-sm text-muted-foreground min-w-[200px] flex-1">
+                        För över strategin till din portföljöversikt och följ upp genomförandet.
+                      </p>
                       <Button
                         onClick={handleImplementStrategy}
                         className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
