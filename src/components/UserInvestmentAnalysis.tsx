@@ -79,12 +79,6 @@ const UserInvestmentAnalysis = ({
     { value: 'mixed', label: 'Blandad strategi' },
     { value: 'unsure', label: 'Osäker / ingen tydlig strategi' }
   ], []);
-  const investmentGoalOptions = useMemo(() => [
-    { value: 'growth', label: 'Långsiktig tillväxt' },
-    { value: 'income', label: 'Löpande utdelningar' },
-    { value: 'preservation', label: 'Kapitalbevarande' },
-    { value: 'balanced', label: 'Balanserad avkastning' }
-  ], []);
   const optimizationGoalOptions = useMemo(() => [
     { value: 'risk_balance', label: 'Balansera risk och avkastning' },
     { value: 'diversify', label: 'Öka diversifieringen' },
@@ -106,17 +100,6 @@ const UserInvestmentAnalysis = ({
     { value: 'market', label: 'Känslighet mot marknadsrisk' },
     { value: 'currency', label: 'Valutarisk' },
     { value: 'liquidity', label: 'Likviditetsrisk' }
-  ], []);
-  const optimizationPreferenceOptions = useMemo(() => [
-    { value: 'analyze_only', label: 'Analysera och förbättra utan nya köp' },
-    { value: 'improve_with_new_ideas', label: 'Behåll kärnan men komplettera med nya idéer' },
-    { value: 'rebalance', label: 'Ge konkreta rebalanseringsförslag inklusive köp/sälj' }
-  ], []);
-  const optimizationTimelineOptions = useMemo(() => [
-    { value: 'immediate', label: 'Snarast möjligt' },
-    { value: 'short_term', label: 'Inom de kommande 3 månaderna' },
-    { value: 'medium_term', label: 'Under det kommande året' },
-    { value: 'long_term', label: 'Löpande över flera år' }
   ], []);
   const marketCrashReactionOptions = useMemo(() => [
     { value: 'sell', label: 'Jag blir orolig och vill sälja' },
@@ -827,78 +810,22 @@ const UserInvestmentAnalysis = ({
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Hur ska förändringar göras?</Label>
-                    <Select
-                      value={preferenceForm.optimization_preference}
-                      onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, optimization_preference: value }))}
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Sparmål</Label>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Markera vad du sparar till för att finjustera planen.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {investmentPurposeOptions.map((purpose) => (
+                    <label
+                      key={purpose}
+                      className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
                     >
-                      <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
-                        <SelectValue placeholder="Välj angreppssätt" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {optimizationPreferenceOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Tidsplan</Label>
-                    <Select
-                      value={preferenceForm.optimization_timeline}
-                      onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, optimization_timeline: value }))}
-                    >
-                      <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
-                        <SelectValue placeholder="När vill du se förändring?" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {optimizationTimelineOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Investeringsmål</Label>
-                  <Select
-                    value={preferenceForm.investment_goal}
-                    onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, investment_goal: value }))}
-                  >
-                    <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
-                      <SelectValue placeholder="Vad är ditt huvudsakliga mål?" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {investmentGoalOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-3">
-                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Sparmål</Label>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Markera vad du sparar till för att finjustera planen.</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {investmentPurposeOptions.map((purpose) => (
-                      <label
-                        key={purpose}
-                        className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
-                      >
-                        <Checkbox
-                          checked={preferenceForm.investment_purpose.includes(purpose)}
-                          onCheckedChange={() => handleInvestmentPurposeToggle(purpose)}
-                        />
-                        <span className="text-sm text-slate-700 dark:text-slate-200">{purpose}</span>
-                      </label>
-                    ))}
-                  </div>
+                      <Checkbox
+                        checked={preferenceForm.investment_purpose.includes(purpose)}
+                        onCheckedChange={() => handleInvestmentPurposeToggle(purpose)}
+                      />
+                      <span className="text-sm text-slate-700 dark:text-slate-200">{purpose}</span>
+                    </label>
+                  ))}
                 </div>
               </div>
             </TabsContent>
