@@ -464,7 +464,7 @@ const ChatPortfolioAdvisor = () => {
   const hasInitializedRecommendations = useRef(false);
 
   const { generatePortfolioFromConversation, loading } = useConversationalPortfolio();
-  const { refetch } = usePortfolio();
+  const { activePortfolio, refetch } = usePortfolio();
   const { refetch: refetchHoldings } = useUserHoldings();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -500,6 +500,18 @@ const ChatPortfolioAdvisor = () => {
 
     return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   }, []);
+
+  useEffect(() => {
+    if (!isComplete) return;
+
+    if (conversationData.hasCurrentPortfolio || activePortfolio) {
+      const redirect = setTimeout(() => {
+        navigate('/portfolio-implementation');
+      }, 600);
+
+      return () => clearTimeout(redirect);
+    }
+  }, [isComplete, conversationData.hasCurrentPortfolio, activePortfolio, navigate]);
 
   const priceFormatter = useMemo(
     () => new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
