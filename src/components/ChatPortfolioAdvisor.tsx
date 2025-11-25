@@ -24,8 +24,6 @@ import {
   Trash2,
   Check,
   Upload,
-  MessageSquare,
-  RefreshCcw,
   Sparkles,
   AlertTriangle,
 } from 'lucide-react';
@@ -2383,6 +2381,33 @@ const ChatPortfolioAdvisor = () => {
     const plan = structuredResponse;
     const isOptimization = portfolioResult?.mode === 'optimize';
 
+    const userHoldingsCount = conversationData.currentHoldings?.length ?? 0;
+    const goalSummary = conversationData.optimizationGoals?.length
+      ? conversationData.optimizationGoals.join(', ')
+      : null;
+
+    const reasoningSummary = (() => {
+      const parts: string[] = [];
+
+      if (plan?.riskAlignment) {
+        parts.push(plan.riskAlignment);
+      }
+
+      if (goalSummary) {
+        parts.push(`Mål: ${goalSummary}.`);
+      }
+
+      if (userHoldingsCount > 0) {
+        parts.push(`Bedömningen utgår från ${userHoldingsCount} befintliga innehav.`);
+      }
+
+      if (!parts.length) {
+        return 'AI:n vägde dina svar och nuvarande innehav för att ge rekommendationen.';
+      }
+
+      return parts.join(' ');
+    })();
+
     const wantsComplementaryIdeas = conversationData.optimizationPreference === 'improve_with_new_ideas';
     const complementaryFromResult: StockRecommendation[] = Array.isArray(portfolioResult?.complementaryIdeas)
       ? (portfolioResult?.complementaryIdeas as StockRecommendation[])
@@ -2466,24 +2491,30 @@ const ChatPortfolioAdvisor = () => {
       };
 
       return (
-        <Card className="border-primary/10 bg-card/80 shadow-sm">
-          <CardHeader className="flex flex-row items-center gap-3 space-y-0">
-            <div className="rounded-lg bg-primary/15 p-2 text-primary">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <CardTitle className="text-base font-semibold">AI-svar</CardTitle>
-              <p className="text-sm text-muted-foreground">Förhandsgranskning av rekommendationen</p>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3 text-base leading-7">
-            {aiContent
-              .split(/\n{2,}/)
-              .map(paragraph => paragraph.trim())
-              .filter(Boolean)
-              .map(renderFallbackParagraph)}
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">Varför denna bedömning?</p>
+            <p className="mt-1 text-sm leading-6 text-foreground">{reasoningSummary}</p>
+          </div>
+          <Card className="border-primary/10 bg-card/80 shadow-sm">
+            <CardHeader className="flex flex-row items-center gap-3 space-y-0">
+              <div className="rounded-lg bg-primary/15 p-2 text-primary">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-semibold">AI-svar</CardTitle>
+                <p className="text-sm text-muted-foreground">Förhandsgranskning av rekommendationen</p>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 text-base leading-7">
+              {aiContent
+                .split(/\n{2,}/)
+                .map(paragraph => paragraph.trim())
+                .filter(Boolean)
+                .map(renderFallbackParagraph)}
+            </CardContent>
+          </Card>
+        </div>
       );
     }
 
@@ -2532,96 +2563,9 @@ const ChatPortfolioAdvisor = () => {
       })
       .join('; ');
 
-    const aiChatSuggestions = (() => {
-      const suggestions: Array<{ title: string; description: string; sessionName: string; message: string }> = [];
-
-      if (isOptimization) {
-        if (assetSummary) {
-          suggestions.push({
-            title: 'Planera ombalanseringen med AI',
-            description: 'Gå igenom hur du praktiskt genomför ändringarna och vilka order som ska läggas.',
-            sessionName: 'Portföljoptimering',
-            message: `Hej! Jag har fått optimeringsförslag för min portfölj och vill säkerställa genomförandet. Föreslagna ändringar: ${assetSummary}. Kan du hjälpa mig att prioritera och tidsätta affärerna?`,
-          });
-        }
-
-        if (conversationData.optimizationGoals && conversationData.optimizationGoals.length > 0) {
-          suggestions.push({
-            title: 'Fördjupa optimeringsmålen',
-            description: 'Diskutera hur målen kan uppfyllas och vilka risker som bör bevakas.',
-            sessionName: 'Optimeringsmål',
-            message: `Jag vill diskutera mina optimeringsmål (${conversationData.optimizationGoals.join(', ')}). Hur säkerställer jag att rekommendationerna stöttar dessa mål och vad bör jag följa upp på?`,
-          });
-        }
-
-        if (wantsComplementaryIdeas && complementaryIdeas.length > 0) {
-          const complementarySummary = complementaryIdeas
-            .slice(0, 3)
-            .map(idea => idea.symbol ? `${idea.name} (${idea.symbol})` : idea.name)
-            .join(', ');
-
-          suggestions.push({
-            title: 'Utvärdera kompletterande idéer',
-            description: 'Bedöm hur nya aktier passar in i portföljen innan du agerar.',
-            sessionName: 'Kompletterande investeringar',
-            message: `Jag fick även kompletterande idéer (${complementarySummary}). Kan vi diskutera hur de bör viktas och om de verkligen passar min strategi?`,
-          });
-        }
-
-        return suggestions;
-      }
-
-      if (plan.actionSummary) {
-        suggestions.push({
-          title: 'Stäm av portföljplanen',
-          description: 'Låt AI förklara varför planen passar dig och vilka risker som finns.',
-          sessionName: 'Portföljplan',
-          message: `Hej! Jag har fått en portföljplan. Sammanfattning: ${plan.actionSummary}. Kan du hjälpa mig att förstå strategin och vilka frågor jag bör ställa innan jag sätter igång?`,
-        });
-      }
-
-      if (summarizedSteps) {
-        suggestions.push({
-          title: 'Skapa en implementeringschecklista',
-          description: 'Be AI om en konkret lista att följa när du börjar investera.',
-          sessionName: 'Implementeringsplan',
-          message: `Jag behöver en detaljerad checklista för att genomföra dessa steg: ${summarizedSteps}. Hjälp mig att bryta ned dem i praktiska åtgärder med tidsordning.`,
-        });
-      }
-
-      if (assetSummary) {
-        suggestions.push({
-          title: 'Validera de föreslagna köpen',
-          description: 'Diskutera hur du kan komplettera eller justera enskilda innehav.',
-          sessionName: 'Val av investeringar',
-          message: `Planen föreslår följande nyckelinnehav: ${assetSummary}. Kan du hjälpa mig att resonera kring beloppen och om jag bör lägga till alternativa värdepapper?`,
-        });
-      }
-
-      return suggestions;
-    })();
-
-    const portfolioReviewPrompt = (() => {
-      const parts: string[] = [];
-
-      if (plan.actionSummary) {
-        parts.push(`Sammanfattning: ${plan.actionSummary}`);
-      }
-
-      if (assetSummary) {
-        parts.push(`Nyckelinnehav: ${assetSummary}`);
-      }
-
-      if (summarizedSteps) {
-        parts.push(`Föreslagna steg: ${summarizedSteps}`);
-      }
-
-      const base = parts.join('. ');
-
-      return base
-        ? `AI har analyserat min portfölj. ${base}. Kan du hjälpa mig att säkerställa att rekommendationerna och prioriteringen är rätt innan jag agerar?`
-        : 'AI har analyserat min portfölj. Hjälp mig att gå igenom rekommendationerna och sätta en tydlig handlingsplan.';
-    })();
+    const detailedReasoning = assetSummary
+      ? `${reasoningSummary} Nyckelrekommendationer: ${assetSummary}.`
+      : reasoningSummary;
 
     return (
       <div className="space-y-5 text-sm leading-relaxed text-foreground">
@@ -2654,6 +2598,11 @@ const ChatPortfolioAdvisor = () => {
           </div>
         </div>
 
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">Varför denna bedömning?</p>
+          <p className="mt-1 text-sm leading-6 text-foreground">{detailedReasoning}</p>
+        </div>
+
         {displayNextSteps.length > 0 && (
           <Card className="border-border/80 bg-card/70 shadow-sm">
             <CardHeader className="flex flex-row items-start gap-3 space-y-0 pb-3">
@@ -2677,64 +2626,6 @@ const ChatPortfolioAdvisor = () => {
           </Card>
         )}
 
-        <div className="flex flex-col gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-2">
-            <div className="mt-0.5 rounded-md bg-primary/20 p-1 text-primary">
-              <MessageSquare className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">Diskutera bedömningen med AI</p>
-              <p className="text-xs text-muted-foreground">
-                Öppna AI-chatten med en färdig prompt som sammanfattar analysen och nästa steg.
-              </p>
-            </div>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="default"
-            className="self-start sm:self-auto"
-            onClick={() => startAiChatSession('Portföljbedömning', portfolioReviewPrompt)}
-          >
-            Öppna AI-chatt
-          </Button>
-        </div>
-
-        {aiChatSuggestions.length > 0 && (
-          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 sm:p-4">
-            <div className="flex items-start gap-2">
-              <div className="mt-0.5 rounded-md bg-primary/20 p-1 text-primary">
-                <MessageSquare className="h-4 w-4" />
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-primary">Fortsätt dialogen med AI-assistenten</h4>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Starta en fokuserad chatt för att få stöd i nästa steg eller ställa följdfrågor om rekommendationerna.
-                  </p>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {aiChatSuggestions.map((suggestion, index) => (
-                    <button
-                      key={`${suggestion.sessionName}-${index}`}
-                      type="button"
-                      onClick={() => startAiChatSession(suggestion.sessionName, suggestion.message)}
-                      className="group flex h-full flex-col items-start gap-1 rounded-lg border border-primary/30 bg-background/80 p-3 text-left transition hover:border-primary hover:bg-primary/10"
-                    >
-                      <span className="text-sm font-medium text-foreground group-hover:text-primary">
-                        {suggestion.title}
-                      </span>
-                      <span className="text-xs text-muted-foreground group-hover:text-primary/80">
-                        {suggestion.description}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {plan.assets.length > 0 && (
           <div className="space-y-3 rounded-lg border border-border/80 bg-background/50 p-3">
             <div className="flex items-center justify-between">
@@ -2746,7 +2637,6 @@ const ChatPortfolioAdvisor = () => {
             <div className="grid gap-3 sm:grid-cols-2">
               {plan.assets.map((_asset, index) => {
                 const displayAsset = assetsToDisplay[index];
-                const originalAsset = plan.assets[index];
                 const actionLabel = displayAsset.actionType ? getActionLabel(displayAsset.actionType) : null;
                 const allocationDisplay = formatPercentValue(displayAsset.allocationPercent);
                 const changeDisplay = formatSignedPercent(displayAsset.changePercent);
@@ -2790,15 +2680,6 @@ const ChatPortfolioAdvisor = () => {
                             </Badge>
                           )}
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-8 px-2 text-xs font-medium"
-                          onClick={() => openReplacementDialog(originalAsset, index)}
-                        >
-                          <RefreshCcw className="mr-1 h-3.5 w-3.5" /> Byt ut
-                        </Button>
                       </div>
                     </div>
                     {displayAsset.rationale && (
