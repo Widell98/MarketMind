@@ -18,18 +18,43 @@ export type AdvisorPlan = {
 
 const toStringArray = (value: unknown): string[] => {
   if (!value) return [];
+
+  const normalizeEntry = (entry: string) => {
+    return entry
+      .replace(/^\s*\d+(?:\.\d+)*[.)]?\s*/, '')
+      .trim();
+  };
+
   if (Array.isArray(value)) {
     return value
-      .map(entry => (entry != null ? String(entry).trim() : ''))
+      .map(entry => (entry != null ? normalizeEntry(String(entry)) : ''))
       .filter(Boolean);
   }
+
   if (typeof value === 'string') {
     return value
-      .split(/\r?\n+|\.\s+/)
-      .map(entry => entry.trim())
+      .split(/\r?\n+|[•\-]\s+/)
+      .map(entry => normalizeEntry(entry))
       .filter(Boolean);
   }
+
   return [];
+};
+
+const deriveAssetName = (asset: any): string => {
+  if (!asset) return '';
+
+  const candidates = [
+    asset.name,
+    asset.asset_name,
+    asset.asset,
+    asset.company,
+    asset.ticker,
+    asset.symbol,
+  ];
+
+  const name = candidates.find(candidate => typeof candidate === 'string' && candidate.trim());
+  return name ? String(name).trim() : '';
 };
 
 export const parseAdvisorPlan = (value: unknown): AdvisorPlan | null => {
@@ -57,13 +82,24 @@ export const parseAdvisorPlan = (value: unknown): AdvisorPlan | null => {
     ? plan.recommended_assets
     : Array.isArray(plan.recommendations)
       ? plan.recommendations
-      : [];
+      : Array.isArray(plan.assets)
+        ? plan.assets
+        : [];
 
   const recommended_assets: AdvisorPlanAsset[] = rawAssets
     .map((asset: any) => {
-      if (!asset || !asset.name) return null;
+      if (!asset) return null;
 
-      const allocationValue = asset.allocation_percent ?? asset.allocation ?? asset.weight;
+      const name = deriveAssetName(asset);
+      const ticker = asset.ticker || asset.symbol || '';
+
+      if (!name && !ticker) return null;
+
+      const allocationValue = asset.allocation_percent
+        ?? asset.allocation
+        ?? asset.weight
+        ?? asset.percentage;
+
       const allocation = typeof allocationValue === 'number'
         ? allocationValue
         : typeof allocationValue === 'string'
@@ -71,8 +107,8 @@ export const parseAdvisorPlan = (value: unknown): AdvisorPlan | null => {
           : 0;
 
       return {
-        name: String(asset.name).trim(),
-        ticker: asset.ticker || asset.symbol || '',
+        name: name || ticker || 'Okänt innehav',
+        ticker,
         allocation_percent: Number.isFinite(allocation) ? Math.round(allocation) : 0,
         rationale: asset.rationale || asset.reasoning || asset.analysis || '',
         risk_role: asset.risk_role || asset.role || '',
