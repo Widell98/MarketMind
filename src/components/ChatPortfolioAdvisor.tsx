@@ -465,6 +465,7 @@ const ChatPortfolioAdvisor = () => {
   const [pendingMultiSelect, setPendingMultiSelect] = useState<string[]>([]);
   const [pendingQuestionId, setPendingQuestionId] = useState<string | null>(null);
   const [isImplementingStrategy, setIsImplementingStrategy] = useState(false);
+  const [isGeneratingPortfolioDirect, setIsGeneratingPortfolioDirect] = useState(false);
   const isInitialized = useRef(false);
   const hasInitializedRecommendations = useRef(false);
 
@@ -2255,6 +2256,47 @@ const ChatPortfolioAdvisor = () => {
     }
   };
 
+  const handleGeneratePortfolioDirect = async () => {
+    if (!user) {
+      toast({
+        title: 'Logga in för att fortsätta',
+        description: 'Du behöver vara inloggad för att generera en portfölj.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setIsGeneratingPortfolioDirect(true);
+
+      const riskProfilePayload = buildRiskProfilePayload();
+      const savedProfile = await saveRiskProfile(riskProfilePayload);
+
+      if (!savedProfile || savedProfile === false) {
+        throw new Error('Riskprofilen kunde inte sparas.');
+      }
+
+      if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
+        await saveUserHoldings(conversationData.currentHoldings);
+      }
+
+      await generatePortfolio(savedProfile.id);
+
+      await Promise.all([refetch(), refetchHoldings()]);
+
+      navigate('/portfolio-implementation');
+    } catch (error) {
+      console.error('Error generating portfolio directly:', error);
+      toast({
+        title: 'Ett fel uppstod',
+        description: 'Kunde inte generera portföljen. Försök igen.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGeneratingPortfolioDirect(false);
+    }
+  };
+
   const openReplacementDialog = (asset: AdvisorPlanAsset, index: number) => {
     const currentRecommendation = recommendedStocks[index];
     setReplacementTarget({ asset, index, recommendation: currentRecommendation });
@@ -3186,15 +3228,28 @@ const ChatPortfolioAdvisor = () => {
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                     <Button
                       onClick={handleSaveProfileAndStartChat}
-                      disabled={isSavingRiskProfile || isGenerating}
+                      disabled={isSavingRiskProfile || isGenerating || isGeneratingPortfolioDirect}
                       className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                     >
                       {isSavingRiskProfile ? 'Sparar riskprofil...' : 'Spara riskprofil och starta chatten'}
                     </Button>
-                    <p className="text-xs text-muted-foreground">
-                      Dina svar: tidshorisont, risk, erfarenhet, mål och portföljstatus används för profilen.
-                    </p>
+                    <Button
+                      onClick={handleGeneratePortfolioDirect}
+                      disabled={
+                        isSavingRiskProfile ||
+                        isGenerating ||
+                        isImplementingStrategy ||
+                        isGeneratingPortfolioDirect
+                      }
+                      variant="outline"
+                      className="border-primary text-primary hover:bg-primary/10"
+                    >
+                      {isGeneratingPortfolioDirect ? 'Genererar portfölj...' : 'Generera portfölj utan chatt'}
+                    </Button>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Dina svar: tidshorisont, risk, erfarenhet, mål och portföljstatus används för profilen.
+                  </p>
                 </div>
               </div>
             </div>
