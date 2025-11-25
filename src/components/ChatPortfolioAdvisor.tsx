@@ -38,6 +38,7 @@ import useSheetTickers, { RawSheetTicker, SheetTicker, sanitizeSheetTickerList }
 import StockReplacementDialog from '@/components/StockReplacementDialog';
 import { mapEdgeFunctionErrorMessage } from '@/utils/mapEdgeFunctionError';
 import { normalizeShareClassTicker, parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
+import { hasLikelyTicker, isListedCompany } from '@/utils/listedCompanies';
 
 interface QuestionOption {
   value: string;
@@ -1918,6 +1919,9 @@ const ChatPortfolioAdvisor = () => {
             if (!name) return null;
 
             const symbol = rec.symbol || rec.ticker || rec.code || '';
+            if (!isListedCompany(name, symbol) && !hasLikelyTicker(symbol)) {
+              return null;
+            }
             return {
               name,
               symbol: symbol || undefined,
@@ -1969,6 +1973,9 @@ const ChatPortfolioAdvisor = () => {
           
           // Basic validation - should be a reasonable company name
           if (name.length > 2 && name.length < 50 && /^[A-ZÅÄÖ]/.test(name)) {
+            if (!isListedCompany(name, symbol) && !hasLikelyTicker(symbol)) {
+              return;
+            }
             // Check if we already have this recommendation
             const exists = recommendations.some(r => r.name.toLowerCase() === name.toLowerCase());
             if (!exists) {
