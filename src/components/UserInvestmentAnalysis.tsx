@@ -26,7 +26,6 @@ import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
 import { Slider } from './ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import InvestmentProfileSummary from './InvestmentProfileSummary';
 interface UserInvestmentAnalysisProps {
   onUpdateProfile?: () => void;
 }
@@ -923,13 +922,6 @@ const UserInvestmentAnalysis = ({
           </div>
         </CardContent>
       </Card>
-
-      <InvestmentProfileSummary
-        riskProfile={riskProfile}
-        loading={riskLoading}
-        showActions
-        onReset={() => setShowResetDialog(true)}
-      />
 
       {/* AI-Generated Strategy - Structured plan presentation */}
       {advisorPlan && (
