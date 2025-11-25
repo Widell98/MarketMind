@@ -24,7 +24,6 @@ import {
   Trash2,
   Check,
   Upload,
-  MessageSquare,
   RefreshCcw,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -452,12 +451,8 @@ const ChatPortfolioAdvisor = () => {
   const [isComplete, setIsComplete] = useState(false);
   const [portfolioResult, setPortfolioResult] = useState<PortfolioGenerationResult | null>(null);
   const [recommendedStocks, setRecommendedStocks] = useState<StockRecommendation[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [waitingForAnswer, setWaitingForAnswer] = useState(false);
   const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [pendingSystemPrompt, setPendingSystemPrompt] = useState<string | null>(null);
-  const [pendingSessionName, setPendingSessionName] = useState<string | null>(null);
-  const [isSavingRiskProfile, setIsSavingRiskProfile] = useState(false);
   const [holdingToRemove, setHoldingToRemove] = useState<Holding | null>(null);
   const [showHoldingsInput, setShowHoldingsInput] = useState(false);
   const [localLoading, setLoading] = useState(false);
@@ -474,19 +469,6 @@ const ChatPortfolioAdvisor = () => {
   const { refetch: refetchHoldings } = useUserHoldings();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const startAiChatSession = useCallback(
-    (sessionName: string, initialMessage: string, autoSendInitialMessage = false) => {
-      navigate('/ai-chatt', {
-        state: {
-          createNewSession: true,
-          sessionName,
-          initialMessage,
-          autoSendInitialMessage,
-        },
-      });
-    },
-    [navigate]
-  );
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { saveRiskProfile } = useRiskProfile();
@@ -2100,111 +2082,10 @@ const ChatPortfolioAdvisor = () => {
   });
 
   const completeConversation = () => {
-    const riskLabels: Record<string, string> = {
-      conservative: 'Låg risk',
-      balanced: 'Medelrisk',
-      aggressive: 'Hög risk'
-    };
-
-    const horizonLabels: Record<string, string> = {
-      short: 'Kortsiktigt (0–2 år)',
-      medium: 'Medellång sikt (3–5 år)',
-      long: 'Långsiktigt (5+ år)'
-    };
-
-    const experienceLabels: Record<string, string> = {
-      beginner: 'Nybörjare (<1 år)',
-      intermediate: 'Några år (1–3 år)',
-      advanced: 'Erfaren (3+ år)'
-    };
-
-    const goalLabels: Record<string, string> = {
-      long_term_growth: 'Bygga långsiktigt sparande',
-      dividend_income: 'Skapa utdelningsinkomst',
-      specific_goal: 'Spara till ett specifikt mål',
-      quick_return: 'Kortsiktiga vinster'
-    };
-
-    const hasPortfolio = conversationData.hasCurrentPortfolio === true;
-    const holdingsSummary = conversationData.currentHoldings?.length
-      ? conversationData.currentHoldings
-          .map(h => {
-            const symbol = h.symbol ? ` (${h.symbol})` : '';
-            const currency = h.currency?.trim()?.toUpperCase() || 'SEK';
-            return `${h.name}${symbol}: ${h.quantity} st à ${h.purchasePrice} ${currency}`;
-          })
-          .join('; ')
-      : null;
-
-    const promptLines = [
-      `Tidshorisont: ${horizonLabels[conversationData.timeHorizon as string] ?? 'Ej angivet'}`,
-      `Risknivå: ${riskLabels[conversationData.riskTolerance as string] ?? 'Ej angivet'}`,
-      `Erfarenhet: ${experienceLabels[conversationData.investmentExperienceLevel as string] ?? 'Ej angivet'}`,
-      `Primärt mål: ${goalLabels[conversationData.investmentGoal as string] ?? 'Ej angivet'}`,
-      `Har befintlig portfölj: ${hasPortfolio ? 'Ja' : 'Nej'}`,
-    ];
-
-    if (holdingsSummary) {
-      promptLines.push(`Innehav att analysera: ${holdingsSummary}`);
-    }
-
-    const objective = hasPortfolio
-      ? 'Analysera den befintliga portföljen, ge förbättringsförslag och ställ uppföljande frågor om något är oklart. Prioritera riskjusterade förbättringar, diversifiering och tydliga next steps.'
-      : 'Skapa omedelbart en komplett portfölj och investeringsplan baserat på ovanstående information utan fler onboardingfrågor. Presentera strategin på svenska med motiveringar och kom ihåg att användaren är ny i chatten.';
-
-    const systemPrompt = [
-      'SYSTEMPROMPT: Du är en svensk investeringsassistent som bygger vidare på onboarding-svaren nedan. Använd detta som systemkontekst i chatten.',
-      'Onboarding-sammanfattning:',
-      ...promptLines.map(line => `- ${line}`),
-      '',
-      objective
-    ].join('\n');
-
-    setIsGenerating(false);
     setWaitingForAnswer(false);
     setIsComplete(true);
     setRecommendedStocks([]);
     hasInitializedRecommendations.current = false;
-    setPendingSystemPrompt(systemPrompt);
-    setPendingSessionName(hasPortfolio ? 'Portföljanalys' : 'Portföljförslag');
-  };
-
-  const handleSaveProfileAndStartChat = async () => {
-    if (!pendingSystemPrompt || !pendingSessionName) {
-      return;
-    }
-
-    if (!user) {
-      toast({
-        title: 'Logga in för att fortsätta',
-        description: 'Du behöver vara inloggad för att spara din riskprofil.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setIsSavingRiskProfile(true);
-
-    try {
-      const riskProfilePayload = buildRiskProfilePayload();
-      await saveRiskProfile(riskProfilePayload);
-
-      if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
-        await saveUserHoldings(conversationData.currentHoldings);
-      }
-
-      setIsGenerating(true);
-      startAiChatSession(pendingSessionName, pendingSystemPrompt, true);
-    } catch (error) {
-      console.error('Failed to save risk profile and start AI chat', error);
-      toast({
-        title: 'Kunde inte spara riskprofilen',
-        description: 'Försök igen eller uppdatera sidan.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSavingRiskProfile(false);
-    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -2623,75 +2504,6 @@ const ChatPortfolioAdvisor = () => {
       })
       .join('; ');
 
-    const aiChatSuggestions = (() => {
-      const suggestions: Array<{ title: string; description: string; sessionName: string; message: string }> = [];
-
-      if (isOptimization) {
-        if (assetSummary) {
-          suggestions.push({
-            title: 'Planera ombalanseringen med AI',
-            description: 'Gå igenom hur du praktiskt genomför ändringarna och vilka order som ska läggas.',
-            sessionName: 'Portföljoptimering',
-            message: `Hej! Jag har fått optimeringsförslag för min portfölj och vill säkerställa genomförandet. Föreslagna ändringar: ${assetSummary}. Kan du hjälpa mig att prioritera och tidsätta affärerna?`,
-          });
-        }
-
-        if (conversationData.optimizationGoals && conversationData.optimizationGoals.length > 0) {
-          suggestions.push({
-            title: 'Fördjupa optimeringsmålen',
-            description: 'Diskutera hur målen kan uppfyllas och vilka risker som bör bevakas.',
-            sessionName: 'Optimeringsmål',
-            message: `Jag vill diskutera mina optimeringsmål (${conversationData.optimizationGoals.join(', ')}). Hur säkerställer jag att rekommendationerna stöttar dessa mål och vad bör jag följa upp på?`,
-          });
-        }
-
-        if (wantsComplementaryIdeas && complementaryIdeas.length > 0) {
-          const complementarySummary = complementaryIdeas
-            .slice(0, 3)
-            .map(idea => idea.symbol ? `${idea.name} (${idea.symbol})` : idea.name)
-            .join(', ');
-
-          suggestions.push({
-            title: 'Utvärdera kompletterande idéer',
-            description: 'Bedöm hur nya aktier passar in i portföljen innan du agerar.',
-            sessionName: 'Kompletterande investeringar',
-            message: `Jag fick även kompletterande idéer (${complementarySummary}). Kan vi diskutera hur de bör viktas och om de verkligen passar min strategi?`,
-          });
-        }
-
-        return suggestions;
-      }
-
-      if (plan.actionSummary) {
-        suggestions.push({
-          title: 'Stäm av portföljplanen',
-          description: 'Låt AI förklara varför planen passar dig och vilka risker som finns.',
-          sessionName: 'Portföljplan',
-          message: `Hej! Jag har fått en portföljplan. Sammanfattning: ${plan.actionSummary}. Kan du hjälpa mig att förstå strategin och vilka frågor jag bör ställa innan jag sätter igång?`,
-        });
-      }
-
-      if (summarizedSteps) {
-        suggestions.push({
-          title: 'Skapa en implementeringschecklista',
-          description: 'Be AI om en konkret lista att följa när du börjar investera.',
-          sessionName: 'Implementeringsplan',
-          message: `Jag behöver en detaljerad checklista för att genomföra dessa steg: ${summarizedSteps}. Hjälp mig att bryta ned dem i praktiska åtgärder med tidsordning.`,
-        });
-      }
-
-      if (assetSummary) {
-        suggestions.push({
-          title: 'Validera de föreslagna köpen',
-          description: 'Diskutera hur du kan komplettera eller justera enskilda innehav.',
-          sessionName: 'Val av investeringar',
-          message: `Planen föreslår följande nyckelinnehav: ${assetSummary}. Kan du hjälpa mig att resonera kring beloppen och om jag bör lägga till alternativa värdepapper?`,
-        });
-      }
-
-      return suggestions;
-    })();
-
     return (
       <div className="space-y-5 text-sm leading-relaxed text-foreground">
         {plan.actionSummary && (
@@ -2712,41 +2524,6 @@ const ChatPortfolioAdvisor = () => {
                 </li>
               ))}
             </ol>
-          </div>
-        )}
-
-        {aiChatSuggestions.length > 0 && (
-          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 sm:p-4">
-            <div className="flex items-start gap-2">
-              <div className="mt-0.5 rounded-md bg-primary/20 p-1 text-primary">
-                <MessageSquare className="h-4 w-4" />
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-primary">Fortsätt dialogen med AI-assistenten</h4>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Starta en fokuserad chatt för att få stöd i nästa steg eller ställa följdfrågor om rekommendationerna.
-                  </p>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {aiChatSuggestions.map((suggestion, index) => (
-                    <button
-                      key={`${suggestion.sessionName}-${index}`}
-                      type="button"
-                      onClick={() => startAiChatSession(suggestion.sessionName, suggestion.message)}
-                      className="group flex h-full flex-col items-start gap-1 rounded-lg border border-primary/30 bg-background/80 p-3 text-left transition hover:border-primary hover:bg-primary/10"
-                    >
-                      <span className="text-sm font-medium text-foreground group-hover:text-primary">
-                        {suggestion.title}
-                      </span>
-                      <span className="text-xs text-muted-foreground group-hover:text-primary/80">
-                        {suggestion.description}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
           </div>
         )}
 
@@ -3212,7 +2989,7 @@ const ChatPortfolioAdvisor = () => {
             </div>
           )}
 
-          {isComplete && pendingSystemPrompt && (
+          {isComplete && (
             <div className="flex gap-2 sm:gap-3 items-start">
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
@@ -3220,31 +2997,18 @@ const ChatPortfolioAdvisor = () => {
               <div className="flex-1 min-w-0">
                 <div className="bg-primary/5 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border border-primary/20 shadow-sm flex flex-col gap-3">
                   <div>
-                    <p className="text-sm sm:text-base font-semibold text-foreground">Redo att starta AI-chatten</p>
+                    <p className="text-sm sm:text-base font-semibold text-foreground">Redo att generera portföljen</p>
                     <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                      Spara din riskprofil baserat på dina svar för att låsa upp AI-chatten och fortsätta med din skräddarsydda portföljanalys.
+                      Baserat på dina svar genererar vi nu en portfölj och sparar din riskprofil så att du kan gå vidare.
                     </p>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                     <Button
-                      onClick={handleSaveProfileAndStartChat}
-                      disabled={isSavingRiskProfile || isGenerating || isGeneratingPortfolioDirect}
+                      onClick={handleGeneratePortfolioDirect}
+                      disabled={isImplementingStrategy || isGeneratingPortfolioDirect}
                       className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                     >
-                      {isSavingRiskProfile ? 'Sparar riskprofil...' : 'Spara riskprofil och starta chatten'}
-                    </Button>
-                    <Button
-                      onClick={handleGeneratePortfolioDirect}
-                      disabled={
-                        isSavingRiskProfile ||
-                        isGenerating ||
-                        isImplementingStrategy ||
-                        isGeneratingPortfolioDirect
-                      }
-                      variant="outline"
-                      className="border-primary text-primary hover:bg-primary/10"
-                    >
-                      {isGeneratingPortfolioDirect ? 'Genererar portfölj...' : 'Generera portfölj utan chatt'}
+                      {isGeneratingPortfolioDirect ? 'Genererar portfölj...' : 'Generera min portfölj'}
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -3255,14 +3019,14 @@ const ChatPortfolioAdvisor = () => {
             </div>
           )}
 
-          {isGenerating && (
+          {isGeneratingPortfolioDirect && (
             <div className="flex gap-2 sm:gap-3 items-start">
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
               </div>
               <div className="bg-muted/50 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border shadow-sm">
                 <div className="flex items-center gap-2 text-sm sm:text-base text-muted-foreground">
-                  <span>Öppnar AI-chatten med dina onboarding-svar...</span>
+                  <span>Genererar din portfölj baserat på onboarding-svaren...</span>
                 </div>
               </div>
             </div>
