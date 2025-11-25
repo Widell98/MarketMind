@@ -915,7 +915,7 @@ const ChatPortfolioAdvisor = () => {
     },
     {
       id: 'monthlyAmount',
-      question: 'Månadssparande (SEK)',
+      question: 'Hur mycket planerar du att månadsspara varje månad? (SEK)',
       key: 'monthlyAmount',
       hasOptions: false
     }
