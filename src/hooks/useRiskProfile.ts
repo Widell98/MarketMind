@@ -34,6 +34,7 @@ export interface RiskProfile {
   panic_selling_history: boolean | null;
   control_importance: number | null;
   market_crash_reaction: string | null;
+  sustainability_focus: string | null;
 
   // Optimerings- och rådgivningspreferenser
   portfolio_help_focus: string | null;
@@ -191,6 +192,8 @@ export const useRiskProfile = () => {
           sector_interests: jsonToStringArray(data.sector_interests),
           investment_purpose: jsonToStringArray(data.investment_purpose),
           current_holdings: jsonToArray(data.current_holdings),
+          optimization_goals: jsonToStringArray(data.optimization_goals),
+          optimization_diversification_focus: jsonToStringArray(data.optimization_diversification_focus),
           investment_horizon: data.investment_horizon as RiskProfile['investment_horizon'],
           investment_goal: data.investment_goal as RiskProfile['investment_goal'],
           risk_tolerance: data.risk_tolerance as RiskProfile['risk_tolerance'],

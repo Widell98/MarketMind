@@ -4,20 +4,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
-  User,
-  Target,
-  TrendingUp,
-  DollarSign,
-  Calendar,
-  PieChart,
   Brain,
-  BarChart3,
-  AlertCircle,
   CheckCircle,
   Settings,
   Plus,
   Activity,
-  Loader2
+  Loader2,
+  TrendingUp
 } from 'lucide-react';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolio } from '@/hooks/usePortfolio';
@@ -32,6 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
 import { Slider } from './ui/slider';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 interface UserInvestmentAnalysisProps {
   onUpdateProfile?: () => void;
 }
@@ -68,26 +62,118 @@ const UserInvestmentAnalysis = ({
     'Materials',
     'Telecommunications'
   ], []);
+  const preferredAssetOptions = useMemo(() => [
+    'Aktier',
+    'Fonder',
+    'ETFer',
+    'Investmentbolag',
+    'Råvaror',
+    'Krypto',
+    'Räntor',
+    'Alternativa tillgångar'
+  ], []);
+  const currentPortfolioStrategyOptions = useMemo(() => [
+    { value: 'passive_index', label: 'Passiv – indexfonder och bred exponering' },
+    { value: 'dividend_focus', label: 'Utdelningsfokus' },
+    { value: 'growth_focus', label: 'Tillväxt och innovation' },
+    { value: 'mixed', label: 'Blandad strategi' },
+    { value: 'unsure', label: 'Osäker / ingen tydlig strategi' }
+  ], []);
+  const optimizationGoalOptions = useMemo(() => [
+    { value: 'risk_balance', label: 'Balansera risk och avkastning' },
+    { value: 'diversify', label: 'Öka diversifieringen' },
+    { value: 'reduce_fees', label: 'Minska avgifter' },
+    { value: 'add_growth', label: 'Hitta nya tillväxtmöjligheter' },
+    { value: 'income_focus', label: 'Stärka utdelningsflödet' },
+    { value: 'sustainability', label: 'Öka hållbarhetsprofilen' },
+  ], []);
+  const optimizationDiversificationOptions = useMemo(() => [
+    { value: 'nordics', label: 'Mer mot Norden' },
+    { value: 'global', label: 'Global exponering' },
+    { value: 'sectors', label: 'Fler olika sektorer' },
+    { value: 'small_caps', label: 'Småbolag och tillväxt' },
+    { value: 'thematic', label: 'Tematiska investeringar / fonder' }
+  ], []);
+  const optimizationRiskOptions = useMemo(() => [
+    { value: 'drawdown', label: 'Stora svängningar / drawdowns' },
+    { value: 'concentration', label: 'Hög koncentration i få innehav' },
+    { value: 'market', label: 'Känslighet mot marknadsrisk' },
+    { value: 'currency', label: 'Valutarisk' },
+    { value: 'liquidity', label: 'Likviditetsrisk' }
+  ], []);
+  const marketCrashReactionOptions = useMemo(() => [
+    { value: 'sell', label: 'Jag blir orolig och vill sälja' },
+    { value: 'wait', label: 'Jag försöker avvakta' },
+    { value: 'buy_more', label: 'Jag ser det som ett köptillfälle' }
+  ], []);
+  const portfolioHelpOptions = useMemo(() => [
+    { value: 'long_term_portfolio', label: 'Bygga en långsiktig portfölj' },
+    { value: 'analyze_holdings', label: 'Ge analyser på mina aktier' },
+    { value: 'find_new_investments', label: 'Hitta nya intressanta investeringar' },
+    { value: 'learn_more', label: 'Lära mig mer om investeringar' },
+    { value: 'step_by_step', label: 'Komma igång steg-för-steg' },
+  ], []);
+  const tradingFrequencyOptions = useMemo(() => [
+    { value: 'rarely', label: 'Sällan (några gånger per år)' },
+    { value: 'monthly', label: 'Någon gång i månaden' },
+    { value: 'weekly', label: 'Varje vecka eller oftare' }
+  ], []);
+  const investmentPurposeOptions = useMemo(() => [
+    'Pension',
+    'Bostad',
+    'Barnspar',
+    'Buffert',
+    'Frihet/"FIRE"',
+    'Annat mål'
+  ], []);
   const [isSavingPreferences, setIsSavingPreferences] = useState(false);
   const [preferenceForm, setPreferenceForm] = useState({
+    age: '' as number | string,
     risk_tolerance: '',
     investment_horizon: '',
     investment_experience: '',
     monthly_investment_amount: '' as number | string,
     sector_interests: [] as string[],
-    risk_comfort_level: 3
+    investment_goal: '',
+    investment_purpose: [] as string[],
+    risk_comfort_level: 3,
+    current_portfolio_strategy: '',
+    preferred_assets: [] as string[],
+    optimization_goals: [] as string[],
+    optimization_risk_focus: '',
+    optimization_diversification_focus: [] as string[],
+    optimization_preference: '',
+    optimization_timeline: '',
+    portfolio_help_focus: '',
+    portfolio_change_frequency: '',
+    market_crash_reaction: '',
+    liquid_capital: '' as number | string
   });
 
   React.useEffect(() => {
     if (!riskProfile) return;
 
     setPreferenceForm({
+      age: riskProfile.age || '',
       risk_tolerance: riskProfile.risk_tolerance || '',
       investment_horizon: riskProfile.investment_horizon || '',
       investment_experience: riskProfile.investment_experience || '',
       monthly_investment_amount: riskProfile.monthly_investment_amount?.toString() || '',
       sector_interests: riskProfile.sector_interests || [],
-      risk_comfort_level: riskProfile.risk_comfort_level || 3
+      investment_goal: riskProfile.investment_goal || '',
+      investment_purpose: riskProfile.investment_purpose || [],
+      risk_comfort_level: riskProfile.risk_comfort_level || 3,
+      current_portfolio_strategy: riskProfile.current_portfolio_strategy || '',
+      preferred_assets: riskProfile.preferred_assets || [],
+      optimization_goals: riskProfile.optimization_goals || [],
+      optimization_risk_focus: riskProfile.optimization_risk_focus || '',
+      optimization_diversification_focus: riskProfile.optimization_diversification_focus || [],
+      optimization_preference: riskProfile.optimization_preference || '',
+      optimization_timeline: riskProfile.optimization_timeline || '',
+      portfolio_help_focus: riskProfile.portfolio_help_focus || '',
+      portfolio_change_frequency: riskProfile.portfolio_change_frequency || '',
+      market_crash_reaction: riskProfile.market_crash_reaction || '',
+      liquid_capital: riskProfile.liquid_capital?.toString() || ''
     });
   }, [riskProfile]);
 
@@ -286,6 +372,10 @@ const UserInvestmentAnalysis = ({
         return tolerance || 'Ej angiven';
     }
   };
+
+  const handleQuickOnboarding = () => {
+    navigate('/portfolio-advisor?direct=true');
+  };
   const getInvestmentHorizonLabel = (horizon: string) => {
     switch (horizon) {
       case 'short':
@@ -320,14 +410,54 @@ const UserInvestmentAnalysis = ({
     }));
   };
 
+  const handleInvestmentPurposeToggle = (purpose: string) => {
+    setPreferenceForm(prev => ({
+      ...prev,
+      investment_purpose: prev.investment_purpose.includes(purpose)
+        ? prev.investment_purpose.filter(item => item !== purpose)
+        : [...prev.investment_purpose, purpose]
+    }));
+  };
+
+  const handlePreferredAssetToggle = (asset: string) => {
+    setPreferenceForm(prev => ({
+      ...prev,
+      preferred_assets: prev.preferred_assets.includes(asset)
+        ? prev.preferred_assets.filter(item => item !== asset)
+        : [...prev.preferred_assets, asset]
+    }));
+  };
+
+  const handleOptimizationGoalToggle = (goal: string) => {
+    setPreferenceForm(prev => ({
+      ...prev,
+      optimization_goals: prev.optimization_goals.includes(goal)
+        ? prev.optimization_goals.filter(item => item !== goal)
+        : [...prev.optimization_goals, goal]
+    }));
+  };
+
+  const handleOptimizationDiversificationToggle = (focus: string) => {
+    setPreferenceForm(prev => ({
+      ...prev,
+      optimization_diversification_focus: prev.optimization_diversification_focus.includes(focus)
+        ? prev.optimization_diversification_focus.filter(item => item !== focus)
+        : [...prev.optimization_diversification_focus, focus]
+    }));
+  };
+
   const handleSavePreferences = async () => {
     if (!riskProfile) return;
 
     setIsSavingPreferences(true);
-    const { id, user_id, created_at, updated_at, ...rest } = riskProfile;
+    const { id, user_id, created_at, updated_at, sustainability_focus, ...rest } = riskProfile;
     const monthlyAmount = preferenceForm.monthly_investment_amount === ''
       ? null
       : Number(preferenceForm.monthly_investment_amount);
+    const age = preferenceForm.age === '' ? null : Number(preferenceForm.age);
+    const liquidCapital = preferenceForm.liquid_capital === ''
+      ? null
+      : Number(preferenceForm.liquid_capital);
 
     try {
       const safeRiskComfort = Math.min(5, Math.max(1, preferenceForm.risk_comfort_level || 1));
@@ -339,7 +469,21 @@ const UserInvestmentAnalysis = ({
         investment_experience: preferenceForm.investment_experience || null,
         monthly_investment_amount: Number.isNaN(monthlyAmount) ? null : monthlyAmount,
         sector_interests: preferenceForm.sector_interests,
-        risk_comfort_level: safeRiskComfort
+        investment_goal: preferenceForm.investment_goal || null,
+        investment_purpose: preferenceForm.investment_purpose,
+        risk_comfort_level: safeRiskComfort,
+        current_portfolio_strategy: preferenceForm.current_portfolio_strategy || null,
+        preferred_assets: preferenceForm.preferred_assets,
+        optimization_goals: preferenceForm.optimization_goals,
+        optimization_risk_focus: preferenceForm.optimization_risk_focus || null,
+        optimization_diversification_focus: preferenceForm.optimization_diversification_focus,
+        optimization_preference: preferenceForm.optimization_preference || null,
+        optimization_timeline: preferenceForm.optimization_timeline || null,
+        portfolio_help_focus: preferenceForm.portfolio_help_focus || null,
+        portfolio_change_frequency: preferenceForm.portfolio_change_frequency || null,
+        market_crash_reaction: preferenceForm.market_crash_reaction || null,
+        age: Number.isNaN(age) ? null : age,
+        liquid_capital: Number.isNaN(liquidCapital) ? null : liquidCapital
       });
 
       if (updatedProfile && onUpdateProfile) {
@@ -349,7 +493,8 @@ const UserInvestmentAnalysis = ({
       setIsSavingPreferences(false);
     }
   };
-  return <div className="space-y-10 animate-fade-in">
+    return (
+      <div className="space-y-10 animate-fade-in">
       <ResetProfileConfirmDialog isOpen={showResetDialog} onClose={() => setShowResetDialog(false)} onConfirm={handleResetProfile} />
 
       <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-blue-50/40 dark:from-slate-900/90 dark:to-blue-900/10 backdrop-blur-sm border border-blue-200/40 dark:border-blue-800/30">
@@ -370,108 +515,323 @@ const UserInvestmentAnalysis = ({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Risktolerans</Label>
-              <Select
-                value={preferenceForm.risk_tolerance}
-                onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, risk_tolerance: value }))}
-              >
-                <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
-                  <SelectValue placeholder="Välj risktolerans" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="conservative">Konservativ</SelectItem>
-                  <SelectItem value="moderate">Måttlig</SelectItem>
-                  <SelectItem value="aggressive">Aggressiv</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Tidshorisont</Label>
-              <Select
-                value={preferenceForm.investment_horizon}
-                onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, investment_horizon: value }))}
-              >
-                <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
-                  <SelectValue placeholder="Välj tidshorisont" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="short">Kort (0–2 år)</SelectItem>
-                  <SelectItem value="medium">Medel (3–5 år)</SelectItem>
-                  <SelectItem value="long">Lång (5+ år)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Erfarenhetsnivå</Label>
-              <Select
-                value={preferenceForm.investment_experience}
-                onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, investment_experience: value }))}
-              >
-                <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
-                  <SelectValue placeholder="Välj erfarenhet" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="beginner">Nybörjare</SelectItem>
-                  <SelectItem value="intermediate">Mellannivå</SelectItem>
-                  <SelectItem value="advanced">Avancerad</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="flex items-start gap-3 p-4 rounded-2xl bg-gradient-to-r from-blue-50/80 to-purple-50/60 dark:from-blue-950/30 dark:to-purple-900/20 border border-blue-200/50 dark:border-blue-800/40">
+            <CheckCircle className="w-5 h-5 text-primary mt-1" />
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Klart med snabb onboarding</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">Komplettera dina preferenser här under "Riskprofil" för en fullständig AI-plan och justera allt i din egen takt.</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Riskkomfort</Label>
-                <span className="text-sm text-slate-500 dark:text-slate-400">{preferenceForm.risk_comfort_level}/5</span>
-              </div>
-              <Slider
-                value={[preferenceForm.risk_comfort_level]}
-                onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, risk_comfort_level: value[0] }))}
-                min={1}
-                max={5}
-                step={1}
-                className="py-3"
-              />
-              <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
-                <span>Låg risk</span>
-                <span>Hög risk</span>
-              </div>
-            </div>
+          <Tabs defaultValue="profile" className="w-full">
+            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 bg-slate-100/70 dark:bg-slate-900/60 rounded-2xl p-1">
+              <TabsTrigger value="profile" className="rounded-xl text-sm font-semibold">Profil & kapital</TabsTrigger>
+              <TabsTrigger value="behavior" className="rounded-xl text-sm font-semibold">Beteende & preferenser</TabsTrigger>
+              <TabsTrigger value="goals" className="rounded-xl text-sm font-semibold">Mål & optimering</TabsTrigger>
+            </TabsList>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Månadssparande (SEK)</Label>
-              <Input
-                type="number"
-                value={preferenceForm.monthly_investment_amount}
-                onChange={(e) => setPreferenceForm(prev => ({ ...prev, monthly_investment_amount: e.target.value }))}
-                placeholder="Exempelvis 3000"
-                className="rounded-xl bg-white/70 dark:bg-slate-900/60"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Sektorintressen</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {sectorOptions.map((sector) => (
-                <label
-                  key={sector}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
-                >
-                  <Checkbox
-                    checked={preferenceForm.sector_interests.includes(sector)}
-                    onCheckedChange={() => handleSectorToggle(sector)}
+            <TabsContent value="profile" className="space-y-6 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Ålder</Label>
+                  <Input
+                    type="number"
+                    value={preferenceForm.age}
+                    onChange={(e) => setPreferenceForm(prev => ({ ...prev, age: e.target.value }))}
+                    placeholder="Exempelvis 32"
+                    className="rounded-xl bg-white/70 dark:bg-slate-900/60"
+                    min={18}
+                    max={100}
                   />
-                  <span className="text-sm text-slate-700 dark:text-slate-200">{sector}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Tillgängligt kapital</Label>
+                  <Input
+                    type="number"
+                    value={preferenceForm.liquid_capital}
+                    onChange={(e) => setPreferenceForm(prev => ({ ...prev, liquid_capital: e.target.value }))}
+                    placeholder="T.ex. 50 000"
+                    className="rounded-xl bg-white/70 dark:bg-slate-900/60"
+                  />
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Hur mycket kan du investera på kort sikt?</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Nuvarande strategi</Label>
+                  <Select
+                    value={preferenceForm.current_portfolio_strategy}
+                    onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, current_portfolio_strategy: value }))}
+                  >
+                    <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                      <SelectValue placeholder="Hur investerar du idag?" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currentPortfolioStrategyOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Risktolerans</Label>
+                  <Select
+                    value={preferenceForm.risk_tolerance}
+                    onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, risk_tolerance: value }))}
+                  >
+                    <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                      <SelectValue placeholder="Välj risktolerans" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="conservative">Konservativ</SelectItem>
+                      <SelectItem value="moderate">Måttlig</SelectItem>
+                      <SelectItem value="aggressive">Aggressiv</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Tidshorisont</Label>
+                  <Select
+                    value={preferenceForm.investment_horizon}
+                    onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, investment_horizon: value }))}
+                  >
+                    <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                      <SelectValue placeholder="Välj tidshorisont" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="short">Kort (0–2 år)</SelectItem>
+                      <SelectItem value="medium">Medel (3–5 år)</SelectItem>
+                      <SelectItem value="long">Lång (5+ år)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Erfarenhetsnivå</Label>
+                  <Select
+                    value={preferenceForm.investment_experience}
+                    onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, investment_experience: value }))}
+                  >
+                    <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                      <SelectValue placeholder="Välj erfarenhet" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="beginner">Nybörjare</SelectItem>
+                      <SelectItem value="intermediate">Mellannivå</SelectItem>
+                      <SelectItem value="advanced">Avancerad</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Riskkomfort</Label>
+                    <span className="text-sm text-slate-500 dark:text-slate-400">{preferenceForm.risk_comfort_level}/5</span>
+                  </div>
+                  <Slider
+                    value={[preferenceForm.risk_comfort_level]}
+                    onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, risk_comfort_level: value[0] }))}
+                    min={1}
+                    max={5}
+                    step={1}
+                    className="py-3"
+                  />
+                  <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                    <span>Låg risk</span>
+                    <span>Hög risk</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Månadssparande (SEK)</Label>
+                  <Input
+                    type="number"
+                    value={preferenceForm.monthly_investment_amount}
+                    onChange={(e) => setPreferenceForm(prev => ({ ...prev, monthly_investment_amount: e.target.value }))}
+                    placeholder="Exempelvis 3000"
+                    className="rounded-xl bg-white/70 dark:bg-slate-900/60"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="behavior" className="space-y-6 pt-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Handelsfrekvens</Label>
+                  <Select
+                    value={preferenceForm.portfolio_change_frequency}
+                    onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, portfolio_change_frequency: value }))}
+                  >
+                    <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                      <SelectValue placeholder="Hur ofta gör du ändringar?" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tradingFrequencyOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Hur reagerar du vid nedgångar?</Label>
+                  <Select
+                    value={preferenceForm.market_crash_reaction}
+                    onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, market_crash_reaction: value }))}
+                  >
+                    <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                      <SelectValue placeholder="Välj reaktion" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {marketCrashReactionOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Vad vill du att AI:n fokuserar på?</Label>
+                  <Select
+                    value={preferenceForm.portfolio_help_focus}
+                    onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, portfolio_help_focus: value }))}
+                  >
+                    <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                      <SelectValue placeholder="Välj fokus" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {portfolioHelpOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Sektorintressen</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {sectorOptions.map((sector) => (
+                    <label
+                      key={sector}
+                      className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
+                    >
+                      <Checkbox
+                        checked={preferenceForm.sector_interests.includes(sector)}
+                        onCheckedChange={() => handleSectorToggle(sector)}
+                      />
+                      <span className="text-sm text-slate-700 dark:text-slate-200">{sector}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Tillgångar du vill använda</Label>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Markera de tillgångstyper du föredrar så anpassas förslagen.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {preferredAssetOptions.map((asset) => (
+                    <label
+                      key={asset}
+                      className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
+                    >
+                      <Checkbox
+                        checked={preferenceForm.preferred_assets.includes(asset)}
+                        onCheckedChange={() => handlePreferredAssetToggle(asset)}
+                      />
+                      <span className="text-sm text-slate-700 dark:text-slate-200">{asset}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="goals" className="space-y-6 pt-4">
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Förbättringsmål</Label>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Berätta hur du vill att portföljen ska vässas så AI:n prioriterar rätt.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {optimizationGoalOptions.map((goal) => (
+                    <label
+                      key={goal.value}
+                      className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
+                    >
+                      <Checkbox
+                        checked={preferenceForm.optimization_goals.includes(goal.value)}
+                        onCheckedChange={() => handleOptimizationGoalToggle(goal.value)}
+                      />
+                      <span className="text-sm text-slate-700 dark:text-slate-200">{goal.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {preferenceForm.optimization_goals.includes('risk_balance') && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Vilken risk oroar dig mest?</Label>
+                  <Select
+                    value={preferenceForm.optimization_risk_focus}
+                    onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, optimization_risk_focus: value }))}
+                  >
+                    <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                      <SelectValue placeholder="Välj risk" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {optimizationRiskOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {preferenceForm.optimization_goals.includes('diversify') && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Var vill du sprida risken?</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {optimizationDiversificationOptions.map(option => (
+                      <label
+                        key={option.value}
+                        className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
+                      >
+                        <Checkbox
+                          checked={preferenceForm.optimization_diversification_focus.includes(option.value)}
+                          onCheckedChange={() => handleOptimizationDiversificationToggle(option.value)}
+                        />
+                        <span className="text-sm text-slate-700 dark:text-slate-200">{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Sparmål</Label>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Markera vad du sparar till för att finjustera planen.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {investmentPurposeOptions.map((purpose) => (
+                    <label
+                      key={purpose}
+                      className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
+                    >
+                      <Checkbox
+                        checked={preferenceForm.investment_purpose.includes(purpose)}
+                        onCheckedChange={() => handleInvestmentPurposeToggle(purpose)}
+                      />
+                      <span className="text-sm text-slate-700 dark:text-slate-200">{purpose}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
 
           <div className="flex justify-end">
             <Button
@@ -489,212 +849,8 @@ const UserInvestmentAnalysis = ({
               )}
             </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Profile Summary - Apple-inspired design */}
-      <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-slate-50/50 dark:from-slate-900/90 dark:to-slate-800/50 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
-        <CardHeader className="pb-8 pt-8">
-          <CardTitle className="flex items-center gap-4 text-2xl font-bold">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center shadow-inner border border-blue-200/30 dark:border-blue-700/30">
-              <User className="w-7 h-7 text-transparent bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text" />
-            </div>
-            <span className="text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text">
-              Din Investeringsprofil
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-8 pb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="group p-6 bg-gradient-to-br from-white/60 to-slate-50/30 dark:from-slate-800/60 dark:to-slate-700/30 rounded-2xl border border-slate-200/40 dark:border-slate-700/40 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 backdrop-blur-sm">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500/10 to-red-500/10 flex items-center justify-center shadow-inner border border-orange-200/30 dark:border-orange-700/30 group-hover:scale-110 transition-transform duration-300">
-                  <Calendar className="w-7 h-7 text-transparent bg-gradient-to-br from-orange-600 to-red-600 bg-clip-text" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Ålder</p>
-                  <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{riskProfile.age || 'Ej angiven'} år</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="group p-6 bg-gradient-to-br from-white/60 to-slate-50/30 dark:from-slate-800/60 dark:to-slate-700/30 rounded-2xl border border-slate-200/40 dark:border-slate-700/40 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 backdrop-blur-sm">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 flex items-center justify-center shadow-inner border border-green-200/30 dark:border-green-700/30 group-hover:scale-110 transition-transform duration-300">
-                  <TrendingUp className="w-7 h-7 text-transparent bg-gradient-to-br from-green-600 to-emerald-600 bg-clip-text" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Erfarenhetsnivå</p>
-                  <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{getExperienceLabel(riskProfile.investment_experience || '')}</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="group p-6 bg-gradient-to-br from-white/60 to-slate-50/30 dark:from-slate-800/60 dark:to-slate-700/30 rounded-2xl border border-slate-200/40 dark:border-slate-700/40 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 backdrop-blur-sm">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 flex items-center justify-center shadow-inner border border-purple-200/30 dark:border-purple-700/30 group-hover:scale-110 transition-transform duration-300">
-                  <BarChart3 className="w-7 h-7 text-transparent bg-gradient-to-br from-purple-600 to-pink-600 bg-clip-text" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Risktolerans</p>
-                  <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{getRiskToleranceLabel(riskProfile.risk_tolerance || '')}</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="group p-6 bg-gradient-to-br from-white/60 to-slate-50/30 dark:from-slate-800/60 dark:to-slate-700/30 rounded-2xl border border-slate-200/40 dark:border-slate-700/40 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 backdrop-blur-sm">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 flex items-center justify-center shadow-inner border border-blue-200/30 dark:border-blue-700/30 group-hover:scale-110 transition-transform duration-300">
-                  <Target className="w-7 h-7 text-transparent bg-gradient-to-br from-blue-600 to-cyan-600 bg-clip-text" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Tidshorisont</p>
-                  <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{getInvestmentHorizonLabel(riskProfile.investment_horizon || '')}</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="group p-6 bg-gradient-to-br from-white/60 to-slate-50/30 dark:from-slate-800/60 dark:to-slate-700/30 rounded-2xl border border-slate-200/40 dark:border-slate-700/40 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 backdrop-blur-sm">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-yellow-500/10 to-orange-500/10 flex items-center justify-center shadow-inner border border-yellow-200/30 dark:border-yellow-700/30 group-hover:scale-110 transition-transform duration-300">
-                  <DollarSign className="w-7 h-7 text-transparent bg-gradient-to-br from-yellow-600 to-orange-600 bg-clip-text" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Månadssparande</p>
-                  <p className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                    {riskProfile.monthly_investment_amount ? `${riskProfile.monthly_investment_amount.toLocaleString()} SEK` : 'Ej angiven'}
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="group p-6 bg-gradient-to-br from-white/60 to-slate-50/30 dark:from-slate-800/60 dark:to-slate-700/30 rounded-2xl border border-slate-200/40 dark:border-slate-700/40 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 backdrop-blur-sm">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 flex items-center justify-center shadow-inner border border-indigo-200/30 dark:border-indigo-700/30 group-hover:scale-110 transition-transform duration-300">
-                  <PieChart className="w-7 h-7 text-transparent bg-gradient-to-br from-indigo-600 to-purple-600 bg-clip-text" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Riskkomfort</p>
-                  <div className="flex items-center gap-3">
-                    <Progress
-                      value={(riskProfile.risk_comfort_level || 0) * 20}
-                      className="h-3 w-24 bg-slate-200 dark:bg-slate-700"
-                    />
-                    <span className="text-xl font-bold text-slate-900 dark:text-slate-100">{riskProfile.risk_comfort_level || 0}/5</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Action Buttons */}
-          <div className="flex justify-center pt-4">
-            <Button 
-              onClick={() => setShowResetDialog(true)}
-              variant="outline"
-              className="flex items-center gap-2 bg-white/60 dark:bg-slate-800/60 border-slate-300/50 dark:border-slate-600/50 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300 dark:hover:border-red-700 text-slate-700 dark:text-slate-300 hover:text-red-700 dark:hover:text-red-300 rounded-2xl px-6 py-2 transition-all duration-300"
-            >
-              <Settings className="w-4 h-4" />
-              Återställ profil
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* AI-Generated Strategy - Structured plan presentation */}
-      {advisorPlan && (
-        <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-blue-50/30 dark:from-slate-900/90 dark:to-blue-900/10 backdrop-blur-sm border border-blue-200/30 dark:border-blue-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
-          <CardHeader className="pb-8 pt-8">
-            <CardTitle className="flex items-center gap-4 text-2xl font-bold">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center shadow-inner border border-blue-200/30 dark:border-blue-700/30">
-                <Brain className="w-7 h-7 text-transparent bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text" />
-              </div>
-              <span className="text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text">
-                Din AI-plan för nästa steg
-              </span>
-              <Badge className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-transparent bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text border-blue-300/30 dark:border-blue-700/30 rounded-2xl font-semibold px-4 py-2 shadow-sm">
-                Personlig Analys
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-10">
-            <div className="space-y-8">
-              {(advisorPlan.action_summary || advisorPlan.risk_alignment) && (
-                <div className="p-8 rounded-3xl bg-gradient-to-br from-white/70 to-blue-100/20 dark:from-slate-800/70 dark:to-blue-900/20 border border-blue-200/30 dark:border-blue-800/40 shadow-inner backdrop-blur-sm">
-                  {advisorPlan.action_summary && (
-                    <p className="text-lg leading-relaxed text-slate-800 dark:text-slate-200 mb-4">
-                      {advisorPlan.action_summary}
-                    </p>
-                  )}
-                  {advisorPlan.risk_alignment && (
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
-                      {advisorPlan.risk_alignment}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {advisorPlan.next_steps.length > 0 && (
-                <div className="p-8 rounded-3xl bg-gradient-to-br from-white/70 to-slate-100/20 dark:from-slate-800/70 dark:to-slate-900/20 border border-slate-200/30 dark:border-slate-700/40 shadow-inner backdrop-blur-sm">
-                  <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">Handlingsplan</h3>
-                  <ol className="list-decimal pl-6 space-y-3 text-base text-slate-700 dark:text-slate-300">
-                    {advisorPlan.next_steps.map((step, index) => (
-                      <li key={`${step}-${index}`} className="leading-relaxed">
-                        {step}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-
-              {advisorPlan.recommended_assets.length > 0 && (
-                <div className="space-y-5">
-                  <div className="flex items-center justify-between gap-4">
-                    <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Inköpslista &amp; allokering</h3>
-                    <span className="text-sm text-slate-500 dark:text-slate-400">Summera till 100%</span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {advisorPlan.recommended_assets.map((asset, index) => (
-                      <div
-                        key={`${asset.name}-${asset.ticker || index}`}
-                        className="h-full p-6 rounded-3xl border border-blue-200/30 dark:border-blue-800/30 bg-gradient-to-br from-white/60 to-blue-50/10 dark:from-slate-800/60 dark:to-blue-900/10 shadow-sm backdrop-blur-sm hover:shadow-lg transition-all duration-300"
-                      >
-                        <div className="flex items-start justify-between gap-4 mb-4">
-                          <div>
-                            <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">{asset.name}</p>
-                            {asset.ticker && (
-                              <p className="text-sm uppercase tracking-wide text-blue-600 dark:text-blue-300 mt-1">{asset.ticker}</p>
-                            )}
-                          </div>
-                          <Badge className="rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1 text-sm font-semibold">
-                            {asset.allocation_percent}%
-                          </Badge>
-                        </div>
-                        {asset.rationale && (
-                          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
-                            {asset.rationale}
-                          </p>
-                        )}
-                        {asset.risk_role && (
-                          <span className="inline-flex items-center text-xs font-medium uppercase tracking-wide text-blue-700 dark:text-blue-300 bg-blue-500/10 dark:bg-blue-500/20 px-3 py-1 rounded-full">
-                            {asset.risk_role}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {advisorPlan.disclaimer && (
-                <p className="text-xs text-muted-foreground text-center leading-relaxed">
-                  {advisorPlan.disclaimer}
-                </p>
-              )}
-            </div>
           </CardContent>
         </Card>
-      )}
 
       {!advisorPlan && aiStrategyText && (
         <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-blue-50/30 dark:from-slate-900/90 dark:to-blue-900/10 backdrop-blur-sm border border-blue-200/30 dark:border-blue-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
@@ -787,7 +943,8 @@ const UserInvestmentAnalysis = ({
         </Card>} */}
 
       {/* Risk Profile Summary - Apple-inspired */}
-      {riskProfile.sector_interests && riskProfile.sector_interests.length > 0 && <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-purple-50/30 dark:from-slate-900/90 dark:to-purple-900/10 backdrop-blur-sm border border-purple-200/30 dark:border-purple-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
+      {riskProfile.sector_interests && riskProfile.sector_interests.length > 0 && (
+        <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-purple-50/30 dark:from-slate-900/90 dark:to-purple-900/10 backdrop-blur-sm border border-purple-200/30 dark:border-purple-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
           <CardHeader className="pb-8 pt-8">
             <CardTitle className="flex items-center gap-4 text-2xl font-bold">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 flex items-center justify-center shadow-inner border border-purple-200/30 dark:border-purple-700/30">
@@ -800,18 +957,21 @@ const UserInvestmentAnalysis = ({
           </CardHeader>
           <CardContent className="pb-8">
             <div className="flex flex-wrap gap-4">
-              {riskProfile.sector_interests.map((sector, index) => 
-                <Badge 
-                  key={index} 
-                  variant="outline" 
+              {riskProfile.sector_interests.map((sector, index) => (
+                <Badge
+                  key={index}
+                  variant="outline"
                   className="capitalize px-6 py-3 rounded-2xl font-semibold text-base border-purple-300/30 dark:border-purple-700/30 text-purple-700 dark:text-purple-300 bg-gradient-to-r from-purple-50/50 to-pink-50/30 dark:from-purple-900/20 dark:to-pink-900/10 hover:bg-gradient-to-r hover:from-purple-100/60 hover:to-pink-100/40 dark:hover:from-purple-800/30 dark:hover:to-pink-800/20 hover:scale-105 transition-all duration-300 shadow-sm hover:shadow-md backdrop-blur-sm"
                 >
                   {sector}
                 </Badge>
-              )}
+              ))}
             </div>
           </CardContent>
-        </Card>}
-    </div>;
-};
+        </Card>
+      )}
+    </div>
+    );
+  };
+
 export default UserInvestmentAnalysis;
