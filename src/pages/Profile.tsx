@@ -26,6 +26,8 @@ import { supabase } from '@/integrations/supabase/client';
 import UserInvestmentAnalysis from '@/components/UserInvestmentAnalysis';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useToast } from '@/hooks/use-toast';
+import InvestmentProfileSummary from '@/components/InvestmentProfileSummary';
+import { useRiskProfile } from '@/hooks/useRiskProfile';
 
 const Profile = () => {
   const { user, loading, signOut } = useAuth();
@@ -46,6 +48,7 @@ const Profile = () => {
   const { stockCases, loading: stockCasesLoading, refetch } = useStockCases();
   const { deleteStockCase } = useStockCaseOperations();
   const { toast } = useToast();
+  const { riskProfile, loading: riskProfileLoading } = useRiskProfile();
 
   // Fetch profile data
   React.useEffect(() => {
@@ -189,7 +192,9 @@ const Profile = () => {
 
         {/* Main Content */}
         <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6 lg:py-8">
-          <Tabs defaultValue={isAdmin ? "content" : "riskprofile"} className="w-full">
+          <div className="space-y-6">
+            <InvestmentProfileSummary riskProfile={riskProfile} loading={riskProfileLoading} />
+            <Tabs defaultValue={isAdmin ? "content" : "riskprofile"} className="w-full">
             <TabsList
               className={`grid w-full ${
                 isAdmin ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'
@@ -327,6 +332,7 @@ const Profile = () => {
               </Card>
             </TabsContent>
           </Tabs>
+          </div>
         </div>
       </div>
       
