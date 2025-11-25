@@ -461,11 +461,12 @@ const ChatPortfolioAdvisor = () => {
   const [pendingQuestionId, setPendingQuestionId] = useState<string | null>(null);
   const [isImplementingStrategy, setIsImplementingStrategy] = useState(false);
   const [isGeneratingPortfolioDirect, setIsGeneratingPortfolioDirect] = useState(false);
+  const [hasGeneratedPortfolio, setHasGeneratedPortfolio] = useState(false);
   const isInitialized = useRef(false);
   const hasInitializedRecommendations = useRef(false);
 
   const { loading } = useConversationalPortfolio();
-  const { refetch, generatePortfolio } = usePortfolio();
+  const { activePortfolio, refetch, generatePortfolio } = usePortfolio();
   const { refetch: refetchHoldings } = useUserHoldings();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -940,6 +941,12 @@ const ChatPortfolioAdvisor = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (activePortfolio) {
+      setHasGeneratedPortfolio(true);
+    }
+  }, [activePortfolio]);
 
   useEffect(() => {
     // Start conversation only once
@@ -2165,7 +2172,7 @@ const ChatPortfolioAdvisor = () => {
 
       await Promise.all([refetch(), refetchHoldings()]);
 
-      navigate('/portfolio-implementation');
+      setHasGeneratedPortfolio(true);
     } catch (error) {
       console.error('Error generating portfolio directly:', error);
       toast({
@@ -3019,16 +3026,85 @@ const ChatPortfolioAdvisor = () => {
             </div>
           )}
 
-          {isGeneratingPortfolioDirect && (
-            <div className="flex gap-2 sm:gap-3 items-start">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+        {isGeneratingPortfolioDirect && (
+          <div className="flex gap-2 sm:gap-3 items-start">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <div className="bg-muted/50 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border shadow-sm">
+              <div className="flex items-center gap-2 text-sm sm:text-base text-muted-foreground">
+                <span>Genererar din portfölj baserat på onboarding-svaren...</span>
               </div>
-              <div className="bg-muted/50 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border shadow-sm">
-                <div className="flex items-center gap-2 text-sm sm:text-base text-muted-foreground">
-                  <span>Genererar din portfölj baserat på onboarding-svaren...</span>
-                </div>
-              </div>
+            </div>
+          </div>
+        )}
+
+          {hasGeneratedPortfolio && activePortfolio && (
+            <div className="mt-6">
+              <Card className="border border-primary/20 shadow-sm bg-card/60 backdrop-blur">
+                <CardHeader>
+                  <CardTitle>Din genererade portfölj</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Portföljen har skapats utifrån dina svar. Du kan granska rekommendationerna nedan direkt här i rådgivaren.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                    {typeof activePortfolio.expected_return === 'number' && (
+                      <div className="rounded-lg border border-border/60 bg-background/70 p-3">
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Förväntad avkastning</p>
+                        <p className="text-lg font-semibold text-foreground">
+                          {formatPercentValue(activePortfolio.expected_return)}
+                        </p>
+                      </div>
+                    )}
+                    {typeof activePortfolio.risk_score === 'number' && (
+                      <div className="rounded-lg border border-border/60 bg-background/70 p-3">
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Riskscore</p>
+                        <p className="text-lg font-semibold text-foreground">{activePortfolio.risk_score}</p>
+                      </div>
+                    )}
+                    {typeof activePortfolio.total_value === 'number' && (
+                      <div className="rounded-lg border border-border/60 bg-background/70 p-3">
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Total portföljstorlek</p>
+                        <p className="text-lg font-semibold text-foreground">{priceFormatter.format(activePortfolio.total_value)} kr</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {Array.isArray(activePortfolio.recommended_stocks) && activePortfolio.recommended_stocks.length > 0 ? (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-semibold text-foreground">Rekommenderade innehav</h4>
+                      <div className="space-y-2">
+                        {activePortfolio.recommended_stocks.map((stock: any, index: number) => (
+                          <div
+                            key={`${stock.symbol ?? stock.name ?? index}-${index}`}
+                            className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/70 p-3"
+                          >
+                            <div className="min-w-0">
+                              <p className="font-medium text-foreground truncate">
+                                {stock.name || 'Okänt bolag'} {stock.symbol ? `(${stock.symbol})` : ''}
+                              </p>
+                              {stock.sector && (
+                                <p className="text-xs text-muted-foreground">{stock.sector}</p>
+                              )}
+                            </div>
+                            <div className="text-right text-sm text-muted-foreground">
+                              {formatPercentValue(stock.allocation ?? stock.allocation_percent) && (
+                                <p className="font-semibold text-primary">
+                                  {formatPercentValue(stock.allocation ?? stock.allocation_percent)}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Inga detaljerade innehav mottogs, men din portfölj har sparats.</p>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           )}
 
