@@ -68,11 +68,78 @@ const UserInvestmentAnalysis = ({
     'Materials',
     'Telecommunications'
   ], []);
+  const preferredAssetOptions = useMemo(() => [
+    'Aktier',
+    'Fonder',
+    'ETFer',
+    'Investmentbolag',
+    'Råvaror',
+    'Krypto',
+    'Räntor',
+    'Alternativa tillgångar'
+  ], []);
+  const currentPortfolioStrategyOptions = useMemo(() => [
+    { value: 'passive_index', label: 'Passiv – indexfonder och bred exponering' },
+    { value: 'dividend_focus', label: 'Utdelningsfokus' },
+    { value: 'growth_focus', label: 'Tillväxt och innovation' },
+    { value: 'mixed', label: 'Blandad strategi' },
+    { value: 'unsure', label: 'Osäker / ingen tydlig strategi' }
+  ], []);
   const investmentGoalOptions = useMemo(() => [
     { value: 'growth', label: 'Långsiktig tillväxt' },
     { value: 'income', label: 'Löpande utdelningar' },
     { value: 'preservation', label: 'Kapitalbevarande' },
     { value: 'balanced', label: 'Balanserad avkastning' }
+  ], []);
+  const optimizationGoalOptions = useMemo(() => [
+    { value: 'risk_balance', label: 'Balansera risk och avkastning' },
+    { value: 'diversify', label: 'Öka diversifieringen' },
+    { value: 'reduce_fees', label: 'Minska avgifter' },
+    { value: 'add_growth', label: 'Hitta nya tillväxtmöjligheter' },
+    { value: 'income_focus', label: 'Stärka utdelningsflödet' },
+    { value: 'sustainability', label: 'Öka hållbarhetsprofilen' },
+  ], []);
+  const optimizationDiversificationOptions = useMemo(() => [
+    { value: 'nordics', label: 'Mer mot Norden' },
+    { value: 'global', label: 'Global exponering' },
+    { value: 'sectors', label: 'Fler olika sektorer' },
+    { value: 'small_caps', label: 'Småbolag och tillväxt' },
+    { value: 'thematic', label: 'Tematiska investeringar / fonder' }
+  ], []);
+  const optimizationRiskOptions = useMemo(() => [
+    { value: 'drawdown', label: 'Stora svängningar / drawdowns' },
+    { value: 'concentration', label: 'Hög koncentration i få innehav' },
+    { value: 'market', label: 'Känslighet mot marknadsrisk' },
+    { value: 'currency', label: 'Valutarisk' },
+    { value: 'liquidity', label: 'Likviditetsrisk' }
+  ], []);
+  const optimizationPreferenceOptions = useMemo(() => [
+    { value: 'analyze_only', label: 'Analysera och förbättra utan nya köp' },
+    { value: 'improve_with_new_ideas', label: 'Behåll kärnan men komplettera med nya idéer' },
+    { value: 'rebalance', label: 'Ge konkreta rebalanseringsförslag inklusive köp/sälj' }
+  ], []);
+  const optimizationTimelineOptions = useMemo(() => [
+    { value: 'immediate', label: 'Snarast möjligt' },
+    { value: 'short_term', label: 'Inom de kommande 3 månaderna' },
+    { value: 'medium_term', label: 'Under det kommande året' },
+    { value: 'long_term', label: 'Löpande över flera år' }
+  ], []);
+  const marketCrashReactionOptions = useMemo(() => [
+    { value: 'sell', label: 'Jag blir orolig och vill sälja' },
+    { value: 'wait', label: 'Jag försöker avvakta' },
+    { value: 'buy_more', label: 'Jag ser det som ett köptillfälle' }
+  ], []);
+  const portfolioHelpOptions = useMemo(() => [
+    { value: 'long_term_portfolio', label: 'Bygga en långsiktig portfölj' },
+    { value: 'analyze_holdings', label: 'Ge analyser på mina aktier' },
+    { value: 'find_new_investments', label: 'Hitta nya intressanta investeringar' },
+    { value: 'learn_more', label: 'Lära mig mer om investeringar' },
+    { value: 'step_by_step', label: 'Komma igång steg-för-steg' },
+  ], []);
+  const tradingFrequencyOptions = useMemo(() => [
+    { value: 'rarely', label: 'Sällan (några gånger per år)' },
+    { value: 'monthly', label: 'Någon gång i månaden' },
+    { value: 'weekly', label: 'Varje vecka eller oftare' }
   ], []);
   const investmentPurposeOptions = useMemo(() => [
     'Pension',
@@ -84,6 +151,7 @@ const UserInvestmentAnalysis = ({
   ], []);
   const [isSavingPreferences, setIsSavingPreferences] = useState(false);
   const [preferenceForm, setPreferenceForm] = useState({
+    age: '' as number | string,
     risk_tolerance: '',
     investment_horizon: '',
     investment_experience: '',
@@ -91,13 +159,25 @@ const UserInvestmentAnalysis = ({
     sector_interests: [] as string[],
     investment_goal: '',
     investment_purpose: [] as string[],
-    risk_comfort_level: 3
+    risk_comfort_level: 3,
+    current_portfolio_strategy: '',
+    preferred_assets: [] as string[],
+    optimization_goals: [] as string[],
+    optimization_risk_focus: '',
+    optimization_diversification_focus: [] as string[],
+    optimization_preference: '',
+    optimization_timeline: '',
+    portfolio_help_focus: '',
+    portfolio_change_frequency: '',
+    market_crash_reaction: '',
+    liquid_capital: '' as number | string
   });
 
   React.useEffect(() => {
     if (!riskProfile) return;
 
     setPreferenceForm({
+      age: riskProfile.age || '',
       risk_tolerance: riskProfile.risk_tolerance || '',
       investment_horizon: riskProfile.investment_horizon || '',
       investment_experience: riskProfile.investment_experience || '',
@@ -105,7 +185,18 @@ const UserInvestmentAnalysis = ({
       sector_interests: riskProfile.sector_interests || [],
       investment_goal: riskProfile.investment_goal || '',
       investment_purpose: riskProfile.investment_purpose || [],
-      risk_comfort_level: riskProfile.risk_comfort_level || 3
+      risk_comfort_level: riskProfile.risk_comfort_level || 3,
+      current_portfolio_strategy: riskProfile.current_portfolio_strategy || '',
+      preferred_assets: riskProfile.preferred_assets || [],
+      optimization_goals: riskProfile.optimization_goals || [],
+      optimization_risk_focus: riskProfile.optimization_risk_focus || '',
+      optimization_diversification_focus: riskProfile.optimization_diversification_focus || [],
+      optimization_preference: riskProfile.optimization_preference || '',
+      optimization_timeline: riskProfile.optimization_timeline || '',
+      portfolio_help_focus: riskProfile.portfolio_help_focus || '',
+      portfolio_change_frequency: riskProfile.portfolio_change_frequency || '',
+      market_crash_reaction: riskProfile.market_crash_reaction || '',
+      liquid_capital: riskProfile.liquid_capital?.toString() || ''
     });
   }, [riskProfile]);
 
@@ -351,6 +442,33 @@ const UserInvestmentAnalysis = ({
     }));
   };
 
+  const handlePreferredAssetToggle = (asset: string) => {
+    setPreferenceForm(prev => ({
+      ...prev,
+      preferred_assets: prev.preferred_assets.includes(asset)
+        ? prev.preferred_assets.filter(item => item !== asset)
+        : [...prev.preferred_assets, asset]
+    }));
+  };
+
+  const handleOptimizationGoalToggle = (goal: string) => {
+    setPreferenceForm(prev => ({
+      ...prev,
+      optimization_goals: prev.optimization_goals.includes(goal)
+        ? prev.optimization_goals.filter(item => item !== goal)
+        : [...prev.optimization_goals, goal]
+    }));
+  };
+
+  const handleOptimizationDiversificationToggle = (focus: string) => {
+    setPreferenceForm(prev => ({
+      ...prev,
+      optimization_diversification_focus: prev.optimization_diversification_focus.includes(focus)
+        ? prev.optimization_diversification_focus.filter(item => item !== focus)
+        : [...prev.optimization_diversification_focus, focus]
+    }));
+  };
+
   const handleSavePreferences = async () => {
     if (!riskProfile) return;
 
@@ -359,6 +477,10 @@ const UserInvestmentAnalysis = ({
     const monthlyAmount = preferenceForm.monthly_investment_amount === ''
       ? null
       : Number(preferenceForm.monthly_investment_amount);
+    const age = preferenceForm.age === '' ? null : Number(preferenceForm.age);
+    const liquidCapital = preferenceForm.liquid_capital === ''
+      ? null
+      : Number(preferenceForm.liquid_capital);
 
     try {
       const safeRiskComfort = Math.min(5, Math.max(1, preferenceForm.risk_comfort_level || 1));
@@ -372,7 +494,19 @@ const UserInvestmentAnalysis = ({
         sector_interests: preferenceForm.sector_interests,
         investment_goal: preferenceForm.investment_goal || null,
         investment_purpose: preferenceForm.investment_purpose,
-        risk_comfort_level: safeRiskComfort
+        risk_comfort_level: safeRiskComfort,
+        current_portfolio_strategy: preferenceForm.current_portfolio_strategy || null,
+        preferred_assets: preferenceForm.preferred_assets,
+        optimization_goals: preferenceForm.optimization_goals,
+        optimization_risk_focus: preferenceForm.optimization_risk_focus || null,
+        optimization_diversification_focus: preferenceForm.optimization_diversification_focus,
+        optimization_preference: preferenceForm.optimization_preference || null,
+        optimization_timeline: preferenceForm.optimization_timeline || null,
+        portfolio_help_focus: preferenceForm.portfolio_help_focus || null,
+        portfolio_change_frequency: preferenceForm.portfolio_change_frequency || null,
+        market_crash_reaction: preferenceForm.market_crash_reaction || null,
+        age: Number.isNaN(age) ? null : age,
+        liquid_capital: Number.isNaN(liquidCapital) ? null : liquidCapital
       });
 
       if (updatedProfile && onUpdateProfile) {
@@ -420,6 +554,50 @@ const UserInvestmentAnalysis = ({
               Starta snabb onboarding igen
             </Button>
             <p className="text-xs text-slate-600 dark:text-slate-400">Öppnar rådgivarchatten direkt utan att hoppa över stegen.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Ålder</Label>
+              <Input
+                type="number"
+                value={preferenceForm.age}
+                onChange={(e) => setPreferenceForm(prev => ({ ...prev, age: e.target.value }))}
+                placeholder="Exempelvis 32"
+                className="rounded-xl bg-white/70 dark:bg-slate-900/60"
+                min={18}
+                max={100}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Tillgängligt kapital</Label>
+              <Input
+                type="number"
+                value={preferenceForm.liquid_capital}
+                onChange={(e) => setPreferenceForm(prev => ({ ...prev, liquid_capital: e.target.value }))}
+                placeholder="T.ex. 50 000"
+                className="rounded-xl bg-white/70 dark:bg-slate-900/60"
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400">Hur mycket kan du investera på kort sikt?</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Nuvarande strategi</Label>
+              <Select
+                value={preferenceForm.current_portfolio_strategy}
+                onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, current_portfolio_strategy: value }))}
+              >
+                <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                  <SelectValue placeholder="Hur investerar du idag?" />
+                </SelectTrigger>
+                <SelectContent>
+                  {currentPortfolioStrategyOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -507,6 +685,59 @@ const UserInvestmentAnalysis = ({
             </div>
           </div>
 
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Handelsfrekvens</Label>
+              <Select
+                value={preferenceForm.portfolio_change_frequency}
+                onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, portfolio_change_frequency: value }))}
+              >
+                <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                  <SelectValue placeholder="Hur ofta gör du ändringar?" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tradingFrequencyOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Hur reagerar du vid nedgångar?</Label>
+              <Select
+                value={preferenceForm.market_crash_reaction}
+                onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, market_crash_reaction: value }))}
+              >
+                <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                  <SelectValue placeholder="Välj reaktion" />
+                </SelectTrigger>
+                <SelectContent>
+                  {marketCrashReactionOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Vad vill du att AI:n fokuserar på?</Label>
+              <Select
+                value={preferenceForm.portfolio_help_focus}
+                onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, portfolio_help_focus: value }))}
+              >
+                <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                  <SelectValue placeholder="Välj fokus" />
+                </SelectTrigger>
+                <SelectContent>
+                  {portfolioHelpOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="space-y-3">
             <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Sektorintressen</Label>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -522,6 +753,119 @@ const UserInvestmentAnalysis = ({
                   <span className="text-sm text-slate-700 dark:text-slate-200">{sector}</span>
                 </label>
               ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Tillgångar du vill använda</Label>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Markera de tillgångstyper du föredrar så anpassas förslagen.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {preferredAssetOptions.map((asset) => (
+                <label
+                  key={asset}
+                  className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
+                >
+                  <Checkbox
+                    checked={preferenceForm.preferred_assets.includes(asset)}
+                    onCheckedChange={() => handlePreferredAssetToggle(asset)}
+                  />
+                  <span className="text-sm text-slate-700 dark:text-slate-200">{asset}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Förbättringsmål</Label>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Berätta hur du vill att portföljen ska vässas så AI:n prioriterar rätt.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {optimizationGoalOptions.map((goal) => (
+                <label
+                  key={goal.value}
+                  className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
+                >
+                  <Checkbox
+                    checked={preferenceForm.optimization_goals.includes(goal.value)}
+                    onCheckedChange={() => handleOptimizationGoalToggle(goal.value)}
+                  />
+                  <span className="text-sm text-slate-700 dark:text-slate-200">{goal.label}</span>
+                </label>
+              ))}
+            </div>
+
+            {preferenceForm.optimization_goals.includes('risk_balance') && (
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Vilken risk oroar dig mest?</Label>
+                <Select
+                  value={preferenceForm.optimization_risk_focus}
+                  onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, optimization_risk_focus: value }))}
+                >
+                  <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                    <SelectValue placeholder="Välj risk" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {optimizationRiskOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {preferenceForm.optimization_goals.includes('diversify') && (
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Var vill du sprida risken?</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {optimizationDiversificationOptions.map(option => (
+                    <label
+                      key={option.value}
+                      className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
+                    >
+                      <Checkbox
+                        checked={preferenceForm.optimization_diversification_focus.includes(option.value)}
+                        onCheckedChange={() => handleOptimizationDiversificationToggle(option.value)}
+                      />
+                      <span className="text-sm text-slate-700 dark:text-slate-200">{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Hur ska förändringar göras?</Label>
+                <Select
+                  value={preferenceForm.optimization_preference}
+                  onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, optimization_preference: value }))}
+                >
+                  <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                    <SelectValue placeholder="Välj angreppssätt" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {optimizationPreferenceOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Tidsplan</Label>
+                <Select
+                  value={preferenceForm.optimization_timeline}
+                  onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, optimization_timeline: value }))}
+                >
+                  <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                    <SelectValue placeholder="När vill du se förändring?" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {optimizationTimelineOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
