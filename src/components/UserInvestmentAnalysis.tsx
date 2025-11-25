@@ -493,7 +493,8 @@ const UserInvestmentAnalysis = ({
       setIsSavingPreferences(false);
     }
   };
-  return <div className="space-y-10 animate-fade-in">
+    return (
+      <div className="space-y-10 animate-fade-in">
       <ResetProfileConfirmDialog isOpen={showResetDialog} onClose={() => setShowResetDialog(false)} onConfirm={handleResetProfile} />
 
       <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-blue-50/40 dark:from-slate-900/90 dark:to-blue-900/10 backdrop-blur-sm border border-blue-200/40 dark:border-blue-800/30">
@@ -770,45 +771,46 @@ const UserInvestmentAnalysis = ({
                     </label>
                   ))}
                 </div>
+              </div>
 
-                {preferenceForm.optimization_goals.includes('risk_balance') && (
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Vilken risk oroar dig mest?</Label>
-                    <Select
-                      value={preferenceForm.optimization_risk_focus}
-                      onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, optimization_risk_focus: value }))}
-                    >
-                      <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
-                        <SelectValue placeholder="Välj risk" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {optimizationRiskOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {preferenceForm.optimization_goals.includes('diversify') && (
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Var vill du sprida risken?</Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                      {optimizationDiversificationOptions.map(option => (
-                        <label
-                          key={option.value}
-                          className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
-                        >
-                          <Checkbox
-                            checked={preferenceForm.optimization_diversification_focus.includes(option.value)}
-                            onCheckedChange={() => handleOptimizationDiversificationToggle(option.value)}
-                          />
-                          <span className="text-sm text-slate-700 dark:text-slate-200">{option.label}</span>
-                        </label>
+              {preferenceForm.optimization_goals.includes('risk_balance') && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Vilken risk oroar dig mest?</Label>
+                  <Select
+                    value={preferenceForm.optimization_risk_focus}
+                    onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, optimization_risk_focus: value }))}
+                  >
+                    <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                      <SelectValue placeholder="Välj risk" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {optimizationRiskOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                       ))}
-                    </div>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {preferenceForm.optimization_goals.includes('diversify') && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Var vill du sprida risken?</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {optimizationDiversificationOptions.map(option => (
+                      <label
+                        key={option.value}
+                        className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
+                      >
+                        <Checkbox
+                          checked={preferenceForm.optimization_diversification_focus.includes(option.value)}
+                          onCheckedChange={() => handleOptimizationDiversificationToggle(option.value)}
+                        />
+                        <span className="text-sm text-slate-700 dark:text-slate-200">{option.label}</span>
+                      </label>
+                    ))}
                   </div>
-                )}
+                </div>
+              )}
 
               <div className="space-y-3">
                 <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Sparmål</Label>
@@ -847,103 +849,8 @@ const UserInvestmentAnalysis = ({
               )}
             </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* AI-Generated Strategy - Structured plan presentation */}
-      {advisorPlan && (
-        <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-blue-50/30 dark:from-slate-900/90 dark:to-blue-900/10 backdrop-blur-sm border border-blue-200/30 dark:border-blue-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
-          <CardHeader className="pb-8 pt-8">
-            <CardTitle className="flex items-center gap-4 text-2xl font-bold">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center shadow-inner border border-blue-200/30 dark:border-blue-700/30">
-                <Brain className="w-7 h-7 text-transparent bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text" />
-              </div>
-              <span className="text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text">
-                Din AI-plan för nästa steg
-              </span>
-              <Badge className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-transparent bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text border-blue-300/30 dark:border-blue-700/30 rounded-2xl font-semibold px-4 py-2 shadow-sm">
-                Personlig Analys
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-10">
-            <div className="space-y-8">
-              {(advisorPlan.action_summary || advisorPlan.risk_alignment) && (
-                <div className="p-8 rounded-3xl bg-gradient-to-br from-white/70 to-blue-100/20 dark:from-slate-800/70 dark:to-blue-900/20 border border-blue-200/30 dark:border-blue-800/40 shadow-inner backdrop-blur-sm">
-                  {advisorPlan.action_summary && (
-                    <p className="text-lg leading-relaxed text-slate-800 dark:text-slate-200 mb-4">
-                      {advisorPlan.action_summary}
-                    </p>
-                  )}
-                  {advisorPlan.risk_alignment && (
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
-                      {advisorPlan.risk_alignment}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {advisorPlan.next_steps.length > 0 && (
-                <div className="p-8 rounded-3xl bg-gradient-to-br from-white/70 to-slate-100/20 dark:from-slate-800/70 dark:to-slate-900/20 border border-slate-200/30 dark:border-slate-700/40 shadow-inner backdrop-blur-sm">
-                  <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">Handlingsplan</h3>
-                  <ol className="list-decimal pl-6 space-y-3 text-base text-slate-700 dark:text-slate-300">
-                    {advisorPlan.next_steps.map((step, index) => (
-                      <li key={`${step}-${index}`} className="leading-relaxed">
-                        {step}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-
-              {advisorPlan.recommended_assets.length > 0 && (
-                <div className="space-y-5">
-                  <div className="flex items-center justify-between gap-4">
-                    <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Inköpslista &amp; allokering</h3>
-                    <span className="text-sm text-slate-500 dark:text-slate-400">Summera till 100%</span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {advisorPlan.recommended_assets.map((asset, index) => (
-                      <div
-                        key={`${asset.name}-${asset.ticker || index}`}
-                        className="h-full p-6 rounded-3xl border border-blue-200/30 dark:border-blue-800/30 bg-gradient-to-br from-white/60 to-blue-50/10 dark:from-slate-800/60 dark:to-blue-900/10 shadow-sm backdrop-blur-sm hover:shadow-lg transition-all duration-300"
-                      >
-                        <div className="flex items-start justify-between gap-4 mb-4">
-                          <div>
-                            <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">{asset.name}</p>
-                            {asset.ticker && (
-                              <p className="text-sm uppercase tracking-wide text-blue-600 dark:text-blue-300 mt-1">{asset.ticker}</p>
-                            )}
-                          </div>
-                          <Badge className="rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1 text-sm font-semibold">
-                            {asset.allocation_percent}%
-                          </Badge>
-                        </div>
-                        {asset.rationale && (
-                          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
-                            {asset.rationale}
-                          </p>
-                        )}
-                        {asset.risk_role && (
-                          <span className="inline-flex items-center text-xs font-medium uppercase tracking-wide text-blue-700 dark:text-blue-300 bg-blue-500/10 dark:bg-blue-500/20 px-3 py-1 rounded-full">
-                            {asset.risk_role}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {advisorPlan.disclaimer && (
-                <p className="text-xs text-muted-foreground text-center leading-relaxed">
-                  {advisorPlan.disclaimer}
-                </p>
-              )}
-            </div>
           </CardContent>
         </Card>
-      )}
 
       {!advisorPlan && aiStrategyText && (
         <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-blue-50/30 dark:from-slate-900/90 dark:to-blue-900/10 backdrop-blur-sm border border-blue-200/30 dark:border-blue-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
@@ -1036,7 +943,8 @@ const UserInvestmentAnalysis = ({
         </Card>} */}
 
       {/* Risk Profile Summary - Apple-inspired */}
-      {riskProfile.sector_interests && riskProfile.sector_interests.length > 0 && <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-purple-50/30 dark:from-slate-900/90 dark:to-purple-900/10 backdrop-blur-sm border border-purple-200/30 dark:border-purple-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
+      {riskProfile.sector_interests && riskProfile.sector_interests.length > 0 && (
+        <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-purple-50/30 dark:from-slate-900/90 dark:to-purple-900/10 backdrop-blur-sm border border-purple-200/30 dark:border-purple-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
           <CardHeader className="pb-8 pt-8">
             <CardTitle className="flex items-center gap-4 text-2xl font-bold">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 flex items-center justify-center shadow-inner border border-purple-200/30 dark:border-purple-700/30">
@@ -1049,18 +957,21 @@ const UserInvestmentAnalysis = ({
           </CardHeader>
           <CardContent className="pb-8">
             <div className="flex flex-wrap gap-4">
-              {riskProfile.sector_interests.map((sector, index) => 
-                <Badge 
-                  key={index} 
-                  variant="outline" 
+              {riskProfile.sector_interests.map((sector, index) => (
+                <Badge
+                  key={index}
+                  variant="outline"
                   className="capitalize px-6 py-3 rounded-2xl font-semibold text-base border-purple-300/30 dark:border-purple-700/30 text-purple-700 dark:text-purple-300 bg-gradient-to-r from-purple-50/50 to-pink-50/30 dark:from-purple-900/20 dark:to-pink-900/10 hover:bg-gradient-to-r hover:from-purple-100/60 hover:to-pink-100/40 dark:hover:from-purple-800/30 dark:hover:to-pink-800/20 hover:scale-105 transition-all duration-300 shadow-sm hover:shadow-md backdrop-blur-sm"
                 >
                   {sector}
                 </Badge>
-              )}
+              ))}
             </div>
           </CardContent>
-        </Card>}
-    </div>;
-};
+        </Card>
+      )}
+    </div>
+    );
+  };
+
 export default UserInvestmentAnalysis;
