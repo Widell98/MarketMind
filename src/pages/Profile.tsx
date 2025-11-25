@@ -28,6 +28,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useToast } from '@/hooks/use-toast';
 import InvestmentProfileSummary from '@/components/InvestmentProfileSummary';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
+import ResetProfileConfirmDialog from '@/components/ResetProfileConfirmDialog';
 
 const Profile = () => {
   const { user, loading, signOut } = useAuth();
@@ -49,6 +50,7 @@ const Profile = () => {
   const { deleteStockCase } = useStockCaseOperations();
   const { toast } = useToast();
   const { riskProfile, loading: riskProfileLoading, clearRiskProfile, refetch: refetchRiskProfile } = useRiskProfile();
+  const [showResetDialog, setShowResetDialog] = useState(false);
 
   // Fetch profile data
   React.useEffect(() => {
@@ -176,13 +178,36 @@ const Profile = () => {
   };
 
   const handleResetRiskProfile = async () => {
-    if (!user?.id) return;
+    if (!user) {
+      toast({
+        title: 'Fel',
+        description: 'Du måste vara inloggad för att återställa din profil',
+        variant: 'destructive'
+      });
+      return;
+    }
 
-    await supabase.from('user_holdings').delete().eq('user_id', user.id).eq('holding_type', 'recommendation');
+    try {
+      await supabase.from('user_holdings').delete().eq('user_id', user.id).eq('holding_type', 'recommendation');
 
-    const success = await clearRiskProfile();
-    if (success) {
-      refetchRiskProfile();
+      const success = await clearRiskProfile();
+      if (success) {
+        toast({
+          title: 'Profil återställd',
+          description: 'Din riskprofil och AI-rekommendationer har raderats.'
+        });
+        refetchRiskProfile();
+        navigate('/portfolio-advisor');
+      }
+    } catch (error) {
+      console.error('Error resetting profile:', error);
+      toast({
+        title: 'Fel',
+        description: 'Ett oväntat fel uppstod. Försök igen senare.',
+        variant: 'destructive'
+      });
+    } finally {
+      setShowResetDialog(false);
     }
   };
 
@@ -307,11 +332,16 @@ const Profile = () => {
             )}
 
             <TabsContent value="riskprofile" className="space-y-8">
+              <ResetProfileConfirmDialog
+                isOpen={showResetDialog}
+                onClose={() => setShowResetDialog(false)}
+                onConfirm={handleResetRiskProfile}
+              />
               <InvestmentProfileSummary
                 riskProfile={riskProfile}
                 loading={riskProfileLoading}
                 showActions
-                onReset={handleResetRiskProfile}
+                onReset={() => setShowResetDialog(true)}
               />
               <UserInvestmentAnalysis />
             </TabsContent>
