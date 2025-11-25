@@ -199,6 +199,11 @@ const AIChat = ({
     navigate
   ]);
   const hasHandledNavigationSessionRef = useRef(false);
+  const isUsageReady = useMemo(() => {
+    if (subscription?.subscribed) return true;
+    // For free users we need usage to evaluate limits before auto-sending
+    return subscription !== null && usage !== null;
+  }, [subscription, usage]);
 
   useEffect(() => {
     const navigationState = location.state as {
@@ -210,6 +215,10 @@ const AIChat = ({
 
     if (navigationState?.createNewSession) {
       if (hasHandledNavigationSessionRef.current) {
+        return;
+      }
+
+      if (!user || !isUsageReady) {
         return;
       }
 
@@ -253,6 +262,8 @@ const AIChat = ({
       hasHandledNavigationSessionRef.current = false;
     }
   }, [
+    user,
+    isUsageReady,
     location.state,
     location.pathname,
     location.search,
