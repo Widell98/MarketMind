@@ -506,14 +506,11 @@ const ChatPortfolioAdvisor = () => {
   useEffect(() => {
     if (!isComplete) return;
 
-    if (conversationData.hasCurrentPortfolio || activePortfolio) {
-      const redirect = setTimeout(() => {
-        navigate('/portfolio-implementation');
-      }, 600);
-
-      return () => clearTimeout(redirect);
-    }
-  }, [isComplete, conversationData.hasCurrentPortfolio, activePortfolio, navigate]);
+    // Previously we redirected immediately to the implementation page once an analysis
+    // completed, but this prevented users from seeing the AI response. We now keep the
+    // user on the advisor view so the recommendation can be reviewed before navigating
+    // away.
+  }, [isComplete]);
 
   const priceFormatter = useMemo(
     () => new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
