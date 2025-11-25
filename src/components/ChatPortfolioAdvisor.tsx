@@ -912,6 +912,12 @@ const ChatPortfolioAdvisor = () => {
         { value: 'balanced', label: 'Medelrisk' },
         { value: 'aggressive', label: 'Hög risk' }
       ]
+    },
+    {
+      id: 'monthlyAmount',
+      question: 'Månadssparande (SEK)',
+      key: 'monthlyAmount',
+      hasOptions: false
     }
   ];
 
@@ -2126,14 +2132,16 @@ const ChatPortfolioAdvisor = () => {
         refetchHoldings()
       ]);
       
-      // Navigate to implementation page
-      navigate('/portfolio-implementation');
-      
+      // Navigate to AI chat to assist with implementation
+      const implementationMessage =
+        'Hjälp mig att implementera portföljstrategin vi just tog fram och beskriva stegen för att komma igång.';
+      navigate(`/ai-chatt?message=${encodeURIComponent(implementationMessage)}`);
+
       // Show success message after navigation
       setTimeout(() => {
         toast({
-          title: "Strategi implementerad!",
-          description: "Din portföljstrategi är nu aktiv och redo att användas. Innehaven visas nu i översikten.",
+          title: "Strategi klar!",
+          description: "Öppnar AI-chatt för att guida dig genom att implementera strategin steg för steg.",
         });
       }, 1000);
       
@@ -2145,8 +2153,8 @@ const ChatPortfolioAdvisor = () => {
         variant: "destructive",
       });
       
-      // Navigate anyway since the portfolio might still be created
-      navigate('/portfolio-implementation');
+      // Navigate to chat so the user can resolve implementation issues
+      navigate('/ai-chatt');
     }
   };
 
