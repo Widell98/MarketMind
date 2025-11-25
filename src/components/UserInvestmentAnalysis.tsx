@@ -68,6 +68,23 @@ const UserInvestmentAnalysis = ({
     'Materials',
     'Telecommunications'
   ], []);
+  const diversificationOptions = useMemo(() => [
+    'Bredda sektorerna',
+    'Öka geografisk spridning',
+    'Minska volatiliteten',
+    'Balansera tillgångsslag'
+  ], []);
+  const sustainabilityOptions = useMemo(() => [
+    { value: 'not_priority', label: 'Inte prioriterat' },
+    { value: 'balanced', label: 'Vill väga in hållbarhet' },
+    { value: 'high_priority', label: 'Hög hållbarhetsprofil' }
+  ], []);
+  const tradingFrequencyOptions = useMemo(() => [
+    { value: 'rarely', label: 'Sällan (årsvis)' },
+    { value: 'quarterly', label: 'Kvartalsvis' },
+    { value: 'monthly', label: 'Månadsvis' },
+    { value: 'weekly', label: 'Veckovis eller oftare' }
+  ], []);
   const [isSavingPreferences, setIsSavingPreferences] = useState(false);
   const [preferenceForm, setPreferenceForm] = useState({
     risk_tolerance: '',
@@ -75,6 +92,9 @@ const UserInvestmentAnalysis = ({
     investment_experience: '',
     monthly_investment_amount: '' as number | string,
     sector_interests: [] as string[],
+    optimization_diversification_focus: [] as string[],
+    portfolio_change_frequency: '',
+    sustainability_focus: '',
     risk_comfort_level: 3
   });
 
@@ -87,6 +107,9 @@ const UserInvestmentAnalysis = ({
       investment_experience: riskProfile.investment_experience || '',
       monthly_investment_amount: riskProfile.monthly_investment_amount?.toString() || '',
       sector_interests: riskProfile.sector_interests || [],
+      optimization_diversification_focus: riskProfile.optimization_diversification_focus || [],
+      portfolio_change_frequency: riskProfile.portfolio_change_frequency || '',
+      sustainability_focus: riskProfile.sustainability_focus || '',
       risk_comfort_level: riskProfile.risk_comfort_level || 3
     });
   }, [riskProfile]);
@@ -286,6 +309,10 @@ const UserInvestmentAnalysis = ({
         return tolerance || 'Ej angiven';
     }
   };
+
+  const handleQuickOnboarding = () => {
+    navigate('/portfolio-advisor?direct=true');
+  };
   const getInvestmentHorizonLabel = (horizon: string) => {
     switch (horizon) {
       case 'short':
@@ -320,6 +347,15 @@ const UserInvestmentAnalysis = ({
     }));
   };
 
+  const handleDiversificationToggle = (goal: string) => {
+    setPreferenceForm(prev => ({
+      ...prev,
+      optimization_diversification_focus: prev.optimization_diversification_focus.includes(goal)
+        ? prev.optimization_diversification_focus.filter(item => item !== goal)
+        : [...prev.optimization_diversification_focus, goal]
+    }));
+  };
+
   const handleSavePreferences = async () => {
     if (!riskProfile) return;
 
@@ -339,6 +375,9 @@ const UserInvestmentAnalysis = ({
         investment_experience: preferenceForm.investment_experience || null,
         monthly_investment_amount: Number.isNaN(monthlyAmount) ? null : monthlyAmount,
         sector_interests: preferenceForm.sector_interests,
+        optimization_diversification_focus: preferenceForm.optimization_diversification_focus,
+        portfolio_change_frequency: preferenceForm.portfolio_change_frequency || null,
+        sustainability_focus: preferenceForm.sustainability_focus || null,
         risk_comfort_level: safeRiskComfort
       });
 
@@ -370,6 +409,25 @@ const UserInvestmentAnalysis = ({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div className="flex items-start gap-3 p-4 rounded-2xl bg-gradient-to-r from-blue-50/80 to-purple-50/60 dark:from-blue-950/30 dark:to-purple-900/20 border border-blue-200/50 dark:border-blue-800/40">
+            <CheckCircle className="w-5 h-5 text-primary mt-1" />
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Klart med snabb onboarding</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">Komplettera dina preferenser här under "Riskprofil" för en fullständig AI-plan och justera allt i din egen takt.</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={handleQuickOnboarding}
+            >
+              Starta snabb onboarding igen
+            </Button>
+            <p className="text-xs text-slate-600 dark:text-slate-400">Öppnar rådgivarchatten direkt utan att hoppa över stegen.</p>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Risktolerans</Label>
@@ -470,6 +528,63 @@ const UserInvestmentAnalysis = ({
                   <span className="text-sm text-slate-700 dark:text-slate-200">{sector}</span>
                 </label>
               ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Diversifieringsmål</Label>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Välj de fokusområden du vill fördjupa efter den snabba onboardingen.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {diversificationOptions.map((goal) => (
+                  <label
+                    key={goal}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
+                  >
+                    <Checkbox
+                      checked={preferenceForm.optimization_diversification_focus.includes(goal)}
+                      onCheckedChange={() => handleDiversificationToggle(goal)}
+                    />
+                    <span className="text-sm text-slate-700 dark:text-slate-200">{goal}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Handelsfrekvens</Label>
+                <Select
+                  value={preferenceForm.portfolio_change_frequency}
+                  onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, portfolio_change_frequency: value }))}
+                >
+                  <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                    <SelectValue placeholder="Hur ofta vill du justera portföljen?" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tradingFrequencyOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Hållbarhetsfokus</Label>
+                <Select
+                  value={preferenceForm.sustainability_focus}
+                  onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, sustainability_focus: value }))}
+                >
+                  <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                    <SelectValue placeholder="Hur viktigt är hållbarhet?" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sustainabilityOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
