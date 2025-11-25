@@ -199,12 +199,18 @@ const AIChat = ({
     navigate
   ]);
   const hasHandledNavigationSessionRef = useRef(false);
+  const isUsageReady = useMemo(() => {
+    if (subscription?.subscribed) return true;
+    // For free users we need usage to evaluate limits before auto-sending
+    return subscription !== null && usage !== null;
+  }, [subscription, usage]);
 
   useEffect(() => {
     const navigationState = location.state as {
       createNewSession?: boolean;
       sessionName?: string;
       initialMessage?: string;
+      autoSendInitialMessage?: boolean;
     } | undefined;
 
     if (navigationState?.createNewSession) {
@@ -212,20 +218,39 @@ const AIChat = ({
         return;
       }
 
+      if (!user || !isUsageReady) {
+        return;
+      }
+
       hasHandledNavigationSessionRef.current = true;
 
       const {
         sessionName,
-        initialMessage
+        initialMessage,
+        autoSendInitialMessage
       } = navigationState;
       const startNewSession = async () => {
         await createNewSession(sessionName);
 
         if (initialMessage) {
-          setInput(initialMessage);
-          setTimeout(() => {
-            inputRef.current?.focus();
-          }, 100);
+          if (autoSendInitialMessage) {
+            const wasSent = await sendMessage(initialMessage, {
+              documentIds: [],
+              documents: [],
+            });
+
+            if (!wasSent) {
+              setInput(initialMessage);
+              setTimeout(() => {
+                inputRef.current?.focus();
+              }, 100);
+            }
+          } else {
+            setInput(initialMessage);
+            setTimeout(() => {
+              inputRef.current?.focus();
+            }, 100);
+          }
         }
 
         const currentUrl = `${location.pathname}${location.search}${location.hash ?? ''}`;
@@ -237,11 +262,14 @@ const AIChat = ({
       hasHandledNavigationSessionRef.current = false;
     }
   }, [
+    user,
+    isUsageReady,
     location.state,
     location.pathname,
     location.search,
     location.hash,
     createNewSession,
+    sendMessage,
     navigate
   ]);
   useEffect(() => {

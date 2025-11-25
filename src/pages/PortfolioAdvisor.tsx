@@ -24,9 +24,17 @@ const PortfolioAdvisor = () => {
           .eq('user_id', user.id)
           .single();
 
-        // If user already has a risk profile, redirect to implementation
+        // If user already has a risk profile, redirect to AI chat for portfolio analysis
         if (riskProfile) {
-          navigate('/portfolio-implementation', { replace: true });
+          navigate('/ai-chatt', {
+            replace: true,
+            state: {
+              createNewSession: true,
+              sessionName: 'Portföljanalys',
+              initialMessage:
+                'Analysera min befintliga portfölj och ge förbättringar baserat på mina mål och risknivå.',
+            },
+          });
           return;
         }
 
@@ -38,7 +46,15 @@ const PortfolioAdvisor = () => {
           .limit(1);
 
         if (portfolios && portfolios.length > 0) {
-          navigate('/portfolio-implementation', { replace: true });
+          navigate('/ai-chatt', {
+            replace: true,
+            state: {
+              createNewSession: true,
+              sessionName: 'Portföljanalys',
+              initialMessage:
+                'Analysera min befintliga portfölj och ge förbättringar baserat på mina mål och risknivå.',
+            },
+          });
           return;
         }
       } catch (error) {
