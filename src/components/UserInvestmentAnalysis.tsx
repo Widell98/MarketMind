@@ -546,17 +546,6 @@ const UserInvestmentAnalysis = ({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              variant="outline"
-              className="rounded-xl"
-              onClick={handleQuickOnboarding}
-            >
-              Starta snabb onboarding igen
-            </Button>
-            <p className="text-xs text-slate-600 dark:text-slate-400">Öppnar rådgivarchatten direkt utan att hoppa över stegen.</p>
-          </div>
-
           <Tabs defaultValue="profile" className="w-full">
             <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 bg-slate-100/70 dark:bg-slate-900/60 rounded-2xl p-1">
               <TabsTrigger value="profile" className="rounded-xl text-sm font-semibold">Profil & kapital</TabsTrigger>
