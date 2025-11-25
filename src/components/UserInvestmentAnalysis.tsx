@@ -9,7 +9,8 @@ import {
   Settings,
   Plus,
   Activity,
-  Loader2
+  Loader2,
+  TrendingUp
 } from 'lucide-react';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolio } from '@/hooks/usePortfolio';
