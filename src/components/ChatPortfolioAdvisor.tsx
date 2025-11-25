@@ -118,7 +118,7 @@ interface StockRecommendation {
   market?: string;
 }
 
-interface PortfolioGenerationResult {
+export interface PortfolioGenerationResult {
   aiResponse?: string;
   plan?: any;
   portfolio?: any;
@@ -140,6 +140,11 @@ interface RecommendationUpdateContext {
   updatedRecommendedStocks?: StockRecommendation[];
   updatedAssetAllocation?: any;
   updatedPlanAssets?: AdvisorPlanAsset[];
+}
+
+interface ChatPortfolioAdvisorProps {
+  onComplete?: (result: PortfolioGenerationResult) => void;
+  onStartChatSession?: (sessionName: string, initialMessage: string) => void;
 }
 
 const deepClone = <T,>(value: T): T => {
@@ -443,7 +448,7 @@ const matchCurrencyFromText = (text?: string | null): string | undefined => {
   return undefined;
 };
 
-const ChatPortfolioAdvisor = () => {
+const ChatPortfolioAdvisor = ({ onComplete, onStartChatSession }: ChatPortfolioAdvisorProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState('');
   const [currentStep, setCurrentStep] = useState(0);
@@ -470,6 +475,11 @@ const ChatPortfolioAdvisor = () => {
   const navigate = useNavigate();
   const startAiChatSession = useCallback(
     (sessionName: string, initialMessage: string) => {
+      if (onStartChatSession) {
+        onStartChatSession(sessionName, initialMessage);
+        return;
+      }
+
       navigate('/ai-chatt', {
         state: {
           createNewSession: true,
@@ -478,7 +488,7 @@ const ChatPortfolioAdvisor = () => {
         },
       });
     },
-    [navigate]
+    [navigate, onStartChatSession]
   );
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
@@ -2357,6 +2367,10 @@ const ChatPortfolioAdvisor = () => {
     if (result) {
       setPortfolioResult(result);
       setIsComplete(true);
+
+      if (onComplete) {
+        onComplete(result);
+      }
 
       const isOptimizationResult = result.mode === 'optimize';
       const shouldPersistRecommendations = !isOptimizationResult;
