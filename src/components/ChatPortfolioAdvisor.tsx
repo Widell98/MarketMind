@@ -2553,6 +2553,28 @@ const ChatPortfolioAdvisor = () => {
       return suggestions;
     })();
 
+    const portfolioReviewPrompt = (() => {
+      const parts: string[] = [];
+
+      if (plan.actionSummary) {
+        parts.push(`Sammanfattning: ${plan.actionSummary}`);
+      }
+
+      if (assetSummary) {
+        parts.push(`Nyckelinnehav: ${assetSummary}`);
+      }
+
+      if (summarizedSteps) {
+        parts.push(`Föreslagna steg: ${summarizedSteps}`);
+      }
+
+      const base = parts.join('. ');
+
+      return base
+        ? `AI har analyserat min portfölj. ${base}. Kan du hjälpa mig att säkerställa att rekommendationerna och prioriteringen är rätt innan jag agerar?`
+        : 'AI har analyserat min portfölj. Hjälp mig att gå igenom rekommendationerna och sätta en tydlig handlingsplan.';
+    })();
+
     return (
       <div className="space-y-5 text-sm leading-relaxed text-foreground">
         {plan.actionSummary && (
@@ -2575,6 +2597,29 @@ const ChatPortfolioAdvisor = () => {
             </ol>
           </div>
         )}
+
+        <div className="flex flex-col gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-2">
+            <div className="mt-0.5 rounded-md bg-primary/20 p-1 text-primary">
+              <MessageSquare className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Diskutera bedömningen med AI</p>
+              <p className="text-xs text-muted-foreground">
+                Öppna AI-chatten med en färdig prompt som sammanfattar analysen och nästa steg.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="default"
+            className="self-start sm:self-auto"
+            onClick={() => startAiChatSession('Portföljbedömning', portfolioReviewPrompt)}
+          >
+            Öppna AI-chatt
+          </Button>
+        </div>
 
         {aiChatSuggestions.length > 0 && (
           <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 sm:p-4">
