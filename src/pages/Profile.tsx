@@ -48,7 +48,7 @@ const Profile = () => {
   const { stockCases, loading: stockCasesLoading, refetch } = useStockCases();
   const { deleteStockCase } = useStockCaseOperations();
   const { toast } = useToast();
-  const { riskProfile, loading: riskProfileLoading } = useRiskProfile();
+  const { riskProfile, loading: riskProfileLoading, clearRiskProfile, refetch: refetchRiskProfile } = useRiskProfile();
 
   // Fetch profile data
   React.useEffect(() => {
@@ -175,6 +175,17 @@ const Profile = () => {
     }
   };
 
+  const handleResetRiskProfile = async () => {
+    if (!user?.id) return;
+
+    await supabase.from('user_holdings').delete().eq('user_id', user.id).eq('holding_type', 'recommendation');
+
+    const success = await clearRiskProfile();
+    if (success) {
+      refetchRiskProfile();
+    }
+  };
+
   return (
     <Layout>
       <div className="min-h-0 bg-background">
@@ -193,31 +204,30 @@ const Profile = () => {
         {/* Main Content */}
         <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6 lg:py-8">
           <div className="space-y-6">
-            <InvestmentProfileSummary riskProfile={riskProfile} loading={riskProfileLoading} />
             <Tabs defaultValue={isAdmin ? "content" : "riskprofile"} className="w-full">
-            <TabsList
-              className={`grid w-full ${
-                isAdmin ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'
-              } gap-2 md:gap-3 mb-8 bg-muted/20 border border-border/30 rounded-xl p-1 md:p-2 shadow-sm backdrop-blur-sm`}
-            >
-              {isAdmin && (
-                <TabsTrigger value="content" className="rounded-lg font-medium">
-                  Innehåll
+              <TabsList
+                className={`grid w-full ${
+                  isAdmin ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'
+                } gap-2 md:gap-3 mb-8 bg-muted/20 border border-border/30 rounded-xl p-1 md:p-2 shadow-sm backdrop-blur-sm`}
+              >
+                {isAdmin && (
+                  <TabsTrigger value="content" className="rounded-lg font-medium">
+                    Innehåll
+                  </TabsTrigger>
+                )}
+                <TabsTrigger value="riskprofile" className="flex items-center gap-2 rounded-lg font-medium">
+                  <Brain className="w-4 h-4" />
+                  Riskprofil
                 </TabsTrigger>
-              )}
-              <TabsTrigger value="riskprofile" className="flex items-center gap-2 rounded-lg font-medium">
-                <Brain className="w-4 h-4" />
-                Riskprofil
-              </TabsTrigger>
-              <TabsTrigger value="sharing-activity" className="flex items-center gap-2 rounded-lg font-medium">
-                <Share2 className="w-4 h-4" />
-                Delning & aktivitet
-              </TabsTrigger>
-              <TabsTrigger value="membership" className="flex items-center gap-2 rounded-lg font-medium">
-                <CreditCard className="w-4 h-4" />
-                Medlemskap
-              </TabsTrigger>
-            </TabsList>
+                <TabsTrigger value="sharing-activity" className="flex items-center gap-2 rounded-lg font-medium">
+                  <Share2 className="w-4 h-4" />
+                  Delning & aktivitet
+                </TabsTrigger>
+                <TabsTrigger value="membership" className="flex items-center gap-2 rounded-lg font-medium">
+                  <CreditCard className="w-4 h-4" />
+                  Medlemskap
+                </TabsTrigger>
+              </TabsList>
 
             {isAdmin && (
               <TabsContent value="content" className="space-y-8">
@@ -297,6 +307,12 @@ const Profile = () => {
             )}
 
             <TabsContent value="riskprofile" className="space-y-8">
+              <InvestmentProfileSummary
+                riskProfile={riskProfile}
+                loading={riskProfileLoading}
+                showActions
+                onReset={handleResetRiskProfile}
+              />
               <UserInvestmentAnalysis />
             </TabsContent>
 
