@@ -191,39 +191,37 @@ export const parsePortfolioHoldingsFromCSV = (text: string): ParsedCsvHolding[] 
   }
 
   const startIndex = hasHeaderRow ? 1 : 0;
+
+  /**
+   * NEW LOGIC:
+   * 1. Prioritera EXAKT "GAV"
+   * 2. Sedan "GAV (SEK)"
+   * 3. Sedan allt annat som matchar "gav"
+   */
   const prioritizePurchasePriceIndices = (indices: number[]): number[] => {
-    if (!indices || indices.length === 0) {
-      return indices;
-    }
+    if (!indices || indices.length === 0) return indices;
 
-    const gavMatches = new Set<number>();
-
-    indices.forEach(index => {
-      const header = headerParts[index];
-      if (typeof header === 'string' && /gav/iu.test(header)) {
-        gavMatches.add(index);
-      }
-    });
-
-    if (gavMatches.size === 0) {
-      return indices;
-    }
-
-    const prioritized: number[] = [];
-
-    gavMatches.forEach(index => {
-      if (!prioritized.includes(index)) {
-        prioritized.push(index);
-      }
-    });
+    const exactGav: number[] = [];
+    const gavSek: number[] = [];
+    const otherGav: number[] = [];
 
     indices.forEach(index => {
-      if (!gavMatches.has(index) && !prioritized.includes(index)) {
-        prioritized.push(index);
+      const header = headerParts[index]?.trim().toLowerCase() ?? '';
+
+      if (header === 'gav') {
+        exactGav.push(index);
+      } else if (/^gav\s*\(/.test(header)) {
+        gavSek.push(index);
+      } else if (/gav/.test(header)) {
+        otherGav.push(index);
       }
     });
 
-    return prioritized;
+    if (exactGav.length > 0) return exactGav;
+    if (gavSek.length > 0) return gavSek;
+    if (otherGav.length > 0) return otherGav;
+
+    return indices;
   };
 
   const parsedHoldings: ParsedCsvHolding[] = [];
