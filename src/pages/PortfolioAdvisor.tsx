@@ -1,20 +1,22 @@
 
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolioAdvisor';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 
 const PortfolioAdvisor = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const directOnboarding = searchParams.get('direct') === 'true';
 
   useEffect(() => {
     const checkExistingProfile = async () => {
       if (!user) return;
+
+      if (directOnboarding) return;
 
       try {
         // Check if user has an existing risk profile
@@ -47,7 +49,7 @@ const PortfolioAdvisor = () => {
     };
 
     checkExistingProfile();
-  }, [user, navigate]);
+  }, [user, navigate, directOnboarding]);
 
   if (!user) {
     return (

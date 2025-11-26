@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { hasLikelyTicker, isListedCompany } from '@/utils/listedCompanies';
 
 export interface ConversationData {
   isBeginnerInvestor?: boolean;
@@ -123,6 +124,11 @@ export const useConversationalPortfolio = () => {
 
     const pushUniqueRecommendation = (recommendation: StockRecommendation) => {
       if (!recommendation.name) {
+        return;
+      }
+
+      const listingValid = isListedCompany(recommendation.name, recommendation.symbol) || hasLikelyTicker(recommendation.symbol);
+      if (!listingValid) {
         return;
       }
 
@@ -1174,6 +1180,14 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         return null;
       }
 
+      const normalizedName = String(asset.name).trim();
+      const normalizedSymbol = asset.ticker || asset.symbol || undefined;
+      const listingValid = isListedCompany(normalizedName, normalizedSymbol) || hasLikelyTicker(normalizedSymbol);
+
+      if (!listingValid) {
+        return null;
+      }
+
       const allocation =
         parsePlanPercent(asset.allocation_percent) ??
         parsePlanPercent(asset.allocation) ??
@@ -1193,8 +1207,8 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         normalizePlanActionType(asset.intent);
 
       return {
-        name: String(asset.name).trim(),
-        symbol: asset.ticker || asset.symbol || undefined,
+        name: normalizedName,
+        symbol: normalizedSymbol,
         sector: asset.sector || asset.category,
         reasoning: asset.rationale || asset.reasoning || asset.analysis || asset.comment || asset.notes,
         allocation,

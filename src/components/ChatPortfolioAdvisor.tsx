@@ -24,8 +24,8 @@ import {
   Trash2,
   Check,
   Upload,
-  MessageSquare,
-  RefreshCcw,
+  Sparkles,
+  AlertTriangle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationalPortfolio, type ConversationData } from '@/hooks/useConversationalPortfolio';
@@ -38,6 +38,7 @@ import useSheetTickers, { RawSheetTicker, SheetTicker, sanitizeSheetTickerList }
 import StockReplacementDialog from '@/components/StockReplacementDialog';
 import { mapEdgeFunctionErrorMessage } from '@/utils/mapEdgeFunctionError';
 import { normalizeShareClassTicker, parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
+import { hasLikelyTicker, isListedCompany } from '@/utils/listedCompanies';
 
 interface QuestionOption {
   value: string;
@@ -464,7 +465,7 @@ const ChatPortfolioAdvisor = () => {
   const hasInitializedRecommendations = useRef(false);
 
   const { generatePortfolioFromConversation, loading } = useConversationalPortfolio();
-  const { refetch } = usePortfolio();
+  const { activePortfolio, refetch } = usePortfolio();
   const { refetch: refetchHoldings } = useUserHoldings();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -500,6 +501,15 @@ const ChatPortfolioAdvisor = () => {
 
     return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   }, []);
+
+  useEffect(() => {
+    if (!isComplete) return;
+
+    // Previously we redirected immediately to the implementation page once an analysis
+    // completed, but this prevented users from seeing the AI response. We now keep the
+    // user on the advisor view so the recommendation can be reviewed before navigating
+    // away.
+  }, [isComplete]);
 
   const priceFormatter = useMemo(
     () => new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
@@ -837,15 +847,6 @@ const ChatPortfolioAdvisor = () => {
     }
   }, [portfolioResult, structuredResponse]);
 
-  const hasImportedHoldings = Array.isArray(conversationData.currentHoldings)
-    ? conversationData.currentHoldings.length > 0
-    : false;
-
-  const shouldCollectAvailableCapitalForNewInvestor =
-    conversationData.hasCurrentPortfolio !== true &&
-    conversationData.isBeginnerInvestor === false &&
-    !hasImportedHoldings;
-
   const questions: Question[] = [
     {
       id: 'experienceLevel',
@@ -857,26 +858,6 @@ const ChatPortfolioAdvisor = () => {
         { value: 'intermediate', label: 'Några år (1–3 år)' },
         { value: 'advanced', label: 'Erfaren (3+ år)' }
       ]
-    },
-    {
-      id: 'age',
-      question: 'Hur gammal är du?',
-      key: 'age',
-      hasOptions: false,
-      processAnswer: (answer: string | string[]) => {
-        const value = Array.isArray(answer) ? answer[0] ?? '' : answer;
-        const digitsOnly = value.replace(/[^0-9]/g, '');
-        if (digitsOnly.length === 0) {
-          return conversationData.age;
-        }
-
-        const parsedAge = parseInt(digitsOnly, 10);
-        if (Number.isFinite(parsedAge) && parsedAge >= 18 && parsedAge <= 100) {
-          return parsedAge;
-        }
-
-        return conversationData.age;
-      }
     },
     {
       id: 'hasPortfolio',
@@ -891,156 +872,6 @@ const ChatPortfolioAdvisor = () => {
         const value = Array.isArray(answer) ? answer[0] ?? '' : answer;
         return value === 'yes';
       }
-    },
-    {
-      id: 'currentPortfolioStrategy',
-      question: 'Hur skulle du beskriva din nuvarande portföljstrategi?',
-      key: 'currentPortfolioStrategy',
-      hasOptions: true,
-      showIf: () => conversationData.hasCurrentPortfolio === true,
-      options: [
-        { value: 'passive_index', label: 'Passiv – indexfonder och bred exponering' },
-        { value: 'dividend_focus', label: 'Utdelningsfokus' },
-        { value: 'growth_focus', label: 'Tillväxt och innovation' },
-        { value: 'mixed', label: 'Blandad strategi' },
-        { value: 'unsure', label: 'Osäker / ingen tydlig strategi' }
-      ]
-    },
-    {
-      id: 'optimizationGoals',
-      question: 'Vad vill du främst förbättra i din nuvarande portfölj?',
-      key: 'optimizationGoals',
-      hasOptions: true,
-      showIf: () => conversationData.hasCurrentPortfolio === true,
-      multiSelect: true,
-      options: [
-        { value: 'risk_balance', label: 'Balansera risk och avkastning bättre' },
-        { value: 'diversify', label: 'Öka diversifieringen' },
-        { value: 'reduce_fees', label: 'Minska avgifter' },
-        { value: 'add_growth', label: 'Hitta nya tillväxtmöjligheter' },
-        { value: 'income_focus', label: 'Stärka utdelningsflödet' },
-        { value: 'sustainability', label: 'Öka hållbarhetsprofilen' }
-      ],
-      processAnswer: (answer: string | string[]) => {
-        const values = Array.isArray(answer)
-          ? answer
-          : answer
-              .split(',')
-              .map(item => item.trim())
-              .filter(item => item.length > 0);
-        return values.filter((item, index) => values.indexOf(item) === index);
-      }
-    },
-    {
-      id: 'optimizationRiskFocus',
-      question: 'Vilka risker oroar dig mest i portföljen idag?',
-      key: 'optimizationRiskFocus',
-      hasOptions: true,
-      showIf: () =>
-        conversationData.hasCurrentPortfolio === true &&
-        Array.isArray(conversationData.optimizationGoals) &&
-        conversationData.optimizationGoals.includes('risk_balance'),
-      options: [
-        { value: 'drawdown', label: 'Stora svängningar / drawdowns' },
-        { value: 'concentration', label: 'Hög koncentration i få innehav' },
-        { value: 'market', label: 'Känslighet mot marknadsrisk' },
-        { value: 'currency', label: 'Valutarisk' },
-        { value: 'liquidity', label: 'Likviditetsrisk' }
-      ]
-    },
-    {
-      id: 'optimizationDiversification',
-      question: 'Vilka områden vill du sprida risken mot?',
-      key: 'optimizationDiversificationFocus',
-      hasOptions: true,
-      multiSelect: true,
-      showIf: () =>
-        conversationData.hasCurrentPortfolio === true &&
-        Array.isArray(conversationData.optimizationGoals) &&
-        conversationData.optimizationGoals.includes('diversify'),
-      options: [
-        { value: 'nordics', label: 'Mer mot Norden' },
-        { value: 'global', label: 'Global exponering' },
-        { value: 'sectors', label: 'Fler olika sektorer' },
-        { value: 'small_caps', label: 'Småbolag och tillväxt' },
-        { value: 'thematic', label: 'Tematiska investeringar / fonder' }
-      ],
-      processAnswer: (answer: string | string[]) => {
-        const values = Array.isArray(answer)
-          ? answer
-          : answer
-              .split(',')
-              .map(item => item.trim())
-              .filter(item => item.length > 0);
-        return values.filter((item, index) => values.indexOf(item) === index);
-      }
-    },
-    {
-      id: 'optimizationPreference',
-      question: 'Hur vill du att jag ska arbeta med dina befintliga innehav?',
-      key: 'optimizationPreference',
-      hasOptions: true,
-      showIf: () => conversationData.hasCurrentPortfolio === true,
-      options: [
-        { value: 'analyze_only', label: 'Analysera och förbättra utan nya köp' },
-        { value: 'improve_with_new_ideas', label: 'Behåll kärnan men komplettera med nya idéer' },
-        { value: 'rebalance', label: 'Ge konkreta rebalanseringsförslag inklusive köp/sälj' }
-      ]
-    },
-    {
-      id: 'optimizationTimeline',
-      question: 'När vill du ha förändringar genomförda?',
-      key: 'optimizationTimeline',
-      hasOptions: true,
-      showIf: () => conversationData.hasCurrentPortfolio === true,
-      options: [
-        { value: 'immediate', label: 'Snarast möjligt' },
-        { value: 'short_term', label: 'Inom de kommande 3 månaderna' },
-        { value: 'medium_term', label: 'Under det kommande året' },
-        { value: 'long_term', label: 'Löpande över flera år' }
-      ]
-    },
-    {
-      id: 'tradingFrequency',
-      question: 'Hur ofta handlar du aktier eller andra tillgångar?',
-      key: 'tradingFrequency',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio === true,
-      options: [
-        { value: 'rarely', label: 'Sällan (några gånger per år)' },
-        { value: 'monthly', label: 'Någon gång i månaden' },
-        { value: 'weekly', label: 'Varje vecka eller oftare' }
-      ]
-    },
-    {
-      id: 'investedCapital',
-      question: shouldCollectAvailableCapitalForNewInvestor
-        ? 'Hur mycket kapital har du tillgängligt att investera just nu?'
-        : 'Hur mycket kapital har du ungefär investerat hittills?',
-      key: shouldCollectAvailableCapitalForNewInvestor ? 'availableCapital' : 'portfolioSize',
-      hasOptions: true,
-      showIf: () =>
-        conversationData.hasCurrentPortfolio !== true &&
-        conversationData.isBeginnerInvestor === false,
-      options: [
-        { value: 'under_10000', label: 'Under 10 000 kr' },
-        { value: '10000_50000', label: '10 000 – 50 000 kr' },
-        { value: '50000_200000', label: '50 000 – 200 000 kr' },
-        { value: 'over_200000', label: 'Mer än 200 000 kr' }
-      ]
-    },
-    {
-      id: 'beginnerStartCapital',
-      question: 'Hur mycket är du beredd att börja investera med?',
-      key: 'availableCapital',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true && conversationData.hasCurrentPortfolio !== true,
-      options: [
-        { value: 'under_1000', label: 'Mindre än 1 000 kr' },
-        { value: '1000_10000', label: '1 000 – 10 000 kr' },
-        { value: '10000_50000', label: '10 000 – 50 000 kr' },
-        { value: 'over_50000', label: 'Mer än 50 000 kr' }
-      ]
     },
     {
       id: 'investmentGoalBeginner',
@@ -1069,43 +900,6 @@ const ChatPortfolioAdvisor = () => {
       ]
     },
     {
-      id: 'timeHorizonBeginner',
-      question: 'Hur lång tidshorisont har du för ditt sparande?',
-      key: 'timeHorizon',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true && conversationData.hasCurrentPortfolio !== true,
-      options: [
-        { value: 'short', label: 'Kortsiktigt (0–2 år)' },
-        { value: 'medium', label: 'Medellång sikt (3–5 år)' },
-        { value: 'long', label: 'Långsiktigt (5+ år)' },
-        { value: 'unknown', label: 'Vet inte än' }
-      ]
-    },
-    {
-      id: 'timeHorizonExperienced',
-      question: 'Hur lång tidshorisont har du på ditt sparande?',
-      key: 'timeHorizon',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio !== true,
-      options: [
-        { value: 'short', label: 'Kortsiktigt (0–2 år)' },
-        { value: 'medium', label: 'Medellång sikt (3–5 år)' },
-        { value: 'long', label: 'Långsiktigt (5+ år)' }
-      ]
-    },
-    {
-      id: 'preferredAssets',
-      question: 'Vilka tillgångar är du mest intresserad av?',
-      key: 'preferredAssets',
-      hasOptions: true,
-      options: [
-        { value: 'stocks', label: 'Aktier' },
-        { value: 'investment_companies', label: 'Investmentbolag' },
-        { value: 'crypto', label: 'Kryptovalutor' },
-        { value: 'commodities', label: 'Råvaror (t.ex. guld, olja)' }
-      ]
-    },
-    {
       id: 'riskBeginner',
       question: 'Hur ser du på risk?',
       key: 'riskTolerance',
@@ -1130,81 +924,10 @@ const ChatPortfolioAdvisor = () => {
       ]
     },
     {
-      id: 'monthlyInvestment',
-      question: 'Hur mycket planerar du att investera varje månad?',
+      id: 'monthlyAmount',
+      question: 'Hur mycket planerar du att månadsspara varje månad? (SEK)',
       key: 'monthlyAmount',
-      hasOptions: false,
-      processAnswer: (answer: string | string[]) => {
-        const value = Array.isArray(answer) ? answer.join(', ') : answer;
-        return value.trim();
-      }
-    },
-    {
-      id: 'marketReaction',
-      question: 'Hur reagerar du när portföljen tappar i värde?',
-      key: 'marketCrashReaction',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio === true,
-      options: [
-        { value: 'sell', label: 'Jag blir orolig och vill sälja' },
-        { value: 'wait', label: 'Jag försöker avvakta' },
-        { value: 'buy_more', label: 'Jag ser det som ett köptillfälle' }
-      ]
-    },
-    {
-      id: 'aiSupportExperienced',
-      question: 'Vad vill du främst att AI:n ska hjälpa dig med?',
-      key: 'portfolioHelp',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false,
-      options: [
-        { value: 'long_term_portfolio', label: 'Bygga en långsiktig portfölj' },
-        { value: 'analyze_holdings', label: 'Ge analyser på mina aktier' },
-        { value: 'find_new_investments', label: 'Hitta nya intressanta investeringar' },
-        { value: 'learn_more', label: 'Lära mig mer om investeringar' }
-      ]
-    },
-    {
-      id: 'aiSupportBeginner',
-      question: 'Vad vill du främst att AI:n ska hjälpa dig med?',
-      key: 'portfolioHelp',
-      hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true,
-      options: [
-        { value: 'step_by_step', label: 'Komma igång steg-för-steg' },
-        { value: 'learn_basics', label: 'Lära mig grunderna om aktier & investmentbolag' },
-        { value: 'starter_portfolio', label: 'Få förslag på en enkel startportfölj' },
-        { value: 'investment_inspiration', label: 'Inspiration till olika investeringstyper (aktier, investmentbolag, krypto m.m.)' }
-      ]
-    },
-    {
-      id: 'sectorInterests',
-      question: 'Vilka branscher intresserar dig mest? Du kan klicka på alternativen nedan eller ange egna.',
-      key: 'sectors',
-      hasOptions: true,
-      multiSelect: true,
-      options: [
-        { value: 'Tech & IT', label: 'Tech & IT' },
-        { value: 'Hälsa & Life Science', label: 'Hälsa & Life Science' },
-        { value: 'Energi', label: 'Energi' },
-        { value: 'Konsument & Handel', label: 'Konsument & Handel' },
-        { value: 'Fordon & Transport', label: 'Fordon & Transport' },
-        { value: 'Finans', label: 'Finans' },
-        { value: 'Industri', label: 'Industri' },
-        { value: 'Fastigheter', label: 'Fastigheter' },
-        { value: 'Grön Energi & Hållbarhet', label: 'Grön Energi & Hållbarhet' },
-        { value: 'Spel & Underhållning', label: 'Spel & Underhållning' },
-        { value: 'Annat', label: 'Annat' }
-      ],
-      processAnswer: (answer: string | string[]) => {
-        const values = Array.isArray(answer)
-          ? answer
-          : answer
-              .split(',')
-              .map(item => item.trim())
-              .filter(item => item.length > 0);
-        return values.filter((item, index) => values.indexOf(item) === index);
-      }
+      hasOptions: false
     }
   ];
 
@@ -2196,6 +1919,9 @@ const ChatPortfolioAdvisor = () => {
             if (!name) return null;
 
             const symbol = rec.symbol || rec.ticker || rec.code || '';
+            if (!isListedCompany(name, symbol) && !hasLikelyTicker(symbol)) {
+              return null;
+            }
             return {
               name,
               symbol: symbol || undefined,
@@ -2247,6 +1973,9 @@ const ChatPortfolioAdvisor = () => {
           
           // Basic validation - should be a reasonable company name
           if (name.length > 2 && name.length < 50 && /^[A-ZÅÄÖ]/.test(name)) {
+            if (!isListedCompany(name, symbol) && !hasLikelyTicker(symbol)) {
+              return;
+            }
             // Check if we already have this recommendation
             const exists = recommendations.some(r => r.name.toLowerCase() === name.toLowerCase());
             if (!exists) {
@@ -2346,6 +2075,9 @@ const ChatPortfolioAdvisor = () => {
         ? 'Tack för alla svar! Jag analyserar din befintliga portfölj och tar fram skräddarsydda förbättringsförslag...'
         : 'Tack för alla svar! Jag skapar nu din personliga portföljstrategi...'
     );
+    addBotMessage(
+      'Vill du ge fler detaljer? Komplettera din riskprofil senare under Profil > Riskprofil för en ännu mer träffsäker rådgivning.'
+    );
     
     // Save user holdings to database if they exist
     if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
@@ -2416,14 +2148,16 @@ const ChatPortfolioAdvisor = () => {
         refetchHoldings()
       ]);
       
-      // Navigate to implementation page
-      navigate('/portfolio-implementation');
-      
+      // Navigate to AI chat to assist with implementation
+      const implementationMessage =
+        'Hjälp mig att implementera portföljstrategin vi just tog fram och beskriva stegen för att komma igång.';
+      navigate(`/ai-chatt?message=${encodeURIComponent(implementationMessage)}`);
+
       // Show success message after navigation
       setTimeout(() => {
         toast({
-          title: "Strategi implementerad!",
-          description: "Din portföljstrategi är nu aktiv och redo att användas. Innehaven visas nu i översikten.",
+          title: "Strategi klar!",
+          description: "Öppnar AI-chatt för att guida dig genom att implementera strategin steg för steg.",
         });
       }, 1000);
       
@@ -2435,8 +2169,8 @@ const ChatPortfolioAdvisor = () => {
         variant: "destructive",
       });
       
-      // Navigate anyway since the portfolio might still be created
-      navigate('/portfolio-implementation');
+      // Navigate to chat so the user can resolve implementation issues
+      navigate('/ai-chatt');
     }
   };
 
@@ -2654,6 +2388,33 @@ const ChatPortfolioAdvisor = () => {
     const plan = structuredResponse;
     const isOptimization = portfolioResult?.mode === 'optimize';
 
+    const userHoldingsCount = conversationData.currentHoldings?.length ?? 0;
+    const goalSummary = conversationData.optimizationGoals?.length
+      ? conversationData.optimizationGoals.join(', ')
+      : null;
+
+    const reasoningSummary = (() => {
+      const parts: string[] = [];
+
+      if (plan?.riskAlignment) {
+        parts.push(plan.riskAlignment);
+      }
+
+      if (goalSummary) {
+        parts.push(`Mål: ${goalSummary}.`);
+      }
+
+      if (userHoldingsCount > 0) {
+        parts.push(`Bedömningen utgår från ${userHoldingsCount} befintliga innehav.`);
+      }
+
+      if (!parts.length) {
+        return 'AI:n vägde dina svar och nuvarande innehav för att ge rekommendationen.';
+      }
+
+      return parts.join(' ');
+    })();
+
     const wantsComplementaryIdeas = conversationData.optimizationPreference === 'improve_with_new_ideas';
     const complementaryFromResult: StockRecommendation[] = Array.isArray(portfolioResult?.complementaryIdeas)
       ? (portfolioResult?.complementaryIdeas as StockRecommendation[])
@@ -2708,15 +2469,58 @@ const ChatPortfolioAdvisor = () => {
       });
 
     if (!plan) {
+      const renderFallbackParagraph = (paragraph: string, index: number) => {
+        const lines = paragraph
+          .split('\n')
+          .map(line => line.trim())
+          .filter(Boolean);
+
+        const bulletLines = lines.filter(line => /^[-–•]/.test(line));
+
+        if (bulletLines.length > 0 && bulletLines.length === lines.length) {
+          return (
+            <ul
+              key={`fallback-list-${index}`}
+              className="list-disc list-inside space-y-1 text-base leading-7 text-foreground"
+            >
+              {lines.map((line, lineIndex) => (
+                <li key={`fallback-line-${index}-${lineIndex}`}>{line.replace(/^[-–•]\s*/, '')}</li>
+              ))}
+            </ul>
+          );
+        }
+
+        return (
+          <p key={`fallback-${index}`} className="text-base leading-7 text-foreground">
+            {paragraph}
+          </p>
+        );
+      };
+
       return (
-        <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-          {aiContent
-            .split(/\n{2,}/)
-            .map(paragraph => paragraph.trim())
-            .filter(Boolean)
-            .map((paragraph, index) => (
-              <p key={`fallback-${index}`}>{paragraph}</p>
-            ))}
+        <div className="space-y-4">
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">Varför denna bedömning?</p>
+            <p className="mt-1 text-sm leading-6 text-foreground">{reasoningSummary}</p>
+          </div>
+          <Card className="border-primary/10 bg-card/80 shadow-sm">
+            <CardHeader className="flex flex-row items-center gap-3 space-y-0">
+              <div className="rounded-lg bg-primary/15 p-2 text-primary">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-semibold">AI-svar</CardTitle>
+                <p className="text-sm text-muted-foreground">Förhandsgranskning av rekommendationen</p>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 text-base leading-7">
+              {aiContent
+                .split(/\n{2,}/)
+                .map(paragraph => paragraph.trim())
+                .filter(Boolean)
+                .map(renderFallbackParagraph)}
+            </CardContent>
+          </Card>
         </div>
       );
     }
@@ -2733,7 +2537,7 @@ const ChatPortfolioAdvisor = () => {
       'Följ upp resultatet efter genomförd justering tillsammans med AI-assistenten.',
     ];
 
-    const displayNextSteps = plan.nextSteps.length > 0
+    const displayNextSteps = plan.nextSteps?.length > 0
       ? plan.nextSteps
       : (isOptimization ? defaultOptimizationSteps : defaultNewPortfolioSteps);
 
@@ -2766,214 +2570,132 @@ const ChatPortfolioAdvisor = () => {
       })
       .join('; ');
 
-    const aiChatSuggestions = (() => {
-      const suggestions: Array<{ title: string; description: string; sessionName: string; message: string }> = [];
-
-      if (isOptimization) {
-        if (assetSummary) {
-          suggestions.push({
-            title: 'Planera ombalanseringen med AI',
-            description: 'Gå igenom hur du praktiskt genomför ändringarna och vilka order som ska läggas.',
-            sessionName: 'Portföljoptimering',
-            message: `Hej! Jag har fått optimeringsförslag för min portfölj och vill säkerställa genomförandet. Föreslagna ändringar: ${assetSummary}. Kan du hjälpa mig att prioritera och tidsätta affärerna?`,
-          });
-        }
-
-        if (conversationData.optimizationGoals && conversationData.optimizationGoals.length > 0) {
-          suggestions.push({
-            title: 'Fördjupa optimeringsmålen',
-            description: 'Diskutera hur målen kan uppfyllas och vilka risker som bör bevakas.',
-            sessionName: 'Optimeringsmål',
-            message: `Jag vill diskutera mina optimeringsmål (${conversationData.optimizationGoals.join(', ')}). Hur säkerställer jag att rekommendationerna stöttar dessa mål och vad bör jag följa upp på?`,
-          });
-        }
-
-        if (wantsComplementaryIdeas && complementaryIdeas.length > 0) {
-          const complementarySummary = complementaryIdeas
-            .slice(0, 3)
-            .map(idea => idea.symbol ? `${idea.name} (${idea.symbol})` : idea.name)
-            .join(', ');
-
-          suggestions.push({
-            title: 'Utvärdera kompletterande idéer',
-            description: 'Bedöm hur nya aktier passar in i portföljen innan du agerar.',
-            sessionName: 'Kompletterande investeringar',
-            message: `Jag fick även kompletterande idéer (${complementarySummary}). Kan vi diskutera hur de bör viktas och om de verkligen passar min strategi?`,
-          });
-        }
-
-        return suggestions;
-      }
-
-      if (plan.actionSummary) {
-        suggestions.push({
-          title: 'Stäm av portföljplanen',
-          description: 'Låt AI förklara varför planen passar dig och vilka risker som finns.',
-          sessionName: 'Portföljplan',
-          message: `Hej! Jag har fått en portföljplan. Sammanfattning: ${plan.actionSummary}. Kan du hjälpa mig att förstå strategin och vilka frågor jag bör ställa innan jag sätter igång?`,
-        });
-      }
-
-      if (summarizedSteps) {
-        suggestions.push({
-          title: 'Skapa en implementeringschecklista',
-          description: 'Be AI om en konkret lista att följa när du börjar investera.',
-          sessionName: 'Implementeringsplan',
-          message: `Jag behöver en detaljerad checklista för att genomföra dessa steg: ${summarizedSteps}. Hjälp mig att bryta ned dem i praktiska åtgärder med tidsordning.`,
-        });
-      }
-
-      if (assetSummary) {
-        suggestions.push({
-          title: 'Validera de föreslagna köpen',
-          description: 'Diskutera hur du kan komplettera eller justera enskilda innehav.',
-          sessionName: 'Val av investeringar',
-          message: `Planen föreslår följande nyckelinnehav: ${assetSummary}. Kan du hjälpa mig att resonera kring beloppen och om jag bör lägga till alternativa värdepapper?`,
-        });
-      }
-
-      return suggestions;
-    })();
+    const detailedReasoning = assetSummary
+      ? `${reasoningSummary} Nyckelrekommendationer: ${assetSummary}.`
+      : reasoningSummary;
 
     return (
       <div className="space-y-5 text-sm leading-relaxed text-foreground">
-        {plan.actionSummary && (
-          <p className="text-base font-medium text-foreground">{plan.actionSummary}</p>
-        )}
-
-        {plan.riskAlignment && (
-          <p className="text-muted-foreground">{plan.riskAlignment}</p>
-        )}
-
-        {displayNextSteps.length > 0 && (
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Så går du vidare</h4>
-            <ol className="mt-2 space-y-1 list-decimal list-inside">
-              {displayNextSteps.map((step, index) => (
-                <li key={`step-${index}`} className="text-foreground">
-                  {step}
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
-
-        {aiChatSuggestions.length > 0 && (
-          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 sm:p-4">
-            <div className="flex items-start gap-2">
-              <div className="mt-0.5 rounded-md bg-primary/20 p-1 text-primary">
-                <MessageSquare className="h-4 w-4" />
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="rounded-lg bg-primary text-primary-foreground p-2 shadow-sm">
+                <Sparkles className="h-5 w-5" />
               </div>
-              <div className="space-y-3">
-                <div>
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-primary">Fortsätt dialogen med AI-assistenten</h4>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Starta en fokuserad chatt för att få stöd i nästa steg eller ställa följdfrågor om rekommendationerna.
-                  </p>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {aiChatSuggestions.map((suggestion, index) => (
-                    <button
-                      key={`${suggestion.sessionName}-${index}`}
-                      type="button"
-                      onClick={() => startAiChatSession(suggestion.sessionName, suggestion.message)}
-                      className="group flex h-full flex-col items-start gap-1 rounded-lg border border-primary/30 bg-background/80 p-3 text-left transition hover:border-primary hover:bg-primary/10"
-                    >
-                      <span className="text-sm font-medium text-foreground group-hover:text-primary">
-                        {suggestion.title}
-                      </span>
-                      <span className="text-xs text-muted-foreground group-hover:text-primary/80">
-                        {suggestion.description}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+              <div className="space-y-1">
+                {plan.actionSummary && (
+                  <p className="text-base font-semibold text-foreground">{plan.actionSummary}</p>
+                )}
+                {plan.riskAlignment && (
+                  <p className="text-sm text-primary/80">{plan.riskAlignment}</p>
+                )}
               </div>
             </div>
+            <div className="flex flex-wrap gap-2 text-xs font-medium uppercase tracking-wide text-primary">
+              {isOptimization ? (
+                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+                  Optimering på befintlig portfölj
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+                  Ny portföljplan
+                </Badge>
+              )}
+            </div>
           </div>
+        </div>
+
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">Varför denna bedömning?</p>
+          <p className="mt-1 text-sm leading-6 text-foreground">{detailedReasoning}</p>
+        </div>
+
+        {displayNextSteps.length > 0 && (
+          <Card className="border-border/80 bg-card/70 shadow-sm">
+            <CardHeader className="flex flex-row items-start gap-3 space-y-0 pb-3">
+              <div className="rounded-md bg-amber-50 p-2 text-amber-700">
+                <AlertTriangle className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Så går du vidare</p>
+                <CardTitle className="text-base font-semibold text-foreground">Prioriterade nästa steg</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <ol className="mt-1 space-y-2 list-decimal list-inside text-base leading-7">
+                {displayNextSteps.map((step, index) => (
+                  <li key={`step-${index}`} className="text-foreground">
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            </CardContent>
+          </Card>
         )}
 
         {plan.assets.length > 0 && (
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {isOptimization ? 'Optimeringsförslag & åtgärder' : 'Köpplan & allokering'}
-            </h4>
-            <div className="mt-2 space-y-2">
-              {assetsToDisplay.map((displayAsset, index) => {
-                const originalAsset = plan.assets[index];
-                const actionLabel = getActionLabel(originalAsset?.actionType ?? displayAsset.actionType);
+          <div className="space-y-3 rounded-lg border border-border/80 bg-background/50 p-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Föreslagna åtgärder per tillgång</h4>
+              <Badge variant="secondary" className="text-[10px]">
+                {plan.assets.length} förslag
+              </Badge>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {plan.assets.map((_asset, index) => {
+                const displayAsset = assetsToDisplay[index];
+                const actionLabel = displayAsset.actionType ? getActionLabel(displayAsset.actionType) : null;
+                const allocationDisplay = formatPercentValue(displayAsset.allocationPercent);
+                const changeDisplay = formatSignedPercent(displayAsset.changePercent);
 
                 return (
-                  <div
-                    key={`${displayAsset.name}-${displayAsset.ticker ?? index}`}
-                    className="rounded-lg border border-border/60 bg-background/70 p-3"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="flex flex-col gap-1 min-w-0">
-                        <div className="flex flex-wrap items-baseline gap-2">
-                          <span className="font-semibold text-foreground truncate max-w-[220px] sm:max-w-[280px]">
-                            {displayAsset.name}
-                          </span>
+                  <div key={`${displayAsset.name}-${index}`} className="flex h-full flex-col gap-3 rounded-xl border bg-card/70 p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-base font-semibold text-foreground">{displayAsset.name}</p>
                           {displayAsset.ticker && (
-                            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                            <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
                               {displayAsset.ticker}
-                            </span>
+                            </Badge>
                           )}
                         </div>
-                        {isOptimization && actionLabel && (
-                          <Badge
-                            variant="outline"
-                            className="w-fit border-primary/40 bg-primary/10 text-primary text-[10px] uppercase tracking-wide"
-                          >
-                            Åtgärd: {actionLabel}
-                          </Badge>
+                        {displayAsset.riskRole && (
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            Roll i portföljen: {displayAsset.riskRole}
+                          </p>
                         )}
                       </div>
-
-                      <div className="flex flex-col items-end gap-2 text-right sm:flex-row sm:items-start sm:gap-3">
-                        <div className="flex flex-col items-end gap-1 text-right">
-                          {(() => {
-                            const changeDisplay = formatSignedPercent(displayAsset.changePercent);
-                            if (!changeDisplay) return null;
-                            return (
-                              <span className={`text-xs font-medium ${getChangeBadgeClass(displayAsset.changePercent)}`}>
-                                Förändring: {changeDisplay}
-                              </span>
-                            );
-                          })()}
-                          {(() => {
-                            if (
-                              isOptimization &&
-                              (!displayAsset.allocationPercent || displayAsset.allocationPercent === 0)
-                            ) {
-                              return null;
-                            }
-                            const allocationDisplay = formatPercentValue(displayAsset.allocationPercent);
-                            if (!allocationDisplay) return null;
-                            return <span className="text-sm font-semibold text-primary">{allocationDisplay}</span>;
-                          })()}
+                      <div className="flex flex-col items-end gap-2 text-xs">
+                        <div className="flex flex-wrap justify-end gap-1.5">
+                          {actionLabel && (
+                            <Badge variant="secondary" className="text-[11px]">
+                              Åtgärd: {actionLabel}
+                            </Badge>
+                          )}
+                          {allocationDisplay && !(isOptimization && (!displayAsset.allocationPercent || displayAsset.allocationPercent === 0)) && (
+                            <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">
+                              Vikt: {allocationDisplay}
+                            </Badge>
+                          )}
+                          {changeDisplay && (
+                            <Badge
+                              variant="outline"
+                              className={`${getChangeBadgeClass(displayAsset.changePercent)} border-border/60 bg-background/80`}
+                            >
+                              Förändring {changeDisplay}
+                            </Badge>
+                          )}
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-8 px-2 text-xs font-medium"
-                          onClick={() => openReplacementDialog(originalAsset, index)}
-                        >
-                          <RefreshCcw className="mr-1 h-3.5 w-3.5" /> Byt ut
-                        </Button>
                       </div>
                     </div>
                     {displayAsset.rationale && (
-                      <p className="mt-2 text-sm text-muted-foreground">{displayAsset.rationale}</p>
-                    )}
-                    {displayAsset.riskRole && (
-                      <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
-                        Roll i portföljen: {displayAsset.riskRole}
-                      </p>
+                      <p className="text-sm leading-6 text-muted-foreground">{displayAsset.rationale}</p>
                     )}
                     {displayAsset.notes && (
-                      <p className="mt-1 text-xs text-muted-foreground">{displayAsset.notes}</p>
+                      <div className="rounded-md border border-dashed border-border/80 bg-muted/20 p-2 text-xs text-muted-foreground">
+                        {displayAsset.notes}
+                      </div>
                     )}
                   </div>
                 );
@@ -2983,17 +2705,18 @@ const ChatPortfolioAdvisor = () => {
         )}
 
         {isOptimization && complementaryIdeas.length > 0 && (
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Kompletterande idéer som passar din portfölj
-            </h4>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span>Kompletterande idéer som passar din portfölj</span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
               {complementaryIdeas.map((idea, idx) => (
                 <div
                   key={`${idea.name}-${idea.symbol ?? idx}`}
-                  className="rounded-lg border border-dashed border-primary/30 bg-background/60 p-3"
+                  className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-3 shadow-sm"
                 >
-                  <div className="flex items-baseline justify-between gap-2">
+                  <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="font-medium text-foreground">{idea.name}</p>
                       {idea.symbol && (
@@ -3004,14 +2727,14 @@ const ChatPortfolioAdvisor = () => {
                       const allocationSuggestion = formatPercentValue(idea.allocation);
                       if (!allocationSuggestion) return null;
                       return (
-                        <span className="text-xs font-semibold text-primary">
+                        <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">
                           Förslag: {allocationSuggestion}
-                        </span>
+                        </Badge>
                       );
                     })()}
                   </div>
                   {idea.reasoning && (
-                    <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{idea.reasoning}</p>
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{idea.reasoning}</p>
                   )}
                 </div>
               ))}
@@ -3335,11 +3058,38 @@ const ChatPortfolioAdvisor = () => {
                   </div>
                   
                   {portfolioResult?.mode === 'optimize' ? (
-                    <div className="mt-4 pt-4 border-t border-primary/20 text-sm text-muted-foreground">
-                      Använd rekommendationerna för att justera dina nuvarande innehav i din portföljöversikt.
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-primary/20 pt-4 text-sm text-muted-foreground">
+                      <p className="min-w-[200px] flex-1">
+                        Använd rekommendationerna för att justera dina nuvarande innehav i din portföljöversikt.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            startAiChatSession(
+                              'Planera ombalansering',
+                              'Hjälp mig att tidsätta och prioritera ombalanseringen baserat på de senaste AI-rekommendationerna.'
+                            )
+                          }
+                        >
+                          Planera ombalansering
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={handleImplementStrategy}
+                          disabled={loading}
+                        >
+                          Uppdatera översikten
+                        </Button>
+                      </div>
                     </div>
                   ) : (
-                    <div className="mt-4 pt-4 border-t border-primary/20">
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-primary/20 pt-4">
+                      <p className="text-sm text-muted-foreground min-w-[200px] flex-1">
+                        För över strategin till din portföljöversikt och följ upp genomförandet.
+                      </p>
                       <Button
                         onClick={handleImplementStrategy}
                         className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
