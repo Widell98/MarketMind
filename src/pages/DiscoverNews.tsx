@@ -170,6 +170,8 @@ const DiscoverNews = () => {
     return `Genererad ${parsed.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
   }, [morningBrief?.generatedAt]);
 
+  const hasReportHighlights = reportHighlights.length > 0;
+
   return (
     <Layout>
       <div className="w-full pb-12">
@@ -293,55 +295,58 @@ const DiscoverNews = () => {
               </CardContent>
             </Card>
 
-            <Card className="border-border/60 bg-card/80">
-              <CardContent className="p-4 sm:p-6">
-                <MarketPulse
-                  useExternalData
-                  marketData={marketData}
-                  loading={marketLoading}
-                  error={marketError}
-                  refetch={refetchMarketData}
-                />
+            <Card className="border border-primary/30 bg-gradient-to-br from-primary/15 via-primary/10 to-background shadow-lg shadow-primary/10 backdrop-blur">
+              <CardContent className="space-y-4 p-4 sm:p-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/20 text-primary">
+                      <Sparkles className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-primary/80">
+                        Senaste AI-genererade rapporterna
+                      </p>
+                      <h2 className="text-2xl font-semibold text-foreground">Viktiga höjdpunkter</h2>
+                    </div>
+                  </div>
+                  <Button
+                    variant="default"
+                    className="rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/30 transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/40"
+                    onClick={() => navigate('/discover')}
+                  >
+                    Visa alla rapporter
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+                {reportsLoading && !hasReportHighlights ? (
+                  <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/10 px-6 py-10 text-center text-sm text-primary">
+                    Laddar rapporter…
+                  </div>
+                ) : hasReportHighlights ? (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {reportHighlights.map((report) => (
+                      <ReportHighlightCard key={report.id} report={report} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/5 px-6 py-10 text-center text-sm text-muted-foreground">
+                    Inga nya AI-rapporter ännu. Kom tillbaka lite senare så fyller vi på höjdpunkter här.
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
-
-          {(reportHighlights.length > 0 || reportsLoading) && (
-            <section className="space-y-4 rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/15 via-primary/10 to-background p-6 shadow-lg shadow-primary/10 backdrop-blur sm:p-8">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/20 text-primary">
-                    <Sparkles className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-primary/80">
-                      Senaste AI-genererade rapporterna
-                    </p>
-                    <h2 className="text-2xl font-semibold text-foreground">Viktiga höjdpunkter</h2>
-                  </div>
-                </div>
-                <Button
-                  variant="default"
-                  className="rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/30 transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/40"
-                  onClick={() => navigate('/discover')}
-                >
-                  Visa alla rapporter
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-              {reportsLoading && reportHighlights.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/10 px-6 py-10 text-center text-sm text-primary">
-                  Laddar rapporter…
-                </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {reportHighlights.map((report) => (
-                    <ReportHighlightCard key={report.id} report={report} />
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
+          <Card className="border-border/60 bg-card/80">
+            <CardContent className="p-4 sm:p-6">
+              <MarketPulse
+                useExternalData
+                marketData={marketData}
+                loading={marketLoading}
+                error={marketError}
+                refetch={refetchMarketData}
+              />
+            </CardContent>
+          </Card>
         </div>
       </div>
     </Layout>
