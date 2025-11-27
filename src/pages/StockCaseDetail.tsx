@@ -1341,11 +1341,11 @@ const StockCaseDetail = ({
               </div>
             </div>
 
-            <ScrollArea className="max-h-[70vh] rounded-3xl border border-border/40 bg-muted/10 px-5 py-5">
-              <div className="space-y-4 text-base leading-relaxed text-foreground">
-                {formattedAnalysisContent}
-              </div>
-            </ScrollArea>
+           <div className="max-h-[70vh] overflow-y-auto rounded-3xl border border-border/40 bg-muted/10 px-5 py-5">
+    <div className="space-y-4 text-base leading-relaxed text-foreground">
+      {formattedAnalysisContent}
+    </div>
+  </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -1353,110 +1353,115 @@ const StockCaseDetail = ({
         <div className="relative">
           <CaseNavigationSlideButtons />
           {/* Hero Section */}
-          {isAiGeneratedCase ? (
-            <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.55)]">
-              <div className="absolute inset-0 bg-gradient-to-br from-muted/15 via-transparent to-muted/5 dark:from-muted/20 dark:via-transparent dark:to-muted/10" />
+{isAiGeneratedCase ? (
+  <div className="relative overflow-hidden rounded-3xl sm:rounded-[36px] border border-border/30 bg-background/95 p-5 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.55)]">
+    <div className="absolute inset-0 bg-gradient-to-br from-muted/15 via-transparent to-muted/5 dark:from-muted/20 dark:via-transparent dark:to-muted/10" />
 
-              <div className="relative z-10 space-y-8">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => navigate('/discover')}
-                      className="h-9 rounded-full border border-border/40 bg-background/70 px-4 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground"
-                    >
-                      <ArrowLeft className="mr-2 h-4 w-4" />
-                      Tillbaka
-                    </Button>
-                    {embedded ? (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => navigate(`/stock-cases/${resolvedCaseId}`)}
-                        className="h-9 rounded-full px-4 text-xs font-semibold shadow-sm"
-                      >
-                        Öppna caset
-                      </Button>
-                    ) : null}
-                  </div>
+    <div className="relative z-10 space-y-6 sm:space-y-8">
+      {/* Header med knappar */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/discover')}
+            className="h-9 rounded-full border border-border/40 bg-background/70 px-4 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Tillbaka
+          </Button>
+          {embedded ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => navigate(`/stock-cases/${resolvedCaseId}`)}
+              className="h-9 rounded-full px-4 text-xs font-semibold shadow-sm"
+            >
+              Öppna caset
+            </Button>
+          ) : null}
+        </div>
 
-                  {performanceBadge ? (
-                    <div className="flex items-center justify-end gap-2">
-                      {performanceBadge}
-                    </div>
-                  ) : null}
-                </div>
+        {performanceBadge ? (
+          <div className="flex items-center justify-end gap-2">
+            {performanceBadge}
+          </div>
+        ) : null}
+      </div>
 
-                <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)]">
-                  <div className="space-y-5">
-                    <div className="flex flex-wrap items-center gap-3">
-                      {aiBadge}
-                    </div>
+      <div className="grid gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)]">
+        {/* Vänster kolumn: Text & Info */}
+        <div className="space-y-5 min-w-0">
+          <div className="flex flex-wrap items-center gap-3">
+            {aiBadge}
+          </div>
 
-                    <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{displayTitle}</h1>
+          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight sm:text-5xl break-words">{displayTitle}</h1>
 
-                    {heroSubtitle ? (
-                      <p className="text-base text-muted-foreground sm:text-lg">
-                        {heroSubtitle}
-                      </p>
-                    ) : null}
+          {heroSubtitle ? (
+            <p className="text-base text-muted-foreground sm:text-lg break-words">
+              {heroSubtitle}
+            </p>
+          ) : null}
 
-                    {heroMetadataItems.length > 0 ? (
-                      <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
-                        {heroMetadataItems.map((item) => item)}
-                      </div>
-                    ) : null}
-
-                    <div className="space-y-3">
-                      {aiHeroIntroHtml ? (
-                        <p
-                          className="text-base leading-relaxed text-foreground sm:text-lg"
-                          dangerouslySetInnerHTML={{ __html: aiHeroIntroHtml }}
-                        />
-                      ) : null}
-                      {renderAnalysisCta()}
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    {overviewLogoSrc ? (
-                      <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-border/30 bg-background/80 shadow-sm sm:mx-0 sm:ml-auto sm:flex-none">
-                        <img
-                          src={overviewLogoSrc}
-                          alt={`${overviewCompanyName} logotyp`}
-                          className="h-full w-full object-cover"
-                          onError={() => setIsHeroLogoError(true)}
-                        />
-                      </div>
-                    ) : null}
-
-                    {summaryStats.length > 0 ? (
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {summaryStats.map((stat) => (
-                          <div
-                            key={stat.key}
-                            className="rounded-2xl border border-border/40 bg-background/80 p-4 shadow-sm"
-                          >
-                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">
-                              {stat.label}
-                            </p>
-                            <div className="mt-2 text-lg font-semibold text-foreground">
-                              {renderStatValue(stat)}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="rounded-[28px] border border-border/30 bg-muted/20 px-6 py-6 shadow-[0_24px_60px_-60px_rgba(15,23,42,0.45)]">
-                  {renderPrimaryActionContent()}
-                </div>
-              </div>
+          {heroMetadataItems.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
+              {heroMetadataItems.map((item) => item)}
             </div>
-          ) : (
+          ) : null}
+
+          <div className="space-y-3">
+            {aiHeroIntroHtml ? (
+              <p
+                className="text-base leading-relaxed text-foreground sm:text-lg break-words"
+                dangerouslySetInnerHTML={{ __html: aiHeroIntroHtml }}
+              />
+            ) : null}
+            {renderAnalysisCta()}
+          </div>
+        </div>
+
+        {/* Höger kolumn: Logga & Summary Stats (Här visas priset i Hero) */}
+        <div className="space-y-4">
+          {overviewLogoSrc ? (
+            <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-border/30 bg-background/80 shadow-sm sm:mx-0 sm:ml-auto sm:flex-none">
+              <img
+                src={overviewLogoSrc}
+                alt={`${overviewCompanyName} logotyp`}
+                className="h-full w-full object-cover"
+                onError={() => setIsHeroLogoError(true)}
+              />
+            </div>
+          ) : null}
+
+          {summaryStats.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {summaryStats.map((stat) => (
+                <div
+                  key={stat.key}
+                  className="rounded-2xl border border-border/40 bg-background/80 p-4 shadow-sm"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">
+                    {stat.label}
+                  </p>
+                  <div className="mt-2 text-lg font-semibold text-foreground">
+                    {renderStatValue(stat)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="rounded-3xl sm:rounded-[28px] border border-border/30 bg-muted/20 px-4 py-5 sm:px-6 sm:py-6 shadow-[0_24px_60px_-60px_rgba(15,23,42,0.45)]">
+        {renderPrimaryActionContent()}
+      </div>
+    </div>
+  </div>
+) : (
+// ...
+  // ... Standard case (se punkt 2 nedan)
             <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.65)]">
               <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent dark:from-primary/15 dark:via-transparent dark:to-transparent" />
 
@@ -1686,102 +1691,103 @@ const StockCaseDetail = ({
             )}
           >
             {/* Combined Overview Card - only show if there are financial metrics */}
-            {shouldShowFinancialOverview && (
-              <section className="rounded-[32px] border border-border/40 bg-background/95 p-6 sm:p-8 shadow-[0_24px_60px_-60px_rgba(15,23,42,0.6)]">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="text-2xl font-semibold tracking-tight">Finansiell översikt</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Snabb överblick av pris, bolagsinformation och nyckeltal.
-                    </p>
-                  </div>
-                  {overviewLogoSrc ? (
-                    <div className="flex items-center gap-3 rounded-full border border-border/30 bg-background/80 px-4 py-2 shadow-sm">
-                      <img
-                        src={overviewLogoSrc}
-                        alt={`${overviewCompanyName} logotyp`}
-                        loading="lazy"
-                        className="h-10 w-10 rounded-full border border-border/20 bg-white object-cover"
-                      />
-                      <div className="flex flex-col leading-tight">
-                        <span className="text-sm font-semibold text-foreground">{overviewCompanyName}</span>
-                        {overviewTicker ? (
-                          <span className="text-xs text-muted-foreground">{overviewTicker}</span>
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
+           {shouldShowFinancialOverview && (
+  <section className="rounded-3xl sm:rounded-[32px] border border-border/40 bg-background/95 p-5 sm:p-8 shadow-[0_24px_60px_-60px_rgba(15,23,42,0.6)]">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight">Finansiell översikt</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Snabb överblick av pris, bolagsinformation och nyckeltal.
+        </p>
+      </div>
+      {overviewLogoSrc ? (
+        <div className="flex items-center gap-3 rounded-full border border-border/30 bg-background/80 px-4 py-2 shadow-sm">
+          <img
+            src={overviewLogoSrc}
+            alt={`${overviewCompanyName} logotyp`}
+            loading="lazy"
+            className="h-10 w-10 rounded-full border border-border/20 bg-white object-cover"
+          />
+          <div className="flex flex-col leading-tight">
+            <span className="text-sm font-semibold text-foreground">{overviewCompanyName}</span>
+            {overviewTicker ? (
+              <span className="text-xs text-muted-foreground">{overviewTicker}</span>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
 
-                {hasSummaryStats ? (
-                  <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {summaryStats.map((stat) => {
-                      const IconComponent = stat.icon;
-                      const summaryValueClassName = stat.valueClassName
-                        ? cn('text-lg font-semibold tracking-tight text-foreground', stat.valueClassName)
-                        : 'text-lg font-semibold tracking-tight text-foreground';
+    {/* Här renderas priset och andra nyckeltal */}
+    {hasSummaryStats ? (
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {summaryStats.map((stat) => {
+          const IconComponent = stat.icon;
+          const summaryValueClassName = stat.valueClassName
+            ? cn('text-lg font-semibold tracking-tight text-foreground', stat.valueClassName)
+            : 'text-lg font-semibold tracking-tight text-foreground';
 
-                      return (
-                        <div
-                          key={stat.key}
-                          className="flex flex-col gap-2 rounded-2xl border border-border/30 bg-background/80 px-4 py-4 shadow-sm"
-                        >
-                          <span className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground/80">
-                            {IconComponent ? <IconComponent className="h-3.5 w-3.5" /> : null}
-                            {stat.label}
-                          </span>
-                          <div className={summaryValueClassName}>{renderStatValue(stat)}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : null}
+          return (
+            <div
+              key={stat.key}
+              className="flex flex-col gap-2 rounded-2xl border border-border/30 bg-background/80 px-4 py-4 shadow-sm"
+            >
+              <span className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground/80">
+                {IconComponent ? <IconComponent className="h-3.5 w-3.5" /> : null}
+                {stat.label}
+              </span>
+              <div className={summaryValueClassName}>{renderStatValue(stat)}</div>
+            </div>
+          );
+        })}
+      </div>
+    ) : null}
 
-                {hasDetailedFinancialStats ? (
-                  <div className="mt-6 border-t border-border/20 pt-6">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="group inline-flex items-center gap-2 rounded-full border border-border/30 bg-background/80 px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-background"
-                      onClick={() => setShowFullFinancialDetails((prev) => !prev)}
-                    >
-                      {showFullFinancialDetails ? 'Dölj detaljer' : 'Visa detaljer'}
-                      {showFullFinancialDetails ? (
-                        <ChevronUp className="h-4 w-4 transition-transform group-hover:-translate-y-0.5" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 transition-transform group-hover:translate-y-0.5" />
-                      )}
-                    </Button>
+    {hasDetailedFinancialStats ? (
+      <div className="mt-6 border-t border-border/20 pt-6">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="group inline-flex items-center gap-2 rounded-full border border-border/30 bg-background/80 px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-background"
+          onClick={() => setShowFullFinancialDetails((prev) => !prev)}
+        >
+          {showFullFinancialDetails ? 'Dölj detaljer' : 'Visa detaljer'}
+          {showFullFinancialDetails ? (
+            <ChevronUp className="h-4 w-4 transition-transform group-hover:-translate-y-0.5" />
+          ) : (
+            <ChevronDown className="h-4 w-4 transition-transform group-hover:translate-y-0.5" />
+          )}
+        </Button>
 
-                    {showFullFinancialDetails ? (
-                      <div className="mt-5 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                        {detailPricingStats.length > 0 ? (
-                          <div>
-                            <p className="text-sm font-medium text-muted-foreground">Pris och kursinformation</p>
-                            {renderStatsList(detailPricingStats)}
-                          </div>
-                        ) : null}
+        {showFullFinancialDetails ? (
+          <div className="mt-5 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {detailPricingStats.length > 0 ? (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Pris och kursinformation</p>
+                {renderStatsList(detailPricingStats)}
+              </div>
+            ) : null}
 
-                        {detailCompanyStats.length > 0 ? (
-                          <div>
-                            <p className="text-sm font-medium text-muted-foreground">Bolagsinformation</p>
-                            {renderStatsList(detailCompanyStats)}
-                          </div>
-                        ) : null}
+            {detailCompanyStats.length > 0 ? (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Bolagsinformation</p>
+                {renderStatsList(detailCompanyStats)}
+              </div>
+            ) : null}
 
-                        {detailFundamentalsStats.length > 0 ? (
-                          <div>
-                            <p className="text-sm font-medium text-muted-foreground">Nyckeltal</p>
-                            {renderStatsList(detailFundamentalsStats)}
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-              </section>
-            )}
+            {detailFundamentalsStats.length > 0 ? (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Nyckeltal</p>
+                {renderStatsList(detailFundamentalsStats)}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    ) : null}
+  </section>
+)}
 
             {/* Admin Comment */}
             {stockCase.admin_comment && (
