@@ -1341,11 +1341,11 @@ const StockCaseDetail = ({
               </div>
             </div>
 
-            <ScrollArea className="max-h-[70vh] rounded-3xl border border-border/40 bg-muted/10 px-5 py-5">
-              <div className="space-y-4 text-base leading-relaxed text-foreground">
-                {formattedAnalysisContent}
-              </div>
-            </ScrollArea>
+           <div className="max-h-[70vh] overflow-y-auto rounded-3xl border border-border/40 bg-muted/10 px-5 py-5">
+    <div className="space-y-4 text-base leading-relaxed text-foreground">
+      {formattedAnalysisContent}
+    </div>
+  </div>
           </div>
         </DialogContent>
       </Dialog>
