@@ -925,8 +925,8 @@ serve(async (req) => {
               const mc = t.marketCap ? Number(String(t.marketCap).replace(/[^0-9]/g, '')) : 0;
               return { ...t, marketCapValue: mc };
             })
-            // Sortera högst till lägst Market Cap
-            .sort((a, b) => b.marketCapValue - a.marketCapValue)
+            // Sortera lägst till högst Market Cap
+           .sort((a, b) => a.marketCapValue - b.marketCapValue)
             // Filtrera bort dubbletter baserat på företagsnamn (t.ex. Investor A/B)
             .filter((t, idx, self) => {
               if (!t.name) return true;
