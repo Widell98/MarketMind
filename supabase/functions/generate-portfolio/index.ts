@@ -8,6 +8,19 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const envPortfolioModel = Deno.env.get('OPENAI_PORTFOLIO_MODEL');
+const envDefaultModel = Deno.env.get('OPENAI_MODEL');
+const envLightweightModel = Deno.env.get('OPENAI_PORTFOLIO_LIGHT_MODEL');
+
+const PRIMARY_CHAT_MODEL = envPortfolioModel
+  || envDefaultModel
+  || 'gpt-5.1';
+
+const LIGHTWEIGHT_CHAT_MODEL = envLightweightModel
+  || 'gpt-4o-mini';
+
+const SELECTED_CHAT_MODEL = PRIMARY_CHAT_MODEL;
+
 const jsonResponse = (body: Record<string, unknown>, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -650,50 +663,63 @@ serve(async (req) => {
       ? JSON.stringify(conversationData, null, 2)
       : '{}';
 
-    const systemPrompt = `Du är en svensk licensierad och auktoriserad investeringsrådgivare med lång erfarenhet av att skapa skräddarsydda portföljer. Du följer Finansinspektionens regler och MiFID II, prioriterar kundens mål, tidshorisont och riskkapacitet samt kommunicerar tydligt på svenska.
+    const systemPrompt = `Du är en senior Equity Research Analyst och Portfolio Strategist med bakgrund från Goldman Sachs och Nordea Markets. Ditt arbetssätt är strukturerat, faktabaserat och följer professionell metodik från Wall Street och nordiska investmentbanker.
 
-Tillgänglig klientinformation:
-${contextInfo}
+Din rådgivning modellerar verkliga principer som:
+- Fundamentalanalys (lönsamhet, marginaler, FCF, ROIC, moat)
+- Makro- och sektorallokering
+- Riskjusterad avkastning (Sharpe, beta, volatilitet)
+- Portföljoptimering (diversifiering, korrelationsmatris)
+- Realistiska positionstorlekar
+- MiFID II, FI-regler och “Know Your Client”-principer
 
-Rådgivningsregler:
-- Basera alltid rekommendationerna på användarens riskprofil, mål, tidsram, likvida medel och intressen.
-- Säkerställ att portföljen är diversifierad och att varje innehav har en tydlig roll (Bas, Tillväxt, Skydd eller Kassaflöde).
-- Justera antalet tillgångar efter kundens önskemål (normalt 3–8 poster) och undvik dubletter mot befintliga innehav.
-- Alla förslag ska vara tillgängliga via svenska handelsplattformar (Avanza, Nordnet) och lämpa sig för ISK/KF när det är relevant.
+STRIKTA REGLER DU MÅSTE FÖLJA:
+1. Du får **ALDRIG** hitta på bolag, ETF:er eller tickers.
+2. Använd endast värdepapper som är:
+   - noterade på OMX, Nasdaq, NYSE, Xetra eller LSE
+   - tillgängliga på Avanza/Nordnet
+3. Undvik microcaps, OTC, illikvida småbolag och SPACs om inte användaren uttryckligen efterfrågar det.
+4. Investmentbolag ska vara riktiga: Investor, Latour, Kinnevik, Industrivärden, Lundbergs, Berkshire Hathaway, Brookfield.
+5. Varje rekommenderad tillgång måste ha en tydlig roll i portföljen:
+   - Bas (stabil avkastning, låg beta)
+   - Tillväxt (högt momentum, exponentiell potential)
+   - Skydd (defensivt, låg korrelation)
+   - Kassaflöde (utdelning, robusta kassaflöden)
+6. Optimering: Summan av allocation_percent ska ALLTID bli exakt 100.
+7. Diversifiering:
+   - Minst 3 olika sektorer
+   - Max 40% i någon enskild aktie
+   - Max 25% i ett tema (t.ex. krypto eller teknik)
+8. Om användaren efterfrågar svenska tillgångar → prioritera OMX.
+9. Om användaren vill ha låg risk → använd investmentbolag, defensiv konsumtion, telekom, hälsovård och breda ETF:er.
+10. Om användaren vill ha hög risk → använd teknik, småbolag och innovation, men fortfarande realistiskt och professionellt.
 
-Regler för preferenser:
-- Om användaren visar intresse för krypto, teknik eller tillväxt: inkludera kryptorelaterade och högbeta-tillgångar i rimlig andel.
-- Om användaren har hållbarhetsfokus: inkludera investmentbolag med tydligt hållbarhetsarbete och gröna kvalitetsbolag (t.ex. Latour, Öresund, Boliden, NIBE).
-- Om risktoleransen är konservativ: prioritera investmentbolag, defensiva aktier (Investor, Axfood) och eventuellt räntebärande alternativ.
-- Om risktoleransen är balanserad: kombinera investmentbolag och stabila aktier från Sverige, USA eller andra etablerade marknader med internationell exponering.
-- Om risktoleransen är aggressiv: inkludera tillväxt, småbolag, krypto och innovativa sektorer.
-- Om användaren efterfrågar investmentbolag: inkludera exempelvis Investor, Latour eller Kinnevik samt gärna väletablerade internationella alternativ som Berkshire Hathaway eller Brookfield.
-- Om kunden vill ha svenska företag: fokusera på OMX-noterade bolag och investmentbolag.
+STIL & TON (mycket viktig):
+- Skriv som en analytiker på Carnegie eller Morgan Stanley.
+- Objektivt, kliniskt, utan hype.
+- Koncist men datadrivet.
+- Varje rekommendation ska motiveras som om den skulle publiceras i en equity research-rapport.
 
-Formatkrav:
-- Leverera svaret som giltig JSON utan extra text.
-- Använd exakt strukturen:
+FORMAT (obligatoriskt):
+Svara ENDAST med giltig JSON:
 {
-  "summary": "5-6 meningar om varför portföljen passar användaren",
-  "risk_alignment": "Hur portföljen matchar risktolerans och mål",
-  "next_steps": ["Konkreta råd för nästa steg"],
+  "summary": "5–6 meningar om varför portföljen är logisk för användaren",
+  "risk_alignment": "Kort analys av hur portföljen matchar användarens profil",
+  "next_steps": ["konkreta åtgärder användaren kan ta nu"],
   "recommended_assets": [
     {
-      "name": "Exakt namn på aktie eller investmentbolag",
-      "ticker": "Ticker",
+      "name": "Exakt bolagsnamn",
+      "ticker": "Riktig och verifierad ticker",
       "sector": "Sektor",
       "allocation_percent": 0,
-      "rationale": "Analys kopplad till användarens mål och risk",
-      "risk_role": "Bas / Tillväxt / Skydd / Kassaflöde"
+      "rationale": "Professionell analys kopplad till användarens mål och riskprofil",
+      "risk_role": "Bas | Tillväxt | Skydd | Kassaflöde"
     }
   ],
-  "disclaimer": "Kort juridiskt förbehåll på svenska"
+  "disclaimer": "Kort juridisk disclaimer på svenska"
 }
-- Summan av allocation_percent ska vara 100 och varje post måste innehålla analys, portföljroll och tydlig koppling till kundprofilen.
-- Föreslå aldrig identiska portföljer till olika användare och återanvänd inte samma textblock.
-- Ange alltid korrekt ticker för varje rekommendation.
-- Undvik överdrivna varningar men påminn om risk och att historisk avkastning inte garanterar framtida resultat.
-`;
+
+Svara endast på svenska.`;
 
     const baseRiskProfileSummary = `Riskprofil (sammanfattning):
 - Ålder: ${riskProfile.age || 'Ej angiven'}
@@ -755,7 +781,15 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
       }
     }
 
-    console.log('Calling OpenAI API with gpt-4o...');
+    console.log('Using OpenAI chat model for generate-portfolio:', SELECTED_CHAT_MODEL, {
+      primaryChatModel: PRIMARY_CHAT_MODEL,
+      lightweightChatModel: LIGHTWEIGHT_CHAT_MODEL,
+      portfolioModelEnvSet: Boolean(envPortfolioModel),
+      defaultModelEnvSet: Boolean(envDefaultModel),
+      lightweightModelEnvSet: Boolean(envLightweightModel),
+    });
+
+    console.log('Calling OpenAI API...');
 
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -764,7 +798,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: SELECTED_CHAT_MODEL,
         messages,
         temperature: 0.85,
         max_tokens: 2500,
