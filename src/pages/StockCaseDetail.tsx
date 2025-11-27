@@ -1647,7 +1647,7 @@ const StockCaseDetail = ({
           >
             {/* Combined Overview Card - only show if there are financial metrics */}
             {shouldShowFinancialOverview && (
-              <section className="rounded-[32px] border border-border/40 bg-background/95 p-6 sm:p-8 shadow-[0_24px_60px_-60px_rgba(15,23,42,0.6)]">
+              <section className="rounded-3xl sm:rounded-[32px] border border-border/40 bg-background/95 p-5 sm:p-8 shadow-[0_24px_60px_-60px_rgba(15,23,42,0.6)]">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="text-2xl font-semibold tracking-tight">Finansiell översikt</h2>
