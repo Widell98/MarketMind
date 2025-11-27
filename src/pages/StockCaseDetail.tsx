@@ -1354,7 +1354,7 @@ const StockCaseDetail = ({
           <CaseNavigationSlideButtons />
           {/* Hero Section */}
           {isAiGeneratedCase ? (
-            <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.55)]">
+            <div className="relative overflow-hidden rounded-[24px] sm:rounded-[36px] border border-border/30 bg-background/95 p-4 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.55)]">
               <div className="absolute inset-0 bg-gradient-to-br from-muted/15 via-transparent to-muted/5 dark:from-muted/20 dark:via-transparent dark:to-muted/10" />
 
               <div className="relative z-10 space-y-8">
