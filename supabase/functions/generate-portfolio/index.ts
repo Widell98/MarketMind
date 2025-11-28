@@ -337,6 +337,16 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured');
     }
 
+    // Helper to check if value is actually provided (not null/undefined/empty)
+    // Must be defined at function scope to be accessible throughout
+    const hasValue = (value: unknown): boolean => {
+      if (value === null || value === undefined) return false;
+      if (typeof value === 'string' && value.trim() === '') return false;
+      if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) return false;
+      if (Array.isArray(value) && value.length === 0) return false;
+      return true;
+    };
+
     // Enhanced system persona for initial portfolio advisor
     let contextInfo = 'KLIENTDATA OCH TIDIGARE SAMTAL:';
 
@@ -346,9 +356,13 @@ serve(async (req) => {
       const rawData = conversationData as Record<string, unknown>;
       const details: string[] = [];
 
-      const asString = (value: unknown) => typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+      const asString = (value: unknown) => {
+        if (!hasValue(value)) return null;
+        return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+      };
       const asNumber = (value: unknown) => {
-        if (typeof value === 'number' && !Number.isNaN(value)) return value;
+        if (!hasValue(value)) return null;
+        if (typeof value === 'number' && !Number.isNaN(value) && Number.isFinite(value)) return value;
         if (typeof value === 'string') {
           const numeric = Number(value.replace(/[^\d.-]/g, ''));
           return Number.isFinite(numeric) ? numeric : null;
@@ -356,7 +370,7 @@ serve(async (req) => {
         return null;
       };
       const asStringArray = (value: unknown) => {
-        if (!Array.isArray(value)) return null;
+        if (!hasValue(value) || !Array.isArray(value)) return null;
         const parsed = value
           .map(item => (typeof item === 'string' && item.trim().length > 0 ? item.trim() : null))
           .filter((item): item is string => Boolean(item));
@@ -364,49 +378,80 @@ serve(async (req) => {
       };
 
       const addDetail = (label: string, value: string | number | null) => {
-        if (value !== null && value !== '') {
+        if (value !== null && value !== '' && value !== undefined) {
           details.push(`${label}: ${value}`);
         }
       };
 
       const addArrayDetail = (label: string, value: unknown) => {
         const arr = asStringArray(value);
-        if (arr) {
+        if (arr && arr.length > 0) {
           details.push(`${label}: ${arr.join(', ')}`);
         }
       };
 
-      const experienceLabel = asString(rawData.marketExperience)
-        || (typeof rawData.isBeginnerInvestor === 'boolean'
-          ? rawData.isBeginnerInvestor ? 'Nybörjare' : 'Erfaren'
-          : null);
+      // Only include base fields that are actually answered
+      // Core base questions that should be included if available
+      if (hasValue(rawData.isBeginnerInvestor) || hasValue(rawData.investmentGoal) || hasValue(rawData.riskTolerance) || hasValue(rawData.timeHorizon)) {
+        const experienceLabel = asString(rawData.marketExperience)
+          || (typeof rawData.isBeginnerInvestor === 'boolean'
+            ? rawData.isBeginnerInvestor ? 'Nybörjare' : 'Erfaren'
+            : null);
 
-      addDetail('Investeringsmål', asString(rawData.investmentGoal));
-      addDetail('Sökt portföljstorlek', asString(rawData.portfolioSize));
-      addDetail('Investerarens erfarenhet', experienceLabel);
-      addDetail('Önskad investeringsstil', asString(rawData.investmentStyle));
-      addDetail('Utdelningskrav', asString(rawData.dividendYieldRequirement));
-      addDetail('Hållbarhetsfokus', asString(rawData.sustainabilityPreference));
-      addDetail('Geografisk inriktning', asString(rawData.geographicPreference));
-      addDetail('Reaktion på börsras', asString(rawData.marketCrashReaction));
+        if (hasValue(rawData.investmentGoal)) {
+          addDetail('Investeringsmål', asString(rawData.investmentGoal));
+        }
+        if (hasValue(rawData.portfolioSize)) {
+          addDetail('Sökt portföljstorlek', asString(rawData.portfolioSize));
+        }
+        if (hasValue(experienceLabel)) {
+          addDetail('Investerarens erfarenhet', experienceLabel);
+        }
+        if (hasValue(rawData.investmentStyle)) {
+          addDetail('Önskad investeringsstil', asString(rawData.investmentStyle));
+        }
+        if (hasValue(rawData.dividendYieldRequirement)) {
+          addDetail('Utdelningskrav', asString(rawData.dividendYieldRequirement));
+        }
+        if (hasValue(rawData.sustainabilityPreference)) {
+          addDetail('Hållbarhetsfokus', asString(rawData.sustainabilityPreference));
+        }
+        if (hasValue(rawData.geographicPreference)) {
+          addDetail('Geografisk inriktning', asString(rawData.geographicPreference));
+        }
+        if (hasValue(rawData.marketCrashReaction)) {
+          addDetail('Reaktion på börsras', asString(rawData.marketCrashReaction));
+        }
+      }
 
+      // Additional fields - only include if actually provided
       const comfort = typeof rawData.volatilityComfort === 'number' ? rawData.volatilityComfort
         : typeof rawData.volatilityComfort === 'string' ? Number(rawData.volatilityComfort) : null;
-      addDetail('Volatilitetskomfort (1-10)', comfort !== null && Number.isFinite(comfort) ? comfort : null);
+      if (hasValue(comfort) && comfort !== null && Number.isFinite(comfort)) {
+        addDetail('Volatilitetskomfort (1-10)', comfort);
+      }
 
       const monthlyIncome = asNumber(rawData.monthlyIncome);
-      addDetail('Månadsinkomst', monthlyIncome !== null && Number.isFinite(monthlyIncome) ? `${monthlyIncome.toLocaleString('sv-SE')} SEK` : null);
+      if (hasValue(monthlyIncome) && monthlyIncome !== null && Number.isFinite(monthlyIncome)) {
+        addDetail('Månadsinkomst', `${monthlyIncome.toLocaleString('sv-SE')} SEK`);
+      }
 
       const annualIncome = asNumber(rawData.annualIncome);
-      addDetail('Årsinkomst', annualIncome !== null && Number.isFinite(annualIncome) ? `${annualIncome.toLocaleString('sv-SE')} SEK` : null);
+      if (hasValue(annualIncome) && annualIncome !== null && Number.isFinite(annualIncome)) {
+        addDetail('Årsinkomst', `${annualIncome.toLocaleString('sv-SE')} SEK`);
+      }
 
       const capital = asNumber(rawData.availableCapital);
-      addDetail('Tillgängligt kapital', capital !== null && Number.isFinite(capital) ? `${capital.toLocaleString('sv-SE')} SEK` : null);
+      if (hasValue(capital) && capital !== null && Number.isFinite(capital)) {
+        addDetail('Tillgängligt kapital', `${capital.toLocaleString('sv-SE')} SEK`);
+      }
 
       const liquidCapital = asNumber(rawData.liquidCapital);
-      addDetail('Likvida medel', liquidCapital !== null && Number.isFinite(liquidCapital) ? `${liquidCapital.toLocaleString('sv-SE')} SEK` : null);
+      if (hasValue(liquidCapital) && liquidCapital !== null && Number.isFinite(liquidCapital)) {
+        addDetail('Likvida medel', `${liquidCapital.toLocaleString('sv-SE')} SEK`);
+      }
 
-      if (typeof rawData.housingSituation === 'string') {
+      if (hasValue(rawData.housingSituation) && typeof rawData.housingSituation === 'string') {
         addDetail('Bostadssituation', rawData.housingSituation);
       }
 
@@ -414,7 +459,7 @@ serve(async (req) => {
         addDetail('Har lån', rawData.hasLoans ? 'Ja' : 'Nej');
       }
 
-      if (typeof rawData.loanDetails === 'string' && rawData.loanDetails.trim().length > 0) {
+      if (hasValue(rawData.loanDetails) && typeof rawData.loanDetails === 'string' && rawData.loanDetails.trim().length > 0) {
         addDetail('Lånedetaljer', rawData.loanDetails);
       }
 
@@ -422,7 +467,7 @@ serve(async (req) => {
         addDetail('Har försörjningsansvar', rawData.hasChildren ? 'Ja' : 'Nej');
       }
 
-      if (typeof rawData.emergencyFund === 'string') {
+      if (hasValue(rawData.emergencyFund) && typeof rawData.emergencyFund === 'string') {
         const emergencyMap: Record<string, string> = {
           yes_full: 'Full buffert',
           yes_partial: 'Delvis buffert',
@@ -431,7 +476,7 @@ serve(async (req) => {
         addDetail('Buffertstatus', emergencyMap[rawData.emergencyFund] || rawData.emergencyFund);
       }
 
-      if (typeof rawData.emergencyBufferMonths === 'number' && Number.isFinite(rawData.emergencyBufferMonths)) {
+      if (hasValue(rawData.emergencyBufferMonths) && typeof rawData.emergencyBufferMonths === 'number' && Number.isFinite(rawData.emergencyBufferMonths)) {
         addDetail('Buffert (månader)', rawData.emergencyBufferMonths);
       }
 
@@ -442,15 +487,19 @@ serve(async (req) => {
       addArrayDetail('Investeringssyften', rawData.investmentPurpose);
 
       const targetAmount = asNumber(rawData.targetAmount ?? rawData.specificGoalAmount);
-      addDetail('Målbelopp', targetAmount !== null && Number.isFinite(targetAmount) ? `${targetAmount.toLocaleString('sv-SE')} SEK` : null);
+      if (hasValue(targetAmount) && targetAmount !== null && Number.isFinite(targetAmount)) {
+        addDetail('Målbelopp', `${targetAmount.toLocaleString('sv-SE')} SEK`);
+      }
 
-      addDetail('Måldatum', asString(rawData.targetDate));
+      if (hasValue(rawData.targetDate)) {
+        addDetail('Måldatum', asString(rawData.targetDate));
+      }
 
-      if (typeof rawData.preferredStockCount === 'number' && Number.isFinite(rawData.preferredStockCount)) {
+      if (hasValue(rawData.preferredStockCount) && typeof rawData.preferredStockCount === 'number' && Number.isFinite(rawData.preferredStockCount)) {
         addDetail('Önskat antal innehav', rawData.preferredStockCount);
       }
 
-      if (typeof rawData.controlImportance === 'number' && Number.isFinite(rawData.controlImportance)) {
+      if (hasValue(rawData.controlImportance) && typeof rawData.controlImportance === 'number' && Number.isFinite(rawData.controlImportance)) {
         addDetail('Kontrollbehov (1-5)', rawData.controlImportance);
       }
 
@@ -458,22 +507,34 @@ serve(async (req) => {
         addDetail('Historik av panikförsäljning', rawData.panicSellingHistory ? 'Ja' : 'Nej');
       }
 
-      addDetail('Aktivitetsnivå', asString(rawData.activityPreference));
-      addDetail('Ombalanseringsfrekvens', asString(rawData.portfolioChangeFrequency || rawData.rebalancingFrequency));
-      addDetail('Medvetenhet om överexponering', asString(rawData.overexposureAwareness));
+      if (hasValue(rawData.activityPreference)) {
+        addDetail('Aktivitetsnivå', asString(rawData.activityPreference));
+      }
+      if (hasValue(rawData.portfolioChangeFrequency) || hasValue(rawData.rebalancingFrequency)) {
+        addDetail('Ombalanseringsfrekvens', asString(rawData.portfolioChangeFrequency || rawData.rebalancingFrequency));
+      }
+      if (hasValue(rawData.overexposureAwareness)) {
+        addDetail('Medvetenhet om överexponering', asString(rawData.overexposureAwareness));
+      }
 
       const currentPortfolioValue = asNumber(rawData.currentPortfolioValue);
-      addDetail('Nuvarande portföljvärde (rapport)', currentPortfolioValue !== null && Number.isFinite(currentPortfolioValue) ? `${currentPortfolioValue.toLocaleString('sv-SE')} SEK` : null);
+      if (hasValue(currentPortfolioValue) && currentPortfolioValue !== null && Number.isFinite(currentPortfolioValue)) {
+        addDetail('Nuvarande portföljvärde (rapport)', `${currentPortfolioValue.toLocaleString('sv-SE')} SEK`);
+      }
 
       const helpNeeded = asString(rawData.portfolioHelp);
-      if (helpNeeded) {
+      if (hasValue(helpNeeded)) {
         details.push(`Specifikt stöd som efterfrågas: ${helpNeeded}`);
       }
 
-      addDetail('Önskad kommunikationsstil', asString(rawData.communicationStyle));
-      addDetail('Önskad svarslängd', asString(rawData.preferredResponseLength));
+      if (hasValue(rawData.communicationStyle)) {
+        addDetail('Önskad kommunikationsstil', asString(rawData.communicationStyle));
+      }
+      if (hasValue(rawData.preferredResponseLength)) {
+        addDetail('Önskad svarslängd', asString(rawData.preferredResponseLength));
+      }
 
-      if (typeof rawData.additionalNotes === 'string' && rawData.additionalNotes.trim().length > 0) {
+      if (hasValue(rawData.additionalNotes) && typeof rawData.additionalNotes === 'string' && rawData.additionalNotes.trim().length > 0) {
         details.push(`Ytterligare anteckningar: ${rawData.additionalNotes.trim()}`);
       }
 
@@ -483,32 +544,76 @@ serve(async (req) => {
       }
     }
 
-    // Add detailed user profile information
+    // Define all summary variables BEFORE they are used
+    const monthlyInvestmentSummary = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (typeof raw.monthlyInvestmentAmount === 'number' && Number.isFinite(raw.monthlyInvestmentAmount)) {
+          return `${raw.monthlyInvestmentAmount.toLocaleString('sv-SE')} SEK`;
+        }
+        if (typeof raw.monthlyInvestmentAmount === 'string' && raw.monthlyInvestmentAmount.trim().length > 0) {
+          return raw.monthlyInvestmentAmount.trim();
+        }
+      }
+      if (riskProfile?.monthly_investment_amount) {
+        return `${riskProfile.monthly_investment_amount.toLocaleString('sv-SE')} SEK`;
+      }
+      return 'Ej angivet';
+    })();
+
+
+    // Add detailed user profile information - ONLY if values are actually provided in conversation
+    // Don't use risk profile defaults for new users who haven't answered questions
+    const profileParts: string[] = [];
+    
     if (riskProfile) {
-      contextInfo += `\n\nANVÄNDARPROFIL:
-- Ålder: ${riskProfile.age || 'Ej angivet'} år
-- Erfarenhetsnivå: ${riskProfile.investment_experience === 'beginner' ? 'Nybörjare' : riskProfile.investment_experience === 'intermediate' ? 'Mellannivå' : 'Erfaren'}
-- Risktolerans: ${riskProfile.risk_tolerance === 'conservative' ? 'Konservativ' : riskProfile.risk_tolerance === 'moderate' ? 'Måttlig' : 'Aggressiv'}
-- Tidshorisont: ${riskProfile.investment_horizon === 'short' ? 'Kort (0–2 år)' : riskProfile.investment_horizon === 'medium' ? 'Medel (3–5 år)' : 'Lång (5+ år)'}
-- Månatlig budget: ${riskProfile.monthly_investment_amount ? riskProfile.monthly_investment_amount.toLocaleString() + ' SEK' : 'Ej angivet'}
-- Riskkomfort: ${riskProfile.risk_comfort_level || 5}/10
-- Sektorintressen: ${riskProfile.sector_interests ? riskProfile.sector_interests.join(', ') : 'Allmänna'}`;
-      
-      if (riskProfile.annual_income) {
-        contextInfo += `\n- Årsinkomst: ${riskProfile.annual_income.toLocaleString()} SEK`;
+      // Only include age if it's actually provided
+      if (hasValue(riskProfile.age) && typeof riskProfile.age === 'number' && riskProfile.age > 0) {
+        profileParts.push(`- Ålder: ${riskProfile.age} år`);
       }
       
-      if (riskProfile.liquid_capital) {
-        contextInfo += `\n- Tillgängligt kapital: ${riskProfile.liquid_capital.toLocaleString()} SEK`;
+      // Only include experience if it's actually provided in conversation
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (hasValue(raw.isBeginnerInvestor) || hasValue(raw.investmentExperienceLevel) || hasValue(raw.marketExperience)) {
+          const experienceLabel = raw.isBeginnerInvestor === true ? 'Nybörjare' 
+            : raw.isBeginnerInvestor === false ? 'Erfaren'
+            : riskProfile.investment_experience === 'beginner' ? 'Nybörjare' 
+            : riskProfile.investment_experience === 'intermediate' ? 'Mellannivå' 
+            : riskProfile.investment_experience === 'experienced' ? 'Erfaren'
+            : null;
+          if (experienceLabel) {
+            profileParts.push(`- Erfarenhetsnivå: ${experienceLabel}`);
+          }
+        }
       }
-
-      if (riskProfile.investment_goal) {
-        contextInfo += `\n- Investeringsmål: ${riskProfile.investment_goal}`;
+      
+      // Only include monthly investment if actually provided
+      if (hasValue(monthlyInvestmentSummary) && monthlyInvestmentSummary !== 'Ej angivet') {
+        profileParts.push(`- Månatlig budget: ${monthlyInvestmentSummary}`);
       }
-
-      if (riskProfile.market_crash_reaction) {
-        contextInfo += `\n- Reaktion på börskrasch: ${riskProfile.market_crash_reaction}`;
+      
+      // Only include risk comfort if actually provided
+      if (hasValue(riskProfile.risk_comfort_level) && typeof riskProfile.risk_comfort_level === 'number') {
+        profileParts.push(`- Riskkomfort: ${riskProfile.risk_comfort_level}/10`);
       }
+      
+      // Only include sector interests if actually provided
+      if (hasValue(riskProfile.sector_interests) && Array.isArray(riskProfile.sector_interests) && riskProfile.sector_interests.length > 0) {
+        profileParts.push(`- Sektorintressen: ${riskProfile.sector_interests.join(', ')}`);
+      }
+      
+      if (hasValue(riskProfile.annual_income) && typeof riskProfile.annual_income === 'number') {
+        profileParts.push(`- Årsinkomst: ${riskProfile.annual_income.toLocaleString()} SEK`);
+      }
+      
+      if (hasValue(riskProfile.liquid_capital) && typeof riskProfile.liquid_capital === 'number') {
+        profileParts.push(`- Tillgängligt kapital: ${riskProfile.liquid_capital.toLocaleString()} SEK`);
+      }
+    }
+    
+    if (profileParts.length > 0) {
+      contextInfo += `\n\nANVÄNDARPROFIL:\n${profileParts.join('\n')}`;
     }
 
     // Add AI memory to personalize further
@@ -571,34 +676,35 @@ serve(async (req) => {
       return 'Ej angivet';
     })();
 
+    // Only use values that are actually answered - no fallback to risk profile defaults
     const riskToleranceSummary = (() => {
       if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
         const raw = conversationData as Record<string, unknown>;
-        if (typeof raw.riskTolerance === 'string' && raw.riskTolerance.trim().length > 0) {
+        if (hasValue(raw.riskTolerance) && typeof raw.riskTolerance === 'string' && raw.riskTolerance.trim().length > 0) {
           return raw.riskTolerance.trim();
         }
       }
-      return riskProfile?.risk_tolerance || 'Medel';
+      return null; // Don't use default - only use if actually answered
     })();
 
     const investmentGoalSummary = (() => {
       if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
         const raw = conversationData as Record<string, unknown>;
-        if (typeof raw.investmentGoal === 'string' && raw.investmentGoal.trim().length > 0) {
+        if (hasValue(raw.investmentGoal) && typeof raw.investmentGoal === 'string' && raw.investmentGoal.trim().length > 0) {
           return raw.investmentGoal.trim();
         }
       }
-      return riskProfile?.investment_goal || 'Långsiktig tillväxt';
+      return null; // Don't use default - only use if actually answered
     })();
 
     const horizonSummary = (() => {
       if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
         const raw = conversationData as Record<string, unknown>;
-        if (typeof raw.timeHorizon === 'string' && raw.timeHorizon.trim().length > 0) {
+        if (hasValue(raw.timeHorizon) && typeof raw.timeHorizon === 'string' && raw.timeHorizon.trim().length > 0) {
           return raw.timeHorizon.trim();
         }
       }
-      return riskProfile?.investment_horizon || 'Lång';
+      return null; // Don't use default - only use if actually answered
     })();
 
     const availableCapitalSummary = (() => {
@@ -630,43 +736,28 @@ serve(async (req) => {
       return riskProfile?.investment_experience || 'Ej angivet';
     })();
 
-    const monthlyInvestmentSummary = (() => {
-      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
-        const raw = conversationData as Record<string, unknown>;
-        if (typeof raw.monthlyInvestmentAmount === 'number' && Number.isFinite(raw.monthlyInvestmentAmount)) {
-          return `${raw.monthlyInvestmentAmount.toLocaleString('sv-SE')} SEK`;
-        }
-        if (typeof raw.monthlyInvestmentAmount === 'string' && raw.monthlyInvestmentAmount.trim().length > 0) {
-          return raw.monthlyInvestmentAmount.trim();
-        }
-      }
-      if (riskProfile?.monthly_investment_amount) {
-        return `${riskProfile.monthly_investment_amount.toLocaleString('sv-SE')} SEK`;
-      }
-      return 'Ej angivet';
-    })();
-
     const serializedConversationData = conversationData && typeof conversationData === 'object'
       ? JSON.stringify(conversationData, null, 2)
       : '{}';
 
     const systemPrompt = `Du är en svensk licensierad och auktoriserad investeringsrådgivare med lång erfarenhet av att skapa skräddarsydda portföljer. Du följer Finansinspektionens regler och MiFID II, prioriterar kundens mål, tidshorisont och riskkapacitet samt kommunicerar tydligt på svenska.
 
+VIKTIGT: Använd ENDAST den information som faktiskt är angiven i klientinformationen nedan. Anta INTE värden för risktolerans, investeringsmål, tidshorisont eller andra parametrar om de inte är explicit angivna. Om information saknas, använd generiska formuleringar som "användarens preferenser" eller "användarens situation" istället för att anta specifika värden.
+
 Tillgänglig klientinformation:
 ${contextInfo}
 
 Rådgivningsregler:
-- Basera alltid rekommendationerna på användarens riskprofil, mål, tidsram, likvida medel och intressen.
+- Basera rekommendationerna ENDAST på faktiskt angiven information om användarens riskprofil, mål, tidsram, likvida medel och intressen.
+- Om specifik information saknas (t.ex. risktolerans, investeringsmål), använd generiska formuleringar istället för att anta värden.
 - Säkerställ att portföljen är diversifierad och att varje innehav har en tydlig roll (Bas, Tillväxt, Skydd eller Kassaflöde).
 - Justera antalet tillgångar efter kundens önskemål (normalt 3–8 poster) och undvik dubletter mot befintliga innehav.
 - Alla förslag ska vara tillgängliga via svenska handelsplattformar (Avanza, Nordnet) och lämpa sig för ISK/KF när det är relevant.
 
-Regler för preferenser:
-- Om användaren visar intresse för krypto, teknik eller tillväxt: inkludera kryptorelaterade och högbeta-tillgångar i rimlig andel.
-- Om användaren har hållbarhetsfokus: inkludera investmentbolag med tydligt hållbarhetsarbete och gröna kvalitetsbolag (t.ex. Latour, Öresund, Boliden, NIBE).
-- Om risktoleransen är konservativ: prioritera investmentbolag, defensiva aktier (Investor, Axfood) och eventuellt räntebärande alternativ.
-- Om risktoleransen är balanserad: kombinera investmentbolag och stabila aktier från Sverige, USA eller andra etablerade marknader med internationell exponering.
-- Om risktoleransen är aggressiv: inkludera tillväxt, småbolag, krypto och innovativa sektorer.
+Regler för preferenser (endast om relevant information är angiven):
+${riskToleranceSummary ? `- Risktolerans är angiven som "${riskToleranceSummary}": ${riskToleranceSummary.toLowerCase().includes('konservativ') || riskToleranceSummary.toLowerCase().includes('conservative') ? 'Prioritera investmentbolag, defensiva aktier (Investor, Axfood) och eventuellt räntebärande alternativ.' : riskToleranceSummary.toLowerCase().includes('aggressiv') || riskToleranceSummary.toLowerCase().includes('aggressive') ? 'Inkludera tillväxt, småbolag och innovativa sektorer.' : 'Kombinera investmentbolag och stabila aktier från Sverige, USA eller andra etablerade marknader med internationell exponering.'}` : ''}
+${interestList && interestList !== 'Ej angivet' ? `- Användaren visar intresse för: ${interestList}. Inkludera relevanta tillgångar som matchar dessa intressen.` : ''}
+${preferredAssets && preferredAssets !== 'Ej angivet' ? `- Användaren är mest intresserad av: ${preferredAssets}. Fokusera på dessa tillgångstyper.` : ''}
 - Om användaren efterfrågar investmentbolag: inkludera exempelvis Investor, Latour eller Kinnevik samt gärna väletablerade internationella alternativ som Berkshire Hathaway eller Brookfield.
 - Om kunden vill ha svenska företag: fokusera på OMX-noterade bolag och investmentbolag.
 
@@ -695,39 +786,92 @@ Formatkrav:
 - Undvik överdrivna varningar men påminn om risk och att historisk avkastning inte garanterar framtida resultat.
 `;
 
-    const baseRiskProfileSummary = `Riskprofil (sammanfattning):
-- Ålder: ${riskProfile.age || 'Ej angiven'}
-- Årsinkomst: ${riskProfile.annual_income ? riskProfile.annual_income.toLocaleString('sv-SE') + ' SEK' : 'Ej angiven'}
-- Månatligt investeringsbelopp: ${monthlyInvestmentSummary}
-- Risktolerans: ${riskProfile.risk_tolerance || 'Medel'}
-- Investeringsmål: ${riskProfile.investment_goal || 'Långsiktig tillväxt'}
-- Tidshorisont: ${riskProfile.investment_horizon || 'Lång'}
-- Erfarenhet: ${riskProfile.investment_experience || 'Medel'}
-- Riskkomfort: ${riskProfile.risk_comfort_level || 5}/10
-- Intressesektorer: ${riskProfile.sector_interests && riskProfile.sector_interests.length ? riskProfile.sector_interests.join(', ') : 'Ej angivet'}
-- Nuvarande portföljvärde: ${riskProfile.current_portfolio_value ? riskProfile.current_portfolio_value.toLocaleString('sv-SE') + ' SEK' : '0 SEK'}`;
+    // Build base risk profile summary - ONLY include values that are actually answered
+    const baseRiskProfileParts: string[] = [];
+    
+    if (hasValue(riskProfile?.age) && typeof riskProfile.age === 'number' && riskProfile.age > 0) {
+      baseRiskProfileParts.push(`- Ålder: ${riskProfile.age} år`);
+    }
+    
+    if (hasValue(riskProfile?.annual_income) && typeof riskProfile.annual_income === 'number') {
+      baseRiskProfileParts.push(`- Årsinkomst: ${riskProfile.annual_income.toLocaleString('sv-SE')} SEK`);
+    }
+    
+    if (hasValue(monthlyInvestmentSummary) && monthlyInvestmentSummary !== 'Ej angivet') {
+      baseRiskProfileParts.push(`- Månatligt investeringsbelopp: ${monthlyInvestmentSummary}`);
+    }
+    
+    // Only include these if actually answered in conversation
+    if (riskToleranceSummary) {
+      baseRiskProfileParts.push(`- Risktolerans: ${riskToleranceSummary}`);
+    }
+    
+    if (investmentGoalSummary) {
+      baseRiskProfileParts.push(`- Investeringsmål: ${investmentGoalSummary}`);
+    }
+    
+    if (horizonSummary) {
+      baseRiskProfileParts.push(`- Tidshorisont: ${horizonSummary}`);
+    }
+    
+    if (hasValue(experienceSummary) && experienceSummary !== 'Ej angivet') {
+      baseRiskProfileParts.push(`- Erfarenhet: ${experienceSummary}`);
+    }
+    
+    if (hasValue(riskProfile?.risk_comfort_level) && typeof riskProfile.risk_comfort_level === 'number') {
+      baseRiskProfileParts.push(`- Riskkomfort: ${riskProfile.risk_comfort_level}/10`);
+    }
+    
+    if (hasValue(riskProfile?.sector_interests) && Array.isArray(riskProfile.sector_interests) && riskProfile.sector_interests.length > 0) {
+      baseRiskProfileParts.push(`- Intressesektorer: ${riskProfile.sector_interests.join(', ')}`);
+    }
+    
+    if (hasValue(riskProfile?.current_portfolio_value) && typeof riskProfile.current_portfolio_value === 'number') {
+      baseRiskProfileParts.push(`- Nuvarande portföljvärde: ${riskProfile.current_portfolio_value.toLocaleString('sv-SE')} SEK`);
+    }
+    
+    const baseRiskProfileSummary = baseRiskProfileParts.length > 0 
+      ? `Riskprofil (endast faktiskt besvarade frågor):\n${baseRiskProfileParts.join('\n')}`
+      : 'Riskprofil: Endast grundläggande information tillgänglig';
+
+    // Build user message with only actually answered values
+    const userMessageParts: string[] = [];
+    
+    if (riskToleranceSummary) {
+      userMessageParts.push(`Risktolerans: ${riskToleranceSummary}`);
+    }
+    if (investmentGoalSummary) {
+      userMessageParts.push(`Investeringsmål: ${investmentGoalSummary}`);
+    }
+    if (horizonSummary) {
+      userMessageParts.push(`Tidshorisont: ${horizonSummary}`);
+    }
+    if (hasValue(interestList) && interestList !== 'Ej angivet') {
+      userMessageParts.push(`Intressen/Sektorer: ${interestList}`);
+    }
+    if (hasValue(preferredAssets) && preferredAssets !== 'Ej angivet') {
+      userMessageParts.push(`Mest intresserad av: ${preferredAssets}`);
+    }
+    if (hasValue(availableCapitalSummary) && availableCapitalSummary !== 'Ej angivet') {
+      userMessageParts.push(`Tillgängligt kapital: ${availableCapitalSummary}`);
+    }
+    if (hasValue(monthlyInvestmentSummary) && monthlyInvestmentSummary !== 'Ej angivet') {
+      userMessageParts.push(`Månatligt investeringsbelopp: ${monthlyInvestmentSummary}`);
+    }
+    if (hasValue(experienceSummary) && experienceSummary !== 'Ej angivet') {
+      userMessageParts.push(`Erfarenhetsnivå: ${experienceSummary}`);
+    }
 
     const userMessage = `Skapa en personlig portfölj baserad på följande användardata:
 
 ${serializedConversationData}
 
-Tänk särskilt på:
+${userMessageParts.length > 0 ? `Tänk särskilt på:\n\n${userMessageParts.join('\n')}` : 'VIKTIGT: Användaren har endast svarat på grundläggande frågor. Använd ENDAST den information som faktiskt är tillgänglig ovan. Anta INTE värden för risktolerans, investeringsmål eller tidshorisont om de inte är angivna.'}
 
-Risktolerans: ${riskToleranceSummary}
-Investeringsmål: ${investmentGoalSummary}
-Tidshorisont: ${horizonSummary}
-Intressen/Sektorer: ${interestList}
-Mest intresserad av: ${preferredAssets}
-Tillgängligt kapital: ${availableCapitalSummary}
-Månatligt investeringsbelopp: ${monthlyInvestmentSummary}
-Erfarenhetsnivå: ${experienceSummary}
-
-⚙️ Anpassa rekommendationerna:
-- Om användaren gillar krypto eller teknik → inkludera mer risk och tillväxt.
-- Om användaren prioriterar hållbarhet → fokusera på investmentbolag med hållbarhetsprofil och gröna bolag.
-- Om användaren är konservativ → ge defensiva och stabila innehav.
-- Om användaren är balanserad → kombinera investmentbolag och stabila bolag från Sverige, USA eller andra etablerade marknader tillsammans med internationella kvalitetsaktier.
-- Om användaren är aggressiv → inkludera tillväxtaktier, krypto och innovativa ETF:er.
+⚙️ Anpassa rekommendationerna (endast om relevant information är angiven):
+${riskToleranceSummary ? `- Risktolerans: ${riskToleranceSummary.toLowerCase().includes('konservativ') || riskToleranceSummary.toLowerCase().includes('conservative') ? 'Ge defensiva och stabila innehav.' : riskToleranceSummary.toLowerCase().includes('aggressiv') || riskToleranceSummary.toLowerCase().includes('aggressive') ? 'Inkludera tillväxtaktier och innovativa ETF:er.' : 'Kombinera investmentbolag och stabila bolag från Sverige, USA eller andra etablerade marknader tillsammans med internationella kvalitetsaktier.'}` : ''}
+${interestList && (interestList.includes('krypto') || interestList.includes('teknik') || interestList.includes('tech')) ? '- Användaren visar intresse för krypto eller teknik → inkludera mer risk och tillväxt.' : ''}
+${preferredAssets && preferredAssets.toLowerCase().includes('hållbar') ? '- Användaren prioriterar hållbarhet → fokusera på investmentbolag med hållbarhetsprofil och gröna bolag.' : ''}
 
 Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerställ att all text är på svenska.`;
 
