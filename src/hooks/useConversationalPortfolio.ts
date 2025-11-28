@@ -737,12 +737,14 @@ VIKTIGT: Du ska ENDAST ge en analys och sammanfattning av den nuvarande portföl
 8. Fokusera enbart på att beskriva och analysera det som finns, inte på vad som bör ändras.
 
 FORMAT FÖR SVARET:
-- action_summary: Börja med riskprofilen (t.ex. "Aggressiv riskprofil – hög tillväxtorientering" eller "Konservativ riskprofil – fokus på stabilitet"). Detta ska vara en kort, tydlig beskrivning på en rad.
-- risk_alignment: En längre text (2-4 meningar) som beskriver portföljens nuvarande sammansättning, koncentration, geografisk spridning, sektordiversifiering, och hur detta matchar användarens riskprofil. Använd naturligt språk och var konkret om vad som finns i portföljen.
-- next_steps: Generella råd om övervakning (max 2 punkter), t.ex. "Övervaka utvecklingen i de mest koncentrerade innehaven" eller "Bredda geografiskt och sektoriellt över tid". INGA specifika köp/sälj-åtgärder.
+- action_summary: Börja med riskprofilen (t.ex. "Aggressiv riskprofil – hög tillväxtorientering" eller "Konservativ riskprofil – fokus på stabilitet"). Detta ska vara en kort, tydlig beskrivning på en rad. INKLUDERA INTE detaljerad portföljbeskrivning här.
+- risk_alignment: En längre text (3-5 meningar) som beskriver portföljens nuvarande sammansättning, koncentration, geografisk spridning, sektordiversifiering, och hur detta matchar användarens riskprofil. Använd naturligt språk och var konkret om vad som finns i portföljen. Nämn specifika innehav och deras vikt om relevant. Detta är huvudbeskrivningen av portföljen.
+- next_steps: Generella råd om övervakning (max 2 punkter), t.ex. "Övervaka utvecklingen i de mest koncentrerade innehaven" eller "Bredda geografiskt och sektoriellt över tid". INGA specifika köp/sälj-åtgärder. Var kortfattad och konkret.
 - recommended_assets: Tom lista [].
 - complementary_assets: Tom lista [].
-- disclaimer: "Analysen är informationsbaserad och ej rådgivning."`;
+- disclaimer: "Analysen är informationsbaserad och ej rådgivning."
+
+VIKTIGT: action_summary och risk_alignment ska INTE upprepa samma information. action_summary är bara riskprofilen på en rad. risk_alignment är den detaljerade beskrivningen av portföljen.`;
 
       prompt += `
 

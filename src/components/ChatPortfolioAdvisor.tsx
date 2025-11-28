@@ -2545,7 +2545,12 @@ const ChatPortfolioAdvisor = () => {
     if (isOptimization) {
       const riskProfileText = plan.actionSummary || 'Analys av din portfölj';
       const portfolioDescription = plan.riskAlignment || reasoningSummary || 'Din portfölj har analyserats.';
-      const whyText = detailedReasoning || reasoningSummary || 'Analysen baseras på dina nuvarande innehav och riskprofil.';
+      
+      // For "Varför denna bedömning?", use a different approach - explain the analysis methodology
+      // rather than repeating the portfolio description
+      const whyText = plan.riskAlignment 
+        ? `Bedömningen baseras på en analys av dina ${conversationData.currentHoldings?.length || 0} innehav, deras sektorfördelning, geografisk spridning och koncentration. Analysen jämför din nuvarande portföljsammansättning med din angivna riskprofil för att ge en tydlig bild av hur väl portföljen matchar dina investeringsmål.`
+        : 'Analysen baseras på dina nuvarande innehav och riskprofil.';
       
       // Generate generic next steps for portfolio monitoring
       const genericNextSteps = [
@@ -2563,48 +2568,48 @@ const ChatPortfolioAdvisor = () => {
       };
 
       return (
-        <div className="space-y-4 text-sm leading-relaxed text-foreground max-w-4xl mx-auto">
+        <div className="space-y-5 text-base leading-relaxed text-foreground max-w-5xl mx-auto w-full">
           {/* Main summary box */}
-          <div className="rounded-lg border-2 border-border/80 bg-card p-6 shadow-md">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
-                <span className="text-base">🔵</span>
+          <div className="rounded-lg border-2 border-border/80 bg-card p-7 shadow-md">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+                <span className="text-lg">🔵</span>
               </div>
-              <h3 className="text-lg font-semibold text-foreground">Portföljsammanfattning</h3>
+              <h3 className="text-xl font-semibold text-foreground">Portföljsammanfattning</h3>
             </div>
-            <p className="text-base font-semibold text-foreground mb-4 leading-6">{riskProfileText}</p>
-            <div className="space-y-3 text-sm leading-7 text-foreground/90">
+            <p className="text-lg font-semibold text-foreground mb-5 leading-7">{riskProfileText}</p>
+            <div className="space-y-3 text-base leading-8 text-foreground/90">
               {formatText(portfolioDescription).map((line, idx) => (
-                <p key={idx} className="leading-7">{line}</p>
+                <p key={idx} className="leading-8">{line}</p>
               ))}
             </div>
           </div>
 
           {/* Why section */}
-          <div className="rounded-lg border border-border/60 bg-card/60 p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">💡</span>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Varför denna bedömning?</p>
+          <div className="rounded-lg border border-border/60 bg-card/60 p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-xl">💡</span>
+              <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Varför denna bedömning?</p>
             </div>
-            <div className="space-y-2.5 text-sm leading-7 text-foreground/90 pl-7">
+            <div className="space-y-3 text-base leading-8 text-foreground/90 pl-8">
               {formatText(whyText).map((line, idx) => (
-                <p key={idx} className="leading-7">{line}</p>
+                <p key={idx} className="leading-8">{line}</p>
               ))}
             </div>
           </div>
 
           {/* Next steps */}
           {finalNextSteps.length > 0 && (
-            <div className="rounded-lg border border-border/60 bg-card/60 p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">⚠️</span>
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Prioriterade nästa steg</p>
+            <div className="rounded-lg border border-border/60 bg-card/60 p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xl">⚠️</span>
+                <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Prioriterade nästa steg</p>
               </div>
-              <ul className="space-y-2.5 text-sm leading-7 text-foreground/90 list-none pl-7">
+              <ul className="space-y-3 text-base leading-8 text-foreground/90 list-none pl-8">
                 {finalNextSteps.map((step, index) => (
                   <li key={`step-${index}`} className="flex items-start gap-3">
-                    <span className="text-muted-foreground mt-1.5 text-base leading-none">•</span>
-                    <span className="flex-1 leading-7">{step}</span>
+                    <span className="text-muted-foreground mt-2 text-lg leading-none">•</span>
+                    <span className="flex-1 leading-8">{step}</span>
                   </li>
                 ))}
               </ul>
@@ -2612,17 +2617,17 @@ const ChatPortfolioAdvisor = () => {
           )}
 
           {/* Disclaimer */}
-          <div className="rounded-lg border-t border-border/40 pt-4 mt-2">
-            <p className="text-xs text-muted-foreground/80 italic text-center leading-5">
+          <div className="rounded-lg border-t border-border/40 pt-5 mt-3">
+            <p className="text-sm text-muted-foreground/80 italic text-center leading-6">
               *Analysen är informationsbaserad och ej rådgivning.*
             </p>
           </div>
 
           {/* Update portfolio button */}
-          <div className="flex justify-center pt-3">
+          <div className="flex justify-center pt-4">
             <Button
               onClick={handleImplementStrategy}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2.5 text-sm font-medium shadow-sm"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-base font-medium shadow-sm"
             >
               Uppdatera portföljen
             </Button>
