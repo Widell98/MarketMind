@@ -2309,9 +2309,25 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
 
       if (typeof structuredPlan === 'string') {
         try {
-          structuredPlan = JSON.parse(structuredPlan);
+          // Remove markdown code blocks if present
+          let cleanedPlan = structuredPlan.trim();
+          if (cleanedPlan.startsWith('```json')) {
+            cleanedPlan = cleanedPlan.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+          } else if (cleanedPlan.startsWith('```')) {
+            cleanedPlan = cleanedPlan.replace(/^```\s*/, '').replace(/\s*```$/, '');
+          }
+          structuredPlan = JSON.parse(cleanedPlan);
         } catch (error) {
           console.warn('Failed to parse structured plan string:', error);
+          // Try to extract JSON from the string if it contains markdown
+          try {
+            const jsonMatch = structuredPlan.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              structuredPlan = JSON.parse(jsonMatch[0]);
+            }
+          } catch (secondError) {
+            console.warn('Failed to extract JSON from markdown:', secondError);
+          }
         }
       }
 
@@ -2328,7 +2344,14 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         const textCandidates = [aiResponse.aiRecommendations, aiResponse.aiResponse, aiResponse.response];
         for (const candidate of textCandidates) {
           if (typeof candidate === 'string' && candidate.trim().length > 0) {
-            return candidate;
+            // Remove markdown code blocks if present
+            let cleaned = candidate.trim();
+            if (cleaned.startsWith('```json')) {
+              cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+            } else if (cleaned.startsWith('```')) {
+              cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+            }
+            return cleaned;
           }
         }
 

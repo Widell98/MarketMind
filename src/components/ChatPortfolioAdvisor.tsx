@@ -2563,48 +2563,48 @@ const ChatPortfolioAdvisor = () => {
       };
 
       return (
-        <div className="space-y-4 text-sm leading-relaxed text-foreground">
+        <div className="space-y-4 text-sm leading-relaxed text-foreground max-w-4xl mx-auto">
           {/* Main summary box */}
-          <div className="rounded-lg border-2 border-border bg-card p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                <span className="text-xs text-primary-foreground">🔵</span>
+          <div className="rounded-lg border-2 border-border/80 bg-card p-6 shadow-md">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+                <span className="text-base">🔵</span>
               </div>
-              <h3 className="text-base font-semibold text-foreground">Portföljsammanfattning</h3>
+              <h3 className="text-lg font-semibold text-foreground">Portföljsammanfattning</h3>
             </div>
-            <p className="text-sm font-medium text-foreground mb-3">{riskProfileText}</p>
-            <div className="space-y-2 text-sm leading-6 text-foreground">
+            <p className="text-base font-semibold text-foreground mb-4 leading-6">{riskProfileText}</p>
+            <div className="space-y-3 text-sm leading-7 text-foreground/90">
               {formatText(portfolioDescription).map((line, idx) => (
-                <p key={idx}>{line}</p>
+                <p key={idx} className="leading-7">{line}</p>
               ))}
             </div>
           </div>
 
           {/* Why section */}
-          <div className="rounded-lg border border-border bg-card/50 p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-base">💡</span>
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Varför denna bedömning?</p>
+          <div className="rounded-lg border border-border/60 bg-card/60 p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">💡</span>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Varför denna bedömning?</p>
             </div>
-            <div className="space-y-2 text-sm leading-6 text-foreground">
+            <div className="space-y-2.5 text-sm leading-7 text-foreground/90 pl-7">
               {formatText(whyText).map((line, idx) => (
-                <p key={idx}>{line}</p>
+                <p key={idx} className="leading-7">{line}</p>
               ))}
             </div>
           </div>
 
           {/* Next steps */}
           {finalNextSteps.length > 0 && (
-            <div className="rounded-lg border border-border bg-card/50 p-4">
+            <div className="rounded-lg border border-border/60 bg-card/60 p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-base">⚠️</span>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Prioriterade nästa steg</p>
+                <span className="text-lg">⚠️</span>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Prioriterade nästa steg</p>
               </div>
-              <ul className="space-y-2 text-sm leading-6 text-foreground list-none pl-0">
+              <ul className="space-y-2.5 text-sm leading-7 text-foreground/90 list-none pl-7">
                 {finalNextSteps.map((step, index) => (
-                  <li key={`step-${index}`} className="flex items-start gap-2">
-                    <span className="text-muted-foreground mt-1">•</span>
-                    <span className="flex-1">{step}</span>
+                  <li key={`step-${index}`} className="flex items-start gap-3">
+                    <span className="text-muted-foreground mt-1.5 text-base leading-none">•</span>
+                    <span className="flex-1 leading-7">{step}</span>
                   </li>
                 ))}
               </ul>
@@ -2612,17 +2612,17 @@ const ChatPortfolioAdvisor = () => {
           )}
 
           {/* Disclaimer */}
-          <div className="rounded-lg border-t border-border pt-3">
-            <p className="text-xs text-muted-foreground italic text-center">
+          <div className="rounded-lg border-t border-border/40 pt-4 mt-2">
+            <p className="text-xs text-muted-foreground/80 italic text-center leading-5">
               *Analysen är informationsbaserad och ej rådgivning.*
             </p>
           </div>
 
           {/* Update portfolio button */}
-          <div className="flex justify-center pt-2">
+          <div className="flex justify-center pt-3">
             <Button
               onClick={handleImplementStrategy}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2.5 text-sm font-medium shadow-sm"
             >
               Uppdatera portföljen
             </Button>
