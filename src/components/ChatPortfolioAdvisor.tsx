@@ -3102,52 +3102,22 @@ const ChatPortfolioAdvisor = () => {
                     <div className="space-y-4">
                       {renderAdvisorResponse()}
                       
-                      {portfolioResult?.mode === 'optimize' ? (
-                        <div className="mt-4 pt-4 border-t border-border/50">
-                          <p className="text-sm text-muted-foreground mb-3">
-                            Använd rekommendationerna för att justera dina nuvarande innehav i din portföljöversikt.
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                startAiChatSession(
-                                  'Planera ombalansering',
-                                  'Hjälp mig att tidsätta och prioritera ombalanseringen baserat på de senaste AI-rekommendationerna.'
-                                )
-                              }
-                              className="text-xs sm:text-sm"
-                            >
-                              Planera ombalansering
-                            </Button>
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={handleImplementStrategy}
-                              disabled={loading}
-                              className="text-xs sm:text-sm"
-                            >
-                              Uppdatera översikten
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mt-4 pt-4 border-t border-border/50">
-                          <p className="text-sm text-muted-foreground mb-3">
-                            För över strategin till din portföljöversikt och följ upp genomförandet.
-                          </p>
-                          <Button
-                            onClick={handleImplementStrategy}
-                            size="sm"
-                            className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs sm:text-sm"
-                            disabled={loading}
-                          >
-                            <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-                            {loading ? "Implementerar..." : "Implementera Strategin"}
-                          </Button>
-                        </div>
-                      )}
+                      <div className="mt-4 pt-4 border-t border-border/50">
+                        <p className="text-sm text-muted-foreground mb-3">
+                          {portfolioResult?.mode === 'optimize' 
+                            ? 'För över sammanfattningen till din portföljöversikt och följ upp genomförandet.'
+                            : 'För över strategin till din portföljöversikt och följ upp genomförandet.'}
+                        </p>
+                        <Button
+                          onClick={handleImplementStrategy}
+                          size="sm"
+                          className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs sm:text-sm"
+                          disabled={loading}
+                        >
+                          <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                          {loading ? "Implementerar..." : "Implementera Strategin"}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
