@@ -80,53 +80,53 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   return (
-    <Card className="mb-4">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+    <Card className="mb-3 sm:mb-4 rounded-lg sm:rounded-xl">
+      <CardHeader className="pb-2 sm:pb-3 p-3 sm:p-4 md:p-6">
+        <div className="flex items-center justify-between gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             {isCollapsible && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="p-1"
+                className="p-1 flex-shrink-0"
               >
                 {isExpanded ? (
-                  <ChevronDown className="w-4 h-4" />
+                  <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 ) : (
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 )}
               </Button>
             )}
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-              <p className="text-sm text-muted-foreground">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base sm:text-lg font-semibold text-foreground truncate">{title}</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground truncate">
                 {holdings.length} innehav • {formatCurrency(totalValue, 'SEK')}
               </p>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-lg font-bold text-foreground">
+          <div className="text-right flex-shrink-0">
+            <div className="text-base sm:text-lg font-bold text-foreground">
               {groupPercentage.toFixed(1)}%
             </div>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-xs sm:text-sm text-muted-foreground">
               av portfölj
             </div>
           </div>
         </div>
         
         {/* Progress bar for group */}
-        <div className="w-full bg-muted rounded-full h-2 mt-2">
+        <div className="w-full bg-muted rounded-full h-1.5 sm:h-2 mt-2">
           <div 
-            className="bg-primary rounded-full h-2 transition-all duration-300"
+            className="bg-primary rounded-full h-1.5 sm:h-2 transition-all duration-300"
             style={{ width: `${Math.min(groupPercentage, 100)}%` }}
           />
         </div>
       </CardHeader>
 
       {isExpanded && (
-        <CardContent className="pt-0">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <CardContent className="pt-0 p-3 sm:p-4 md:p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
             {currentHoldings.map((holding) => {
               const { valueInSEK: computedValue } = resolveHoldingValue(holding);
               const holdingPerformance = holdingPerformanceMap?.[holding.id];
@@ -172,20 +172,21 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
           </div>
 
           {totalPages > 1 && (
-            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-muted-foreground">
+            <div className="mt-4 sm:mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 Visar {startIndex + 1}-{Math.min(endIndex, holdings.length)} av {holdings.length} innehav
               </p>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handlePageChange('prev')}
                   disabled={currentPage === 1}
+                  className="text-xs sm:text-sm"
                 >
                   Föregående
                 </Button>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-xs sm:text-sm text-muted-foreground">
                   Sida {currentPage} av {totalPages}
                 </span>
                 <Button
@@ -193,6 +194,7 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
                   size="sm"
                   onClick={() => handlePageChange('next')}
                   disabled={currentPage === totalPages}
+                  className="text-xs sm:text-sm"
                 >
                   Nästa
                 </Button>

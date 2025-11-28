@@ -382,19 +382,19 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
 
   return (
     <>
-      <Card className="h-fit">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+      <Card className="h-fit rounded-lg sm:rounded-xl">
+        <CardHeader className="p-3 sm:p-4 md:p-6">
+          <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
             <span className="flex items-center gap-2">
-              <Package className="w-5 h-5 text-blue-600" />
-              <span>Dina Innehav</span>
+              <Package className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+              <span className="text-base sm:text-lg md:text-xl break-words">Dina Innehav</span>
             </span>
             <PieChartIcon
-              className="w-5 h-5 text-blue-600 cursor-pointer"
+              className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 cursor-pointer flex-shrink-0"
               onClick={() => setIsChartOpen(true)}
             />
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs sm:text-sm">
             {loading || cashLoading
               ? "Laddar dina innehav..."
               : allHoldings.length > 0
@@ -403,12 +403,12 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
             }
           </CardDescription>
           {importControls && (
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-3 sm:mt-4 flex flex-wrap gap-2">
               {importControls}
             </div>
           )}
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 sm:space-y-4 p-3 sm:p-4 md:p-6 pt-0">
           {loading || cashLoading ? (
             <div className="text-center py-8 text-muted-foreground">
               <div className="flex items-center justify-center gap-2">
@@ -417,66 +417,69 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
               </div>
             </div>
           ) : allHoldings.length === 0 ? (
-            <div className="text-center py-8">
-              <Package className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2 text-foreground">Inga innehav registrerade</h3>
-              <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+            <div className="text-center py-6 sm:py-8">
+              <Package className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 opacity-50 text-muted-foreground" />
+              <h3 className="text-base sm:text-lg font-medium mb-2 text-foreground">Inga innehav registrerade</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 max-w-sm mx-auto px-2">
                 Lägg till dina nuvarande aktier, fonder och kassapositioner för att få en komplett bild av din portfölj och bättre AI-rekommendationer.
               </p>
-              <div className="flex gap-2 justify-center">
-                <Button className="flex items-center gap-2" onClick={openAddHoldingDialog}>
-                  <Plus className="w-4 h-4" />
+              <div className="flex flex-col sm:flex-row gap-2 justify-center px-2">
+                <Button className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm w-full sm:w-auto" onClick={openAddHoldingDialog}>
+                  <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Lägg till innehav
                 </Button>
-                <Button variant="outline" className="flex items-center gap-2" onClick={() => setShowAddCashDialog(true)}>
-                  <Banknote className="w-4 h-4" />
+                <Button variant="outline" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm w-full sm:w-auto" onClick={() => setShowAddCashDialog(true)}>
+                  <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Lägg till kassa
                 </Button>
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {/* Action Bar */}
-              <div className="flex flex-col sm:flex-row gap-4 pb-4 border-b border-border">
+              <div className="flex flex-col gap-3 sm:gap-4 pb-3 sm:pb-4 border-b border-border">
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" className="flex items-center gap-2" onClick={openAddHoldingDialog}>
-                    <Plus className="w-4 h-4" />
+                  <Button size="sm" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm" onClick={openAddHoldingDialog}>
+                    <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     Lägg till innehav
                   </Button>
-                  <Button size="sm" variant="outline" className="flex items-center gap-2" onClick={() => setShowAddCashDialog(true)}>
-                    <Banknote className="w-4 h-4" />
+                  <Button size="sm" variant="outline" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm" onClick={() => setShowAddCashDialog(true)}>
+                    <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     Lägg till kassa
                   </Button>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground border border-dashed border-border rounded-md px-2 py-1">
-                    <RefreshCw className="w-3 h-3" />
-                    <span>Klicka på en ticker för att uppdatera priset.</span>
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] xs:text-xs text-muted-foreground border border-dashed border-border rounded-md px-2 py-1.5 sm:py-1">
+                    <RefreshCw className="w-3 h-3 flex-shrink-0" />
+                    <span className="hidden xs:inline">Klicka på en ticker för att uppdatera priset.</span>
+                    <span className="xs:hidden">Klicka på ticker</span>
                   </div>
                 </div>
 
-                <div className="flex gap-2 flex-1 max-w-md items-center">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <div className="flex gap-2 flex-1 max-w-full sm:max-w-md items-center">
+                  <div className="relative flex-1 min-w-0">
+                    <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
                     <Input
                       placeholder="Sök innehav..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
+                      className="pl-8 sm:pl-10 text-xs sm:text-sm"
                     />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5 sm:gap-2 flex-shrink-0">
                     <Button
                       size="icon"
                       variant={viewMode === 'cards' ? 'default' : 'outline'}
                       onClick={() => setViewMode('cards')}
+                      className="h-8 w-8 sm:h-9 sm:w-9"
                     >
-                      <LayoutGrid className="w-4 h-4" />
+                      <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </Button>
                     <Button
                       size="icon"
                       variant={viewMode === 'table' ? 'default' : 'outline'}
                       onClick={() => setViewMode('table')}
+                      className="h-8 w-8 sm:h-9 sm:w-9"
                     >
-                      <TableIcon className="w-4 h-4" />
+                      <TableIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </Button>
                   </div>
                 </div>

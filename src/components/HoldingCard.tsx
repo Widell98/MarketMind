@@ -103,13 +103,13 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   };
 
   return (
-    <Card className="hover:shadow-md transition-all duration-200 border-l-4 border-l-primary/20">
-      <CardContent className="p-4">
-        <div className="space-y-4">
+    <Card className="hover:shadow-md transition-all duration-200 border-l-4 border-l-primary/20 rounded-lg sm:rounded-xl">
+      <CardContent className="p-3 sm:p-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Header */}
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-3 min-w-0 flex-1">
-              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
                 {logoUrl && !isLogoError ? (
                   <img
                     src={logoUrl}
@@ -118,7 +118,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                     onError={() => setIsLogoError(true)}
                   />
                 ) : (
-                  <Icon className="w-5 h-5 text-muted-foreground" />
+                  <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
                 )}
               </div>
               
@@ -165,18 +165,18 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
             </div>
 
             {/* Portfolio Percentage */}
-            <div className="text-right flex-shrink-0">
-              <div className="text-lg font-bold text-foreground">
+            <div className="text-right flex-shrink-0 ml-2">
+              <div className="text-base sm:text-lg font-bold text-foreground">
                 {portfolioPercentage.toFixed(1)}%
               </div>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-xs sm:text-sm text-muted-foreground">
                 av portfölj
               </div>
             </div>
           </div>
 
           {/* Value Information */}
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
             <div>
               <span className="text-muted-foreground">Värde:</span>
               <div className="font-semibold text-foreground">
@@ -285,26 +285,26 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-2 pt-2 flex-wrap">
             {!isCash && (
               <>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  className="flex-1 min-w-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 text-xs sm:text-sm"
                   onClick={() => onDiscuss(holding.name, holding.symbol)}
                 >
-                  <MessageSquare className="w-4 h-4 mr-1" />
-                  Diskutera
+                  <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />
+                  <span className="truncate">Diskutera</span>
                 </Button>
                 {onEdit && (
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                    className="text-green-600 hover:text-green-700 hover:bg-green-50 flex-shrink-0 px-2 sm:px-3"
                     onClick={() => onEdit(holding.id)}
                   >
-                    <Edit2 className="w-4 h-4" />
+                    <Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </Button>
                 )}
               </>
@@ -314,21 +314,21 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                className="flex-1 min-w-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 text-xs sm:text-sm"
                 onClick={() => onEdit(holding.id)}
               >
-                <Edit2 className="w-4 h-4 mr-1" />
-                Redigera
+                <Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />
+                <span className="truncate">Redigera</span>
               </Button>
             )}
             
             <Button
               variant="ghost"
               size="sm"
-              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0 px-2 sm:px-3"
               onClick={() => onDelete(holding.id, holding.name)}
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </Button>
           </div>
 

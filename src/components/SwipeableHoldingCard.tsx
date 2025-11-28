@@ -162,7 +162,7 @@ const SwipeableHoldingCard: React.FC<SwipeableHoldingCardProps> = ({
             <Button
               key={action.id}
               className={cn(
-                "h-full w-16 rounded-none border-0",
+                "h-full w-14 sm:w-16 rounded-none border-0",
                 action.color,
                 "text-white hover:opacity-90"
               )}
@@ -172,9 +172,9 @@ const SwipeableHoldingCard: React.FC<SwipeableHoldingCardProps> = ({
                 transition: isSwipeActive ? 'none' : 'transform 0.3s ease-out'
               }}
             >
-              <div className="flex flex-col items-center gap-1">
-                <Icon className="w-4 h-4" />
-                <span className="text-xs">{action.label}</span>
+              <div className="flex flex-col items-center gap-0.5 sm:gap-1 px-1">
+                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="text-[10px] xs:text-xs leading-tight text-center">{action.label}</span>
               </div>
             </Button>
           );
