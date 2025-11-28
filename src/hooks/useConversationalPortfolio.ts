@@ -695,50 +695,25 @@ GRUNDLÄGGANDE PROFIL:
     if (mode === 'optimize') {
       prompt += `
 
-OPTIMERING AV BEFINTLIG PORTFÖLJ:
-1. Gör en djup analys av nuvarande innehav, allokering och riskprofil innan du föreslår förändringar.
-2. Koppla varje rekommendation direkt till användarens uttryckta optimeringsmål och tidslinje.
-3. Ge konkreta åtgärdsförslag för hur portföljen kan förbättras (t.ex. rebalansering, reducera avgifter, minska koncentrationsrisk).
-4. Identifiera styrkor/svagheter i befintliga innehav och föreslå tydliga förbättringar.
-5. Om användaren vill undvika nya investeringar, fokusera på omstrukturering av befintliga innehav snarare än att skapa en ny portfölj.
-6. Om användaren accepterar nya idéer, föreslå endast kompletterande innehav som adresserar deras mål och förklara exakt hur de integreras.
-7. Ge en prioriterad handlingsplan med tidsramar för genomförande.
-8. Kommentera riskhantering, diversifiering och eventuella skatteeffekter baserat på användarens svar.
-9. Använd samma numrerade format för rekommendationer men markera tydligt om det handlar om behålla, öka, minska eller nytt innehav.
-10. Avsluta med en sammanfattning av förväntad effekt av optimeringen.`;
+ANALYS AV BEFINTLIG PORTFÖLJ (INGA REKOMMENDATIONER):
+VIKTIGT: Du ska ENDAST ge en analys och sammanfattning av den nuvarande portföljen. Du får INTE generera några köpråd, säljråd eller omstruktureringsförslag.
+
+1. Analysera den nuvarande portföljens risknivå baserat på innehav, allokering och diversifiering.
+2. Beskriv fördelningen av innehav (sektorer, geografi, storlek).
+3. Identifiera vad som ser bra ut i portföljen (styrkor, välbalanserade delar, bra diversifiering).
+4. Ge en sammanfattning av portföljens nuvarande status och profil.
+5. Kommentera riskhantering och diversifiering baserat på användarens riskprofil.
+6. INKLUDERA INGA köp-, sälj- eller omstruktureringsrekommendationer.
+7. INKLUDERA INGA action_type fält som "increase", "reduce", "sell", "add", eller "rebalance".
+8. Fokusera enbart på att beskriva och analysera det som finns, inte på vad som bör ändras.`;
 
       prompt += `
 
-FORMATKRAV FÖR OPTIMERING:
-- Returnera ett JSON-objekt med fälten: action_summary, risk_alignment, next_steps (lista), recommended_assets (lista), complementary_assets (lista om nya idéer behövs), disclaimer.
-- Varje post i recommended_assets ska innehålla: name, ticker, allocation_percent eller target_weight, change_percent (om relevant), rationale, action_type (behåll/increase/reduce/sell/add/rebalance), samt valfria notes.
-- Markera åtgärder för befintliga innehav med action_type i {"hold","increase","reduce","sell","rebalance"} och använd change_percent för att beskriva viktjusteringar.
-- Placera endast nya eller kompletterande innehav i complementary_assets och sätt deras action_type till "add".
+FORMATKRAV FÖR ANALYS:
+- Returnera ett JSON-objekt med fälten: action_summary (beskrivning av portföljens nuvarande status), risk_alignment (analys av risknivå och hur den matchar användarens profil), next_steps (tom lista eller generella råd om att fortsätta övervaka), recommended_assets (tom lista - INGA rekommendationer), complementary_assets (tom lista - INGA nya idéer), disclaimer.
+- recommended_assets och complementary_assets ska vara tomma listor [].
+- Fokusera på att beskriva portföljen i action_summary och risk_alignment.
 `;
-
-      if (conversationData.optimizationPreference === 'analyze_only') {
-        prompt += `
-SPECIALINSTRUKTIONER (ANALYZERA UTAN NYA KÖP):
-- Föreslå inga nya tickers. action_type "add" ska inte förekomma.
-- Fokusera på att beskriva hur befintliga positioner kan justeras (behålla/öka/minska/sälja) och varför.
-- Lyft särskilt fram kostnader, riskreducering och överlapp som bör trimmas bort.
-`;
-      } else if (conversationData.optimizationPreference === 'improve_with_new_ideas') {
-        prompt += `
-SPECIALINSTRUKTIONER (KOMPLETTERA MED NYA IDÉER):
-- Identifiera högst fyra kompletterande innehav som tydligt löser användarens mål.
-- Ange en föreslagen procentandel eller vikt för varje nytt innehav och motivera integrationen.
-- Beskriv hur nya idéer påverkar helheten och vilka befintliga positioner som eventuellt kan minskas för att ge plats.
-- För varje ny rekommendation, specificera vilken överviktad position som ska trimmas (t.ex. "Sälj 15% av Apple") och hur mycket kapital som flyttas för att finansiera köpet, särskilt om någon post utgör mer än 20% av portföljen.
-`;
-      } else if (conversationData.optimizationPreference === 'rebalance') {
-        prompt += `
-SPECIALINSTRUKTIONER (REBALANSERING):
-- Ange konkreta viktförändringar och köp-/säljåtgärder för att nå målvikter.
-- Använd change_percent för att förtydliga hur mycket varje innehav ska ökas eller minskas och prioritera åtgärderna.
-- Introducera endast nya innehav om de behövs för att fylla identifierade luckor och markera dem då som action_type "add".
-`;
-      }
 
       if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
         prompt += `
@@ -770,7 +745,7 @@ NUVARANDE INNEHAV SOM SKA ANALYSERAS: ${conversationData.currentHoldings.map(h =
 
           if (concentrationAlerts.length > 0) {
             prompt += `
-- Koncentrationsrisker som måste adresseras: ${concentrationAlerts.join(', ')}. Ange exakt hur mycket av dessa positioner som bör säljas eller trimmats för att frigöra kapital till förbättringar.`;
+- Koncentrationsrisker att notera: ${concentrationAlerts.join(', ')}. Observera dessa i din analys, men föreslå INGA åtgärder.`;
           }
         }
       }
@@ -2381,42 +2356,10 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       structuredPlan = normalizedTrades.structuredPlan;
 
       if (mode === 'optimize') {
-        const isValidPreference = (
-          value: unknown
-        ): value is NonNullable<ConversationData['optimizationPreference']> =>
-          value === 'analyze_only' || value === 'improve_with_new_ideas' || value === 'rebalance';
-
-        const preference = isValidPreference(mergedConversationData.optimizationPreference)
-          ? mergedConversationData.optimizationPreference
-          : 'analyze_only';
-
-        mergedConversationData.optimizationPreference = preference;
-        const isAdd = (rec: StockRecommendation) => (rec.actionType || '').toLowerCase() === 'add';
-
-        if (preference === 'analyze_only') {
-          complementaryIdeas = [];
-          stockRecommendations = stockRecommendations.filter(rec => !isAdd(rec));
-        } else if (preference === 'improve_with_new_ideas') {
-          if (complementaryIdeas.length === 0) {
-            complementaryIdeas = stockRecommendations.filter(isAdd);
-          }
-          complementaryIdeas = complementaryIdeas.filter(isAdd);
-        } else if (preference === 'rebalance') {
-          if (complementaryIdeas.length === 0) {
-            complementaryIdeas = stockRecommendations.filter(isAdd);
-          } else {
-            complementaryIdeas = complementaryIdeas.filter(isAdd);
-          }
-
-          stockRecommendations = stockRecommendations.filter(rec => !isAdd(rec) || complementaryIdeas.every(idea => idea.name !== rec.name));
-        }
-
-        if (preference !== 'improve_with_new_ideas') {
-          stockRecommendations = stockRecommendations.filter(rec => !isAdd(rec));
-        }
-
-        stockRecommendations = dedupeRecommendations(stockRecommendations);
-        complementaryIdeas = dedupeRecommendations(complementaryIdeas);
+        // När användaren har en befintlig portfölj, ska vi endast ge analys
+        // Inga köp-, sälj- eller omstruktureringsrekommendationer ska genereras
+        complementaryIdeas = [];
+        stockRecommendations = [];
       }
 
       if (stockRecommendations.length === 0) {

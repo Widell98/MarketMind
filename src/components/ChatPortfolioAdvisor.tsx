@@ -1400,7 +1400,7 @@ const ChatPortfolioAdvisor = () => {
     
     // Show confirmation message
     setTimeout(() => {
-      addBotMessage(`Perfekt! Jag har registrerat dina ${validHoldings.length} innehav. Nu kan jag analysera din befintliga portfölj och ge bättre rekommendationer.`);
+      addBotMessage(`Perfekt! Jag har registrerat dina ${validHoldings.length} innehav. Nu kan jag analysera din befintliga portfölj och ge dig en sammanfattning av risknivå, fördelning och vad som ser bra ut.`);
       
       setTimeout(() => {
         moveToNextQuestion();
@@ -1444,7 +1444,7 @@ const ChatPortfolioAdvisor = () => {
       // Show holdings input form
       setTimeout(() => {
         addBotMessage(
-          'Perfekt! Ange dina nuvarande innehav nedan så kan jag analysera din portfölj och ge bättre rekommendationer.',
+          'Perfekt! Ange dina nuvarande innehav nedan så kan jag analysera din portfölj och ge dig en sammanfattning av risknivå, fördelning och vad som ser bra ut.',
           false,
           undefined,
           true
@@ -2044,7 +2044,7 @@ const ChatPortfolioAdvisor = () => {
     const isOptimizationFlow = conversationData.hasCurrentPortfolio === true;
     addBotMessage(
       isOptimizationFlow
-        ? 'Tack för alla svar! Jag analyserar din befintliga portfölj och tar fram skräddarsydda förbättringsförslag...'
+        ? 'Tack för alla svar! Jag analyserar nu din befintliga portfölj och ger dig en sammanfattning av risknivå, fördelning och vad som ser bra ut...'
         : 'Tack för alla svar! Jag skapar nu din personliga portföljstrategi...'
     );
     addBotMessage(
@@ -2084,12 +2084,7 @@ const ChatPortfolioAdvisor = () => {
 
       setTimeout(() => {
         if (isOptimizationResult) {
-          addBotMessage('🔍 Din portföljanalys är klar! Här är mina optimeringsförslag:');
-          if (Array.isArray(result.complementaryIdeas) && result.complementaryIdeas.length > 0) {
-            addBotMessage('✨ Du fick även kompletterande idéer som stärker din nuvarande strategi.');
-          } else if (conversationData.optimizationPreference === 'analyze_only') {
-            addBotMessage('🛠️ Fokusera på dessa åtgärder för att förfina det du redan äger – inga nya köp föreslås just nu.');
-          }
+          addBotMessage('🔍 Din portföljanalys är klar! Här är min analys av din nuvarande portfölj:');
         } else {
           addBotMessage('🎉 Din personliga portföljstrategi är klar! Här är mina rekommendationer:');
         }
