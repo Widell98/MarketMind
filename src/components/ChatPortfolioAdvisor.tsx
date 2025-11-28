@@ -1188,21 +1188,6 @@ const ChatPortfolioAdvisor = () => {
               };
             }
           }
-
-          if (
-            !holding.priceManuallyEdited &&
-            typeof ticker.price === 'number' &&
-            Number.isFinite(ticker.price) &&
-            ticker.price > 0
-          ) {
-            const normalizedPrice = parseFloat(ticker.price.toFixed(2));
-            if (holding.purchasePrice !== normalizedPrice) {
-              updatedHolding = {
-                ...updatedHolding,
-                purchasePrice: normalizedPrice
-              };
-            }
-          }
         }
 
         if (!ticker && normalizedSymbol.length === 0 && !holding.currencyManuallyEdited && holding.currency !== 'SEK') {
@@ -1322,18 +1307,6 @@ const ChatPortfolioAdvisor = () => {
           modified = true;
         }
 
-        if (
-          !nextHolding.priceManuallyEdited &&
-          typeof ticker.price === 'number' &&
-          Number.isFinite(ticker.price) &&
-          ticker.price > 0
-        ) {
-          const normalizedPrice = parseFloat(ticker.price.toFixed(2));
-          if (nextHolding.purchasePrice !== normalizedPrice) {
-            nextHolding = { ...nextHolding, purchasePrice: normalizedPrice };
-            modified = true;
-          }
-        }
 
         if (modified) {
           hasChanges = true;
