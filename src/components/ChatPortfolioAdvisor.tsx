@@ -468,6 +468,7 @@ const ChatPortfolioAdvisor = () => {
   const { activePortfolio, refetch } = usePortfolio();
   const { refetch: refetchHoldings } = useUserHoldings();
   const { toast } = useToast();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const startAiChatSession = useCallback(
     (sessionName: string, initialMessage: string) => {
@@ -2105,8 +2106,8 @@ const ChatPortfolioAdvisor = () => {
     try {
       // Show immediate feedback
       toast({
-        title: "Implementerar strategi",
-        description: "Din portföljstrategi implementeras och profilen uppdateras...",
+        title: "Sparar riskprofil",
+        description: "Din riskprofil registreras som klar...",
       });
 
       // Refresh both portfolio and holdings data to ensure we have the latest
@@ -2114,30 +2115,34 @@ const ChatPortfolioAdvisor = () => {
         refetch(),
         refetchHoldings()
       ]);
+
+      // Mark risk profile as completed in localStorage
+      if (user) {
+        const storageKey = `user-activity-${user.id}`;
+        const saved = localStorage.getItem(storageKey);
+        let activity = saved ? JSON.parse(saved) : {};
+        activity.hasCompletedRiskProfile = true;
+        localStorage.setItem(storageKey, JSON.stringify(activity));
+      }
       
-      // Navigate to AI chat to assist with implementation
-      const implementationMessage =
-        'Hjälp mig att implementera portföljstrategin vi just tog fram och beskriva stegen för att komma igång.';
-      navigate(`/ai-chatt?message=${encodeURIComponent(implementationMessage)}`);
+      // Navigate to index page
+      navigate('/');
 
       // Show success message after navigation
       setTimeout(() => {
         toast({
-          title: "Strategi klar!",
-          description: "Öppnar AI-chatt för att guida dig genom att implementera strategin steg för steg.",
+          title: "Riskprofil sparad!",
+          description: "Din riskprofil är nu registrerad och du kan börja använda plattformen.",
         });
-      }, 1000);
+      }, 500);
       
     } catch (error) {
       console.error('Error implementing strategy:', error);
       toast({
         title: "Ett fel uppstod",
-        description: "Kunde inte implementera strategin helt. Kontrollera din profil på implementeringssidan.",
+        description: "Kunde inte spara riskprofilen. Försök igen senare.",
         variant: "destructive",
       });
-      
-      // Navigate to chat so the user can resolve implementation issues
-      navigate('/ai-chatt');
     }
   };
 
