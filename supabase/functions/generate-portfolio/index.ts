@@ -952,7 +952,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
       recommendedStocks: recommendedStocks,
       mode: hasExistingPortfolio ? 'registration' : 'new' // Lägger till mode-flagga
     };
-
+  return jsonResponse(responsePayload);
   } catch (error) {
     console.error('Error in generate-portfolio function:', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
