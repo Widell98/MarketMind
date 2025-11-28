@@ -2643,18 +2643,18 @@ const ChatPortfolioAdvisor = () => {
             </div>
           )}
 
-          {/* Next steps - more compact */}
-          {finalNextSteps.length > 0 && (
-            <div className="pt-3 border-t border-border/50">
-              <p className="text-xs font-semibold text-muted-foreground mb-2">Nästa steg:</p>
-              <ul className="space-y-2 text-sm leading-6 text-foreground/90">
-                {finalNextSteps.map((step, index) => (
-                  <li key={`step-${index}`} className="flex items-start gap-2">
-                    <span className="text-primary font-semibold mt-0.5">{index + 1}.</span>
-                    <span>{step}</span>
-                  </li>
-                ))}
-              </ul>
+          {/* Detailed Analysis - Show prominently for analyses */}
+          {plan.riskAlignment && (
+            <div className="pt-4 border-t border-border/50">
+              <div className="flex items-center gap-2 mb-3">
+                <Brain className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold text-foreground">Detaljerad analys</p>
+              </div>
+              <div className="p-4 rounded-lg border border-border/50 bg-muted/30">
+                <p className="text-sm leading-6 text-foreground/90 whitespace-pre-line">
+                  {plan.riskAlignment}
+                </p>
+              </div>
             </div>
           )}
 
