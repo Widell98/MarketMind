@@ -29,6 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 import InvestmentProfileSummary from '@/components/InvestmentProfileSummary';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import ResetProfileConfirmDialog from '@/components/ResetProfileConfirmDialog';
+import SavedPortfoliosSection from '@/components/SavedPortfoliosSection';
 
 const Profile = () => {
   const { user, loading, signOut } = useAuth();
@@ -343,6 +344,7 @@ const Profile = () => {
                 showActions
                 onReset={() => setShowResetDialog(true)}
               />
+              <SavedPortfoliosSection />
               <UserInvestmentAnalysis />
             </TabsContent>
 
