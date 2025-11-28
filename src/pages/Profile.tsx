@@ -233,58 +233,61 @@ const Profile = () => {
             <Tabs defaultValue={isAdmin ? "content" : "riskprofile"} className="w-full">
               <TabsList
                 className={`grid w-full ${
-                  isAdmin ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'
-                } gap-2 md:gap-3 mb-8 bg-muted/20 border border-border/30 rounded-xl p-1 md:p-2 shadow-sm backdrop-blur-sm`}
+                  isAdmin ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'
+                } gap-1.5 sm:gap-2 md:gap-3 mb-4 sm:mb-6 md:mb-8 bg-muted/20 border border-border/30 rounded-lg sm:rounded-xl p-1 sm:p-1.5 md:p-2 shadow-sm backdrop-blur-sm`}
               >
                 {isAdmin && (
-                  <TabsTrigger value="content" className="rounded-lg font-medium">
+                  <TabsTrigger value="content" className="rounded-md sm:rounded-lg font-medium text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
                     Innehåll
                   </TabsTrigger>
                 )}
-                <TabsTrigger value="riskprofile" className="flex items-center gap-2 rounded-lg font-medium">
-                  <Brain className="w-4 h-4" />
-                  Riskprofil
+                <TabsTrigger value="riskprofile" className="flex items-center gap-1.5 sm:gap-2 rounded-md sm:rounded-lg font-medium text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
+                  <Brain className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden xs:inline">Riskprofil</span>
+                  <span className="xs:hidden">Risk</span>
                 </TabsTrigger>
-                <TabsTrigger value="sharing-activity" className="flex items-center gap-2 rounded-lg font-medium">
-                  <Share2 className="w-4 h-4" />
-                  Delning & aktivitet
+                <TabsTrigger value="sharing-activity" className="flex items-center gap-1.5 sm:gap-2 rounded-md sm:rounded-lg font-medium text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
+                  <Share2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Delning & aktivitet</span>
+                  <span className="sm:hidden">Delning</span>
                 </TabsTrigger>
-                <TabsTrigger value="membership" className="flex items-center gap-2 rounded-lg font-medium">
-                  <CreditCard className="w-4 h-4" />
-                  Medlemskap
+                <TabsTrigger value="membership" className="flex items-center gap-1.5 sm:gap-2 rounded-md sm:rounded-lg font-medium text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
+                  <CreditCard className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Medlemskap</span>
+                  <span className="sm:hidden">Medlem</span>
                 </TabsTrigger>
               </TabsList>
 
             {isAdmin && (
-              <TabsContent value="content" className="space-y-8">
+              <TabsContent value="content" className="space-y-6 sm:space-y-8">
                 {/* Stock Cases */}
                 <Card className="border rounded-xl shadow-sm">
-                  <CardHeader className="pb-6">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-3 text-xl font-semibold">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <TrendingUp className="w-5 h-5 text-primary" />
+                  <CardHeader className="pb-4 sm:pb-6 p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+                      <CardTitle className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl font-semibold">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                         </div>
                         Mina Inlägg
                       </CardTitle>
                       <Button
                         onClick={() => setIsCreateCaseDialogOpen(true)}
                         size="sm"
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium w-full sm:w-auto text-xs sm:text-sm"
                       >
-                        <Plus className="w-4 h-4 mr-2" />
+                        <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                         Nytt case
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-4 sm:p-6">
                     {stockCasesLoading ? (
                       <div className="text-center py-12">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                         <p className="text-sm text-muted-foreground">Laddar cases...</p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
                         {stockCases.filter(c => c.user_id === user.id).map((stockCase) => (
                           <EnhancedStockCaseCard
                             key={stockCase.id}
@@ -317,22 +320,22 @@ const Profile = () => {
 
                 {/* Analyses */}
                 <Card className="border rounded-xl shadow-sm">
-                  <CardHeader className="pb-6">
-                    <CardTitle className="flex items-center gap-3 text-xl font-semibold">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-primary" />
+                  <CardHeader className="pb-4 sm:pb-6 p-4 sm:p-6">
+                    <CardTitle className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl font-semibold">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                       </div>
                       Mina Analyser
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-4 sm:p-6">
                     <UserAnalysesSection compact={false} />
                   </CardContent>
                 </Card>
               </TabsContent>
             )}
 
-            <TabsContent value="riskprofile" className="space-y-8">
+            <TabsContent value="riskprofile" className="space-y-6 sm:space-y-8">
               <ResetProfileConfirmDialog
                 isOpen={showResetDialog}
                 onClose={() => setShowResetDialog(false)}
@@ -348,24 +351,24 @@ const Profile = () => {
               <UserInvestmentAnalysis />
             </TabsContent>
 
-            <TabsContent value="sharing-activity" className="space-y-8">
-              <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-8 items-start">
+            <TabsContent value="sharing-activity" className="space-y-6 sm:space-y-8">
+              <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-4 sm:gap-6 xl:gap-8 items-start">
                 <ExportSharingSection />
                 <ActivitySection />
               </div>
             </TabsContent>
 
-            <TabsContent value="membership" className="space-y-8">
+            <TabsContent value="membership" className="space-y-6 sm:space-y-8">
               <MembershipSection />
 
               <Card className="border-destructive/40">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-destructive">
-                    <Trash2 className="w-5 h-5" />
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="flex items-center gap-2 text-destructive text-base sm:text-lg">
+                    <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
                     Radera konto
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-3 p-4 sm:p-6 pt-0">
                   <p className="text-sm text-muted-foreground">
                     Detta tar bort ditt konto permanent tillsammans med din profil och relaterad data. Åtgärden kan inte ångras.
                   </p>

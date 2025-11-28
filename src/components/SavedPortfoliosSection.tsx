@@ -91,15 +91,15 @@ const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps
 
   return (
     <Card className="border rounded-xl shadow-sm">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-3 text-xl font-semibold">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Briefcase className="w-5 h-5 text-primary" />
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl font-semibold">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
           </div>
-          Senaste Portföljgenerering / Analys
+          <span className="text-sm sm:text-base md:text-xl">Senaste Portföljgenerering / Analys</span>
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 sm:p-6">
         {portfolios.length > 0 ? (
           <div>
             {(() => {
@@ -114,43 +114,43 @@ const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps
               const stockCount = recommendedStocks.length;
 
               return (
-                <div className="p-6 border rounded-xl hover:shadow-md transition-shadow bg-card">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-foreground">
+                <div className="p-4 sm:p-6 border rounded-xl hover:shadow-md transition-shadow bg-card">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+                        <h3 className="text-base sm:text-lg font-semibold text-foreground break-words">
                           {portfolio.portfolio_name}
                         </h3>
                         {portfolio.portfolio_name === 'Portföljsammanfattning gjord av AI' ? (
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="secondary" className="text-xs flex-shrink-0">
                             Analys
                           </Badge>
                         ) : portfolio.is_active ? (
-                          <Badge variant="default" className="text-xs">
+                          <Badge variant="default" className="text-xs flex-shrink-0">
                             Aktiv
                           </Badge>
                         ) : null}
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mb-3">
                         <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          {formatDate(portfolio.created_at)}
+                          <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                          <span className="whitespace-nowrap">{formatDate(portfolio.created_at)}</span>
                         </div>
                         {stockCount > 0 && (
                           <div className="flex items-center gap-1">
-                            <FileText className="w-4 h-4" />
-                            {stockCount} rekommendation{stockCount !== 1 ? 'er' : ''}
+                            <FileText className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                            <span className="whitespace-nowrap">{stockCount} rekommendation{stockCount !== 1 ? 'er' : ''}</span>
                           </div>
                         )}
                         {portfolio.risk_score && (
                           <div className="flex items-center gap-1">
-                            <TrendingUp className="w-4 h-4" />
-                            Risk: {portfolio.risk_score}/10
+                            <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                            <span className="whitespace-nowrap">Risk: {portfolio.risk_score}/10</span>
                           </div>
                         )}
                       </div>
                       {summary && (
-                        <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+                        <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 mb-4">
                           {typeof summary === 'string' ? summary : JSON.stringify(summary)}
                         </p>
                       )}
@@ -160,7 +160,7 @@ const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps
                   {recommendedStocks.length > 0 && (
                     <div className="mb-4">
                       <p className="text-xs font-semibold text-muted-foreground mb-2">Rekommendationer:</p>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-1.5 sm:gap-2">
                         {recommendedStocks.slice(0, 5).map((stock: any, index: number) => (
                           <Badge
                             key={index}
@@ -190,16 +190,16 @@ const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps
                     }}
                     variant="outline"
                     size="sm"
-                    className="w-full sm:w-auto"
+                    className="w-full sm:w-auto text-xs sm:text-sm"
                   >
                     {expandedPortfolioId === portfolio.id ? (
                       <>
-                        <ChevronUp className="w-4 h-4 mr-2" />
+                        <ChevronUp className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                         Dölj sammanfattning
                       </>
                     ) : (
                       <>
-                        <ChevronDown className="w-4 h-4 mr-2" />
+                        <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                         Visa sammanfattning
                       </>
                     )}
@@ -207,7 +207,7 @@ const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps
 
                   {/* Full portfolio summary */}
                   {expandedPortfolioId === portfolio.id && (
-                    <div className="mt-6 pt-6 border-t border-border">
+                    <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-border">
                       <PortfolioSummaryView portfolio={portfolio} />
                     </div>
                   )}
