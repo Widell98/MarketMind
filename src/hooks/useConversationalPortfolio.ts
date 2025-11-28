@@ -776,7 +776,15 @@ VIKTIGT: Du ska ENDAST ge en analys och sammanfattning av den nuvarande portföl
 
 FORMAT FÖR SVARET:
 - action_summary: Börja med riskprofilen (t.ex. "Aggressiv riskprofil – hög tillväxtorientering" eller "Konservativ riskprofil – fokus på stabilitet"). Detta ska vara en kort, tydlig beskrivning på en rad. INKLUDERA INTE detaljerad portföljbeskrivning här.
-- risk_alignment: En längre text (3-5 meningar) som beskriver portföljens nuvarande sammansättning, koncentration, geografisk spridning, sektordiversifiering, och hur detta matchar användarens riskprofil. Använd naturligt språk och var konkret om vad som finns i portföljen. Nämn specifika innehav och deras vikt om relevant. Detta är huvudbeskrivningen av portföljen.
+- risk_alignment: En LÅNG, GEDIGEN analys (minst 5-8 meningar, helst längre) som inkluderar:
+  * Specifik beskrivning av alla viktiga innehav med deras tickers och ungefärlig vikt i portföljen
+  * Sektorfördelning och geografisk spridning (Sverige, USA, Europa, etc.)
+  * Koncentrationsrisker: identifiera om vissa innehav eller sektorer står för en stor del av portföljen
+  * DOLD EXPONERING: Om användaren har fonder eller investmentbolag, analysera vilka underliggande innehav dessa kan innehålla och hur det påverkar den faktiska allokeringen. Exempel: "Om du äger Investor (INVE-B) som är 20% av portföljen, och Investor i sin tur äger 10% i Atlas Copco, har du en dold exponering på 2% mot Atlas Copco utöver eventuell direkt exponering"
+  * Risknivå: bedöm hur portföljens faktiska risknivå matchar användarens angivna riskprofil
+  * Diversifiering: analysera om portföljen är väl diversifierad eller om den är koncentrerad i få innehav/sektorer
+  * Styrkor och svagheter i portföljens sammansättning
+  Använd naturligt språk, var konkret och specifik. Nämn aktier, fonder och investmentbolag med deras tickers. Detta ska vara en omfattande, professionell portföljanalys.
 - next_steps: Generella råd om övervakning (max 2 punkter), t.ex. "Övervaka utvecklingen i de mest koncentrerade innehaven" eller "Bredda geografiskt och sektoriellt över tid". INGA specifika köp/sälj-åtgärder. Var kortfattad och konkret.
 - recommended_assets: Tom lista [].
 - complementary_assets: Tom lista [].

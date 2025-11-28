@@ -752,14 +752,17 @@ Använd ENDAST den information som faktiskt är angiven i klientinformationen ne
 Tillgänglig klientinformation:
 ${contextInfo}
 
-Analysregler:
-- Analysera portföljens nuvarande risknivå baserat på innehav, allokering och diversifiering.
-- Beskriv fördelningen av innehav (sektorer, geografi, storlek).
+Analysregler - GEDIGEN ANALYS KRÄVS:
+- Analysera portföljens nuvarande risknivå baserat på innehav, allokering och diversifiering. Var SPECIFIK om risknivåer.
+- Beskriv fördelningen av innehav i detalj: sektorer, geografi, storlek. Nämn specifika bolag med tickers.
+- Identifiera koncentrationsrisker: vilka innehav eller sektorer står för en stor del av portföljen? Var kvantitativ när möjligt.
+- Analysera DOLD EXPONERING: Om användaren har fonder eller investmentbolag, analysera vilka underliggande innehav dessa innehåller och hur det påverkar den faktiska allokeringen. Exempel: "Om Investor (INVE-B) är 20% av portföljen och Investor i sin tur äger 10% i Atlas Copco, har du en dold exponering på 2% mot Atlas Copco."
 - Identifiera vad som ser bra ut i portföljen (styrkor, välbalanserade delar, bra diversifiering).
-- Ge en sammanfattning av portföljens nuvarande status och profil.
-- Kommentera riskhantering och diversifiering baserat på användarens riskprofil.
+- Ge en omfattande sammanfattning av portföljens nuvarande status och profil (minst 5-8 meningar).
+- Kommentera riskhantering och diversifiering baserat på användarens riskprofil. Var konkret om hur portföljen matchar eller avviker från riskprofilen.
 - INKLUDERA INGA köp-, sälj- eller omstruktureringsrekommendationer.
-- INKLUDERA INGA action_type fält som "increase", "reduce", "sell", "add", eller "rebalance".`
+- INKLUDERA INGA action_type fält som "increase", "reduce", "sell", "add", eller "rebalance".
+- Skriv en LÅNG, GEDIGEN analys - inte bara några korta meningar. Detta ska vara en professionell portföljanalys.`
       : `Du är en svensk licensierad och auktoriserad investeringsrådgivare med lång erfarenhet av att skapa skräddarsydda portföljer. Du följer Finansinspektionens regler och MiFID II, prioriterar kundens mål, tidshorisont och riskkapacitet samt kommunicerar tydligt på svenska.
 
 VIKTIGT: Använd ENDAST den information som faktiskt är angiven i klientinformationen nedan. Anta INTE värden för risktolerans, investeringsmål, tidshorisont eller andra parametrar om de inte är explicit angivna. Om information saknas, använd generiska formuleringar som "användarens preferenser" eller "användarens situation" istället för att anta specifika värden.
@@ -787,15 +790,23 @@ ${isAnalysis
   ? `- Använd exakt strukturen för PORTFÖLJANALYS:
 {
   "action_summary": "Kort beskrivning av riskprofilen (en rad, t.ex. 'Aggressiv riskprofil – hög tillväxtorientering' eller 'Konservativ riskprofil – fokus på stabilitet'). INKLUDERA INTE detaljerad portföljbeskrivning här.",
-  "risk_alignment": "Detaljerad analys av portföljens nuvarande sammansättning, koncentration, geografisk spridning, sektordiversifiering, och hur detta matchar användarens riskprofil (3-5 meningar). Använd naturligt språk och var konkret om vad som finns i portföljen. Nämn specifika innehav och deras vikt om relevant. Detta är huvudbeskrivningen av portföljen.",
+  "risk_alignment": "GEDIGEN och detaljerad analys av portföljen (minst 5-8 meningar, helst längre). Inkludera:
+  - Specifik beskrivning av alla viktiga innehav med deras tickers och ungefärlig vikt i portföljen
+  - Sektorfördelning och geografisk spridning (Sverige, USA, Europa, etc.)
+  - Koncentrationsrisker: identifiera om vissa innehav eller sektorer står för en stor del av portföljen
+  - Dold exponering: om användaren har fonder eller investmentbolag, analysera vilka underliggande innehav dessa kan innehålla och hur det påverkar den faktiska allokeringen (t.ex. 'Om du äger Investor som är 20% av portföljen, och Investor i sin tur äger 10% i Atlas Copco, har du en dold exponering på 2% mot Atlas Copco utöver eventuell direkt exponering')
+  - Risknivå: bedöm hur portföljens faktiska risknivå matchar användarens angivna riskprofil
+  - Diversifiering: analysera om portföljen är väl diversifierad eller om den är koncentrerad i få innehav/sektorer
+  - Styrkor och svagheter i portföljens sammansättning
+  Använd naturligt språk, var konkret och specifik. Nämn aktier, fonder och investmentbolag med deras tickers. Detta ska vara en omfattande, professionell portföljanalys.",
   "next_steps": [],
   "recommended_assets": [],
   "disclaimer": "Analysen är informationsbaserad och ej rådgivning."
 }
 VIKTIGT: 
 - action_summary och risk_alignment ska INTE upprepa samma information.
-- action_summary är bara riskprofilen på en rad.
-- risk_alignment är den detaljerad beskrivningen av portföljen.
+- action_summary är bara riskprofilen på en rad (kort).
+- risk_alignment är en LÅNG, GEDIGEN analys (minst 5-8 meningar, helst längre) som täcker alla aspekter ovan.
 - INKLUDERA INGA köp-, sälj- eller omstruktureringsrekommendationer.
 - INKLUDERA INGA action_type fält som "increase", "reduce", "sell", "add", eller "rebalance".`
   : `- Använd exakt strukturen för NY PORTFÖLJ:
