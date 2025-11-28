@@ -2199,7 +2199,9 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         ? { self_reported: mergedConversationData.currentAllocation }
         : mergedConversationData.currentAllocation || {};
 
-      const monthlyInvestmentAmount = resolvedMonthlyInvestment !== null ? resolvedMonthlyInvestment : 5000;
+      const monthlyInvestmentAmount = resolvedMonthlyInvestment !== null 
+        ? resolvedMonthlyInvestment 
+        : (existingProfileData?.monthly_investment_amount ?? null);
       const liquidCapitalValue = resolvedLiquidCapital !== null ? resolvedLiquidCapital : null;
       const targetAmountValue = resolvedTargetAmount !== null ? resolvedTargetAmount : null;
 
@@ -2236,7 +2238,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       const normalizedOptimizationRiskFocus = ensureString(mergedConversationData.optimizationRiskFocus) ?? null;
 
       const riskProfileData = {
-        age: mergedConversationData.age ?? existingProfileData.age ?? 25,
+        age: mergedConversationData.age ?? existingProfileData.age ?? null,
         monthly_investment_amount: monthlyInvestmentAmount,
         investment_horizon: mergedConversationData.timeHorizon || null,
         investment_goal: mergedConversationData.investmentGoal || 'growth',
