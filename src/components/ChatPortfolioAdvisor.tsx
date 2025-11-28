@@ -2136,7 +2136,7 @@ const ChatPortfolioAdvisor = () => {
         toast({
           title: "Riskprofil sparad!",
           description: hasPortfolio 
-            ? "Din portföljsammanfattning är sparad och du kan se den i din portföljöversikt."
+            ? "Du kan hitta dina genererade förslag antingen i din profil eller under AI-rekommenderade innehav i /portfolio-implementation."
             : "Din riskprofil är nu registrerad och du kan börja använda plattformen.",
         });
       }, 500);
