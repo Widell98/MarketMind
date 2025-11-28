@@ -119,9 +119,9 @@ const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-lg font-semibold text-foreground">
-                          {portfolio.portfolio_name === 'Portföljanalys' ? 'Portföljanalys' : portfolio.portfolio_name}
+                          {portfolio.portfolio_name}
                         </h3>
-                        {portfolio.portfolio_name === 'Portföljanalys' ? (
+                        {portfolio.portfolio_name === 'Portföljsammanfattning gjord av AI' ? (
                           <Badge variant="secondary" className="text-xs">
                             Analys
                           </Badge>

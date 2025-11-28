@@ -26,7 +26,7 @@ const PortfolioSummaryView = ({ portfolio }: PortfolioSummaryViewProps) => {
     return null;
   }
 
-  const isAnalysis = portfolio.portfolio_name === 'Portföljanalys';
+  const isAnalysis = portfolio.portfolio_name === 'Portföljsammanfattning gjord av AI';
   const formatPercentValue = (value: number | undefined): string | null => {
     if (value === undefined || value === null || !Number.isFinite(value)) return null;
     return `${Math.round(value)}%`;

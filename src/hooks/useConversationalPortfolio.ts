@@ -2538,7 +2538,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         const portfolioData = {
           user_id: user.id,
           risk_profile_id: riskProfile.id,
-          portfolio_name: 'Portföljanalys',
+          portfolio_name: 'Portföljsammanfattning gjord av AI',
           asset_allocation: assetAllocation,
           recommended_stocks: stockRecommendations,
           total_value: 0,
