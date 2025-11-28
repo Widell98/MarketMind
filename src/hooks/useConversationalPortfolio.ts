@@ -2597,35 +2597,13 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
           description: "Din personliga portföljstrategi har skapats med förbättrad riskanalys",
         });
       } else {
-        // Save optimization/analysis results to database as well
-        const portfolioData = {
-          user_id: user.id,
-          risk_profile_id: riskProfile.id,
-          portfolio_name: 'Portföljsammanfattning gjord av AI',
-          asset_allocation: assetAllocation,
-          recommended_stocks: stockRecommendations,
-          total_value: 0,
-          expected_return: expectedReturn,
-          risk_score: combinedRiskScore,
-          is_active: false // Mark as inactive since it's an analysis, not an active portfolio
-        };
-
-        const { data: portfolio, error: portfolioError } = await supabase
-          .from('user_portfolios')
-          .insert(portfolioData)
-          .select()
-          .single();
-
-        if (portfolioError) {
-          console.error('Error creating portfolio analysis:', portfolioError);
-          // Don't fail the whole operation if saving fails
-        } else {
-          portfolioRecord = portfolio;
-        }
-
+        // For analysis mode (optimize), we don't create a portfolio record
+        // The analysis is returned in the plan/aiResponse, but no portfolio is saved
+        console.log('Analysis mode: No portfolio record created, returning analysis only.');
+        
         toast({
           title: "Analys klar!",
-          description: "Din befintliga portfölj har analyserats och optimeringsförslag har genererats.",
+          description: "Din befintliga portfölj har analyserats. Se sammanfattningen nedan.",
         });
       }
 
