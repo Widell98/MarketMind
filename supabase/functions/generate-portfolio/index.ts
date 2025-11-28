@@ -973,7 +973,6 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och s√§kerst√
       throw new Error('No AI response received from OpenAI');
     }
 
-    const isAnalysis = mode === 'optimize';
     let { plan: structuredPlan, recommendedStocks } = extractStructuredPlan(aiRecommendationsRaw, riskProfile, isAnalysis);
 
     if (!structuredPlan || recommendedStocks.length === 0) {
