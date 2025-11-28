@@ -107,6 +107,35 @@ export const useConversationalPortfolio = () => {
     return [];
   };
 
+  // Helper function to get known stock sectors
+  const getKnownStockSector = (stockName: string): string => {
+    const sectorMap: Record<string, string> = {
+      'Investor': 'Finans',
+      'Volvo': 'Industri', 
+      'Ericsson': 'Teknologi',
+      'H&M': 'Konsument',
+      'Spotify': 'Teknologi',
+      'Evolution Gaming': 'Teknologi',
+      'Elekta': 'Hälsa',
+      'Atlas Copco': 'Industri',
+      'Sandvik': 'Industri',
+      'SKF': 'Industri',
+      'Telia': 'Teknologi',
+      'Nordea': 'Finans',
+      'SEB': 'Finans',
+      'Handelsbanken': 'Finans',
+      'Swedbank': 'Finans',
+      'Saab': 'Industri',
+      'Kinnevik': 'Finans',
+      'ICA Gruppen': 'Konsument',
+      'Getinge': 'Hälsa',
+      'Boliden': 'Råvaror',
+      'SSAB': 'Industri',
+      'Autoliv': 'Industri'
+    };
+    return sectorMap[stockName] || 'Övrigt';
+  };
+
   // Enhanced stock recommendation extraction - completely dynamic
   const extractStockRecommendations = (aiResponse: string): StockRecommendation[] => {
     const recommendations: StockRecommendation[] = [];
