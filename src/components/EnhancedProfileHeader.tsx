@@ -59,79 +59,80 @@ const EnhancedProfileHeader: React.FC<EnhancedProfileHeaderProps> = ({
     <>
       <div className="relative">
         {/* Cover Background */}
-        <div className="h-48 bg-gradient-to-r from-slate-600 via-slate-700 to-slate-800 rounded-t-xl"></div>
+        <div className="h-32 sm:h-40 md:h-48 bg-gradient-to-r from-slate-600 via-slate-700 to-slate-800 rounded-t-xl"></div>
         
-        <Card className="border-none shadow-xl -mt-24 mx-4 bg-white dark:bg-gray-900">
-          <CardContent className="p-8">
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+        <Card className="border-none shadow-xl -mt-16 sm:-mt-20 md:-mt-24 mx-2 sm:mx-4 bg-white dark:bg-gray-900">
+          <CardContent className="p-4 sm:p-6 md:p-8">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-4 sm:gap-6">
               {/* Profile Picture */}
-              <div className="relative -mt-16 md:-mt-20">
+              <div className="relative -mt-12 sm:-mt-16 md:-mt-20">
                 <div className="relative group">
-                  <Avatar className="h-36 w-36 border-4 border-white shadow-xl">
+                  <Avatar className="h-24 w-24 sm:h-32 sm:w-32 md:h-36 md:w-36 border-2 sm:border-4 border-white shadow-xl">
                     <AvatarImage src={profileData?.avatar_url} alt={profileData?.display_name || profileData?.username || 'User'} />
-                    <AvatarFallback className="bg-gradient-to-br from-slate-500 to-slate-600 text-white text-3xl font-bold">
+                    <AvatarFallback className="bg-gradient-to-br from-slate-500 to-slate-600 text-white text-xl sm:text-2xl md:text-3xl font-bold">
                       {getInitials(profileData?.display_name || profileData?.username || '')}
                     </AvatarFallback>
                   </Avatar>
                   {isOwnProfile && onAvatarClick && <button onClick={onAvatarClick} className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Camera className="h-8 w-8 text-white" />
+                      <Camera className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8 text-white" />
                     </button>}
                 </div>
               </div>
 
               {/* Profile Info */}
-              <div className="flex-1 text-center md:text-left mt-4 md:mt-0">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                  <div>
-                    <h1 className="text-3xl font-bold text-finance-navy dark:text-gray-200 mb-2">
+              <div className="flex-1 w-full text-center md:text-left mt-2 sm:mt-4 md:mt-0">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
+                  <div className="flex-1 min-w-0">
+                    <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-finance-navy dark:text-gray-200 mb-1 sm:mb-2 break-words">
                       {profileData?.display_name || profileData?.username || 'Anonymous'}
                     </h1>
-                    {profileData?.username && profileData?.display_name && <p className="text-gray-600 dark:text-gray-400 text-lg">
+                    {profileData?.username && profileData?.display_name && <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base md:text-lg break-words">
                         @{profileData.username}
                       </p>}
                   </div>
                   
-                  {isOwnProfile ? <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={onEditClick} className="flex items-center gap-2">
-                        <PenLine className="h-4 w-4" />
-                        Redigera profil
+                  {isOwnProfile ? <div className="flex gap-2 justify-center sm:justify-start">
+                      <Button variant="outline" size="sm" onClick={onEditClick} className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
+                        <PenLine className="h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="hidden xs:inline">Redigera profil</span>
+                        <span className="xs:hidden">Redigera</span>
                       </Button>
-                      <Button variant="outline" size="sm">
-                        <Settings className="h-4 w-4" />
+                      <Button variant="outline" size="sm" className="px-2 sm:px-3">
+                        <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
                       </Button>
-                    </div> : <Button onClick={handleFollowToggle} variant={isFollowing(profileData?.id) ? "outline" : "default"} size="sm" className={`px-6 ${isFollowing(profileData?.id) ? "hover:bg-red-50 hover:text-red-600 hover:border-red-300" : "bg-slate-700 hover:bg-slate-800"}`}>
+                    </div> : <Button onClick={handleFollowToggle} variant={isFollowing(profileData?.id) ? "outline" : "default"} size="sm" className={`px-4 sm:px-6 text-xs sm:text-sm ${isFollowing(profileData?.id) ? "hover:bg-red-50 hover:text-red-600 hover:border-red-300" : "bg-slate-700 hover:bg-slate-800"}`}>
                       {isFollowing(profileData?.id) ? 'Följer' : 'Följ'}
                     </Button>}
                 </div>
 
                 {/* Bio */}
-                {profileData?.bio && <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                {profileData?.bio && <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 leading-relaxed break-words">
                       {profileData.bio}
                     </p>
                   </div>}
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="text-center p-3 bg-muted/50 rounded-lg border border-border">
-                    <div className="text-2xl font-bold text-foreground">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6">
+                  <div className="text-center p-2 sm:p-3 bg-muted/50 rounded-lg border border-border">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">
                       {userStats.stockCasesCount + userStats.analysesCount}
                     </div>
-                    <div className="text-sm text-muted-foreground font-medium">Inlägg</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground font-medium">Inlägg</div>
                   </div>
                   
-                  <div className="text-center p-3 bg-muted/50 rounded-lg border border-border">
-                    <div className="text-2xl font-bold text-foreground">
+                  <div className="text-center p-2 sm:p-3 bg-muted/50 rounded-lg border border-border">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">
                       {profileData?.follower_count || 0}
                     </div>
-                    <div className="text-sm text-muted-foreground font-medium">Följare</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground font-medium">Följare</div>
                   </div>
                   
-                  <div className="text-center p-3 bg-muted/50 rounded-lg border border-border">
-                    <div className="text-2xl font-bold text-foreground">
+                  <div className="text-center p-2 sm:p-3 bg-muted/50 rounded-lg border border-border">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">
                       {profileData?.following_count || 0}
                     </div>
-                    <div className="text-sm text-muted-foreground font-medium">Följer</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground font-medium">Följer</div>
                   </div>
                 </div>
 

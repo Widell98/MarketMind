@@ -91,78 +91,78 @@ const ActivitySection = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Activity Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+        <Card className="rounded-lg sm:rounded-xl">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Analyser</p>
-                <p className="text-2xl font-bold">{activityData?.recentAnalyses.length || 0}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">Analyser</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold">{activityData?.recentAnalyses.length || 0}</p>
               </div>
-              <FileText className="h-8 w-8 text-blue-600" />
+              <FileText className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-blue-600 flex-shrink-0 ml-2" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        <Card className="rounded-lg sm:rounded-xl">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Aktiecases</p>
-                <p className="text-2xl font-bold">{activityData?.recentStockCases.length || 0}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">Aktiecases</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold">{activityData?.recentStockCases.length || 0}</p>
               </div>
-              <BarChart3 className="h-8 w-8 text-green-600" />
+              <BarChart3 className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-green-600 flex-shrink-0 ml-2" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        <Card className="rounded-lg sm:rounded-xl">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">AI-meddelanden</p>
-                <p className="text-2xl font-bold">{totalAiMessages}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">AI-meddelanden</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold">{totalAiMessages}</p>
               </div>
-              <MessageSquare className="h-8 w-8 text-purple-600" />
+              <MessageSquare className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-purple-600 flex-shrink-0 ml-2" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        <Card className="rounded-lg sm:rounded-xl">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Kommentarer</p>
-                <p className="text-2xl font-bold">{activityData?.recentComments.length || 0}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">Kommentarer</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold">{activityData?.recentComments.length || 0}</p>
               </div>
-              <MessageSquare className="h-8 w-8 text-orange-600" />
+              <MessageSquare className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-orange-600 flex-shrink-0 ml-2" />
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
         {/* Recent Analyses */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Senaste analyser
+        <Card className="rounded-lg sm:rounded-xl">
+          <CardHeader className="p-3 sm:p-4 md:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <FileText className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+              <span className="break-words">Senaste analyser</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
             {activityData?.recentAnalyses.length ? (
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {activityData.recentAnalyses.map((analysis) => (
-                  <div key={analysis.id} className="flex items-start justify-between p-3 rounded-lg bg-muted/50">
+                  <div key={analysis.id} className="flex items-start justify-between p-2.5 sm:p-3 rounded-lg bg-muted/50">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{analysis.title}</p>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
+                      <p className="font-medium text-xs sm:text-sm truncate">{analysis.title}</p>
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] xs:text-xs text-muted-foreground mt-1">
                         <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
+                          <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
                           {new Date(analysis.created_at).toLocaleDateString('sv-SE')}
                         </span>
                         <span>{analysis.views_count} visningar</span>
@@ -173,7 +173,7 @@ const ActivitySection = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">
+              <p className="text-xs sm:text-sm text-muted-foreground text-center py-3 sm:py-4">
                 Inga analyser skapade än
               </p>
             )}
@@ -181,31 +181,31 @@ const ActivitySection = () => {
         </Card>
 
         {/* Recent Stock Cases */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Senaste aktiecases
+        <Card className="rounded-lg sm:rounded-xl">
+          <CardHeader className="p-3 sm:p-4 md:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg flex-wrap">
+              <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+              <span className="break-words">Senaste aktiecases</span>
               {isAdmin && (
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-[10px] xs:text-xs">
                   Admin
                 </Badge>
               )}
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
             {activityData?.recentStockCases.length ? (
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {activityData.recentStockCases.map((stockCase) => (
-                  <div key={stockCase.id} className="flex items-start justify-between p-3 rounded-lg bg-muted/50">
+                  <div key={stockCase.id} className="flex items-start justify-between p-2.5 sm:p-3 rounded-lg bg-muted/50">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{stockCase.title}</p>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
+                      <p className="font-medium text-xs sm:text-sm truncate">{stockCase.title}</p>
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] xs:text-xs text-muted-foreground mt-1">
                         <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
+                          <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
                           {new Date(stockCase.created_at).toLocaleDateString('sv-SE')}
                         </span>
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-[10px] xs:text-xs">
                           {stockCase.status}
                         </Badge>
                       </div>
@@ -214,7 +214,7 @@ const ActivitySection = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">
+              <p className="text-xs sm:text-sm text-muted-foreground text-center py-3 sm:py-4">
                 {isAdmin ? 'Inga aktiecases skapade än' : 'Du kan inte skapa aktiecases'}
               </p>
             )}
@@ -224,24 +224,24 @@ const ActivitySection = () => {
 
       {/* AI Usage Chart */}
       {activityData?.aiUsage.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              AI-användning senaste veckan
+        <Card className="rounded-lg sm:rounded-xl">
+          <CardHeader className="p-3 sm:p-4 md:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+              <span className="break-words">AI-användning senaste veckan</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+          <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
+            <div className="space-y-3 sm:space-y-4">
               {activityData.aiUsage.map((day) => (
-                <div key={day.usage_date} className="flex items-center justify-between">
+                <div key={day.usage_date} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">
+                    <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-xs sm:text-sm font-medium">
                       {new Date(day.usage_date).toLocaleDateString('sv-SE')}
                     </span>
                   </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
                     <span>{day.ai_messages_count || 0} meddelanden</span>
                     <span>{day.analysis_count || 0} analyser</span>
                   </div>

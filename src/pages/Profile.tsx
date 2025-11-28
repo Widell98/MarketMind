@@ -228,47 +228,47 @@ const Profile = () => {
         </div>
 
         {/* Main Content */}
-        <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6 lg:py-8">
-          <div className="space-y-6">
+        <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-3 sm:py-4 md:py-6 lg:py-8">
+          <div className="space-y-4 sm:space-y-6">
             <Tabs defaultValue={isAdmin ? "content" : "riskprofile"} className="w-full">
               <TabsList
                 className={`grid w-full ${
                   isAdmin ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'
-                } gap-1.5 sm:gap-2 md:gap-3 mb-4 sm:mb-6 md:mb-8 bg-muted/20 border border-border/30 rounded-lg sm:rounded-xl p-1 sm:p-1.5 md:p-2 shadow-sm backdrop-blur-sm`}
+                } gap-1 sm:gap-1.5 md:gap-2 lg:gap-3 mb-3 sm:mb-4 md:mb-6 lg:mb-8 bg-muted/20 border border-border/30 rounded-md sm:rounded-lg md:rounded-xl p-0.5 sm:p-1 md:p-1.5 lg:p-2 shadow-sm backdrop-blur-sm`}
               >
                 {isAdmin && (
-                  <TabsTrigger value="content" className="rounded-md sm:rounded-lg font-medium text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
+                  <TabsTrigger value="content" className="rounded-md font-medium text-[10px] xs:text-xs sm:text-sm px-1.5 xs:px-2 sm:px-3 py-1.5 sm:py-2">
                     Innehåll
                   </TabsTrigger>
                 )}
-                <TabsTrigger value="riskprofile" className="flex items-center gap-1.5 sm:gap-2 rounded-md sm:rounded-lg font-medium text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
-                  <Brain className="w-3 h-3 sm:w-4 sm:h-4" />
+                <TabsTrigger value="riskprofile" className="flex items-center justify-center gap-1 xs:gap-1.5 sm:gap-2 rounded-md font-medium text-[10px] xs:text-xs sm:text-sm px-1.5 xs:px-2 sm:px-3 py-1.5 sm:py-2">
+                  <Brain className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                   <span className="hidden xs:inline">Riskprofil</span>
                   <span className="xs:hidden">Risk</span>
                 </TabsTrigger>
-                <TabsTrigger value="sharing-activity" className="flex items-center gap-1.5 sm:gap-2 rounded-md sm:rounded-lg font-medium text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
-                  <Share2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                <TabsTrigger value="sharing-activity" className="flex items-center justify-center gap-1 xs:gap-1.5 sm:gap-2 rounded-md font-medium text-[10px] xs:text-xs sm:text-sm px-1.5 xs:px-2 sm:px-3 py-1.5 sm:py-2">
+                  <Share2 className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                   <span className="hidden sm:inline">Delning & aktivitet</span>
                   <span className="sm:hidden">Delning</span>
                 </TabsTrigger>
-                <TabsTrigger value="membership" className="flex items-center gap-1.5 sm:gap-2 rounded-md sm:rounded-lg font-medium text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
-                  <CreditCard className="w-3 h-3 sm:w-4 sm:h-4" />
+                <TabsTrigger value="membership" className="flex items-center justify-center gap-1 xs:gap-1.5 sm:gap-2 rounded-md font-medium text-[10px] xs:text-xs sm:text-sm px-1.5 xs:px-2 sm:px-3 py-1.5 sm:py-2">
+                  <CreditCard className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                   <span className="hidden sm:inline">Medlemskap</span>
                   <span className="sm:hidden">Medlem</span>
                 </TabsTrigger>
               </TabsList>
 
             {isAdmin && (
-              <TabsContent value="content" className="space-y-6 sm:space-y-8">
+              <TabsContent value="content" className="space-y-4 sm:space-y-6 md:space-y-8">
                 {/* Stock Cases */}
-                <Card className="border rounded-xl shadow-sm">
-                  <CardHeader className="pb-4 sm:pb-6 p-4 sm:p-6">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                      <CardTitle className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl font-semibold">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                <Card className="border rounded-lg sm:rounded-xl shadow-sm">
+                  <CardHeader className="pb-3 sm:pb-4 md:pb-6 p-3 sm:p-4 md:p-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <CardTitle className="flex items-center gap-2 sm:gap-3 text-base sm:text-lg md:text-xl font-semibold">
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-primary" />
                         </div>
-                        Mina Inlägg
+                        <span className="break-words">Mina Inlägg</span>
                       </CardTitle>
                       <Button
                         onClick={() => setIsCreateCaseDialogOpen(true)}
@@ -280,11 +280,11 @@ const Profile = () => {
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-4 sm:p-6">
+                  <CardContent className="p-3 sm:p-4 md:p-6">
                     {stockCasesLoading ? (
-                      <div className="text-center py-12">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                        <p className="text-sm text-muted-foreground">Laddar cases...</p>
+                      <div className="text-center py-8 sm:py-12">
+                        <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-primary mx-auto mb-3 sm:mb-4"></div>
+                        <p className="text-xs sm:text-sm text-muted-foreground">Laddar cases...</p>
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
@@ -319,23 +319,23 @@ const Profile = () => {
                 </Card>
 
                 {/* Analyses */}
-                <Card className="border rounded-xl shadow-sm">
-                  <CardHeader className="pb-4 sm:pb-6 p-4 sm:p-6">
-                    <CardTitle className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl font-semibold">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                <Card className="border rounded-lg sm:rounded-xl shadow-sm">
+                  <CardHeader className="pb-3 sm:pb-4 md:pb-6 p-3 sm:p-4 md:p-6">
+                    <CardTitle className="flex items-center gap-2 sm:gap-3 text-base sm:text-lg md:text-xl font-semibold">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-primary" />
                       </div>
-                      Mina Analyser
+                      <span className="break-words">Mina Analyser</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-4 sm:p-6">
+                  <CardContent className="p-3 sm:p-4 md:p-6">
                     <UserAnalysesSection compact={false} />
                   </CardContent>
                 </Card>
               </TabsContent>
             )}
 
-            <TabsContent value="riskprofile" className="space-y-6 sm:space-y-8">
+            <TabsContent value="riskprofile" className="space-y-4 sm:space-y-6 md:space-y-8">
               <ResetProfileConfirmDialog
                 isOpen={showResetDialog}
                 onClose={() => setShowResetDialog(false)}
@@ -351,30 +351,30 @@ const Profile = () => {
               <UserInvestmentAnalysis />
             </TabsContent>
 
-            <TabsContent value="sharing-activity" className="space-y-6 sm:space-y-8">
-              <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-4 sm:gap-6 xl:gap-8 items-start">
+            <TabsContent value="sharing-activity" className="space-y-4 sm:space-y-6 md:space-y-8">
+              <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-3 sm:gap-4 md:gap-6 xl:gap-8 items-start">
                 <ExportSharingSection />
                 <ActivitySection />
               </div>
             </TabsContent>
 
-            <TabsContent value="membership" className="space-y-6 sm:space-y-8">
+            <TabsContent value="membership" className="space-y-4 sm:space-y-6 md:space-y-8">
               <MembershipSection />
 
-              <Card className="border-destructive/40">
-                <CardHeader className="p-4 sm:p-6">
-                  <CardTitle className="flex items-center gap-2 text-destructive text-base sm:text-lg">
-                    <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                    Radera konto
+              <Card className="border-destructive/40 rounded-lg sm:rounded-xl">
+                <CardHeader className="p-3 sm:p-4 md:p-6">
+                  <CardTitle className="flex items-center gap-2 text-destructive text-sm sm:text-base md:text-lg">
+                    <Trash2 className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                    <span className="break-words">Radera konto</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3 p-4 sm:p-6 pt-0">
-                  <p className="text-sm text-muted-foreground">
+                <CardContent className="space-y-3 p-3 sm:p-4 md:p-6 pt-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     Detta tar bort ditt konto permanent tillsammans med din profil och relaterad data. Åtgärden kan inte ångras.
                   </p>
                   <Button
                     variant="destructive"
-                    className="rounded-lg"
+                    className="rounded-lg w-full sm:w-auto text-xs sm:text-sm"
                     onClick={() => setIsDeleteAccountDialogOpen(true)}
                   >
                     Radera mitt konto
