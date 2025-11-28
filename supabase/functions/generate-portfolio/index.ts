@@ -346,9 +346,22 @@ serve(async (req) => {
       const rawData = conversationData as Record<string, unknown>;
       const details: string[] = [];
 
-      const asString = (value: unknown) => typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+      // Helper to check if value is actually provided (not null/undefined/empty)
+      const hasValue = (value: unknown): boolean => {
+        if (value === null || value === undefined) return false;
+        if (typeof value === 'string' && value.trim() === '') return false;
+        if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) return false;
+        if (Array.isArray(value) && value.length === 0) return false;
+        return true;
+      };
+
+      const asString = (value: unknown) => {
+        if (!hasValue(value)) return null;
+        return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+      };
       const asNumber = (value: unknown) => {
-        if (typeof value === 'number' && !Number.isNaN(value)) return value;
+        if (!hasValue(value)) return null;
+        if (typeof value === 'number' && !Number.isNaN(value) && Number.isFinite(value)) return value;
         if (typeof value === 'string') {
           const numeric = Number(value.replace(/[^\d.-]/g, ''));
           return Number.isFinite(numeric) ? numeric : null;
@@ -356,7 +369,7 @@ serve(async (req) => {
         return null;
       };
       const asStringArray = (value: unknown) => {
-        if (!Array.isArray(value)) return null;
+        if (!hasValue(value) || !Array.isArray(value)) return null;
         const parsed = value
           .map(item => (typeof item === 'string' && item.trim().length > 0 ? item.trim() : null))
           .filter((item): item is string => Boolean(item));
@@ -364,49 +377,80 @@ serve(async (req) => {
       };
 
       const addDetail = (label: string, value: string | number | null) => {
-        if (value !== null && value !== '') {
+        if (value !== null && value !== '' && value !== undefined) {
           details.push(`${label}: ${value}`);
         }
       };
 
       const addArrayDetail = (label: string, value: unknown) => {
         const arr = asStringArray(value);
-        if (arr) {
+        if (arr && arr.length > 0) {
           details.push(`${label}: ${arr.join(', ')}`);
         }
       };
 
-      const experienceLabel = asString(rawData.marketExperience)
-        || (typeof rawData.isBeginnerInvestor === 'boolean'
-          ? rawData.isBeginnerInvestor ? 'Nybörjare' : 'Erfaren'
-          : null);
+      // Only include base fields that are actually answered
+      // Core base questions that should be included if available
+      if (hasValue(rawData.isBeginnerInvestor) || hasValue(rawData.investmentGoal) || hasValue(rawData.riskTolerance) || hasValue(rawData.timeHorizon)) {
+        const experienceLabel = asString(rawData.marketExperience)
+          || (typeof rawData.isBeginnerInvestor === 'boolean'
+            ? rawData.isBeginnerInvestor ? 'Nybörjare' : 'Erfaren'
+            : null);
 
-      addDetail('Investeringsmål', asString(rawData.investmentGoal));
-      addDetail('Sökt portföljstorlek', asString(rawData.portfolioSize));
-      addDetail('Investerarens erfarenhet', experienceLabel);
-      addDetail('Önskad investeringsstil', asString(rawData.investmentStyle));
-      addDetail('Utdelningskrav', asString(rawData.dividendYieldRequirement));
-      addDetail('Hållbarhetsfokus', asString(rawData.sustainabilityPreference));
-      addDetail('Geografisk inriktning', asString(rawData.geographicPreference));
-      addDetail('Reaktion på börsras', asString(rawData.marketCrashReaction));
+        if (hasValue(rawData.investmentGoal)) {
+          addDetail('Investeringsmål', asString(rawData.investmentGoal));
+        }
+        if (hasValue(rawData.portfolioSize)) {
+          addDetail('Sökt portföljstorlek', asString(rawData.portfolioSize));
+        }
+        if (hasValue(experienceLabel)) {
+          addDetail('Investerarens erfarenhet', experienceLabel);
+        }
+        if (hasValue(rawData.investmentStyle)) {
+          addDetail('Önskad investeringsstil', asString(rawData.investmentStyle));
+        }
+        if (hasValue(rawData.dividendYieldRequirement)) {
+          addDetail('Utdelningskrav', asString(rawData.dividendYieldRequirement));
+        }
+        if (hasValue(rawData.sustainabilityPreference)) {
+          addDetail('Hållbarhetsfokus', asString(rawData.sustainabilityPreference));
+        }
+        if (hasValue(rawData.geographicPreference)) {
+          addDetail('Geografisk inriktning', asString(rawData.geographicPreference));
+        }
+        if (hasValue(rawData.marketCrashReaction)) {
+          addDetail('Reaktion på börsras', asString(rawData.marketCrashReaction));
+        }
+      }
 
+      // Additional fields - only include if actually provided
       const comfort = typeof rawData.volatilityComfort === 'number' ? rawData.volatilityComfort
         : typeof rawData.volatilityComfort === 'string' ? Number(rawData.volatilityComfort) : null;
-      addDetail('Volatilitetskomfort (1-10)', comfort !== null && Number.isFinite(comfort) ? comfort : null);
+      if (hasValue(comfort) && comfort !== null && Number.isFinite(comfort)) {
+        addDetail('Volatilitetskomfort (1-10)', comfort);
+      }
 
       const monthlyIncome = asNumber(rawData.monthlyIncome);
-      addDetail('Månadsinkomst', monthlyIncome !== null && Number.isFinite(monthlyIncome) ? `${monthlyIncome.toLocaleString('sv-SE')} SEK` : null);
+      if (hasValue(monthlyIncome) && monthlyIncome !== null && Number.isFinite(monthlyIncome)) {
+        addDetail('Månadsinkomst', `${monthlyIncome.toLocaleString('sv-SE')} SEK`);
+      }
 
       const annualIncome = asNumber(rawData.annualIncome);
-      addDetail('Årsinkomst', annualIncome !== null && Number.isFinite(annualIncome) ? `${annualIncome.toLocaleString('sv-SE')} SEK` : null);
+      if (hasValue(annualIncome) && annualIncome !== null && Number.isFinite(annualIncome)) {
+        addDetail('Årsinkomst', `${annualIncome.toLocaleString('sv-SE')} SEK`);
+      }
 
       const capital = asNumber(rawData.availableCapital);
-      addDetail('Tillgängligt kapital', capital !== null && Number.isFinite(capital) ? `${capital.toLocaleString('sv-SE')} SEK` : null);
+      if (hasValue(capital) && capital !== null && Number.isFinite(capital)) {
+        addDetail('Tillgängligt kapital', `${capital.toLocaleString('sv-SE')} SEK`);
+      }
 
       const liquidCapital = asNumber(rawData.liquidCapital);
-      addDetail('Likvida medel', liquidCapital !== null && Number.isFinite(liquidCapital) ? `${liquidCapital.toLocaleString('sv-SE')} SEK` : null);
+      if (hasValue(liquidCapital) && liquidCapital !== null && Number.isFinite(liquidCapital)) {
+        addDetail('Likvida medel', `${liquidCapital.toLocaleString('sv-SE')} SEK`);
+      }
 
-      if (typeof rawData.housingSituation === 'string') {
+      if (hasValue(rawData.housingSituation) && typeof rawData.housingSituation === 'string') {
         addDetail('Bostadssituation', rawData.housingSituation);
       }
 
@@ -414,7 +458,7 @@ serve(async (req) => {
         addDetail('Har lån', rawData.hasLoans ? 'Ja' : 'Nej');
       }
 
-      if (typeof rawData.loanDetails === 'string' && rawData.loanDetails.trim().length > 0) {
+      if (hasValue(rawData.loanDetails) && typeof rawData.loanDetails === 'string' && rawData.loanDetails.trim().length > 0) {
         addDetail('Lånedetaljer', rawData.loanDetails);
       }
 
@@ -422,7 +466,7 @@ serve(async (req) => {
         addDetail('Har försörjningsansvar', rawData.hasChildren ? 'Ja' : 'Nej');
       }
 
-      if (typeof rawData.emergencyFund === 'string') {
+      if (hasValue(rawData.emergencyFund) && typeof rawData.emergencyFund === 'string') {
         const emergencyMap: Record<string, string> = {
           yes_full: 'Full buffert',
           yes_partial: 'Delvis buffert',
@@ -431,7 +475,7 @@ serve(async (req) => {
         addDetail('Buffertstatus', emergencyMap[rawData.emergencyFund] || rawData.emergencyFund);
       }
 
-      if (typeof rawData.emergencyBufferMonths === 'number' && Number.isFinite(rawData.emergencyBufferMonths)) {
+      if (hasValue(rawData.emergencyBufferMonths) && typeof rawData.emergencyBufferMonths === 'number' && Number.isFinite(rawData.emergencyBufferMonths)) {
         addDetail('Buffert (månader)', rawData.emergencyBufferMonths);
       }
 
@@ -442,15 +486,19 @@ serve(async (req) => {
       addArrayDetail('Investeringssyften', rawData.investmentPurpose);
 
       const targetAmount = asNumber(rawData.targetAmount ?? rawData.specificGoalAmount);
-      addDetail('Målbelopp', targetAmount !== null && Number.isFinite(targetAmount) ? `${targetAmount.toLocaleString('sv-SE')} SEK` : null);
+      if (hasValue(targetAmount) && targetAmount !== null && Number.isFinite(targetAmount)) {
+        addDetail('Målbelopp', `${targetAmount.toLocaleString('sv-SE')} SEK`);
+      }
 
-      addDetail('Måldatum', asString(rawData.targetDate));
+      if (hasValue(rawData.targetDate)) {
+        addDetail('Måldatum', asString(rawData.targetDate));
+      }
 
-      if (typeof rawData.preferredStockCount === 'number' && Number.isFinite(rawData.preferredStockCount)) {
+      if (hasValue(rawData.preferredStockCount) && typeof rawData.preferredStockCount === 'number' && Number.isFinite(rawData.preferredStockCount)) {
         addDetail('Önskat antal innehav', rawData.preferredStockCount);
       }
 
-      if (typeof rawData.controlImportance === 'number' && Number.isFinite(rawData.controlImportance)) {
+      if (hasValue(rawData.controlImportance) && typeof rawData.controlImportance === 'number' && Number.isFinite(rawData.controlImportance)) {
         addDetail('Kontrollbehov (1-5)', rawData.controlImportance);
       }
 
@@ -458,22 +506,34 @@ serve(async (req) => {
         addDetail('Historik av panikförsäljning', rawData.panicSellingHistory ? 'Ja' : 'Nej');
       }
 
-      addDetail('Aktivitetsnivå', asString(rawData.activityPreference));
-      addDetail('Ombalanseringsfrekvens', asString(rawData.portfolioChangeFrequency || rawData.rebalancingFrequency));
-      addDetail('Medvetenhet om överexponering', asString(rawData.overexposureAwareness));
+      if (hasValue(rawData.activityPreference)) {
+        addDetail('Aktivitetsnivå', asString(rawData.activityPreference));
+      }
+      if (hasValue(rawData.portfolioChangeFrequency) || hasValue(rawData.rebalancingFrequency)) {
+        addDetail('Ombalanseringsfrekvens', asString(rawData.portfolioChangeFrequency || rawData.rebalancingFrequency));
+      }
+      if (hasValue(rawData.overexposureAwareness)) {
+        addDetail('Medvetenhet om överexponering', asString(rawData.overexposureAwareness));
+      }
 
       const currentPortfolioValue = asNumber(rawData.currentPortfolioValue);
-      addDetail('Nuvarande portföljvärde (rapport)', currentPortfolioValue !== null && Number.isFinite(currentPortfolioValue) ? `${currentPortfolioValue.toLocaleString('sv-SE')} SEK` : null);
+      if (hasValue(currentPortfolioValue) && currentPortfolioValue !== null && Number.isFinite(currentPortfolioValue)) {
+        addDetail('Nuvarande portföljvärde (rapport)', `${currentPortfolioValue.toLocaleString('sv-SE')} SEK`);
+      }
 
       const helpNeeded = asString(rawData.portfolioHelp);
-      if (helpNeeded) {
+      if (hasValue(helpNeeded)) {
         details.push(`Specifikt stöd som efterfrågas: ${helpNeeded}`);
       }
 
-      addDetail('Önskad kommunikationsstil', asString(rawData.communicationStyle));
-      addDetail('Önskad svarslängd', asString(rawData.preferredResponseLength));
+      if (hasValue(rawData.communicationStyle)) {
+        addDetail('Önskad kommunikationsstil', asString(rawData.communicationStyle));
+      }
+      if (hasValue(rawData.preferredResponseLength)) {
+        addDetail('Önskad svarslängd', asString(rawData.preferredResponseLength));
+      }
 
-      if (typeof rawData.additionalNotes === 'string' && rawData.additionalNotes.trim().length > 0) {
+      if (hasValue(rawData.additionalNotes) && typeof rawData.additionalNotes === 'string' && rawData.additionalNotes.trim().length > 0) {
         details.push(`Ytterligare anteckningar: ${rawData.additionalNotes.trim()}`);
       }
 

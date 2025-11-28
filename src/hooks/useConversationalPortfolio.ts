@@ -600,125 +600,163 @@ export const useConversationalPortfolio = () => {
     const liquidCapitalText = formatCurrency(conversationData.liquidCapital);
     const currentPortfolioValueText = formatCurrency(conversationData.currentPortfolioValue);
 
-    const formattedAge = typeof conversationData.age === 'number'
+    // Helper function to check if a value is actually provided (not null/undefined/empty)
+    const hasValue = (value: any): boolean => {
+      if (value === null || value === undefined) return false;
+      if (typeof value === 'string' && value.trim() === '') return false;
+      if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) return false;
+      if (Array.isArray(value) && value.length === 0) return false;
+      return true;
+    };
+
+    // Only include age if it's actually provided
+    const formattedAge = typeof conversationData.age === 'number' && conversationData.age > 0
       ? `${conversationData.age} år`
-      : 'Ej angiven';
+      : null;
 
-    const formattedMonthlyInvestment = monthlyInvestmentText === 'Ej angivet'
-      ? 'Ej angivet'
-      : `${monthlyInvestmentText} SEK`;
+    // Only include monthly investment if it's actually provided
+    const formattedMonthlyInvestment = monthlyInvestmentText && monthlyInvestmentText !== 'Ej angivet'
+      ? `${monthlyInvestmentText} SEK`
+      : null;
 
-    let prompt = `Skapa en detaljerad och personlig portföljstrategi baserat på följande omfattande konsultation:
+    // Build base profile - only include fields that are actually answered
+    const baseProfileParts: string[] = [];
+    
+    // These are the core base questions that should always be included if answered
+    if (typeof conversationData.isBeginnerInvestor === 'boolean') {
+      baseProfileParts.push(`- Erfarenhetsnivå: ${conversationData.isBeginnerInvestor ? 'Nybörjare (första gången investera)' : 'Erfaren investerare (flera års erfarenhet)'}`);
+    }
+    
+    if (formattedAge) {
+      baseProfileParts.push(`- Ålder: ${formattedAge}`);
+    }
+    
+    if (formattedMonthlyInvestment) {
+      baseProfileParts.push(`- Månatligt investeringsbelopp: ${formattedMonthlyInvestment}`);
+    }
+    
+    if (investmentGoalText && investmentGoalText !== 'Ej angivet') {
+      baseProfileParts.push(`- Investeringsmål: ${investmentGoalText}`);
+    }
+    
+    if (timeHorizonText && timeHorizonText !== 'Ej angivet') {
+      baseProfileParts.push(`- Tidshorisont: ${timeHorizonText}`);
+    }
+    
+    if (riskToleranceText && riskToleranceText !== 'Ej angivet') {
+      baseProfileParts.push(`- Risktolerans: ${riskToleranceText}`);
+    }
+    
+    if (typeof conversationData.hasCurrentPortfolio === 'boolean') {
+      baseProfileParts.push(`- Befintlig portfölj: ${formatBoolean(conversationData.hasCurrentPortfolio)}`);
+    }
+
+    let prompt = `Skapa en detaljerad och personlig portföljstrategi baserat på följande konsultation:
 
 GRUNDLÄGGANDE PROFIL:
-- Erfarenhetsnivå: ${conversationData.isBeginnerInvestor ? 'Nybörjare (första gången investera)' : 'Erfaren investerare (flera års erfarenhet)'}
-- Ålder: ${formattedAge}
-- Månatligt investeringsbelopp: ${formattedMonthlyInvestment}
-- Investeringsmål: ${investmentGoalText}
-- Tidshorisont: ${timeHorizonText}
-- Risktolerans: ${riskToleranceText}
-- Befintlig portfölj: ${formatBoolean(conversationData.hasCurrentPortfolio)}`;
+${baseProfileParts.length > 0 ? baseProfileParts.join('\n') : '- Endast grundläggande information tillgänglig'}`;
 
+    // Additional profile information - only include if actually provided
+    const additionalProfileParts: string[] = [];
+    
     if (annualIncomeText && annualIncomeText !== 'Ej angivet') {
-      prompt += `
-- Årsinkomst: ${annualIncomeText} SEK`;
+      additionalProfileParts.push(`- Årsinkomst: ${annualIncomeText} SEK`);
     }
 
     if (monthlyIncomeText && monthlyIncomeText !== 'Ej angivet') {
-      prompt += `
-- Månadsinkomst: ${monthlyIncomeText}`;
+      additionalProfileParts.push(`- Månadsinkomst: ${monthlyIncomeText}`);
     }
 
     if (availableCapitalText && availableCapitalText !== 'Ej angivet') {
-      prompt += `
-- Tillgängligt kapital för investeringar: ${availableCapitalText}`;
+      additionalProfileParts.push(`- Tillgängligt kapital för investeringar: ${availableCapitalText}`);
     }
 
-    if (preferredAssetsText) {
-      prompt += `
-- Mest intresserad av: ${preferredAssetsText}`;
+    if (preferredAssetsText && preferredAssetsText !== 'Ej angivet') {
+      additionalProfileParts.push(`- Mest intresserad av: ${preferredAssetsText}`);
     }
 
-    if (conversationData.sectors && conversationData.sectors.length > 0) {
-      prompt += `
-- Favoritbranscher: ${conversationData.sectors.join(', ')}`;
+    if (hasValue(conversationData.sectors) && conversationData.sectors && conversationData.sectors.length > 0) {
+      additionalProfileParts.push(`- Favoritbranscher: ${conversationData.sectors.join(', ')}`);
+    }
+    
+    if (additionalProfileParts.length > 0) {
+      prompt += `\n\n${additionalProfileParts.join('\n')}`;
     }
 
+    // Optimization-specific fields - only include if mode is optimize and values are provided
     if (mode === 'optimize') {
-      if (conversationData.currentPortfolioStrategy) {
-        prompt += `
-- Nuvarande strategi: ${conversationData.currentPortfolioStrategy}`;
+      const optimizationParts: string[] = [];
+      
+      if (hasValue(conversationData.currentPortfolioStrategy)) {
+        optimizationParts.push(`- Nuvarande strategi: ${conversationData.currentPortfolioStrategy}`);
       }
 
-      if (optimizationGoalsText && optimizationGoalsText.length > 0) {
-        prompt += `
-- Optimeringsmål: ${optimizationGoalsText.join(', ')}`;
+      if (hasValue(optimizationGoalsText) && optimizationGoalsText && optimizationGoalsText.length > 0) {
+        optimizationParts.push(`- Optimeringsmål: ${optimizationGoalsText.join(', ')}`);
       }
 
-      if (optimizationPreferenceText) {
-        prompt += `
-- Önskat arbetssätt: ${optimizationPreferenceText}`;
+      if (hasValue(optimizationPreferenceText)) {
+        optimizationParts.push(`- Önskat arbetssätt: ${optimizationPreferenceText}`);
       }
 
-      if (optimizationTimelineText) {
-        prompt += `
-- Tidslinje för förändringar: ${optimizationTimelineText}`;
+      if (hasValue(optimizationTimelineText)) {
+        optimizationParts.push(`- Tidslinje för förändringar: ${optimizationTimelineText}`);
       }
 
-      if (optimizationRiskFocusText) {
-        prompt += `
-- Största riskoro idag: ${optimizationRiskFocusText}`;
+      if (hasValue(optimizationRiskFocusText)) {
+        optimizationParts.push(`- Största riskoro idag: ${optimizationRiskFocusText}`);
       }
 
-      if (optimizationDiversificationText && optimizationDiversificationText.length > 0) {
-        prompt += `
-- Områden att diversifiera mot: ${optimizationDiversificationText.join(', ')}`;
+      if (hasValue(optimizationDiversificationText) && optimizationDiversificationText && optimizationDiversificationText.length > 0) {
+        optimizationParts.push(`- Områden att diversifiera mot: ${optimizationDiversificationText.join(', ')}`);
+      }
+      
+      if (optimizationParts.length > 0) {
+        prompt += `\n\nOPTIMERINGSDATA:\n${optimizationParts.join('\n')}`;
       }
     }
 
+    // Financial details - only include if actually provided
+    const financialParts: string[] = [];
+    
     if (liquidCapitalText && liquidCapitalText !== 'Ej angivet') {
-      prompt += `
-- Likvida medel: ${liquidCapitalText} SEK`;
+      financialParts.push(`- Likvida medel: ${liquidCapitalText} SEK`);
     }
 
-    if (emergencyBufferText) {
-      prompt += `
-- Buffert (antal månader): ${emergencyBufferText}`;
+    if (hasValue(emergencyBufferText)) {
+      financialParts.push(`- Buffert (antal månader): ${emergencyBufferText}`);
     }
 
-    if (emergencyFundText) {
-      prompt += `
-- Buffertstatus: ${emergencyFundText}`;
+    if (hasValue(emergencyFundText)) {
+      financialParts.push(`- Buffertstatus: ${emergencyFundText}`);
     }
 
-    if (conversationData.financialObligations && conversationData.financialObligations.length > 0) {
-      prompt += `
-- Ekonomiska förpliktelser: ${conversationData.financialObligations.join(', ')}`;
+    if (hasValue(conversationData.financialObligations) && conversationData.financialObligations && conversationData.financialObligations.length > 0) {
+      financialParts.push(`- Ekonomiska förpliktelser: ${conversationData.financialObligations.join(', ')}`);
     }
 
-    if (conversationData.housingSituation) {
-      prompt += `
-- Bostadssituation: ${conversationData.housingSituation}`;
+    if (hasValue(conversationData.housingSituation)) {
+      financialParts.push(`- Bostadssituation: ${conversationData.housingSituation}`);
     }
 
     if (typeof conversationData.hasLoans === 'boolean') {
-      prompt += `
-- Har ytterligare lån: ${conversationData.hasLoans ? 'Ja' : 'Nej'}`;
+      financialParts.push(`- Har ytterligare lån: ${conversationData.hasLoans ? 'Ja' : 'Nej'}`);
     }
 
-    if (conversationData.loanDetails) {
-      prompt += `
-- Lånedetaljer: ${conversationData.loanDetails}`;
+    if (hasValue(conversationData.loanDetails)) {
+      financialParts.push(`- Lånedetaljer: ${conversationData.loanDetails}`);
     }
 
     if (typeof conversationData.hasChildren === 'boolean') {
-      prompt += `
-- Har barn/försörjningsansvar: ${conversationData.hasChildren ? 'Ja' : 'Nej'}`;
+      financialParts.push(`- Har barn/försörjningsansvar: ${conversationData.hasChildren ? 'Ja' : 'Nej'}`);
     }
 
     if (currentPortfolioValueText && currentPortfolioValueText !== 'Ej angivet') {
-      prompt += `
-- Nuvarande portföljvärde: ${currentPortfolioValueText} SEK`;
+      financialParts.push(`- Nuvarande portföljvärde: ${currentPortfolioValueText} SEK`);
+    }
+    
+    if (financialParts.length > 0) {
+      prompt += `\n\nEKONOMISK SITUATION:\n${financialParts.join('\n')}`;
     }
 
     if (mode === 'optimize') {
@@ -790,50 +828,45 @@ NUVARANDE INNEHAV SOM SKA ANALYSERAS: ${conversationData.currentHoldings.map(h =
       }
 
     } else if (conversationData.isBeginnerInvestor === true) {
-      prompt += `
+      // Beginner investor profile - only include if values are provided
+      const beginnerParts: string[] = [];
 
-NYBÖRJARE - UTFÖRLIG EKONOMISK PROFIL:`;
-
-      if (conversationData.interests && conversationData.interests.length > 0) {
-        prompt += `
-- Personliga intressen: ${conversationData.interests.join(', ')}`;
+      if (hasValue(conversationData.interests) && conversationData.interests && conversationData.interests.length > 0) {
+        beginnerParts.push(`- Personliga intressen: ${conversationData.interests.join(', ')}`);
       }
 
-      if (conversationData.companies && conversationData.companies.length > 0) {
-        prompt += `
-- Företag de gillar: ${conversationData.companies.join(', ')}`;
+      if (hasValue(conversationData.companies) && conversationData.companies && conversationData.companies.length > 0) {
+        beginnerParts.push(`- Företag de gillar: ${conversationData.companies.join(', ')}`);
       }
 
-      if (sustainabilityText) {
-        prompt += `
-- Hållbarhetspreferens: ${sustainabilityText}`;
+      if (hasValue(sustainabilityText)) {
+        beginnerParts.push(`- Hållbarhetspreferens: ${sustainabilityText}`);
       }
 
-      if (geographicText) {
-        prompt += `
-- Geografisk preferens: ${geographicText}`;
+      if (hasValue(geographicText)) {
+        beginnerParts.push(`- Geografisk preferens: ${geographicText}`);
       }
 
-      if (marketCrashText) {
-        prompt += `
-- Reaktion på börskrasch: ${marketCrashText}`;
+      if (hasValue(marketCrashText)) {
+        beginnerParts.push(`- Reaktion på börskrasch: ${marketCrashText}`);
       }
 
-      if (conversationData.volatilityComfort) {
-        prompt += `
-- Komfort med volatilitet: ${conversationData.volatilityComfort}/10`;
+      if (hasValue(conversationData.volatilityComfort) && typeof conversationData.volatilityComfort === 'number') {
+        beginnerParts.push(`- Komfort med volatilitet: ${conversationData.volatilityComfort}/10`);
       }
 
-      if (portfolioHelpText) {
-        prompt += `
-- Önskad hjälp från rådgivaren: ${portfolioHelpText}`;
+      if (hasValue(portfolioHelpText)) {
+        beginnerParts.push(`- Önskad hjälp från rådgivaren: ${portfolioHelpText}`);
       }
 
-      if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
-        prompt += `
-- Nuvarande innehav: ${conversationData.currentHoldings.map(h =>
+      if (hasValue(conversationData.currentHoldings) && conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
+        beginnerParts.push(`- Nuvarande innehav: ${conversationData.currentHoldings.map(h =>
           `${h.name} (${h.quantity} st à ${h.purchasePrice} ${h.currency?.trim()?.toUpperCase() || 'SEK'})`
-        ).join(', ')}`;
+        ).join(', ')}`);
+      }
+      
+      if (beginnerParts.length > 0) {
+        prompt += `\n\nNYBÖRJARE - UTFÖRLIG EKONOMISK PROFIL:\n${beginnerParts.join('\n')}`;
       }
 
       prompt += `
@@ -859,75 +892,65 @@ EXEMPEL (ANPASSA MED ANVÄNDARSPECIFIKA DATA):
   2. **Investmentbolag B (TICKER-B)**: Kort beskrivning kopplad till användarens mål. Allokering: 20%`;
 
     } else {
-      prompt += `
+      // Experienced investor profile - only include if values are provided
+      const experiencedParts: string[] = [];
 
-ERFAREN INVESTERARE - AVANCERAD PROFIL:`;
-
-      if (marketExperienceText) {
-        prompt += `
-- Investeringserfarenhet: ${marketExperienceText}`;
+      if (hasValue(marketExperienceText)) {
+        experiencedParts.push(`- Investeringserfarenhet: ${marketExperienceText}`);
       }
 
-      if (previousPerformanceText) {
-        prompt += `
-- Historisk prestanda vs marknad: ${previousPerformanceText}`;
+      if (hasValue(previousPerformanceText)) {
+        experiencedParts.push(`- Historisk prestanda vs marknad: ${previousPerformanceText}`);
       }
 
-      if (conversationData.currentAllocation) {
-        prompt += `
-- Nuvarande allokering: ${conversationData.currentAllocation}`;
+      if (hasValue(conversationData.currentAllocation)) {
+        experiencedParts.push(`- Nuvarande allokering: ${conversationData.currentAllocation}`);
       }
 
-      if (conversationData.sectorExposure && conversationData.sectorExposure.length > 0) {
-        prompt += `
-- Befintlig sektorexponering: ${conversationData.sectorExposure.join(', ')}`;
+      if (hasValue(conversationData.sectorExposure) && conversationData.sectorExposure && conversationData.sectorExposure.length > 0) {
+        experiencedParts.push(`- Befintlig sektorexponering: ${conversationData.sectorExposure.join(', ')}`);
       }
 
-      if (investmentStyleText) {
-        prompt += `
-- Investeringsstil: ${investmentStyleText}`;
+      if (hasValue(investmentStyleText)) {
+        experiencedParts.push(`- Investeringsstil: ${investmentStyleText}`);
       }
 
-      if (dividendRequirementText) {
-        prompt += `
-- Direktavkastningskrav: ${dividendRequirementText}`;
+      if (hasValue(dividendRequirementText)) {
+        experiencedParts.push(`- Direktavkastningskrav: ${dividendRequirementText}`);
       }
 
-      if (conversationData.maxDrawdownTolerance) {
-        prompt += `
-- Maximal drawdown-tolerans: ${conversationData.maxDrawdownTolerance}/10`;
+      if (hasValue(conversationData.maxDrawdownTolerance) && typeof conversationData.maxDrawdownTolerance === 'number') {
+        experiencedParts.push(`- Maximal drawdown-tolerans: ${conversationData.maxDrawdownTolerance}/10`);
       }
 
-      if (conversationData.taxConsideration) {
-        prompt += `
-- Skatteoptimering: ${conversationData.taxConsideration}`;
+      if (hasValue(conversationData.taxConsideration)) {
+        experiencedParts.push(`- Skatteoptimering: ${conversationData.taxConsideration}`);
       }
 
-      if (portfolioSizeText) {
-        prompt += `
-- Portföljstorlek: ${portfolioSizeText}`;
+      if (hasValue(portfolioSizeText)) {
+        experiencedParts.push(`- Portföljstorlek: ${portfolioSizeText}`);
       }
 
-      if (tradingFrequencyText) {
-        prompt += `
-- Handelsfrekvens: ${tradingFrequencyText}`;
+      if (hasValue(tradingFrequencyText)) {
+        experiencedParts.push(`- Handelsfrekvens: ${tradingFrequencyText}`);
       }
 
-      if (rebalancingText) {
-        prompt += `
-- Rebalanseringsfrekvens: ${rebalancingText}`;
+      if (hasValue(rebalancingText)) {
+        experiencedParts.push(`- Rebalanseringsfrekvens: ${rebalancingText}`);
       }
 
-      if (marketCrashText) {
-        prompt += `
-- Reaktion på börskrasch: ${marketCrashText}`;
+      if (hasValue(marketCrashText)) {
+        experiencedParts.push(`- Reaktion på börskrasch: ${marketCrashText}`);
       }
 
-      if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
-        prompt += `
-- Nuvarande innehav: ${conversationData.currentHoldings.map(h =>
+      if (hasValue(conversationData.currentHoldings) && conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
+        experiencedParts.push(`- Nuvarande innehav: ${conversationData.currentHoldings.map(h =>
           `${h.name} (${h.quantity} st à ${h.purchasePrice} ${h.currency?.trim()?.toUpperCase() || 'SEK'})`
-        ).join(', ')}`;
+        ).join(', ')}`);
+      }
+      
+      if (experiencedParts.length > 0) {
+        prompt += `\n\nERFAREN INVESTERARE - AVANCERAD PROFIL:\n${experiencedParts.join('\n')}`;
       }
 
       prompt += `
@@ -959,84 +982,60 @@ EXEMPEL (ANPASSA MED ANVÄNDARSPECIFIKA DATA):
 
     const combinedGoalAmount = conversationData.specificGoalAmount || conversationData.targetAmount;
 
-    if (
-      investmentPurposes ||
-      combinedGoalAmount ||
-      conversationData.targetDate ||
-      typeof conversationData.preferredStockCount === 'number' ||
-      typeof conversationData.controlImportance === 'number' ||
-      typeof conversationData.panicSellingHistory === 'boolean' ||
-      conversationData.activityPreference ||
-      conversationData.portfolioChangeFrequency ||
-      conversationData.overexposureAwareness ||
-      conversationData.communicationStyle ||
-      conversationData.preferredResponseLength ||
-      conversationData.additionalNotes
-    ) {
-      prompt += `
+    // Deep preferences - only include if values are actually provided
+    const deepPreferenceParts: string[] = [];
 
-FÖRDJUPADE PREFERENSER:`;
-
-      if (investmentPurposes) {
-        prompt += `
-- Investeringssyften: ${investmentPurposes.join(', ')}`;
+      if (hasValue(investmentPurposes) && investmentPurposes && investmentPurposes.length > 0) {
+        deepPreferenceParts.push(`- Investeringssyften: ${investmentPurposes.join(', ')}`);
       }
 
-      if (combinedGoalAmount) {
-        prompt += `
-- Specifikt målbelopp: ${combinedGoalAmount}`;
+      if (hasValue(combinedGoalAmount)) {
+        deepPreferenceParts.push(`- Specifikt målbelopp: ${combinedGoalAmount}`);
       }
 
-      if (conversationData.targetDate) {
-        prompt += `
-- Måldatum för uppnått mål: ${conversationData.targetDate}`;
+      if (hasValue(conversationData.targetDate)) {
+        deepPreferenceParts.push(`- Måldatum för uppnått mål: ${conversationData.targetDate}`);
       }
 
-      if (typeof conversationData.preferredStockCount === 'number') {
-        prompt += `
-- Önskat antal innehav i portföljen: ${conversationData.preferredStockCount}`;
+      if (hasValue(conversationData.preferredStockCount) && typeof conversationData.preferredStockCount === 'number') {
+        deepPreferenceParts.push(`- Önskat antal innehav i portföljen: ${conversationData.preferredStockCount}`);
       }
 
-      if (typeof conversationData.controlImportance === 'number') {
-        prompt += `
-- Kontrollbehov (1-5): ${conversationData.controlImportance}`;
+      if (hasValue(conversationData.controlImportance) && typeof conversationData.controlImportance === 'number') {
+        deepPreferenceParts.push(`- Kontrollbehov (1-5): ${conversationData.controlImportance}`);
       }
 
       if (typeof conversationData.panicSellingHistory === 'boolean') {
-        prompt += `
-- Har paniksålt tidigare: ${conversationData.panicSellingHistory ? 'Ja' : 'Nej'}`;
+        deepPreferenceParts.push(`- Har paniksålt tidigare: ${conversationData.panicSellingHistory ? 'Ja' : 'Nej'}`);
       }
 
-      if (conversationData.activityPreference) {
-        prompt += `
-- Aktivitetspreferens: ${conversationData.activityPreference}`;
+      if (hasValue(conversationData.activityPreference)) {
+        deepPreferenceParts.push(`- Aktivitetspreferens: ${conversationData.activityPreference}`);
       }
 
-      if (conversationData.portfolioChangeFrequency || conversationData.rebalancingFrequency) {
-        prompt += `
-- Föredragen ombalanseringsfrekvens: ${conversationData.portfolioChangeFrequency || rebalancingText || conversationData.rebalancingFrequency}`;
+      if (hasValue(conversationData.portfolioChangeFrequency) || hasValue(conversationData.rebalancingFrequency)) {
+        deepPreferenceParts.push(`- Föredragen ombalanseringsfrekvens: ${conversationData.portfolioChangeFrequency || rebalancingText || conversationData.rebalancingFrequency}`);
       }
 
-      if (conversationData.overexposureAwareness) {
-        prompt += `
-- Medvetenhet kring överexponering: ${conversationData.overexposureAwareness}`;
+      if (hasValue(conversationData.overexposureAwareness)) {
+        deepPreferenceParts.push(`- Medvetenhet kring överexponering: ${conversationData.overexposureAwareness}`);
       }
 
-      if (conversationData.communicationStyle) {
-        prompt += `
-- Önskad kommunikationsstil: ${conversationData.communicationStyle}`;
+      if (hasValue(conversationData.communicationStyle)) {
+        deepPreferenceParts.push(`- Önskad kommunikationsstil: ${conversationData.communicationStyle}`);
       }
 
-      if (conversationData.preferredResponseLength) {
-        prompt += `
-- Önskad svarslängd: ${conversationData.preferredResponseLength}`;
+      if (hasValue(conversationData.preferredResponseLength)) {
+        deepPreferenceParts.push(`- Önskad svarslängd: ${conversationData.preferredResponseLength}`);
       }
 
-      if (conversationData.additionalNotes) {
-        prompt += `
-- Ytterligare anteckningar: ${conversationData.additionalNotes}`;
+      if (hasValue(conversationData.additionalNotes)) {
+        deepPreferenceParts.push(`- Ytterligare anteckningar: ${conversationData.additionalNotes}`);
       }
-    }
+      
+      if (deepPreferenceParts.length > 0) {
+        prompt += `\n\nFÖRDJUPADE PREFERENSER:\n${deepPreferenceParts.join('\n')}`;
+      }
 
     prompt += `
 
