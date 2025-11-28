@@ -337,6 +337,16 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured');
     }
 
+    // Helper to check if value is actually provided (not null/undefined/empty)
+    // Must be defined at function scope to be accessible throughout
+    const hasValue = (value: unknown): boolean => {
+      if (value === null || value === undefined) return false;
+      if (typeof value === 'string' && value.trim() === '') return false;
+      if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) return false;
+      if (Array.isArray(value) && value.length === 0) return false;
+      return true;
+    };
+
     // Enhanced system persona for initial portfolio advisor
     let contextInfo = 'KLIENTDATA OCH TIDIGARE SAMTAL:';
 
@@ -345,15 +355,6 @@ serve(async (req) => {
     if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
       const rawData = conversationData as Record<string, unknown>;
       const details: string[] = [];
-
-      // Helper to check if value is actually provided (not null/undefined/empty)
-      const hasValue = (value: unknown): boolean => {
-        if (value === null || value === undefined) return false;
-        if (typeof value === 'string' && value.trim() === '') return false;
-        if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) return false;
-        if (Array.isArray(value) && value.length === 0) return false;
-        return true;
-      };
 
       const asString = (value: unknown) => {
         if (!hasValue(value)) return null;
