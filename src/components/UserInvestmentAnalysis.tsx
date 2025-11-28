@@ -512,142 +512,142 @@ const UserInvestmentAnalysis = ({
       <div className="space-y-10 animate-fade-in">
       <ResetProfileConfirmDialog isOpen={showResetDialog} onClose={() => setShowResetDialog(false)} onConfirm={handleResetProfile} />
 
-      <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-blue-50/40 dark:from-slate-900/90 dark:to-blue-900/10 backdrop-blur-sm border border-blue-200/40 dark:border-blue-800/30">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center border border-blue-200/40 dark:border-blue-800/40">
-                <Settings className="w-6 h-6 text-transparent bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text" />
+      <Card className="border-0 rounded-2xl sm:rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-blue-50/40 dark:from-slate-900/90 dark:to-blue-900/10 backdrop-blur-sm border border-blue-200/40 dark:border-blue-800/30">
+        <CardHeader className="pb-3 sm:pb-4 p-4 sm:p-6">
+          <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center border border-blue-200/40 dark:border-blue-800/40 flex-shrink-0">
+                <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-transparent bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text" />
               </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Finjustera riskprofil</p>
-                <p className="text-lg font-bold text-slate-900 dark:text-slate-100">Uppdatera dina preferenser direkt</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400">Finjustera riskprofil</p>
+                <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 break-words">Uppdatera dina preferenser direkt</p>
               </div>
             </div>
-            <div className="text-right text-xs text-slate-500 dark:text-slate-400">
+            <div className="text-left sm:text-right text-[10px] xs:text-xs text-slate-500 dark:text-slate-400">
               Ändringar sparas på ditt konto
             </div>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-start gap-3 p-4 rounded-2xl bg-gradient-to-r from-blue-50/80 to-purple-50/60 dark:from-blue-950/30 dark:to-purple-900/20 border border-blue-200/50 dark:border-blue-800/40">
-            <CheckCircle className="w-5 h-5 text-primary mt-1" />
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Klart med snabb onboarding</p>
-              <p className="text-xs text-slate-600 dark:text-slate-400">Komplettera dina preferenser här under "Riskprofil" för en fullständig AI-plan och justera allt i din egen takt.</p>
+        <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6 pt-0">
+          <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-r from-blue-50/80 to-purple-50/60 dark:from-blue-950/30 dark:to-purple-900/20 border border-blue-200/50 dark:border-blue-800/40">
+            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-primary mt-0.5 sm:mt-1 flex-shrink-0" />
+            <div className="space-y-1 min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200">Klart med snabb onboarding</p>
+              <p className="text-[10px] xs:text-xs text-slate-600 dark:text-slate-400 break-words">Komplettera dina preferenser här under "Riskprofil" för en fullständig AI-plan och justera allt i din egen takt.</p>
             </div>
           </div>
 
           <Tabs defaultValue="profile" className="w-full">
-            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 bg-slate-100/70 dark:bg-slate-900/60 rounded-2xl p-1">
-              <TabsTrigger value="profile" className="rounded-xl text-sm font-semibold">Profil & kapital</TabsTrigger>
-              <TabsTrigger value="behavior" className="rounded-xl text-sm font-semibold">Beteende & preferenser</TabsTrigger>
-              <TabsTrigger value="goals" className="rounded-xl text-sm font-semibold">Mål & optimering</TabsTrigger>
+            <TabsList className="inline-flex w-full h-auto bg-slate-100/70 dark:bg-slate-900/60 rounded-xl sm:rounded-2xl p-0.5 sm:p-1 overflow-x-auto">
+              <TabsTrigger value="profile" className="flex-1 sm:flex-none rounded-lg sm:rounded-xl text-[10px] xs:text-xs sm:text-sm font-semibold py-2 sm:py-2.5 px-2 sm:px-3 whitespace-nowrap min-w-0">Profil & kapital</TabsTrigger>
+              <TabsTrigger value="behavior" className="flex-1 sm:flex-none rounded-lg sm:rounded-xl text-[10px] xs:text-xs sm:text-sm font-semibold py-2 sm:py-2.5 px-2 sm:px-3 whitespace-nowrap min-w-0">Beteende & preferenser</TabsTrigger>
+              <TabsTrigger value="goals" className="flex-1 sm:flex-none rounded-lg sm:rounded-xl text-[10px] xs:text-xs sm:text-sm font-semibold py-2 sm:py-2.5 px-2 sm:px-3 whitespace-nowrap min-w-0">Mål & optimering</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="profile" className="space-y-6 pt-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <TabsContent value="profile" className="space-y-4 sm:space-y-6 pt-3 sm:pt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Ålder</Label>
+                  <Label className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">Ålder</Label>
                   <Input
                     type="number"
                     value={preferenceForm.age}
                     onChange={(e) => setPreferenceForm(prev => ({ ...prev, age: e.target.value }))}
                     placeholder="Exempelvis 32"
-                    className="rounded-xl bg-white/70 dark:bg-slate-900/60"
+                    className="rounded-lg sm:rounded-xl bg-white/70 dark:bg-slate-900/60 text-xs sm:text-sm"
                     min={18}
                     max={100}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Tillgängligt kapital</Label>
+                  <Label className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">Tillgängligt kapital</Label>
                   <Input
                     type="number"
                     value={preferenceForm.liquid_capital}
                     onChange={(e) => setPreferenceForm(prev => ({ ...prev, liquid_capital: e.target.value }))}
                     placeholder="T.ex. 50 000"
-                    className="rounded-xl bg-white/70 dark:bg-slate-900/60"
+                    className="rounded-lg sm:rounded-xl bg-white/70 dark:bg-slate-900/60 text-xs sm:text-sm"
                   />
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Hur mycket kan du investera på kort sikt?</p>
+                  <p className="text-[10px] xs:text-xs text-slate-500 dark:text-slate-400">Hur mycket kan du investera på kort sikt?</p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Nuvarande strategi</Label>
+                <div className="space-y-2 sm:col-span-2 md:col-span-1">
+                  <Label className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">Nuvarande strategi</Label>
                   <Select
                     value={preferenceForm.current_portfolio_strategy}
                     onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, current_portfolio_strategy: value }))}
                   >
-                    <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                    <SelectTrigger className="rounded-lg sm:rounded-xl bg-white/70 dark:bg-slate-900/60 text-xs sm:text-sm">
                       <SelectValue placeholder="Hur investerar du idag?" />
                     </SelectTrigger>
                     <SelectContent>
                       {currentPortfolioStrategyOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        <SelectItem key={option.value} value={option.value} className="text-xs sm:text-sm">{option.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Risktolerans</Label>
+                  <Label className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">Risktolerans</Label>
                   <Select
                     value={preferenceForm.risk_tolerance}
                     onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, risk_tolerance: value }))}
                   >
-                    <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                    <SelectTrigger className="rounded-lg sm:rounded-xl bg-white/70 dark:bg-slate-900/60 text-xs sm:text-sm">
                       <SelectValue placeholder="Välj risktolerans" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="conservative">Konservativ</SelectItem>
-                      <SelectItem value="moderate">Måttlig</SelectItem>
-                      <SelectItem value="aggressive">Aggressiv</SelectItem>
+                      <SelectItem value="conservative" className="text-xs sm:text-sm">Konservativ</SelectItem>
+                      <SelectItem value="moderate" className="text-xs sm:text-sm">Måttlig</SelectItem>
+                      <SelectItem value="aggressive" className="text-xs sm:text-sm">Aggressiv</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Tidshorisont</Label>
+                  <Label className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">Tidshorisont</Label>
                   <Select
                     value={preferenceForm.investment_horizon}
                     onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, investment_horizon: value }))}
                   >
-                    <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                    <SelectTrigger className="rounded-lg sm:rounded-xl bg-white/70 dark:bg-slate-900/60 text-xs sm:text-sm">
                       <SelectValue placeholder="Välj tidshorisont" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="short">Kort (0–2 år)</SelectItem>
-                      <SelectItem value="medium">Medel (3–5 år)</SelectItem>
-                      <SelectItem value="long">Lång (5+ år)</SelectItem>
+                      <SelectItem value="short" className="text-xs sm:text-sm">Kort (0–2 år)</SelectItem>
+                      <SelectItem value="medium" className="text-xs sm:text-sm">Medel (3–5 år)</SelectItem>
+                      <SelectItem value="long" className="text-xs sm:text-sm">Lång (5+ år)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Erfarenhetsnivå</Label>
+                <div className="space-y-2 sm:col-span-2 md:col-span-1">
+                  <Label className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">Erfarenhetsnivå</Label>
                   <Select
                     value={preferenceForm.investment_experience}
                     onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, investment_experience: value }))}
                   >
-                    <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                    <SelectTrigger className="rounded-lg sm:rounded-xl bg-white/70 dark:bg-slate-900/60 text-xs sm:text-sm">
                       <SelectValue placeholder="Välj erfarenhet" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="beginner">Nybörjare</SelectItem>
-                      <SelectItem value="intermediate">Mellannivå</SelectItem>
-                      <SelectItem value="advanced">Avancerad</SelectItem>
+                      <SelectItem value="beginner" className="text-xs sm:text-sm">Nybörjare</SelectItem>
+                      <SelectItem value="intermediate" className="text-xs sm:text-sm">Mellannivå</SelectItem>
+                      <SelectItem value="advanced" className="text-xs sm:text-sm">Avancerad</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                <div className="space-y-2 sm:space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Riskkomfort</Label>
-                    <span className="text-sm text-slate-500 dark:text-slate-400">{preferenceForm.risk_comfort_level}/5</span>
+                    <Label className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">Riskkomfort</Label>
+                    <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">{preferenceForm.risk_comfort_level}/5</span>
                   </div>
                   <Slider
                     value={[preferenceForm.risk_comfort_level]}
@@ -655,134 +655,137 @@ const UserInvestmentAnalysis = ({
                     min={1}
                     max={5}
                     step={1}
-                    className="py-3"
+                    className="py-2 sm:py-3"
                   />
-                  <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                  <div className="flex justify-between text-[10px] xs:text-xs text-slate-500 dark:text-slate-400">
                     <span>Låg risk</span>
                     <span>Hög risk</span>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Månadssparande (SEK)</Label>
+                  <Label className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">Månadssparande (SEK)</Label>
                   <Input
                     type="number"
                     value={preferenceForm.monthly_investment_amount}
                     onChange={(e) => setPreferenceForm(prev => ({ ...prev, monthly_investment_amount: e.target.value }))}
                     placeholder="Exempelvis 3000"
-                    className="rounded-xl bg-white/70 dark:bg-slate-900/60"
+                    className="rounded-lg sm:rounded-xl bg-white/70 dark:bg-slate-900/60 text-xs sm:text-sm"
                   />
                 </div>
               </div>
             </TabsContent>
 
-            <TabsContent value="behavior" className="space-y-6 pt-4">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <TabsContent value="behavior" className="space-y-4 sm:space-y-6 pt-3 sm:pt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Handelsfrekvens</Label>
+                  <Label className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">Handelsfrekvens</Label>
                   <Select
                     value={preferenceForm.portfolio_change_frequency}
                     onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, portfolio_change_frequency: value }))}
                   >
-                    <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                    <SelectTrigger className="rounded-lg sm:rounded-xl bg-white/70 dark:bg-slate-900/60 text-xs sm:text-sm">
                       <SelectValue placeholder="Hur ofta gör du ändringar?" />
                     </SelectTrigger>
                     <SelectContent>
                       {tradingFrequencyOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        <SelectItem key={option.value} value={option.value} className="text-xs sm:text-sm">{option.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Hur reagerar du vid nedgångar?</Label>
+                  <Label className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">Hur reagerar du vid nedgångar?</Label>
                   <Select
                     value={preferenceForm.market_crash_reaction}
                     onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, market_crash_reaction: value }))}
                   >
-                    <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                    <SelectTrigger className="rounded-lg sm:rounded-xl bg-white/70 dark:bg-slate-900/60 text-xs sm:text-sm">
                       <SelectValue placeholder="Välj reaktion" />
                     </SelectTrigger>
                     <SelectContent>
                       {marketCrashReactionOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        <SelectItem key={option.value} value={option.value} className="text-xs sm:text-sm">{option.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Vad vill du att AI:n fokuserar på?</Label>
+                <div className="space-y-2 sm:col-span-2 lg:col-span-1">
+                  <Label className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">Vad vill du att AI:n fokuserar på?</Label>
                   <Select
                     value={preferenceForm.portfolio_help_focus}
                     onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, portfolio_help_focus: value }))}
                   >
-                    <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                    <SelectTrigger className="rounded-lg sm:rounded-xl bg-white/70 dark:bg-slate-900/60 text-xs sm:text-sm">
                       <SelectValue placeholder="Välj fokus" />
                     </SelectTrigger>
                     <SelectContent>
                       {portfolioHelpOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        <SelectItem key={option.value} value={option.value} className="text-xs sm:text-sm">{option.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Sektorintressen</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="space-y-2 sm:space-y-3">
+                <Label className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">Sektorintressen</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   {sectorOptions.map((sector) => (
                     <label
                       key={sector}
-                      className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
+                      className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
                     >
                       <Checkbox
                         checked={preferenceForm.sector_interests.includes(sector)}
                         onCheckedChange={() => handleSectorToggle(sector)}
+                        className="h-3.5 w-3.5 sm:h-4 sm:w-4"
                       />
-                      <span className="text-sm text-slate-700 dark:text-slate-200">{sector}</span>
+                      <span className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 break-words">{sector}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Tillgångar du vill använda</Label>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Markera de tillgångstyper du föredrar så anpassas förslagen.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="space-y-2 sm:space-y-3">
+                <Label className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">Tillgångar du vill använda</Label>
+                <p className="text-[10px] xs:text-xs text-slate-500 dark:text-slate-400">Markera de tillgångstyper du föredrar så anpassas förslagen.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   {preferredAssetOptions.map((asset) => (
                     <label
                       key={asset}
-                      className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
+                      className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
                     >
                       <Checkbox
                         checked={preferenceForm.preferred_assets.includes(asset)}
                         onCheckedChange={() => handlePreferredAssetToggle(asset)}
+                        className="h-3.5 w-3.5 sm:h-4 sm:w-4"
                       />
-                      <span className="text-sm text-slate-700 dark:text-slate-200">{asset}</span>
+                      <span className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 break-words">{asset}</span>
                     </label>
                   ))}
                 </div>
               </div>
             </TabsContent>
 
-            <TabsContent value="goals" className="space-y-6 pt-4">
-              <div className="space-y-3">
-                <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Förbättringsmål</Label>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Berätta hur du vill att portföljen ska vässas så AI:n prioriterar rätt.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            <TabsContent value="goals" className="space-y-4 sm:space-y-6 pt-3 sm:pt-4">
+              <div className="space-y-2 sm:space-y-3">
+                <Label className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">Förbättringsmål</Label>
+                <p className="text-[10px] xs:text-xs text-slate-500 dark:text-slate-400">Berätta hur du vill att portföljen ska vässas så AI:n prioriterar rätt.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   {optimizationGoalOptions.map((goal) => (
                     <label
                       key={goal.value}
-                      className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
+                      className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
                     >
                       <Checkbox
                         checked={preferenceForm.optimization_goals.includes(goal.value)}
                         onCheckedChange={() => handleOptimizationGoalToggle(goal.value)}
+                        className="h-3.5 w-3.5 sm:h-4 sm:w-4"
                       />
-                      <span className="text-sm text-slate-700 dark:text-slate-200">{goal.label}</span>
+                      <span className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 break-words">{goal.label}</span>
                     </label>
                   ))}
                 </div>
@@ -790,17 +793,17 @@ const UserInvestmentAnalysis = ({
 
               {preferenceForm.optimization_goals.includes('risk_balance') && (
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Vilken risk oroar dig mest?</Label>
+                  <Label className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">Vilken risk oroar dig mest?</Label>
                   <Select
                     value={preferenceForm.optimization_risk_focus}
                     onValueChange={(value) => setPreferenceForm(prev => ({ ...prev, optimization_risk_focus: value }))}
                   >
-                    <SelectTrigger className="rounded-xl bg-white/70 dark:bg-slate-900/60">
+                    <SelectTrigger className="rounded-lg sm:rounded-xl bg-white/70 dark:bg-slate-900/60 text-xs sm:text-sm">
                       <SelectValue placeholder="Välj risk" />
                     </SelectTrigger>
                     <SelectContent>
                       {optimizationRiskOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        <SelectItem key={option.value} value={option.value} className="text-xs sm:text-sm">{option.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -809,38 +812,40 @@ const UserInvestmentAnalysis = ({
 
               {preferenceForm.optimization_goals.includes('diversify') && (
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Var vill du sprida risken?</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  <Label className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">Var vill du sprida risken?</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     {optimizationDiversificationOptions.map(option => (
                       <label
                         key={option.value}
-                        className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
+                        className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
                       >
                         <Checkbox
                           checked={preferenceForm.optimization_diversification_focus.includes(option.value)}
                           onCheckedChange={() => handleOptimizationDiversificationToggle(option.value)}
+                          className="h-3.5 w-3.5 sm:h-4 sm:w-4"
                         />
-                        <span className="text-sm text-slate-700 dark:text-slate-200">{option.label}</span>
+                        <span className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 break-words">{option.label}</span>
                       </label>
                     ))}
                   </div>
                 </div>
               )}
 
-              <div className="space-y-3">
-                <Label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Sparmål</Label>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Markera vad du sparar till för att finjustera planen.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2 sm:space-y-3">
+                <Label className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">Sparmål</Label>
+                <p className="text-[10px] xs:text-xs text-slate-500 dark:text-slate-400">Markera vad du sparar till för att finjustera planen.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                   {investmentPurposeOptions.map((purpose) => (
                     <label
                       key={purpose}
-                      className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
+                      className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm hover:border-primary/50 transition-colors"
                     >
                       <Checkbox
                         checked={preferenceForm.investment_purpose.includes(purpose)}
                         onCheckedChange={() => handleInvestmentPurposeToggle(purpose)}
+                        className="h-3.5 w-3.5 sm:h-4 sm:w-4"
                       />
-                      <span className="text-sm text-slate-700 dark:text-slate-200">{purpose}</span>
+                      <span className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 break-words">{purpose}</span>
                     </label>
                   ))}
                 </div>
@@ -852,11 +857,11 @@ const UserInvestmentAnalysis = ({
             <Button
               onClick={handleSavePreferences}
               disabled={isSavingPreferences}
-              className="rounded-xl px-6"
+              className="rounded-lg sm:rounded-xl px-4 sm:px-6 text-xs sm:text-sm w-full sm:w-auto"
             >
               {isSavingPreferences ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 animate-spin" />
                   Sparar...
                 </>
               ) : (
@@ -866,53 +871,6 @@ const UserInvestmentAnalysis = ({
           </div>
           </CardContent>
         </Card>
-
-      {!advisorPlan && aiStrategyText && (
-        <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-blue-50/30 dark:from-slate-900/90 dark:to-blue-900/10 backdrop-blur-sm border border-blue-200/30 dark:border-blue-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
-          <CardHeader className="pb-8 pt-8">
-            <CardTitle className="flex items-center gap-4 text-2xl font-bold">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center shadow-inner border border-blue-200/30 dark:border-blue-700/30">
-                <Brain className="w-7 h-7 text-transparent bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text" />
-              </div>
-              <span className="text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text">
-                {isAnalysis ? 'Senaste Portföljanalys' : 'AI-Genererad Investeringsstrategi'}
-              </span>
-              <Badge className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-transparent bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text border-blue-300/30 dark:border-blue-700/30 rounded-2xl font-semibold px-4 py-2 shadow-sm">
-                {isAnalysis ? 'Portföljanalys' : 'Personlig Analys'}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-8">
-            <div className="prose prose-lg max-w-none text-foreground p-8 bg-gradient-to-br from-white/60 to-blue-50/20 dark:from-slate-800/60 dark:to-blue-900/10 rounded-3xl border border-blue-200/20 dark:border-blue-800/20 shadow-inner backdrop-blur-sm">
-              <div className="text-base leading-relaxed text-slate-700 dark:text-slate-300">
-                {formatAIStrategy(aiStrategyText)}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {advisorPlan && (
-        <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-blue-50/30 dark:from-slate-900/90 dark:to-blue-900/10 backdrop-blur-sm border border-blue-200/30 dark:border-blue-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
-          <CardHeader className="pb-6 pt-8">
-            <CardTitle className="flex items-center gap-4 text-2xl font-bold">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center shadow-inner border border-blue-200/30 dark:border-blue-700/30">
-                <Brain className="w-7 h-7 text-transparent bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text" />
-              </div>
-              <div className="flex-1">
-                <div className="text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text">
-                  {isAnalysis ? 'Senaste Portföljanalys' : 'Senaste Portföljgenerering'}
-                </div>
-                {advisorPlan.actionSummary && (
-                  <p className="text-lg font-medium text-slate-700 dark:text-slate-300 mt-2">
-                    {advisorPlan.actionSummary}
-                  </p>
-                )}
-              </div>
-            </CardTitle>
-          </CardHeader>
-        </Card>
-      )}
 
       {/* Conversation Context - Apple-inspired */}
       {/* {conversationData && Object.keys(conversationData).length > 0 && <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-green-50/30 dark:from-slate-900/90 dark:to-green-900/10 backdrop-blur-sm border border-green-200/30 dark:border-green-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
