@@ -2082,13 +2082,12 @@ const ChatPortfolioAdvisor = () => {
 
       await refetch();
 
-      setTimeout(() => {
-        if (isOptimizationResult) {
-          addBotMessage('🔍 Din portföljanalys är klar! Här är min analys av din nuvarande portfölj:');
-        } else {
-          addBotMessage('🎉 Din personliga portföljstrategi är klar! Här är mina rekommendationer:');
-        }
-      }, 1000);
+      // Add the portfolio result as a bot message in the conversation
+      if (isOptimizationResult) {
+        addBotMessage('🔍 Din portföljanalys är klar! Här är min analys av din nuvarande portfölj:');
+      } else {
+        addBotMessage('🎉 Din personliga portföljstrategi är klar! Här är mina rekommendationer:');
+      }
     }
     setIsGenerating(false);
   };
@@ -2616,163 +2615,99 @@ const ChatPortfolioAdvisor = () => {
       };
 
       return (
-        <div className="space-y-6 text-base leading-relaxed text-foreground max-w-5xl mx-auto w-full animate-in fade-in-50 slide-in-from-bottom-4 duration-500">
-          {/* Main summary box - Enhanced */}
-          <div className="rounded-xl border-2 border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 p-8 shadow-lg backdrop-blur-sm">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center border-2 border-primary/30 shadow-sm">
-                <TrendingUp className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold text-foreground">Portföljsammanfattning</h3>
-                <p className="text-sm text-muted-foreground mt-1">Din personliga analys</p>
-              </div>
-            </div>
-            
-            <div className="mb-6 pb-6 border-b border-border/50">
-              <p className="text-xl font-semibold text-foreground leading-8 bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
-                {riskProfileText}
-              </p>
-            </div>
-            
-            <div className="prose prose-sm max-w-none dark:prose-invert">
+        <div className="space-y-4 text-sm sm:text-base leading-relaxed">
+          {/* Main summary - more conversational */}
+          <div className="space-y-3">
+            <p className="font-semibold text-foreground leading-7">
+              {riskProfileText}
+            </p>
+            <div className="text-foreground/90">
               {renderRichText(formatRichText(portfolioDescription))}
             </div>
           </div>
 
-          {/* Why section - Enhanced */}
-          <div className="rounded-xl border border-primary/10 bg-gradient-to-br from-card/80 to-card/40 p-7 shadow-md backdrop-blur-sm">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
-                <Brain className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-              </div>
-              <p className="text-sm font-bold uppercase tracking-wider text-foreground">Varför denna bedömning?</p>
+          {/* Why section - more compact */}
+          {whyText && (
+            <div className="pt-3 border-t border-border/50">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Varför denna bedömning?</p>
+              <p className="text-sm text-foreground/80 leading-6">
+                {whyText}
+              </p>
             </div>
-            <div className="pl-2">
-              {renderRichText(formatRichText(whyText))}
-            </div>
-          </div>
+          )}
 
-          {/* Next steps - Enhanced */}
+          {/* Next steps - more compact */}
           {finalNextSteps.length > 0 && (
-            <div className="rounded-xl border border-primary/10 bg-gradient-to-br from-card/80 to-card/40 p-7 shadow-md backdrop-blur-sm">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
-                  <AlertTriangle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <p className="text-sm font-bold uppercase tracking-wider text-foreground">Prioriterade nästa steg</p>
-              </div>
-              <ul className="space-y-4 text-base leading-7 text-foreground/90 list-none pl-2">
+            <div className="pt-3 border-t border-border/50">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Nästa steg:</p>
+              <ul className="space-y-2 text-sm leading-6 text-foreground/90">
                 {finalNextSteps.map((step, index) => (
-                  <li key={`step-${index}`} className="flex items-start gap-4 group">
-                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center text-sm font-bold text-primary mt-0.5 group-hover:bg-primary/20 transition-colors">
-                      {index + 1}
-                    </div>
-                    <span className="flex-1 leading-7 pt-0.5">{step}</span>
+                  <li key={`step-${index}`} className="flex items-start gap-2">
+                    <span className="text-primary font-semibold mt-0.5">{index + 1}.</span>
+                    <span>{step}</span>
                   </li>
                 ))}
               </ul>
             </div>
           )}
 
-          {/* Disclaimer - Enhanced */}
-          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 mt-2">
-            <p className="text-xs text-amber-700 dark:text-amber-400 font-medium text-center leading-5">
+          {/* Disclaimer - more subtle */}
+          <div className="pt-3 border-t border-border/50">
+            <p className="text-xs text-muted-foreground leading-5">
               ⚠️ Analysen är informationsbaserad och ej rådgivning. Investeringar innebär risk.
             </p>
-          </div>
-
-          {/* Update portfolio button */}
-          <div className="flex justify-center pt-4">
-            <Button
-              onClick={handleImplementStrategy}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-base font-medium shadow-sm"
-            >
-              Uppdatera portföljen
-            </Button>
           </div>
         </div>
       );
     }
 
-    // Original format for new portfolio recommendations - Enhanced
+    // Original format for new portfolio recommendations - More conversational
     return (
-      <div className="space-y-6 text-base leading-relaxed text-foreground animate-in fade-in-50 slide-in-from-bottom-4 duration-500">
-        {/* Main summary card - Enhanced */}
-        <div className="rounded-xl border-2 border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-card p-6 shadow-lg backdrop-blur-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-start gap-4 flex-1">
-              <div className="rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground p-3 shadow-md">
-                <Sparkles className="h-6 w-6" />
-              </div>
-              <div className="space-y-2 flex-1">
-                {plan.actionSummary && (
-                  <p className="text-xl font-bold text-foreground leading-7">{plan.actionSummary}</p>
-                )}
-                {plan.riskAlignment && (
-                  <p className="text-sm leading-6 text-foreground/80">{plan.riskAlignment}</p>
-                )}
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2 sm:ml-4">
-              <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary font-semibold px-3 py-1.5">
-                ✨ Ny portföljplan
-              </Badge>
-            </div>
-          </div>
+      <div className="space-y-4 text-sm sm:text-base leading-relaxed">
+        {/* Main summary - more conversational */}
+        <div className="space-y-3">
+          {plan.actionSummary && (
+            <p className="font-semibold text-foreground leading-7">
+              {plan.actionSummary}
+            </p>
+          )}
+          {plan.riskAlignment && (
+            <p className="text-foreground/90 leading-6">
+              {plan.riskAlignment}
+            </p>
+          )}
         </div>
 
-        {/* Why section - Enhanced */}
-        <div className="rounded-xl border border-primary/10 bg-gradient-to-br from-card/80 to-card/40 p-6 shadow-md backdrop-blur-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
-              <Brain className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-            </div>
-            <p className="text-sm font-bold uppercase tracking-wider text-foreground">Varför denna bedömning?</p>
+        {/* Why section - more compact */}
+        {detailedReasoning && (
+          <div className="pt-3 border-t border-border/50">
+            <p className="text-xs font-semibold text-muted-foreground mb-2">Varför denna bedömning?</p>
+            <p className="text-sm text-foreground/80 leading-6">
+              {detailedReasoning}
+            </p>
           </div>
-          <p className="text-base leading-7 text-foreground/90 pl-12">{detailedReasoning}</p>
-        </div>
-
-        {displayNextSteps.length > 0 && (
-          <Card className="border-2 border-primary/10 bg-gradient-to-br from-card/90 to-card/50 shadow-lg backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-start gap-4 space-y-0 pb-4">
-              <div className="rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 p-3 border border-blue-500/20">
-                <AlertTriangle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="flex-1">
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Så går du vidare</p>
-                <CardTitle className="text-xl font-bold text-foreground">Prioriterade nästa steg</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0 pl-4">
-              <ol className="space-y-3 list-none text-base leading-7">
-                {displayNextSteps.map((step, index) => (
-                  <li key={`step-${index}`} className="flex items-start gap-4 group">
-                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center text-sm font-bold text-primary mt-0.5 group-hover:bg-primary/20 transition-colors">
-                      {index + 1}
-                    </div>
-                    <span className="flex-1 text-foreground pt-0.5">{step}</span>
-                  </li>
-                ))}
-              </ol>
-            </CardContent>
-          </Card>
         )}
 
+        {/* Next steps - more compact */}
+        {displayNextSteps.length > 0 && (
+          <div className="pt-3 border-t border-border/50">
+            <p className="text-xs font-semibold text-muted-foreground mb-2">Nästa steg:</p>
+            <ul className="space-y-2 text-sm leading-6 text-foreground/90">
+              {displayNextSteps.map((step, index) => (
+                <li key={`step-${index}`} className="flex items-start gap-2">
+                  <span className="text-primary font-semibold mt-0.5">{index + 1}.</span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Recommended assets - more compact */}
         {plan.assets.length > 0 && !isOptimization && (
-          <div className="space-y-4 rounded-xl border-2 border-primary/10 bg-gradient-to-br from-card/90 to-card/50 p-6 shadow-lg backdrop-blur-sm">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                </div>
-                <h4 className="text-base font-bold uppercase tracking-wide text-foreground">Föreslagna åtgärder per tillgång</h4>
-              </div>
-              <Badge variant="secondary" className="text-xs font-semibold px-3 py-1">
-                {plan.assets.length} förslag
-              </Badge>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+          <div className="pt-3 border-t border-border/50 space-y-3">
+            <p className="text-xs font-semibold text-muted-foreground mb-2">Föreslagna åtgärder per tillgång ({plan.assets.length}):</p>
+            <div className="space-y-3">
               {plan.assets.map((_asset, index) => {
                 const displayAsset = assetsToDisplay[index];
                 const actionLabel = displayAsset.actionType ? getActionLabel(displayAsset.actionType) : null;
@@ -2780,53 +2715,31 @@ const ChatPortfolioAdvisor = () => {
                 const changeDisplay = formatSignedPercent(displayAsset.changePercent);
 
                 return (
-                  <div key={`${displayAsset.name}-${index}`} className="group flex h-full flex-col gap-4 rounded-xl border-2 border-border/60 bg-gradient-to-br from-card to-card/50 p-5 shadow-md hover:shadow-lg hover:border-primary/30 transition-all duration-300">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-2 flex-1">
+                  <div key={`${displayAsset.name}-${index}`} className="p-3 rounded-lg border border-border/50 bg-muted/30">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-lg font-bold text-foreground">{displayAsset.name}</p>
+                          <p className="font-semibold text-foreground text-sm">{displayAsset.name}</p>
                           {displayAsset.ticker && (
-                            <Badge variant="outline" className="text-xs uppercase tracking-wide border-primary/30 bg-primary/5 text-primary font-semibold">
+                            <Badge variant="outline" className="text-xs border-primary/30 bg-primary/5 text-primary">
                               {displayAsset.ticker}
+                            </Badge>
+                          )}
+                          {allocationDisplay && (
+                            <Badge variant="outline" className="text-xs border-primary/40 bg-primary/10 text-primary">
+                              {allocationDisplay}
                             </Badge>
                           )}
                         </div>
                         {displayAsset.riskRole && (
-                          <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
+                          <p className="text-xs text-muted-foreground mt-1">
                             Roll: {displayAsset.riskRole}
                           </p>
                         )}
                       </div>
-                      <div className="flex flex-col items-end gap-2 text-xs">
-                        <div className="flex flex-wrap justify-end gap-1.5">
-                          {actionLabel && (
-                            <Badge variant="secondary" className="text-xs font-semibold">
-                              {actionLabel}
-                            </Badge>
-                          )}
-                          {allocationDisplay && !(isOptimization && (!displayAsset.allocationPercent || displayAsset.allocationPercent === 0)) && (
-                            <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary font-semibold">
-                              {allocationDisplay}
-                            </Badge>
-                          )}
-                          {changeDisplay && (
-                            <Badge
-                              variant="outline"
-                              className={`${getChangeBadgeClass(displayAsset.changePercent)} border-border/60 bg-background/80 font-semibold`}
-                            >
-                              {changeDisplay}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
                     </div>
                     {displayAsset.rationale && (
-                      <p className="text-sm leading-6 text-foreground/80 border-t border-border/40 pt-3">{displayAsset.rationale}</p>
-                    )}
-                    {displayAsset.notes && (
-                      <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3 text-xs text-foreground/70 leading-relaxed">
-                        {displayAsset.notes}
-                      </div>
+                      <p className="text-xs text-foreground/80 leading-5 mt-2">{displayAsset.rationale}</p>
                     )}
                   </div>
                 );
@@ -2835,49 +2748,46 @@ const ChatPortfolioAdvisor = () => {
           </div>
         )}
 
+        {/* Complementary ideas - more compact */}
         {!isOptimization && complementaryIdeas.length > 0 && (
-          <div className="space-y-4 rounded-xl border-2 border-primary/10 bg-gradient-to-br from-card/90 to-card/50 p-6 shadow-lg backdrop-blur-sm">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
-                <Sparkles className="h-5 w-5 text-primary" />
-              </div>
-              <h4 className="text-base font-bold uppercase tracking-wide text-foreground">Kompletterande idéer som passar din portfölj</h4>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+          <div className="pt-3 border-t border-border/50 space-y-3">
+            <p className="text-xs font-semibold text-muted-foreground mb-2">Kompletterande idéer:</p>
+            <div className="space-y-2">
               {complementaryIdeas.map((idea, idx) => (
                 <div
                   key={`${idea.name}-${idea.symbol ?? idx}`}
-                  className="group rounded-xl border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-primary/0 p-4 shadow-sm hover:shadow-md hover:border-primary/50 transition-all duration-300"
+                  className="p-2 rounded-lg border border-dashed border-primary/30 bg-primary/5"
                 >
-                  <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
-                      <p className="font-bold text-foreground text-base">{idea.name}</p>
+                      <p className="font-semibold text-foreground text-sm">{idea.name}</p>
                       {idea.symbol && (
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground mt-1 font-medium">{idea.symbol}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{idea.symbol}</p>
+                      )}
+                      {idea.reasoning && (
+                        <p className="text-xs text-foreground/70 mt-1 leading-5">{idea.reasoning}</p>
                       )}
                     </div>
                     {(() => {
                       const allocationSuggestion = formatPercentValue(idea.allocation);
                       if (!allocationSuggestion) return null;
                       return (
-                        <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary font-semibold flex-shrink-0">
+                        <Badge variant="outline" className="text-xs border-primary/40 bg-primary/10 text-primary flex-shrink-0">
                           {allocationSuggestion}
                         </Badge>
                       );
                     })()}
                   </div>
-                  {idea.reasoning && (
-                    <p className="mt-3 text-sm leading-relaxed text-foreground/80 border-t border-primary/20 pt-3">{idea.reasoning}</p>
-                  )}
                 </div>
               ))}
             </div>
           </div>
         )}
 
+        {/* Disclaimer - more subtle */}
         {plan.disclaimer && (
-          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 mt-2">
-            <p className="text-xs text-amber-700 dark:text-amber-400 font-medium text-center leading-5">
+          <div className="pt-3 border-t border-border/50">
+            <p className="text-xs text-muted-foreground leading-5">
               ⚠️ {plan.disclaimer}
             </p>
           </div>
@@ -3180,61 +3090,66 @@ const ChatPortfolioAdvisor = () => {
             </div>
           ))}
 
-          {/* Show AI response when complete */}
+          {/* Show AI response when complete - integrated as a bot message */}
           {isComplete && portfolioResult && (
-            <div className="flex gap-2 sm:gap-3 items-start">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="bg-primary/10 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border border-primary/20 shadow-sm">
-                  <div className="prose prose-sm max-w-none text-foreground">
-                    {renderAdvisorResponse()}
+            <div className="space-y-2">
+              <div className="flex gap-2 sm:gap-3 items-start">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="bg-muted/50 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border shadow-sm">
+                    <div className="space-y-4">
+                      {renderAdvisorResponse()}
+                      
+                      {portfolioResult?.mode === 'optimize' ? (
+                        <div className="mt-4 pt-4 border-t border-border/50">
+                          <p className="text-sm text-muted-foreground mb-3">
+                            Använd rekommendationerna för att justera dina nuvarande innehav i din portföljöversikt.
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                startAiChatSession(
+                                  'Planera ombalansering',
+                                  'Hjälp mig att tidsätta och prioritera ombalanseringen baserat på de senaste AI-rekommendationerna.'
+                                )
+                              }
+                              className="text-xs sm:text-sm"
+                            >
+                              Planera ombalansering
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={handleImplementStrategy}
+                              disabled={loading}
+                              className="text-xs sm:text-sm"
+                            >
+                              Uppdatera översikten
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-4 pt-4 border-t border-border/50">
+                          <p className="text-sm text-muted-foreground mb-3">
+                            För över strategin till din portföljöversikt och följ upp genomförandet.
+                          </p>
+                          <Button
+                            onClick={handleImplementStrategy}
+                            size="sm"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs sm:text-sm"
+                            disabled={loading}
+                          >
+                            <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                            {loading ? "Implementerar..." : "Implementera Strategin"}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  
-                  {portfolioResult?.mode === 'optimize' ? (
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-primary/20 pt-4 text-sm text-muted-foreground">
-                      <p className="min-w-[200px] flex-1">
-                        Använd rekommendationerna för att justera dina nuvarande innehav i din portföljöversikt.
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            startAiChatSession(
-                              'Planera ombalansering',
-                              'Hjälp mig att tidsätta och prioritera ombalanseringen baserat på de senaste AI-rekommendationerna.'
-                            )
-                          }
-                        >
-                          Planera ombalansering
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={handleImplementStrategy}
-                          disabled={loading}
-                        >
-                          Uppdatera översikten
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-primary/20 pt-4">
-                      <p className="text-sm text-muted-foreground min-w-[200px] flex-1">
-                        För över strategin till din portföljöversikt och följ upp genomförandet.
-                      </p>
-                      <Button
-                        onClick={handleImplementStrategy}
-                        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-                        disabled={loading}
-                      >
-                        <TrendingUp className="w-4 h-4 mr-2" />
-                        {loading ? "Implementerar..." : "Implementera Strategin"}
-                      </Button>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
