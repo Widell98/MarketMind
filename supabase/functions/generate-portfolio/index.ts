@@ -544,6 +544,24 @@ serve(async (req) => {
       }
     }
 
+    // Define all summary variables BEFORE they are used
+    const monthlyInvestmentSummary = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (typeof raw.monthlyInvestmentAmount === 'number' && Number.isFinite(raw.monthlyInvestmentAmount)) {
+          return `${raw.monthlyInvestmentAmount.toLocaleString('sv-SE')} SEK`;
+        }
+        if (typeof raw.monthlyInvestmentAmount === 'string' && raw.monthlyInvestmentAmount.trim().length > 0) {
+          return raw.monthlyInvestmentAmount.trim();
+        }
+      }
+      if (riskProfile?.monthly_investment_amount) {
+        return `${riskProfile.monthly_investment_amount.toLocaleString('sv-SE')} SEK`;
+      }
+      return 'Ej angivet';
+    })();
+
+
     // Add detailed user profile information - ONLY if values are actually provided in conversation
     // Don't use risk profile defaults for new users who haven't answered questions
     const profileParts: string[] = [];
@@ -679,60 +697,6 @@ serve(async (req) => {
       return null; // Don't use default - only use if actually answered
     })();
 
-    const horizonSummary = (() => {
-      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
-        const raw = conversationData as Record<string, unknown>;
-        if (hasValue(raw.timeHorizon) && typeof raw.timeHorizon === 'string' && raw.timeHorizon.trim().length > 0) {
-          return raw.timeHorizon.trim();
-        }
-      }
-      return null; // Don't use default - only use if actually answered
-    })();
-
-    const availableCapitalSummary = (() => {
-      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
-        const raw = conversationData as Record<string, unknown>;
-        if (typeof raw.availableCapital === 'number' && Number.isFinite(raw.availableCapital)) {
-          return `${raw.availableCapital.toLocaleString('sv-SE')} SEK`;
-        }
-        if (typeof raw.availableCapital === 'string' && raw.availableCapital.trim().length > 0) {
-          return raw.availableCapital.trim();
-        }
-      }
-      if (typeof riskProfile?.liquid_capital === 'number') {
-        return `${riskProfile.liquid_capital.toLocaleString('sv-SE')} SEK`;
-      }
-      return 'Ej angivet';
-    })();
-
-    const experienceSummary = (() => {
-      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
-        const raw = conversationData as Record<string, unknown>;
-        if (typeof raw.investmentExperienceLevel === 'string' && raw.investmentExperienceLevel.trim().length > 0) {
-          return raw.investmentExperienceLevel.trim();
-        }
-        if (typeof raw.marketExperience === 'string' && raw.marketExperience.trim().length > 0) {
-          return raw.marketExperience.trim();
-        }
-      }
-      return riskProfile?.investment_experience || 'Ej angivet';
-    })();
-
-    const monthlyInvestmentSummary = (() => {
-      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
-        const raw = conversationData as Record<string, unknown>;
-        if (typeof raw.monthlyInvestmentAmount === 'number' && Number.isFinite(raw.monthlyInvestmentAmount)) {
-          return `${raw.monthlyInvestmentAmount.toLocaleString('sv-SE')} SEK`;
-        }
-        if (typeof raw.monthlyInvestmentAmount === 'string' && raw.monthlyInvestmentAmount.trim().length > 0) {
-          return raw.monthlyInvestmentAmount.trim();
-        }
-      }
-      if (riskProfile?.monthly_investment_amount) {
-        return `${riskProfile.monthly_investment_amount.toLocaleString('sv-SE')} SEK`;
-      }
-      return 'Ej angivet';
-    })();
 
     const serializedConversationData = conversationData && typeof conversationData === 'object'
       ? JSON.stringify(conversationData, null, 2)
