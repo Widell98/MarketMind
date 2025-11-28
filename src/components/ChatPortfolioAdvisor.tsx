@@ -2123,14 +2123,21 @@ const ChatPortfolioAdvisor = () => {
         localStorage.setItem(storageKey, JSON.stringify(activity));
       }
       
-      // Navigate to index page
-      navigate('/');
+      // Navigate to portfolio implementation page if user has a portfolio, otherwise to index
+      const hasPortfolio = conversationData.hasCurrentPortfolio || activePortfolio;
+      if (hasPortfolio) {
+        navigate('/portfolio-implementation');
+      } else {
+        navigate('/');
+      }
 
       // Show success message after navigation
       setTimeout(() => {
         toast({
           title: "Riskprofil sparad!",
-          description: "Din riskprofil är nu registrerad och du kan börja använda plattformen.",
+          description: hasPortfolio 
+            ? "Din portföljsammanfattning är sparad och du kan se den i din portföljöversikt."
+            : "Din riskprofil är nu registrerad och du kan börja använda plattformen.",
         });
       }, 500);
       
