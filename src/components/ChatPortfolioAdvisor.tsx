@@ -483,7 +483,6 @@ const ChatPortfolioAdvisor = () => {
     [navigate]
   );
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth();
   const { tickers, isLoading: tickersLoading, error: tickersError } = useSheetTickers();
   const rawTickerListId = useId();
   const tickerDatalistId = `advisor-sheet-tickers-${rawTickerListId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
