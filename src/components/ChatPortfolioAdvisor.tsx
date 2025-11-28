@@ -2541,6 +2541,97 @@ const ChatPortfolioAdvisor = () => {
       ? `${reasoningSummary} Nyckelrekommendationer: ${assetSummary}.`
       : reasoningSummary;
 
+    // Special format for existing portfolio analysis
+    if (isOptimization) {
+      const riskProfileText = plan.actionSummary || 'Analys av din portfölj';
+      const portfolioDescription = plan.riskAlignment || reasoningSummary || 'Din portfölj har analyserats.';
+      const whyText = detailedReasoning || reasoningSummary || 'Analysen baseras på dina nuvarande innehav och riskprofil.';
+      
+      // Generate generic next steps for portfolio monitoring
+      const genericNextSteps = [
+        'Övervaka utvecklingen i dina innehav regelbundet.',
+        'Bredda geografiskt och sektoriellt över tid om möjligt.',
+      ];
+      
+      const finalNextSteps = plan.nextSteps?.length > 0 
+        ? plan.nextSteps.slice(0, 2)
+        : genericNextSteps;
+
+      // Format text with proper line breaks
+      const formatText = (text: string) => {
+        return text.split('\n').filter(line => line.trim().length > 0);
+      };
+
+      return (
+        <div className="space-y-4 text-sm leading-relaxed text-foreground">
+          {/* Main summary box */}
+          <div className="rounded-lg border-2 border-border bg-card p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                <span className="text-xs text-primary-foreground">🔵</span>
+              </div>
+              <h3 className="text-base font-semibold text-foreground">Portföljsammanfattning</h3>
+            </div>
+            <p className="text-sm font-medium text-foreground mb-3">{riskProfileText}</p>
+            <div className="space-y-2 text-sm leading-6 text-foreground">
+              {formatText(portfolioDescription).map((line, idx) => (
+                <p key={idx}>{line}</p>
+              ))}
+            </div>
+          </div>
+
+          {/* Why section */}
+          <div className="rounded-lg border border-border bg-card/50 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-base">💡</span>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Varför denna bedömning?</p>
+            </div>
+            <div className="space-y-2 text-sm leading-6 text-foreground">
+              {formatText(whyText).map((line, idx) => (
+                <p key={idx}>{line}</p>
+              ))}
+            </div>
+          </div>
+
+          {/* Next steps */}
+          {finalNextSteps.length > 0 && (
+            <div className="rounded-lg border border-border bg-card/50 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-base">⚠️</span>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Prioriterade nästa steg</p>
+              </div>
+              <ul className="space-y-2 text-sm leading-6 text-foreground list-none pl-0">
+                {finalNextSteps.map((step, index) => (
+                  <li key={`step-${index}`} className="flex items-start gap-2">
+                    <span className="text-muted-foreground mt-1">•</span>
+                    <span className="flex-1">{step}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Disclaimer */}
+          <div className="rounded-lg border-t border-border pt-3">
+            <p className="text-xs text-muted-foreground italic text-center">
+              *Analysen är informationsbaserad och ej rådgivning.*
+            </p>
+          </div>
+
+          {/* Update portfolio button */}
+          <div className="flex justify-center pt-2">
+            <Button
+              onClick={handleImplementStrategy}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              Uppdatera portföljen
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    // Original format for new portfolio recommendations
     return (
       <div className="space-y-5 text-sm leading-relaxed text-foreground">
         <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
@@ -2559,33 +2650,19 @@ const ChatPortfolioAdvisor = () => {
               </div>
             </div>
             <div className="flex flex-wrap gap-2 text-xs font-medium uppercase tracking-wide text-primary">
-              {isOptimization ? (
-                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
-                  Portföljanalys
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
-                  Ny portföljplan
-                </Badge>
-              )}
+              <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+                Ny portföljplan
+              </Badge>
             </div>
           </div>
         </div>
 
-        {!isOptimization && (
-          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-primary">Varför denna bedömning?</p>
-            <p className="mt-1 text-sm leading-6 text-foreground">{detailedReasoning}</p>
-          </div>
-        )}
-        {isOptimization && plan.riskAlignment && (
-          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-primary">Riskanalys</p>
-            <p className="mt-1 text-sm leading-6 text-foreground">{plan.riskAlignment}</p>
-          </div>
-        )}
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">Varför denna bedömning?</p>
+          <p className="mt-1 text-sm leading-6 text-foreground">{detailedReasoning}</p>
+        </div>
 
-        {displayNextSteps.length > 0 && !isOptimization && (
+        {displayNextSteps.length > 0 && (
           <Card className="border-border/80 bg-card/70 shadow-sm">
             <CardHeader className="flex flex-row items-start gap-3 space-y-0 pb-3">
               <div className="rounded-md bg-amber-50 p-2 text-amber-700">

@@ -705,14 +705,22 @@ VIKTIGT: Du ska ENDAST ge en analys och sammanfattning av den nuvarande portföl
 5. Kommentera riskhantering och diversifiering baserat på användarens riskprofil.
 6. INKLUDERA INGA köp-, sälj- eller omstruktureringsrekommendationer.
 7. INKLUDERA INGA action_type fält som "increase", "reduce", "sell", "add", eller "rebalance".
-8. Fokusera enbart på att beskriva och analysera det som finns, inte på vad som bör ändras.`;
+8. Fokusera enbart på att beskriva och analysera det som finns, inte på vad som bör ändras.
+
+FORMAT FÖR SVARET:
+- action_summary: Börja med riskprofilen (t.ex. "Aggressiv riskprofil – hög tillväxtorientering" eller "Konservativ riskprofil – fokus på stabilitet"). Detta ska vara en kort, tydlig beskrivning på en rad.
+- risk_alignment: En längre text (2-4 meningar) som beskriver portföljens nuvarande sammansättning, koncentration, geografisk spridning, sektordiversifiering, och hur detta matchar användarens riskprofil. Använd naturligt språk och var konkret om vad som finns i portföljen.
+- next_steps: Generella råd om övervakning (max 2 punkter), t.ex. "Övervaka utvecklingen i de mest koncentrerade innehaven" eller "Bredda geografiskt och sektoriellt över tid". INGA specifika köp/sälj-åtgärder.
+- recommended_assets: Tom lista [].
+- complementary_assets: Tom lista [].
+- disclaimer: "Analysen är informationsbaserad och ej rådgivning."`;
 
       prompt += `
 
 FORMATKRAV FÖR ANALYS:
-- Returnera ett JSON-objekt med fälten: action_summary (beskrivning av portföljens nuvarande status), risk_alignment (analys av risknivå och hur den matchar användarens profil), next_steps (tom lista eller generella råd om att fortsätta övervaka), recommended_assets (tom lista - INGA rekommendationer), complementary_assets (tom lista - INGA nya idéer), disclaimer.
+- Returnera ett JSON-objekt med fälten: action_summary (kort beskrivning av riskprofil), risk_alignment (detaljerad analys av portföljens sammansättning och matchning med riskprofil), next_steps (max 2 generella övervakningsråd), recommended_assets (tom lista []), complementary_assets (tom lista []), disclaimer.
 - recommended_assets och complementary_assets ska vara tomma listor [].
-- Fokusera på att beskriva portföljen i action_summary och risk_alignment.
+- Fokusera på att beskriva portföljen i action_summary och risk_alignment med naturligt, läsbart språk.
 `;
 
       if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
