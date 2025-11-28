@@ -776,7 +776,15 @@ VIKTIGT: Du ska ENDAST ge en analys och sammanfattning av den nuvarande portföl
 
 FORMAT FÖR SVARET:
 - action_summary: Börja med riskprofilen (t.ex. "Aggressiv riskprofil – hög tillväxtorientering" eller "Konservativ riskprofil – fokus på stabilitet"). Detta ska vara en kort, tydlig beskrivning på en rad. INKLUDERA INTE detaljerad portföljbeskrivning här.
-- risk_alignment: En längre text (3-5 meningar) som beskriver portföljens nuvarande sammansättning, koncentration, geografisk spridning, sektordiversifiering, och hur detta matchar användarens riskprofil. Använd naturligt språk och var konkret om vad som finns i portföljen. Nämn specifika innehav och deras vikt om relevant. Detta är huvudbeskrivningen av portföljen.
+- risk_alignment: En LÅNG, GEDIGEN analys (minst 5-8 meningar, helst längre) som inkluderar:
+  * Specifik beskrivning av alla viktiga innehav med deras tickers och ungefärlig vikt i portföljen
+  * Sektorfördelning och geografisk spridning (Sverige, USA, Europa, etc.)
+  * Koncentrationsrisker: identifiera om vissa innehav eller sektorer står för en stor del av portföljen
+  * DOLD EXPONERING: Om användaren har fonder eller investmentbolag, analysera vilka underliggande innehav dessa kan innehålla och hur det påverkar den faktiska allokeringen. Exempel: "Om du äger Investor (INVE-B) som är 20% av portföljen, och Investor i sin tur äger 10% i Atlas Copco, har du en dold exponering på 2% mot Atlas Copco utöver eventuell direkt exponering"
+  * Risknivå: bedöm hur portföljens faktiska risknivå matchar användarens angivna riskprofil
+  * Diversifiering: analysera om portföljen är väl diversifierad eller om den är koncentrerad i få innehav/sektorer
+  * Styrkor och svagheter i portföljens sammansättning
+  Använd naturligt språk, var konkret och specifik. Nämn aktier, fonder och investmentbolag med deras tickers. Detta ska vara en omfattande, professionell portföljanalys.
 - next_steps: Generella råd om övervakning (max 2 punkter), t.ex. "Övervaka utvecklingen i de mest koncentrerade innehaven" eller "Bredda geografiskt och sektoriellt över tid". INGA specifika köp/sälj-åtgärder. Var kortfattad och konkret.
 - recommended_assets: Tom lista [].
 - complementary_assets: Tom lista [].
@@ -2419,8 +2427,20 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       if (mode === 'optimize') {
         // När användaren har en befintlig portfölj, ska vi endast ge analys
         // Inga köp-, sälj- eller omstruktureringsrekommendationer ska genereras
+        // Men structuredPlan ska innehålla analysen med risker, allokering osv.
         complementaryIdeas = [];
         stockRecommendations = [];
+        
+        // Se till att structuredPlan innehåller analysinformation men ta bort rekommendationer och nästa steg
+        if (structuredPlan && typeof structuredPlan === 'object') {
+          // Ta bort next_steps och recommended_assets från analyser
+          structuredPlan = {
+            ...structuredPlan,
+            next_steps: [],
+            recommended_assets: [],
+            complementary_assets: []
+          };
+        }
       }
 
       if (stockRecommendations.length === 0) {
@@ -2461,6 +2481,49 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       const baseRiskScore = riskTolerance === 'aggressive' ? 7 : riskTolerance === 'conservative' ? 3 : 5;
       const combinedRiskScore = Math.round((baseRiskScore + comfortScore) / 2);
 
+      // Calculate allocation summary from current holdings for analyses
+      const calculateAllocationFromHoldings = (holdings: typeof holdingsWithPercentages) => {
+        let stocksTotal = 0;
+        let bondsTotal = 0;
+        let cashTotal = 0;
+        
+        if (holdings.length === 0) {
+          return { stocks: 0, bonds: 0, cash: 0 };
+        }
+
+        holdings.forEach(holding => {
+          const percentage = holding.weight || 0;
+          // Classify based on sector or name
+          const sector = (holding as any).sector?.toLowerCase() || '';
+          const name = (holding.name || '').toLowerCase();
+          
+          if (sector.includes('bank') || sector.includes('fastighet') || 
+              name.includes('bank') || name.includes('fastighet') || 
+              sector.includes('financial') || sector.includes('real estate')) {
+            bondsTotal += percentage;
+          } else if (sector.includes('cash') || name.includes('kontant') || name.includes('cash')) {
+            cashTotal += percentage;
+          } else {
+            stocksTotal += percentage;
+          }
+        });
+
+        // Normalize to 100%
+        const total = stocksTotal + bondsTotal + cashTotal;
+        if (total > 0 && total !== 100) {
+          const scale = 100 / total;
+          stocksTotal = stocksTotal * scale;
+          bondsTotal = bondsTotal * scale;
+          cashTotal = cashTotal * scale;
+        }
+
+        return {
+          stocks: Math.round(stocksTotal),
+          bonds: Math.round(bondsTotal),
+          cash: Math.round(cashTotal)
+        };
+      };
+
       // Create enhanced asset allocation with all conversation data and AI analysis
       const assetAllocation = {
         conversation_data: JSON.parse(JSON.stringify(mergedConversationData)),
@@ -2471,6 +2534,13 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         structured_plan: structuredPlan,
         stock_recommendations: stockRecommendations,
         complementary_ideas: complementaryIdeas,
+        allocation_summary: mode === 'optimize' && holdingsWithPercentages.length > 0
+          ? calculateAllocationFromHoldings(holdingsWithPercentages)
+          : (stockRecommendations.length > 0 ? {
+              stocks: stockRecommendations.reduce((sum, s) => sum + (s.allocation || 0), 0),
+              bonds: 0,
+              cash: 0
+            } : undefined),
         risk_profile_summary: {
           experience_level: investmentExperienceLevel,
           risk_comfort: riskComfortLevel,
@@ -2484,7 +2554,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
           prompt_length: enhancedPrompt.length,
           response_length: aiRecommendationText?.length || 0,
           ai_model: 'gpt-4o',
-          analysis_type: 'comprehensive_portfolio_strategy'
+          analysis_type: mode === 'optimize' ? 'portfolio_analysis' : 'comprehensive_portfolio_strategy'
         }
       };
 
@@ -2527,6 +2597,32 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
           description: "Din personliga portföljstrategi har skapats med förbättrad riskanalys",
         });
       } else {
+        // Save optimization/analysis results to database as well
+        const portfolioData = {
+          user_id: user.id,
+          risk_profile_id: riskProfile.id,
+          portfolio_name: 'Portföljsammanfattning gjord av AI',
+          asset_allocation: assetAllocation,
+          recommended_stocks: stockRecommendations,
+          total_value: 0,
+          expected_return: expectedReturn,
+          risk_score: combinedRiskScore,
+          is_active: false // Mark as inactive since it's an analysis, not an active portfolio
+        };
+
+        const { data: portfolio, error: portfolioError } = await supabase
+          .from('user_portfolios')
+          .insert(portfolioData)
+          .select()
+          .single();
+
+        if (portfolioError) {
+          console.error('Error creating portfolio analysis:', portfolioError);
+          // Don't fail the whole operation if saving fails
+        } else {
+          portfolioRecord = portfolio;
+        }
+
         toast({
           title: "Analys klar!",
           description: "Din befintliga portfölj har analyserats och optimeringsförslag har genererats.",

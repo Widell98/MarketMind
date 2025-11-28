@@ -271,7 +271,7 @@ serve(async (req) => {
   }
 
   try {
-    const { riskProfileId, userId, conversationPrompt, conversationData } = await req.json();
+    const { riskProfileId, userId, conversationPrompt, conversationData, mode } = await req.json();
 
     console.log('Generate portfolio request:', {
       riskProfileId,
@@ -740,7 +740,30 @@ serve(async (req) => {
       ? JSON.stringify(conversationData, null, 2)
       : '{}';
 
-    const systemPrompt = `Du är en svensk licensierad och auktoriserad investeringsrådgivare med lång erfarenhet av att skapa skräddarsydda portföljer. Du följer Finansinspektionens regler och MiFID II, prioriterar kundens mål, tidshorisont och riskkapacitet samt kommunicerar tydligt på svenska.
+    const isAnalysis = mode === 'optimize';
+    
+    const systemPrompt = isAnalysis 
+      ? `Du är en svensk licensierad och auktoriserad investeringsrådgivare med lång erfarenhet av att analysera befintliga portföljer. Du följer Finansinspektionens regler och MiFID II, prioriterar kundens mål, tidshorisont och riskkapacitet samt kommunicerar tydligt på svenska.
+
+VIKTIGT: Du ska ENDAST ge en analys och sammanfattning av den nuvarande portföljen. Du får INTE generera några köpråd, säljråd eller omstruktureringsförslag. Fokusera enbart på att beskriva och analysera det som finns, inte på vad som bör ändras.
+
+Använd ENDAST den information som faktiskt är angiven i klientinformationen nedan. Anta INTE värden för risktolerans, investeringsmål, tidshorisont eller andra parametrar om de inte är explicit angivna. Om information saknas, använd generiska formuleringar som "användarens preferenser" eller "användarens situation" istället för att anta specifika värden.
+
+Tillgänglig klientinformation:
+${contextInfo}
+
+Analysregler - GEDIGEN ANALYS KRÄVS:
+- Analysera portföljens nuvarande risknivå baserat på innehav, allokering och diversifiering. Var SPECIFIK om risknivåer.
+- Beskriv fördelningen av innehav i detalj: sektorer, geografi, storlek. Nämn specifika bolag med tickers.
+- Identifiera koncentrationsrisker: vilka innehav eller sektorer står för en stor del av portföljen? Var kvantitativ när möjligt.
+- Analysera DOLD EXPONERING: Om användaren har fonder eller investmentbolag, analysera vilka underliggande innehav dessa innehåller och hur det påverkar den faktiska allokeringen. Exempel: "Om Investor (INVE-B) är 20% av portföljen och Investor i sin tur äger 10% i Atlas Copco, har du en dold exponering på 2% mot Atlas Copco."
+- Identifiera vad som ser bra ut i portföljen (styrkor, välbalanserade delar, bra diversifiering).
+- Ge en omfattande sammanfattning av portföljens nuvarande status och profil (minst 5-8 meningar).
+- Kommentera riskhantering och diversifiering baserat på användarens riskprofil. Var konkret om hur portföljen matchar eller avviker från riskprofilen.
+- INKLUDERA INGA köp-, sälj- eller omstruktureringsrekommendationer.
+- INKLUDERA INGA action_type fält som "increase", "reduce", "sell", "add", eller "rebalance".
+- Skriv en LÅNG, GEDIGEN analys - inte bara några korta meningar. Detta ska vara en professionell portföljanalys.`
+      : `Du är en svensk licensierad och auktoriserad investeringsrådgivare med lång erfarenhet av att skapa skräddarsydda portföljer. Du följer Finansinspektionens regler och MiFID II, prioriterar kundens mål, tidshorisont och riskkapacitet samt kommunicerar tydligt på svenska.
 
 VIKTIGT: Använd ENDAST den information som faktiskt är angiven i klientinformationen nedan. Anta INTE värden för risktolerans, investeringsmål, tidshorisont eller andra parametrar om de inte är explicit angivna. Om information saknas, använd generiska formuleringar som "användarens preferenser" eller "användarens situation" istället för att anta specifika värden.
 
@@ -763,9 +786,32 @@ ${preferredAssets && preferredAssets !== 'Ej angivet' ? `- Användaren är mest 
 
 Formatkrav:
 - Leverera svaret som giltig JSON utan extra text.
-- Använd exakt strukturen:
+${isAnalysis 
+  ? `- Använd exakt strukturen för PORTFÖLJANALYS:
 {
-  "summary": "5-6 meningar om varför portföljen passar användaren",
+  "action_summary": "Kort beskrivning av riskprofilen (en rad, t.ex. 'Aggressiv riskprofil – hög tillväxtorientering' eller 'Konservativ riskprofil – fokus på stabilitet'). INKLUDERA INTE detaljerad portföljbeskrivning här.",
+  "risk_alignment": "GEDIGEN och detaljerad analys av portföljen (minst 5-8 meningar, helst längre). Inkludera:
+  - Specifik beskrivning av alla viktiga innehav med deras tickers och ungefärlig vikt i portföljen
+  - Sektorfördelning och geografisk spridning (Sverige, USA, Europa, etc.)
+  - Koncentrationsrisker: identifiera om vissa innehav eller sektorer står för en stor del av portföljen
+  - Dold exponering: om användaren har fonder eller investmentbolag, analysera vilka underliggande innehav dessa kan innehålla och hur det påverkar den faktiska allokeringen (t.ex. 'Om du äger Investor som är 20% av portföljen, och Investor i sin tur äger 10% i Atlas Copco, har du en dold exponering på 2% mot Atlas Copco utöver eventuell direkt exponering')
+  - Risknivå: bedöm hur portföljens faktiska risknivå matchar användarens angivna riskprofil
+  - Diversifiering: analysera om portföljen är väl diversifierad eller om den är koncentrerad i få innehav/sektorer
+  - Styrkor och svagheter i portföljens sammansättning
+  Använd naturligt språk, var konkret och specifik. Nämn aktier, fonder och investmentbolag med deras tickers. Detta ska vara en omfattande, professionell portföljanalys.",
+  "next_steps": [],
+  "recommended_assets": [],
+  "disclaimer": "Analysen är informationsbaserad och ej rådgivning."
+}
+VIKTIGT: 
+- action_summary och risk_alignment ska INTE upprepa samma information.
+- action_summary är bara riskprofilen på en rad (kort).
+- risk_alignment är en LÅNG, GEDIGEN analys (minst 5-8 meningar, helst längre) som täcker alla aspekter ovan.
+- INKLUDERA INGA köp-, sälj- eller omstruktureringsrekommendationer.
+- INKLUDERA INGA action_type fält som "increase", "reduce", "sell", "add", eller "rebalance".`
+  : `- Använd exakt strukturen för NY PORTFÖLJ:
+{
+  "action_summary": "5-6 meningar om varför portföljen passar användaren",
   "risk_alignment": "Hur portföljen matchar risktolerans och mål",
   "next_steps": ["Konkreta råd för nästa steg"],
   "recommended_assets": [
@@ -782,7 +828,7 @@ Formatkrav:
 }
 - Summan av allocation_percent ska vara 100 och varje post måste innehålla analys, portföljroll och tydlig koppling till kundprofilen.
 - Föreslå aldrig identiska portföljer till olika användare och återanvänd inte samma textblock.
-- Ange alltid korrekt ticker för varje rekommendation.
+- Ange alltid korrekt ticker för varje rekommendation.`}
 - Undvik överdrivna varningar men påminn om risk och att historisk avkastning inte garanterar framtida resultat.
 `;
 
@@ -938,11 +984,11 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
       throw new Error('No AI response received from OpenAI');
     }
 
-    let { plan: structuredPlan, recommendedStocks } = extractStructuredPlan(aiRecommendationsRaw, riskProfile);
+    let { plan: structuredPlan, recommendedStocks } = extractStructuredPlan(aiRecommendationsRaw, riskProfile, isAnalysis);
 
     if (!structuredPlan || recommendedStocks.length === 0) {
       console.warn('Structured plan missing, attempting fallback parsing of AI response.');
-      const fallbackPlan = buildFallbackPlanFromText(aiRecommendationsRaw, riskProfile);
+      const fallbackPlan = buildFallbackPlanFromText(aiRecommendationsRaw, riskProfile, isAnalysis);
       if (fallbackPlan) {
         structuredPlan = fallbackPlan.plan;
         recommendedStocks = fallbackPlan.recommendedStocks;
@@ -1226,9 +1272,12 @@ function buildDefaultNextSteps(riskProfile: any): string[] {
   return steps;
 }
 
-function fallbackActionSummary(riskProfile: any): string {
+function fallbackActionSummary(riskProfile: any, isAnalysis: boolean = false): string {
   const goal = (riskProfile?.investment_goal || 'långsiktig tillväxt').toLowerCase();
-  return `Portföljen är utformad för ${goal} med ${describeRiskLevel(riskProfile)} riskprofil och en ${describeHorizon(riskProfile)} sparhorisont. Rekommendationerna tar hänsyn till dina svar och undviker nuvarande innehav.`;
+  if (isAnalysis) {
+    return `Portföljanalys för ${goal} med ${describeRiskLevel(riskProfile)} riskprofil och en ${describeHorizon(riskProfile)} sparhorisont.`;
+  }
+  return `Portföljen är utformad för ${goal} med ${describeRiskLevel(riskProfile)} riskprofil och en ${describeHorizon(riskProfile)} sparhorisont.`;
 }
 
 function fallbackRiskAlignment(riskProfile: any): string {
@@ -1311,7 +1360,7 @@ function buildSectorRationale(stock: { name: string; sector?: string }, riskProf
   return `Ger diversifiering inom ${sector.toLowerCase()} och kompletterar helheten.`;
 }
 
-function extractStructuredPlan(rawText: string, riskProfile: any): { plan: any | null; recommendedStocks: Array<{ name: string; symbol?: string; allocation: number; sector?: string; reasoning?: string }> } {
+function extractStructuredPlan(rawText: string, riskProfile: any, isAnalysis: boolean = false): { plan: any | null; recommendedStocks: Array<{ name: string; symbol?: string; allocation: number; sector?: string; reasoning?: string }> } {
   try {
     const sanitized = sanitizeJsonLikeString(rawText);
     if (!sanitized) {
@@ -1372,17 +1421,17 @@ function extractStructuredPlan(rawText: string, riskProfile: any): { plan: any |
     ensureSum100(recommendedStocks);
 
     const plan = {
-      action_summary: planCandidate.action_summary || planCandidate.summary || fallbackActionSummary(riskProfile),
+      action_summary: planCandidate.action_summary || planCandidate.summary || fallbackActionSummary(riskProfile, isAnalysis),
       risk_alignment: planCandidate.risk_alignment || planCandidate.risk_analysis || fallbackRiskAlignment(riskProfile),
-      next_steps: toStringArray(planCandidate.next_steps || planCandidate.action_plan || planCandidate.implementation_plan || planCandidate.implementation_steps || planCandidate.follow_up || planCandidate.follow_up_steps) || buildDefaultNextSteps(riskProfile),
-      recommended_assets: normalizedAssets.map((item, index) => ({
+      next_steps: isAnalysis ? [] : (toStringArray(planCandidate.next_steps || planCandidate.action_plan || planCandidate.implementation_plan || planCandidate.implementation_steps || planCandidate.follow_up || planCandidate.follow_up_steps) || buildDefaultNextSteps(riskProfile)),
+      recommended_assets: isAnalysis ? [] : normalizedAssets.map((item, index) => ({
         ...item.planAsset,
         allocation_percent: recommendedStocks[index] ? recommendedStocks[index].allocation : item.planAsset.allocation_percent
       })),
       disclaimer: planCandidate.disclaimer || planCandidate.footer || 'Råden är utbildningsmaterial och ersätter inte personlig rådgivning. Investeringar innebär risk och värdet kan både öka och minska.'
     };
 
-    if (plan.next_steps.length === 0) {
+    if (!isAnalysis && plan.next_steps.length === 0) {
       plan.next_steps = buildDefaultNextSteps(riskProfile);
     }
 
@@ -1396,7 +1445,7 @@ function extractStructuredPlan(rawText: string, riskProfile: any): { plan: any |
   }
 }
 
-function buildFallbackPlanFromText(rawText: string, riskProfile: any): { plan: any; recommendedStocks: Array<{ name: string; symbol?: string; allocation: number; sector?: string; reasoning?: string }> } | null {
+function buildFallbackPlanFromText(rawText: string, riskProfile: any, isAnalysis: boolean = false): { plan: any; recommendedStocks: Array<{ name: string; symbol?: string; allocation: number; sector?: string; reasoning?: string }> } | null {
   const fallbackStocks = extractFallbackStocksFromText(rawText, riskProfile);
   if (fallbackStocks.length === 0) {
     return null;
@@ -1405,10 +1454,10 @@ function buildFallbackPlanFromText(rawText: string, riskProfile: any): { plan: a
   ensureSum100(fallbackStocks);
 
   const plan = {
-    action_summary: fallbackActionSummary(riskProfile),
+    action_summary: fallbackActionSummary(riskProfile, isAnalysis),
     risk_alignment: fallbackRiskAlignment(riskProfile),
-    next_steps: buildDefaultNextSteps(riskProfile),
-      recommended_assets: fallbackStocks.map(stock => ({
+    next_steps: isAnalysis ? [] : buildDefaultNextSteps(riskProfile),
+      recommended_assets: isAnalysis ? [] : fallbackStocks.map(stock => ({
         name: stock.name,
         ticker: stock.symbol || '',
         allocation_percent: stock.allocation,
