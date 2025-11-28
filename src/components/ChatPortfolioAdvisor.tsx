@@ -726,10 +726,9 @@ const ChatPortfolioAdvisor = () => {
             typeof priceData?.price === 'number' && Number.isFinite(priceData.price) && priceData.price > 0
               ? priceData.price
               : null;
-          const resolvedCurrency =
-            typeof priceData?.currency === 'string' && priceData.currency.trim().length > 0
-              ? priceData.currency.trim().toUpperCase()
-              : null;
+       const resolvedCurrency = holding.currencyManuallyEdited 
+  ? holding.currency?.trim()?.toUpperCase() 
+  : (ticker?.currency?.trim()?.toUpperCase() || holding.currency?.trim()?.toUpperCase() || 'SEK');
 
           if (resolvedPrice !== null) {
             setFinnhubPriceCache(prev => {
@@ -1188,21 +1187,6 @@ const ChatPortfolioAdvisor = () => {
               };
             }
           }
-
-          if (
-            !holding.priceManuallyEdited &&
-            typeof ticker.price === 'number' &&
-            Number.isFinite(ticker.price) &&
-            ticker.price > 0
-          ) {
-            const normalizedPrice = parseFloat(ticker.price.toFixed(2));
-            if (holding.purchasePrice !== normalizedPrice) {
-              updatedHolding = {
-                ...updatedHolding,
-                purchasePrice: normalizedPrice
-              };
-            }
-          }
         }
 
         if (!ticker && normalizedSymbol.length === 0 && !holding.currencyManuallyEdited && holding.currency !== 'SEK') {
@@ -1322,18 +1306,6 @@ const ChatPortfolioAdvisor = () => {
           modified = true;
         }
 
-        if (
-          !nextHolding.priceManuallyEdited &&
-          typeof ticker.price === 'number' &&
-          Number.isFinite(ticker.price) &&
-          ticker.price > 0
-        ) {
-          const normalizedPrice = parseFloat(ticker.price.toFixed(2));
-          if (nextHolding.purchasePrice !== normalizedPrice) {
-            nextHolding = { ...nextHolding, purchasePrice: normalizedPrice };
-            modified = true;
-          }
-        }
 
         if (modified) {
           hasChanges = true;
