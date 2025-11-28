@@ -911,37 +911,6 @@ const UserInvestmentAnalysis = ({
               </div>
             </CardTitle>
           </CardHeader>
-          <CardContent className="pb-8">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Button
-                onClick={() => navigate('/ai-chatt', { 
-                  state: { 
-                    createNewSession: true,
-                    sessionName: 'Portföljanalys',
-                    initialMessage: 'Analysera min nuvarande portfölj och ge mig en detaljerad bedömning av allokering, risknivå och diversifiering.'
-                  } 
-                })}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl px-6 py-3 font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                <Brain className="w-5 h-5 mr-2" />
-                Analysera portfölj
-              </Button>
-              <Button
-                onClick={() => navigate('/ai-chatt', { 
-                  state: { 
-                    createNewSession: true,
-                    sessionName: 'Förbättra portfölj',
-                    initialMessage: 'Hjälp mig förbättra min portfölj. Ge mig konkreta förslag på hur jag kan optimera allokeringen, minska risker och öka diversifieringen.'
-                  } 
-                })}
-                variant="outline"
-                className="flex-1 border-2 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl px-6 py-3 font-semibold transition-all duration-300"
-              >
-                <TrendingUp className="w-5 h-5 mr-2" />
-                Förbättra innehav
-              </Button>
-            </div>
-          </CardContent>
         </Card>
       )}
 
