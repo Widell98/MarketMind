@@ -2561,7 +2561,7 @@ const ChatPortfolioAdvisor = () => {
             <div className="flex flex-wrap gap-2 text-xs font-medium uppercase tracking-wide text-primary">
               {isOptimization ? (
                 <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
-                  Optimering på befintlig portfölj
+                  Portföljanalys
                 </Badge>
               ) : (
                 <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
@@ -2572,12 +2572,20 @@ const ChatPortfolioAdvisor = () => {
           </div>
         </div>
 
-        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-primary">Varför denna bedömning?</p>
-          <p className="mt-1 text-sm leading-6 text-foreground">{detailedReasoning}</p>
-        </div>
+        {!isOptimization && (
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">Varför denna bedömning?</p>
+            <p className="mt-1 text-sm leading-6 text-foreground">{detailedReasoning}</p>
+          </div>
+        )}
+        {isOptimization && plan.riskAlignment && (
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">Riskanalys</p>
+            <p className="mt-1 text-sm leading-6 text-foreground">{plan.riskAlignment}</p>
+          </div>
+        )}
 
-        {displayNextSteps.length > 0 && (
+        {displayNextSteps.length > 0 && !isOptimization && (
           <Card className="border-border/80 bg-card/70 shadow-sm">
             <CardHeader className="flex flex-row items-start gap-3 space-y-0 pb-3">
               <div className="rounded-md bg-amber-50 p-2 text-amber-700">
@@ -2600,7 +2608,7 @@ const ChatPortfolioAdvisor = () => {
           </Card>
         )}
 
-        {plan.assets.length > 0 && (
+        {plan.assets.length > 0 && !isOptimization && (
           <div className="space-y-3 rounded-lg border border-border/80 bg-background/50 p-3">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Föreslagna åtgärder per tillgång</h4>
@@ -2671,7 +2679,7 @@ const ChatPortfolioAdvisor = () => {
           </div>
         )}
 
-        {isOptimization && complementaryIdeas.length > 0 && (
+        {!isOptimization && complementaryIdeas.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <Sparkles className="h-4 w-4 text-primary" />
