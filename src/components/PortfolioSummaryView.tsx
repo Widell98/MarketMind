@@ -26,6 +26,7 @@ const PortfolioSummaryView = ({ portfolio }: PortfolioSummaryViewProps) => {
     return null;
   }
 
+  const isAnalysis = portfolio.portfolio_name === 'Portföljanalys';
   const formatPercentValue = (value: number | undefined): string | null => {
     if (value === undefined || value === null || !Number.isFinite(value)) return null;
     return `${Math.round(value)}%`;
@@ -41,7 +42,11 @@ const PortfolioSummaryView = ({ portfolio }: PortfolioSummaryViewProps) => {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-4 flex-1">
             <div className="rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground p-3 shadow-md">
-              <Sparkles className="h-6 w-6" />
+              {isAnalysis ? (
+                <Brain className="h-6 w-6" />
+              ) : (
+                <Sparkles className="h-6 w-6" />
+              )}
             </div>
             <div className="space-y-2 flex-1">
               {advisorPlan.action_summary && (
@@ -54,7 +59,7 @@ const PortfolioSummaryView = ({ portfolio }: PortfolioSummaryViewProps) => {
           </div>
           <div className="flex flex-wrap gap-2 sm:ml-4">
             <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary font-semibold px-3 py-1.5">
-              ✨ Portföljplan
+              {isAnalysis ? '🔍 Portföljanalys' : '✨ Portföljplan'}
             </Badge>
           </div>
         </div>
@@ -100,7 +105,7 @@ const PortfolioSummaryView = ({ portfolio }: PortfolioSummaryViewProps) => {
         </Card>
       )}
 
-      {/* Recommended assets */}
+      {/* Recommended assets / Analysis recommendations */}
       {recommendedAssets.length > 0 && (
         <div className="space-y-4 rounded-xl border-2 border-primary/10 bg-gradient-to-br from-card/90 to-card/50 p-6 shadow-lg backdrop-blur-sm">
           <div className="flex items-center justify-between mb-2">
@@ -108,10 +113,12 @@ const PortfolioSummaryView = ({ portfolio }: PortfolioSummaryViewProps) => {
               <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
                 <TrendingUp className="h-5 w-5 text-primary" />
               </div>
-              <h4 className="text-base font-bold uppercase tracking-wide text-foreground">Föreslagna åtgärder per tillgång</h4>
+              <h4 className="text-base font-bold uppercase tracking-wide text-foreground">
+                {isAnalysis ? 'Rekommendationer och analys' : 'Föreslagna åtgärder per tillgång'}
+              </h4>
             </div>
             <Badge variant="secondary" className="text-xs font-semibold px-3 py-1">
-              {recommendedAssets.length} förslag
+              {recommendedAssets.length} {isAnalysis ? 'rekommendationer' : 'förslag'}
             </Badge>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">

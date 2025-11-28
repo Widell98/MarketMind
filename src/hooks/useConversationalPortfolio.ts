@@ -2419,8 +2419,15 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       if (mode === 'optimize') {
         // När användaren har en befintlig portfölj, ska vi endast ge analys
         // Inga köp-, sälj- eller omstruktureringsrekommendationer ska genereras
+        // Men structuredPlan ska innehålla analysen med risker, allokering osv.
         complementaryIdeas = [];
         stockRecommendations = [];
+        
+        // Se till att structuredPlan innehåller analysinformation även om det inte finns rekommendationer
+        if (structuredPlan && typeof structuredPlan === 'object') {
+          // Behåll all analysinformation i structuredPlan
+          // action_summary, risk_alignment, next_steps osv. ska finnas kvar
+        }
       }
 
       if (stockRecommendations.length === 0) {
