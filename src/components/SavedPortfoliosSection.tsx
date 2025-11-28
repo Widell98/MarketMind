@@ -53,7 +53,7 @@ const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <Briefcase className="w-5 h-5 text-primary" />
             </div>
-            Senaste Portföljgenerering
+            Senaste Portföljgenerering / Analys
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -74,7 +74,7 @@ const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <Briefcase className="w-5 h-5 text-primary" />
             </div>
-            Senaste Portföljgenerering
+            Senaste Portföljgenerering / Analys
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -106,7 +106,7 @@ const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
             <Briefcase className="w-5 h-5 text-primary" />
           </div>
-          Senaste Portföljgenerering
+          Senaste Portföljgenerering / Analys
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -129,13 +129,17 @@ const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-lg font-semibold text-foreground">
-                          {portfolio.portfolio_name}
+                          {portfolio.portfolio_name === 'Portföljanalys' ? 'Portföljanalys' : portfolio.portfolio_name}
                         </h3>
-                        {portfolio.is_active && (
+                        {portfolio.portfolio_name === 'Portföljanalys' ? (
+                          <Badge variant="secondary" className="text-xs">
+                            Analys
+                          </Badge>
+                        ) : portfolio.is_active ? (
                           <Badge variant="default" className="text-xs">
                             Aktiv
                           </Badge>
-                        )}
+                        ) : null}
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
                         <div className="flex items-center gap-1">
