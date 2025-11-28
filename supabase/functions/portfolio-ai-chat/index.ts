@@ -2922,7 +2922,9 @@ serve(async (req) => {
     const lowerCaseMessage = message.toLowerCase();
     const mentionsPersonalPortfolio = /(?:min|mitt|mina|vår|vårt|våra)\s+(?:portfölj(?:en)?|innehav|investeringar|aktier)/i.test(message);
     const asksAboutPortfolioImpact = /påverkar.*(?:min|mitt|mina|vår|vårt|våra).*(?:portfölj|portföljen|innehav|investeringar|aktier|sparande)/i.test(lowerCaseMessage);
-    const referencesPersonalInvestments = mentionsPersonalPortfolio || asksAboutPortfolioImpact;
+    const asksIfOwnsSpecificHolding = (hasStockContext || detectedTickers.length > 0)
+      && /(?:äger|äga|har|innehar)\s+jag\s+[\wåäöÅÄÖ\.\-]+(?:\s+(?:aktie|aktier|stock|share))?/i.test(message);
+    const referencesPersonalInvestments = mentionsPersonalPortfolio || asksAboutPortfolioImpact || asksIfOwnsSpecificHolding;
     const isFinancialDataRequest = FINANCIAL_DATA_KEYWORDS.some(keyword => lowerCaseMessage.includes(keyword));
 
     let isStockMentionRequest = stockMentionsInMessage || isStockAnalysisRequest || (isFinancialDataRequest && detectedTickers.length > 0);
