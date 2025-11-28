@@ -908,7 +908,17 @@ VIKTIGT:
       userMessageParts.push(`Erfarenhetsnivå: ${experienceSummary}`);
     }
 
-    const userMessage = `Skapa en personlig portfölj baserad på följande användardata:
+    const userMessage = isAnalysis
+      ? `Analysera den befintliga portföljen baserad på följande användardata:
+
+${serializedConversationData}
+
+${userMessageParts.length > 0 ? `Tänk särskilt på:\n\n${userMessageParts.join('\n')}` : 'VIKTIGT: Användaren har endast svarat på grundläggande frågor. Använd ENDAST den information som faktiskt är tillgänglig ovan. Anta INTE värden för risktolerans, investeringsmål eller tidshorisont om de inte är angivna.'}
+
+VIKTIGT: Du ska ENDAST analysera och sammanfatta den nuvarande portföljen. INGA köp-, sälj- eller omstruktureringsrekommendationer. Fokusera på att beskriva portföljens sammansättning, allokering, risknivå och diversifiering.
+
+Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerställ att all text är på svenska.`
+      : `Skapa en personlig portfölj baserad på följande användardata:
 
 ${serializedConversationData}
 
@@ -986,17 +996,40 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
 
     let { plan: structuredPlan, recommendedStocks } = extractStructuredPlan(aiRecommendationsRaw, riskProfile, isAnalysis);
 
-    if (!structuredPlan || recommendedStocks.length === 0) {
-      console.warn('Structured plan missing, attempting fallback parsing of AI response.');
+    // For analysis mode, we only need structuredPlan, not recommendedStocks
+    // For new portfolio mode, we need both
+    if (!structuredPlan || (!isAnalysis && recommendedStocks.length === 0)) {
+      console.warn('Structured plan missing or incomplete, attempting fallback parsing of AI response.');
       const fallbackPlan = buildFallbackPlanFromText(aiRecommendationsRaw, riskProfile, isAnalysis);
       if (fallbackPlan) {
         structuredPlan = fallbackPlan.plan;
-        recommendedStocks = fallbackPlan.recommendedStocks;
+        // Only use fallback recommendedStocks if we're not in analysis mode
+        if (!isAnalysis) {
+          recommendedStocks = fallbackPlan.recommendedStocks;
+        }
       }
     }
 
-    if (!structuredPlan || recommendedStocks.length === 0) {
-      console.error('AI response was missing structured recommendations even after fallback. Raw output:', aiRecommendationsRaw);
+    // For analysis mode (optimize), we don't require recommendedStocks
+    // The structuredPlan should contain the analysis
+    if (!structuredPlan) {
+      console.error('AI response was missing structured plan. Raw output:', aiRecommendationsRaw);
+      return jsonResponse({
+        success: true,
+        aiRecommendations: aiRecommendationsRaw,
+        aiResponse: aiRecommendationsRaw,
+        aiResponseRaw: aiRecommendationsRaw,
+        plan: null,
+        confidence: 0,
+        recommendedStocks: [],
+        portfolio: null,
+        warning: 'AI kunde inte struktureras till en analys. Råtext returneras.'
+      });
+    }
+
+    // Only require recommendedStocks for new portfolio generation (not for analysis)
+    if (!isAnalysis && recommendedStocks.length === 0) {
+      console.error('AI response was missing structured recommendations for new portfolio. Raw output:', aiRecommendationsRaw);
       return jsonResponse({
         success: true,
         aiRecommendations: aiRecommendationsRaw,
@@ -1010,70 +1043,81 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
       });
     }
 
-    ensureSum100(recommendedStocks);
+    // Only normalize allocations for new portfolios (not for analysis)
+    if (!isAnalysis && recommendedStocks.length > 0) {
+      ensureSum100(recommendedStocks);
+    }
+    
     const normalizedResponse = JSON.stringify(structuredPlan, null, 2);
 
-    // Create portfolio record
-    const portfolioData = {
-      user_id: userId,
-      risk_profile_id: riskProfileId,
-      portfolio_name: 'AI-Genererad Portfölj',
-      asset_allocation: {
-        allocation_summary: calculateAssetAllocation(recommendedStocks),
-        structured_plan: structuredPlan,
-      },
-      recommended_stocks: recommendedStocks,
-      total_value: riskProfile.current_portfolio_value || 0,
-      expected_return: calculateExpectedReturn(recommendedStocks),
-      risk_score: calculateRiskScore(riskProfile.risk_tolerance, riskProfile.risk_comfort_level),
-      is_active: true
-    };
-
-    console.log('Creating portfolio with data:', portfolioData);
-
-    // Insert portfolio
-    const { data: portfolio, error: portfolioError } = await supabase
-      .from('user_portfolios')
-      .insert(portfolioData)
-      .select()
-      .single();
-
-    if (portfolioError) {
-      console.error('Error creating portfolio:', portfolioError);
-      throw new Error('Failed to create portfolio');
-    }
-
-    console.log('Portfolio created successfully:', portfolio.id);
-
-    // Add recommended stocks to user_holdings as recommendations
-    if (recommendedStocks.length > 0) {
-      const holdingsData = recommendedStocks.map(stock => ({
+    // Only create portfolio record for new portfolios (not for analysis)
+    let portfolio = null;
+    if (!isAnalysis) {
+      // Create portfolio record
+      const portfolioData = {
         user_id: userId,
-        holding_type: 'recommendation',
-        name: stock.name,
-        symbol: stock.symbol,
-        sector: stock.sector || 'Allmän',
-        market: 'Swedish',
-        currency: 'SEK',
-        allocation: stock.allocation,
-        quantity: 0,
-        current_value: 0,
-        purchase_price: 0,
-        purchase_date: new Date().toISOString().split('T')[0]
-      }));
+        risk_profile_id: riskProfileId,
+        portfolio_name: 'AI-Genererad Portfölj',
+        asset_allocation: {
+          allocation_summary: calculateAssetAllocation(recommendedStocks),
+          structured_plan: structuredPlan,
+        },
+        recommended_stocks: recommendedStocks,
+        total_value: riskProfile.current_portfolio_value || 0,
+        expected_return: calculateExpectedReturn(recommendedStocks),
+        risk_score: calculateRiskScore(riskProfile.risk_tolerance, riskProfile.risk_comfort_level),
+        is_active: true
+      };
 
-      console.log('Inserting holdings data:', holdingsData);
+      console.log('Creating portfolio with data:', portfolioData);
 
-      const { error: holdingsError } = await supabase
-        .from('user_holdings')
-        .insert(holdingsData);
+      // Insert portfolio
+      const { data: createdPortfolio, error: portfolioError } = await supabase
+        .from('user_portfolios')
+        .insert(portfolioData)
+        .select()
+        .single();
 
-      if (holdingsError) {
-        console.error('Error inserting holdings:', holdingsError);
-        // Don't throw error here as portfolio is already created
-      } else {
-        console.log('Holdings inserted successfully');
+      if (portfolioError) {
+        console.error('Error creating portfolio:', portfolioError);
+        throw new Error('Failed to create portfolio');
       }
+
+      portfolio = createdPortfolio;
+      console.log('Portfolio created successfully:', portfolio.id);
+
+      // Add recommended stocks to user_holdings as recommendations
+      if (recommendedStocks.length > 0) {
+        const holdingsData = recommendedStocks.map(stock => ({
+          user_id: userId,
+          holding_type: 'recommendation',
+          name: stock.name,
+          symbol: stock.symbol,
+          sector: stock.sector || 'Allmän',
+          market: 'Swedish',
+          currency: 'SEK',
+          allocation: stock.allocation,
+          quantity: 0,
+          current_value: 0,
+          purchase_price: 0,
+          purchase_date: new Date().toISOString().split('T')[0]
+        }));
+
+        console.log('Inserting holdings data:', holdingsData);
+
+        const { error: holdingsError } = await supabase
+          .from('user_holdings')
+          .insert(holdingsData);
+
+        if (holdingsError) {
+          console.error('Error inserting holdings:', holdingsError);
+          // Don't throw error here as portfolio is already created
+        } else {
+          console.log('Holdings inserted successfully');
+        }
+      }
+    } else {
+      console.log('Analysis mode: Skipping portfolio creation, returning analysis only.');
     }
 
     console.log('Returning response with normalized plan:', normalizedResponse.substring(0, 200));
@@ -1085,7 +1129,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
       aiResponse: normalizedResponse,
       aiResponseRaw: aiRecommendationsRaw,
       plan: structuredPlan,
-      confidence: calculateConfidence(recommendedStocks, riskProfile),
+      confidence: isAnalysis ? 1.0 : calculateConfidence(recommendedStocks, riskProfile),
       recommendedStocks: recommendedStocks
     });
 
@@ -1418,7 +1462,11 @@ function extractStructuredPlan(rawText: string, riskProfile: any, isAnalysis: bo
       .filter(Boolean) as Array<{ planAsset: any; stock: any }>;
 
     const recommendedStocks = normalizedAssets.map(item => item.stock);
-    ensureSum100(recommendedStocks);
+    
+    // Only normalize allocations for new portfolios (not for analysis)
+    if (!isAnalysis && recommendedStocks.length > 0) {
+      ensureSum100(recommendedStocks);
+    }
 
     const plan = {
       action_summary: planCandidate.action_summary || planCandidate.summary || fallbackActionSummary(riskProfile, isAnalysis),

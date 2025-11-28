@@ -2597,35 +2597,37 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
           description: "Din personliga portföljstrategi har skapats med förbättrad riskanalys",
         });
       } else {
-        // Save optimization/analysis results to database as well
-        const portfolioData = {
+        // For analysis mode (optimize), save the analysis as a portfolio record with is_active: false
+        // This allows users to view their analysis history on /profile
+        const analysisPortfolioData = {
           user_id: user.id,
           risk_profile_id: riskProfile.id,
-          portfolio_name: 'Portföljsammanfattning gjord av AI',
+          portfolio_name: 'Portföljanalys',
           asset_allocation: assetAllocation,
-          recommended_stocks: stockRecommendations,
+          recommended_stocks: [], // No recommendations for analysis
           total_value: 0,
           expected_return: expectedReturn,
           risk_score: combinedRiskScore,
           is_active: false // Mark as inactive since it's an analysis, not an active portfolio
         };
 
-        const { data: portfolio, error: portfolioError } = await supabase
+        const { data: analysisPortfolio, error: portfolioError } = await supabase
           .from('user_portfolios')
-          .insert(portfolioData)
+          .insert(analysisPortfolioData)
           .select()
           .single();
 
         if (portfolioError) {
-          console.error('Error creating portfolio analysis:', portfolioError);
+          console.error('Error saving portfolio analysis:', portfolioError);
           // Don't fail the whole operation if saving fails
         } else {
-          portfolioRecord = portfolio;
+          portfolioRecord = analysisPortfolio;
+          console.log('Portfolio analysis saved successfully:', analysisPortfolio.id);
         }
-
+        
         toast({
           title: "Analys klar!",
-          description: "Din befintliga portfölj har analyserats och optimeringsförslag har genererats.",
+          description: "Din befintliga portfölj har analyserats. Se sammanfattningen nedan.",
         });
       }
 
