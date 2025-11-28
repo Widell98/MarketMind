@@ -2473,6 +2473,49 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       const baseRiskScore = riskTolerance === 'aggressive' ? 7 : riskTolerance === 'conservative' ? 3 : 5;
       const combinedRiskScore = Math.round((baseRiskScore + comfortScore) / 2);
 
+      // Calculate allocation summary from current holdings for analyses
+      const calculateAllocationFromHoldings = (holdings: typeof holdingsWithPercentages) => {
+        let stocksTotal = 0;
+        let bondsTotal = 0;
+        let cashTotal = 0;
+        
+        if (holdings.length === 0) {
+          return { stocks: 0, bonds: 0, cash: 0 };
+        }
+
+        holdings.forEach(holding => {
+          const percentage = holding.weight || 0;
+          // Classify based on sector or name
+          const sector = (holding as any).sector?.toLowerCase() || '';
+          const name = (holding.name || '').toLowerCase();
+          
+          if (sector.includes('bank') || sector.includes('fastighet') || 
+              name.includes('bank') || name.includes('fastighet') || 
+              sector.includes('financial') || sector.includes('real estate')) {
+            bondsTotal += percentage;
+          } else if (sector.includes('cash') || name.includes('kontant') || name.includes('cash')) {
+            cashTotal += percentage;
+          } else {
+            stocksTotal += percentage;
+          }
+        });
+
+        // Normalize to 100%
+        const total = stocksTotal + bondsTotal + cashTotal;
+        if (total > 0 && total !== 100) {
+          const scale = 100 / total;
+          stocksTotal = stocksTotal * scale;
+          bondsTotal = bondsTotal * scale;
+          cashTotal = cashTotal * scale;
+        }
+
+        return {
+          stocks: Math.round(stocksTotal),
+          bonds: Math.round(bondsTotal),
+          cash: Math.round(cashTotal)
+        };
+      };
+
       // Create enhanced asset allocation with all conversation data and AI analysis
       const assetAllocation = {
         conversation_data: JSON.parse(JSON.stringify(mergedConversationData)),
@@ -2483,6 +2526,13 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         structured_plan: structuredPlan,
         stock_recommendations: stockRecommendations,
         complementary_ideas: complementaryIdeas,
+        allocation_summary: mode === 'optimize' && holdingsWithPercentages.length > 0
+          ? calculateAllocationFromHoldings(holdingsWithPercentages)
+          : (stockRecommendations.length > 0 ? {
+              stocks: stockRecommendations.reduce((sum, s) => sum + (s.allocation || 0), 0),
+              bonds: 0,
+              cash: 0
+            } : undefined),
         risk_profile_summary: {
           experience_level: investmentExperienceLevel,
           risk_comfort: riskComfortLevel,
@@ -2496,7 +2546,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
           prompt_length: enhancedPrompt.length,
           response_length: aiRecommendationText?.length || 0,
           ai_model: 'gpt-4o',
-          analysis_type: 'comprehensive_portfolio_strategy'
+          analysis_type: mode === 'optimize' ? 'portfolio_analysis' : 'comprehensive_portfolio_strategy'
         }
       };
 

@@ -8,6 +8,10 @@ import {
   Brain,
   AlertTriangle,
   TrendingUp,
+  PieChart,
+  BarChart3,
+  Globe,
+  Shield,
 } from 'lucide-react';
 
 interface PortfolioSummaryViewProps {
@@ -75,6 +79,135 @@ const PortfolioSummaryView = ({ portfolio }: PortfolioSummaryViewProps) => {
             <p className="text-sm font-bold uppercase tracking-wider text-foreground">Varför denna bedömning?</p>
           </div>
           <p className="text-base leading-7 text-foreground/90 pl-12">{advisorPlan.risk_alignment}</p>
+        </div>
+      )}
+
+      {/* Portfolio Analysis Section - Only for analyses */}
+      {isAnalysis && (
+        <div className="space-y-4 rounded-xl border-2 border-primary/10 bg-gradient-to-br from-card/90 to-card/50 p-6 shadow-lg backdrop-blur-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+              <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h4 className="text-base font-bold uppercase tracking-wide text-foreground">Portföljanalys</h4>
+          </div>
+
+          <div className="space-y-4">
+            {/* Risk Analysis */}
+            {portfolio.risk_score && (
+              <div className="p-4 rounded-lg border border-border/50 bg-muted/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-semibold text-foreground">Risknivå</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-primary to-primary/80 transition-all"
+                      style={{ width: `${(portfolio.risk_score / 10) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-bold text-foreground">{portfolio.risk_score}/10</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {portfolio.risk_score <= 3 ? 'Konservativ riskprofil' : 
+                   portfolio.risk_score <= 6 ? 'Måttlig riskprofil' : 
+                   'Hög riskprofil'}
+                </p>
+              </div>
+            )}
+
+            {/* Asset Allocation */}
+            {portfolio.asset_allocation?.allocation_summary && (
+              <div className="p-4 rounded-lg border border-border/50 bg-muted/30">
+                <div className="flex items-center gap-2 mb-3">
+                  <PieChart className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-semibold text-foreground">Tillgångsfördelning</p>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {portfolio.asset_allocation.allocation_summary.stocks !== undefined && (
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">
+                        {Math.round(portfolio.asset_allocation.allocation_summary.stocks)}%
+                      </p>
+                      <p className="text-xs text-muted-foreground">Aktier</p>
+                    </div>
+                  )}
+                  {portfolio.asset_allocation.allocation_summary.bonds !== undefined && (
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">
+                        {Math.round(portfolio.asset_allocation.allocation_summary.bonds)}%
+                      </p>
+                      <p className="text-xs text-muted-foreground">Räntor</p>
+                    </div>
+                  )}
+                  {portfolio.asset_allocation.allocation_summary.cash !== undefined && (
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">
+                        {Math.round(portfolio.asset_allocation.allocation_summary.cash)}%
+                      </p>
+                      <p className="text-xs text-muted-foreground">Kontanter</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Expected Return */}
+            {portfolio.expected_return && (
+              <div className="p-4 rounded-lg border border-border/50 bg-muted/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-semibold text-foreground">Förväntad avkastning</p>
+                </div>
+                <p className="text-2xl font-bold text-foreground">
+                  {(portfolio.expected_return * 100).toFixed(1)}%
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Årlig förväntad avkastning</p>
+              </div>
+            )}
+
+            {/* Sector Distribution - if available */}
+            {portfolio.asset_allocation?.conversation_data?.currentHoldings && 
+             Array.isArray(portfolio.asset_allocation.conversation_data.currentHoldings) &&
+             portfolio.asset_allocation.conversation_data.currentHoldings.length > 0 && (
+              <div className="p-4 rounded-lg border border-border/50 bg-muted/30">
+                <div className="flex items-center gap-2 mb-3">
+                  <Globe className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-semibold text-foreground">Portföljsammansättning</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {portfolio.asset_allocation.conversation_data.currentHoldings.length} innehav analyserade
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from(new Set(
+                      portfolio.asset_allocation.conversation_data.currentHoldings
+                        .map((h: any) => h.sector)
+                        .filter(Boolean)
+                    )).slice(0, 6).map((sector: string, idx: number) => (
+                      <Badge key={idx} variant="outline" className="text-xs">
+                        {sector}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Detailed Analysis from risk_alignment */}
+            {advisorPlan.risk_alignment && (
+              <div className="p-4 rounded-lg border border-border/50 bg-muted/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <Brain className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-semibold text-foreground">Detaljerad analys</p>
+                </div>
+                <p className="text-sm leading-6 text-foreground/90">
+                  {advisorPlan.risk_alignment}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
