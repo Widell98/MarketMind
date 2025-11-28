@@ -2554,6 +2554,7 @@ const ChatPortfolioAdvisor = () => {
     // Special format for existing portfolio analysis
     if (isOptimization) {
       const riskProfileText = plan.actionSummary || 'Analys av din portfölj';
+      // Use riskAlignment as the main description, but ensure actionSummary is shown separately if different
       const portfolioDescription = plan.riskAlignment || reasoningSummary || 'Din portfölj har analyserats.';
       
       // For "Varför denna bedömning?", use a different approach - explain the analysis methodology
@@ -2625,12 +2626,16 @@ const ChatPortfolioAdvisor = () => {
         <div className="space-y-4 text-sm sm:text-base leading-relaxed">
           {/* Main summary - more conversational */}
           <div className="space-y-3">
-            <p className="font-semibold text-foreground leading-7">
-              {riskProfileText}
-            </p>
-            <div className="text-foreground/90">
-              {renderRichText(formatRichText(portfolioDescription))}
-            </div>
+            {riskProfileText && riskProfileText !== portfolioDescription && (
+              <p className="font-semibold text-foreground leading-7">
+                {riskProfileText}
+              </p>
+            )}
+            {portfolioDescription && (
+              <div className="text-foreground/90">
+                {renderRichText(formatRichText(portfolioDescription))}
+              </div>
+            )}
           </div>
 
           {/* Why section - more compact */}
@@ -2643,7 +2648,7 @@ const ChatPortfolioAdvisor = () => {
             </div>
           )}
 
-          {/* Detailed Analysis - Show prominently for analyses */}
+          {/* Detailed Analysis - Always show for analyses if riskAlignment exists */}
           {plan.riskAlignment && (
             <div className="pt-4 border-t border-border/50">
               <div className="flex items-center gap-2 mb-3">

@@ -54,7 +54,7 @@ const PortfolioSummaryView = ({ portfolio }: PortfolioSummaryViewProps) => {
               {advisorPlan.action_summary && (
                 <p className="text-lg sm:text-xl font-bold text-foreground leading-6 sm:leading-7 break-words">{advisorPlan.action_summary}</p>
               )}
-              {advisorPlan.risk_alignment && !isAnalysis && (
+              {advisorPlan.risk_alignment && !isAnalysis && advisorPlan.risk_alignment !== advisorPlan.action_summary && (
                 <p className="text-xs sm:text-sm leading-5 sm:leading-6 text-foreground/80 break-words">{advisorPlan.risk_alignment}</p>
               )}
             </div>
