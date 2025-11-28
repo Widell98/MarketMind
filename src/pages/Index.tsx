@@ -96,7 +96,8 @@ const Index = () => {
     refreshInsights,
   } = useAIInsights();
   const progressData = useFinancialProgress();
-  const hasPortfolio = !loading && !!activePortfolio;
+  // Show portfolio dashboard if user has portfolio OR has holdings (so they can see portfolio value after implementing strategy)
+  const hasPortfolio = !loading && (!!activePortfolio || (actualHoldings && actualHoldings.length > 0));
   const totalPortfolioValue = performance.totalPortfolioValue;
   const greetingName = user?.user_metadata?.first_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || t('common.user');
   const holdingsCount = actualHoldings?.length ?? 0;

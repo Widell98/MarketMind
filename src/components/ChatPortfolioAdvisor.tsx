@@ -34,6 +34,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
+import { useRiskProfile } from '@/hooks/useRiskProfile';
 import useSheetTickers, { RawSheetTicker, SheetTicker, sanitizeSheetTickerList } from '@/hooks/useSheetTickers';
 import StockReplacementDialog from '@/components/StockReplacementDialog';
 import { mapEdgeFunctionErrorMessage } from '@/utils/mapEdgeFunctionError';
@@ -467,6 +468,7 @@ const ChatPortfolioAdvisor = () => {
   const { generatePortfolioFromConversation, loading } = useConversationalPortfolio();
   const { activePortfolio, refetch } = usePortfolio();
   const { refetch: refetchHoldings } = useUserHoldings();
+  const { saveRiskProfile, riskProfile } = useRiskProfile();
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -1412,6 +1414,117 @@ const ChatPortfolioAdvisor = () => {
     return activeQuestion;
   };
 
+  // Update risk profile when relevant conversation data changes
+  const updateRiskProfileFromConversationData = async (data: ConversationData) => {
+    if (!user || !saveRiskProfile) return;
+
+    try {
+      // Map conversation data to risk profile fields
+      const riskProfileUpdate: Partial<{
+        age: number | null;
+        monthly_investment_amount: number | null;
+        investment_horizon: 'short' | 'medium' | 'long' | null;
+        investment_goal: 'growth' | 'income' | 'preservation' | 'balanced' | null;
+        risk_tolerance: 'conservative' | 'moderate' | 'aggressive' | null;
+        investment_experience: 'beginner' | 'intermediate' | 'advanced' | null;
+      }> = {};
+
+      // Update age if provided
+      if (typeof data.age === 'number' && data.age > 0) {
+        riskProfileUpdate.age = data.age;
+      }
+
+      // Update monthly investment amount if provided
+      if (data.monthlyAmountNumeric && typeof data.monthlyAmountNumeric === 'number' && data.monthlyAmountNumeric > 0) {
+        riskProfileUpdate.monthly_investment_amount = data.monthlyAmountNumeric;
+      } else if (data.monthlyAmount) {
+        // Try to parse monthlyAmount string
+        const cleaned = String(data.monthlyAmount).replace(/[^0-9.,-]/g, '').replace(',', '.');
+        if (cleaned.length > 0) {
+          const parsed = Number(cleaned);
+          if (!Number.isNaN(parsed) && parsed > 0) {
+            riskProfileUpdate.monthly_investment_amount = Math.round(parsed);
+          }
+        }
+      }
+
+      // Update investment horizon
+      if (data.timeHorizon) {
+        const horizon = data.timeHorizon.toLowerCase();
+        if (horizon === 'short' || horizon === 'medium' || horizon === 'long') {
+          riskProfileUpdate.investment_horizon = horizon as 'short' | 'medium' | 'long';
+        }
+      }
+
+      // Update investment goal
+      if (data.investmentGoal) {
+        const goal = data.investmentGoal.toLowerCase();
+        if (['growth', 'income', 'preservation', 'balanced'].includes(goal)) {
+          riskProfileUpdate.investment_goal = goal as 'growth' | 'income' | 'preservation' | 'balanced';
+        }
+      }
+
+      // Update risk tolerance
+      if (data.riskTolerance) {
+        const tolerance = data.riskTolerance.toLowerCase();
+        if (['conservative', 'moderate', 'aggressive'].includes(tolerance)) {
+          riskProfileUpdate.risk_tolerance = tolerance as 'conservative' | 'moderate' | 'aggressive';
+        }
+      }
+
+      // Update investment experience
+      if (data.experience) {
+        const experience = data.experience.toLowerCase();
+        if (['beginner', 'intermediate', 'advanced'].includes(experience)) {
+          riskProfileUpdate.investment_experience = experience as 'beginner' | 'intermediate' | 'advanced';
+        }
+      } else if (data.isBeginnerInvestor !== undefined) {
+        riskProfileUpdate.investment_experience = data.isBeginnerInvestor ? 'beginner' : 'intermediate';
+      }
+
+      // Only update if we have at least one field to update
+      if (Object.keys(riskProfileUpdate).length > 0) {
+        // Merge with existing risk profile data to preserve all other fields
+        const existingData = riskProfile ? {
+          ...riskProfile,
+          id: undefined, // Remove id, user_id, created_at, updated_at as they're handled by the database
+          user_id: undefined,
+          created_at: undefined,
+          updated_at: undefined,
+        } : {};
+
+        // Silently update risk profile without showing toast
+        try {
+          // Remove undefined values to avoid issues with upsert
+          const cleanExistingData = Object.fromEntries(
+            Object.entries(existingData).filter(([_, v]) => v !== undefined)
+          ) as any;
+
+          const { data, error } = await supabase
+            .from('user_risk_profiles')
+            .upsert({
+              user_id: user.id,
+              ...cleanExistingData,
+              ...riskProfileUpdate,
+              updated_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+          if (!error && data) {
+            // Update local state silently
+            // The useRiskProfile hook will refetch on next render
+          }
+        } catch (updateError) {
+          console.warn('Failed to silently update risk profile:', updateError);
+        }
+      }
+    } catch (error) {
+      // Silently fail - don't interrupt user flow
+      console.warn('Failed to update risk profile:', error);
+    }
+  };
+
   const handleAnswer = (answer: string | string[]) => {
     if (!waitingForAnswer || isComplete) return;
 
@@ -1440,6 +1553,9 @@ const ChatPortfolioAdvisor = () => {
         [currentQuestion.key]: processedAnswer
       };
       setConversationData(updatedData);
+
+      // Update risk profile when relevant fields change
+      updateRiskProfileFromConversationData(updatedData);
 
       // Show holdings input form
       setTimeout(() => {
@@ -1520,6 +1636,9 @@ const ChatPortfolioAdvisor = () => {
       }
     }
     setConversationData(updatedData);
+
+    // Update risk profile when relevant fields change
+    updateRiskProfileFromConversationData(updatedData);
 
     // Move to next question
     setTimeout(() => {
@@ -2123,21 +2242,15 @@ const ChatPortfolioAdvisor = () => {
         localStorage.setItem(storageKey, JSON.stringify(activity));
       }
       
-      // Navigate to portfolio implementation page if user has a portfolio, otherwise to index
-      const hasPortfolio = conversationData.hasCurrentPortfolio || activePortfolio;
-      if (hasPortfolio) {
-        navigate('/portfolio-implementation');
-      } else {
-        navigate('/');
-      }
+      // Navigate to index page so user can see portfolio value
+      // The index page will show portfolio value if holdings exist
+      navigate('/');
 
       // Show success message after navigation
       setTimeout(() => {
         toast({
           title: "Riskprofil sparad!",
-          description: hasPortfolio 
-            ? "Din portföljsammanfattning är sparad och du kan se den i din portföljöversikt."
-            : "Din riskprofil är nu registrerad och du kan börja använda plattformen.",
+          description: "Din portföljsammanfattning är sparad. Du kan se ditt portföljvärde på startsidan.",
         });
       }, 500);
       

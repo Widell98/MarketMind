@@ -222,7 +222,7 @@ ${response}`;
       const conversationData = {
         isBeginnerInvestor: false,
         hasCurrentPortfolio: false,
-        age: riskProfile.age || 25,
+        age: riskProfile.age ?? undefined,
         investmentGoal: 'wealth',
         timeHorizon: riskProfile.investment_horizon || 'medium',
         riskTolerance: riskProfile.risk_tolerance || 'balanced',
