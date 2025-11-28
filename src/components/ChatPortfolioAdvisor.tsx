@@ -2624,17 +2624,12 @@ const ChatPortfolioAdvisor = () => {
 
       return (
         <div className="space-y-4 text-sm sm:text-base leading-relaxed">
-          {/* Main summary - more conversational */}
+          {/* Main summary - only show actionSummary (short) */}
           <div className="space-y-3">
-            {riskProfileText && riskProfileText !== portfolioDescription && (
+            {riskProfileText && (
               <p className="font-semibold text-foreground leading-7">
                 {riskProfileText}
               </p>
-            )}
-            {portfolioDescription && (
-              <div className="text-foreground/90">
-                {renderRichText(formatRichText(portfolioDescription))}
-              </div>
             )}
           </div>
 
