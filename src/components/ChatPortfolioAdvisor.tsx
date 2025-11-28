@@ -2069,15 +2069,18 @@ const ChatPortfolioAdvisor = () => {
     setIsGenerating(true);
     setRecommendedStocks([]);
     hasInitializedRecommendations.current = false;
+        
     const isOptimizationFlow = conversationData.hasCurrentPortfolio === true;
-    addBotMessage(
-      isOptimizationFlow
-        ? 'Tack för alla svar! Jag analyserar din befintliga portfölj och tar fram skräddarsydda förbättringsförslag...'
-        : 'Tack för alla svar! Jag skapar nu din personliga portföljstrategi...'
-    );
-    addBotMessage(
-      'Vill du ge fler detaljer? Komplettera din riskprofil senare under Profil > Riskprofil för en ännu mer träffsäker rådgivning.'
-    );
+    
+        if (isOptimizationFlow) {
+      addBotMessage(
+        'Tack! Jag registrerar din portfölj och sammanställer en översikt åt dig...'
+      );
+    } else {
+      addBotMessage(
+        'Tack för alla svar! Jag skapar nu din personliga portföljstrategi...'
+      );
+    }
     
     // Save user holdings to database if they exist
     if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
@@ -2110,13 +2113,14 @@ const ChatPortfolioAdvisor = () => {
 
       await refetch();
 
-      setTimeout(() => {
-        if (isOptimizationResult) {
-          addBotMessage('🔍 Din portföljanalys är klar! Här är mina optimeringsförslag:');
-          if (Array.isArray(result.complementaryIdeas) && result.complementaryIdeas.length > 0) {
-            addBotMessage('✨ Du fick även kompletterande idéer som stärker din nuvarande strategi.');
-          } else if (conversationData.optimizationPreference === 'analyze_only') {
-            addBotMessage('🛠️ Fokusera på dessa åtgärder för att förfina det du redan äger – inga nya köp föreslås just nu.');
+    setTimeout(() => {
+        if (isOptimizationResult) { // Detta är samma som isOptimizationFlow baserat på resultatet
+          // --- HÄR ÄNDRAR VI BEKRÄFTELSEN ---
+          addBotMessage('✅ Din portfölj är nu registrerad och analyserad. Här är en sammanfattning av ditt nuvarande läge:');
+          
+          // Om vi vill vara extra tydliga med att inga åtgärder krävs:
+          if (result.plan?.nextSteps?.length > 0) {
+             // AI:n har genererat next_steps (som nu är "Portföljen är sparad" etc enligt backend-ändringen)
           }
         } else {
           addBotMessage('🎉 Din personliga portföljstrategi är klar! Här är mina rekommendationer:');
