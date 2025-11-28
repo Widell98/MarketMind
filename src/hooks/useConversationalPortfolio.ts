@@ -2423,10 +2423,15 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         complementaryIdeas = [];
         stockRecommendations = [];
         
-        // Se till att structuredPlan innehåller analysinformation även om det inte finns rekommendationer
+        // Se till att structuredPlan innehåller analysinformation men ta bort rekommendationer och nästa steg
         if (structuredPlan && typeof structuredPlan === 'object') {
-          // Behåll all analysinformation i structuredPlan
-          // action_summary, risk_alignment, next_steps osv. ska finnas kvar
+          // Ta bort next_steps och recommended_assets från analyser
+          structuredPlan = {
+            ...structuredPlan,
+            next_steps: [],
+            recommended_assets: [],
+            complementary_assets: []
+          };
         }
       }
 

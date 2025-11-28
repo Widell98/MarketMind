@@ -78,8 +78,8 @@ const PortfolioSummaryView = ({ portfolio }: PortfolioSummaryViewProps) => {
         </div>
       )}
 
-      {/* Next steps */}
-      {displayNextSteps.length > 0 && (
+      {/* Next steps - only show for new portfolios, not for analyses */}
+      {!isAnalysis && displayNextSteps.length > 0 && (
         <Card className="border-2 border-primary/10 bg-gradient-to-br from-card/90 to-card/50 shadow-lg backdrop-blur-sm">
           <CardHeader className="flex flex-row items-start gap-4 space-y-0 pb-4">
             <div className="rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 p-3 border border-blue-500/20">
@@ -105,8 +105,8 @@ const PortfolioSummaryView = ({ portfolio }: PortfolioSummaryViewProps) => {
         </Card>
       )}
 
-      {/* Recommended assets / Analysis recommendations */}
-      {recommendedAssets.length > 0 && (
+      {/* Recommended assets - only show for new portfolios, not for analyses */}
+      {!isAnalysis && recommendedAssets.length > 0 && (
         <div className="space-y-4 rounded-xl border-2 border-primary/10 bg-gradient-to-br from-card/90 to-card/50 p-6 shadow-lg backdrop-blur-sm">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
@@ -114,11 +114,11 @@ const PortfolioSummaryView = ({ portfolio }: PortfolioSummaryViewProps) => {
                 <TrendingUp className="h-5 w-5 text-primary" />
               </div>
               <h4 className="text-base font-bold uppercase tracking-wide text-foreground">
-                {isAnalysis ? 'Rekommendationer och analys' : 'Föreslagna åtgärder per tillgång'}
+                Föreslagna åtgärder per tillgång
               </h4>
             </div>
             <Badge variant="secondary" className="text-xs font-semibold px-3 py-1">
-              {recommendedAssets.length} {isAnalysis ? 'rekommendationer' : 'förslag'}
+              {recommendedAssets.length} förslag
             </Badge>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
