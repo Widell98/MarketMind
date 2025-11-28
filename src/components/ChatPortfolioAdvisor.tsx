@@ -2123,21 +2123,15 @@ const ChatPortfolioAdvisor = () => {
         localStorage.setItem(storageKey, JSON.stringify(activity));
       }
       
-      // Navigate to portfolio implementation page if user has a portfolio, otherwise to index
-      const hasPortfolio = conversationData.hasCurrentPortfolio || activePortfolio;
-      if (hasPortfolio) {
-        navigate('/portfolio-implementation');
-      } else {
-        navigate('/');
-      }
+      // Navigate to index page so user can see portfolio value
+      // The index page will show portfolio value if holdings exist
+      navigate('/');
 
       // Show success message after navigation
       setTimeout(() => {
         toast({
           title: "Riskprofil sparad!",
-          description: hasPortfolio 
-            ? "Din portföljsammanfattning är sparad och du kan se den i din portföljöversikt."
-            : "Du kan hitta dina genererade förslag antingen i din profil eller under AI-rekommenderade innehav i /portfolio-implementation.",
+          description: "Din portföljsammanfattning är sparad. Du kan se ditt portföljvärde på startsidan.",
         });
       }, 500);
       
