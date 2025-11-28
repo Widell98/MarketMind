@@ -26,21 +26,25 @@ export const usePortfolios = () => {
         .from('user_portfolios')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(1);
 
       if (error) {
         console.error('Error fetching portfolios:', error);
         return;
       }
 
-      if (data) {
-        const formattedPortfolios: Portfolio[] = data.map((portfolio) => ({
+      if (data && data.length > 0) {
+        const portfolio = data[0];
+        const formattedPortfolio: Portfolio = {
           ...portfolio,
           recommended_stocks: Array.isArray(portfolio.recommended_stocks) 
             ? portfolio.recommended_stocks 
             : []
-        }));
-        setPortfolios(formattedPortfolios);
+        };
+        setPortfolios([formattedPortfolio]);
+      } else {
+        setPortfolios([]);
       }
     } catch (error) {
       console.error('Error fetching portfolios:', error);
