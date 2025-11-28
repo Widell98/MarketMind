@@ -530,6 +530,16 @@ serve(async (req) => {
       contextInfo += `\n\nVIKTIGT: Föreslå ALDRIG aktier som användaren redan äger.`;
     }
 
+    if (hasExistingPortfolio && conversationData && typeof conversationData === 'object' && conversationData.currentHoldings) {
+        const holdingsList = conversationData.currentHoldings
+          .map((h: any) => `${h.name} (${h.symbol || 'Saknar ticker'}), Andel: ${h.allocation_percent || 'Ej angiven'}, Köppris: ${h.purchasePrice || 'Ej angivet'} ${h.currency || 'SEK'}`)
+          .join('\n- ');
+          
+        if (holdingsList.length > 0) {
+            contextInfo += `\n\nBEFINTLIGA INNEHAV I PORTFÖLJ SOM SKA REGISTRERAS:\n- ${holdingsList}`;
+        }
+    }
+
     const interestList = (() => {
       if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
         const raw = conversationData as Record<string, unknown>;
@@ -931,7 +941,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
 
     console.log('Returning response with normalized plan:', normalizedResponse.substring(0, 200));
 
-    return jsonResponse({
+   const responsePayload: Record<string, any> = {
       success: true,
       portfolio: portfolio,
       aiRecommendations: normalizedResponse,
@@ -939,8 +949,9 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
       aiResponseRaw: aiRecommendationsRaw,
       plan: structuredPlan,
       confidence: calculateConfidence(recommendedStocks, riskProfile),
-      recommendedStocks: recommendedStocks
-    });
+      recommendedStocks: recommendedStocks,
+      mode: hasExistingPortfolio ? 'registration' : 'new' // Lägger till mode-flagga
+    };
 
   } catch (error) {
     console.error('Error in generate-portfolio function:', error);
