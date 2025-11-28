@@ -539,10 +539,10 @@ const UserInvestmentAnalysis = ({
           </div>
 
           <Tabs defaultValue="profile" className="w-full">
-            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 bg-slate-100/70 dark:bg-slate-900/60 rounded-xl sm:rounded-2xl p-0.5 sm:p-1">
-              <TabsTrigger value="profile" className="rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold py-2 sm:py-2.5">Profil & kapital</TabsTrigger>
-              <TabsTrigger value="behavior" className="rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold py-2 sm:py-2.5">Beteende & preferenser</TabsTrigger>
-              <TabsTrigger value="goals" className="rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold py-2 sm:py-2.5">Mål & optimering</TabsTrigger>
+            <TabsList className="inline-flex w-full h-auto bg-slate-100/70 dark:bg-slate-900/60 rounded-xl sm:rounded-2xl p-0.5 sm:p-1 overflow-x-auto">
+              <TabsTrigger value="profile" className="flex-1 sm:flex-none rounded-lg sm:rounded-xl text-[10px] xs:text-xs sm:text-sm font-semibold py-2 sm:py-2.5 px-2 sm:px-3 whitespace-nowrap min-w-0">Profil & kapital</TabsTrigger>
+              <TabsTrigger value="behavior" className="flex-1 sm:flex-none rounded-lg sm:rounded-xl text-[10px] xs:text-xs sm:text-sm font-semibold py-2 sm:py-2.5 px-2 sm:px-3 whitespace-nowrap min-w-0">Beteende & preferenser</TabsTrigger>
+              <TabsTrigger value="goals" className="flex-1 sm:flex-none rounded-lg sm:rounded-xl text-[10px] xs:text-xs sm:text-sm font-semibold py-2 sm:py-2.5 px-2 sm:px-3 whitespace-nowrap min-w-0">Mål & optimering</TabsTrigger>
             </TabsList>
 
             <TabsContent value="profile" className="space-y-4 sm:space-y-6 pt-3 sm:pt-4">
