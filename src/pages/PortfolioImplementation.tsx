@@ -211,13 +211,13 @@ const PortfolioImplementation = () => {
   // Show loading while portfolio is loading
   if (loading || riskProfileLoading) {
     return <Layout>
-        <div className="min-h-screen flex items-center justify-center p-4">
-          <div className="text-center p-6 bg-white dark:bg-gray-800 backdrop-blur-lg border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl w-full max-w-sm mx-auto">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 bg-primary shadow-2xl">
-              <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+        <div className="min-h-screen flex items-center justify-center p-3 sm:p-4">
+          <div className="text-center p-4 sm:p-6 bg-white dark:bg-gray-800 backdrop-blur-lg border border-gray-200 dark:border-gray-700 rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-sm mx-auto">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6 bg-primary shadow-2xl">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
             </div>
-            <h2 className="text-lg font-semibold mb-2 text-foreground">{t('portfolio.loading')}</h2>
-            <p className="text-sm text-muted-foreground">{t('portfolio.loadingDesc')}</p>
+            <h2 className="text-base sm:text-lg font-semibold mb-2 text-foreground">{t('portfolio.loading')}</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground">{t('portfolio.loadingDesc')}</p>
           </div>
         </div>
       </Layout>;
@@ -226,16 +226,16 @@ const PortfolioImplementation = () => {
   // Show onboarding if user explicitly wants to create a profile
   if (showOnboarding) {
     return <Layout>
-        <div className="min-h-screen py-6 px-4">
+        <div className="min-h-screen py-4 sm:py-6 px-3 sm:px-4">
           <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-8">
-              <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 bg-primary shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
-                <Brain className="w-10 h-10 text-primary-foreground" />
+            <div className="text-center mb-6 sm:mb-8">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl flex items-center justify-center mx-auto mb-4 sm:mb-6 bg-primary shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                <Brain className="w-8 h-8 sm:w-10 sm:h-10 text-primary-foreground" />
               </div>
-              <h1 className="text-3xl font-bold mb-4 text-foreground">
+              <h1 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 text-foreground px-2">
                 {t('portfolio.createProfile')}
               </h1>
-              <p className="text-lg max-w-2xl mx-auto text-muted-foreground px-4">
+              <p className="text-sm sm:text-base md:text-lg max-w-2xl mx-auto text-muted-foreground px-3 sm:px-4">
                 {t('portfolio.createProfileDesc')}
               </p>
             </div>
@@ -259,10 +259,10 @@ const PortfolioImplementation = () => {
       <Button
         onClick={handleImportClick}
         disabled={isImportingHoldings}
-        className="rounded-xl px-4 py-4 shadow-md transition-all duration-200 hover:shadow-lg"
+        className="rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-4 shadow-md transition-all duration-200 hover:shadow-lg text-xs sm:text-sm w-full sm:w-auto"
         variant="outline"
       >
-        <Upload className="mr-2 h-4 w-4" />
+        <Upload className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
         {isImportingHoldings ? 'Importerar...' : 'Importera från CSV'}
       </Button>
     </>
@@ -287,16 +287,16 @@ const PortfolioImplementation = () => {
       <LoginPromptModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
       
       <div className="min-h-0 bg-gradient-to-br from-background to-secondary/5">
-         <div className="mx-auto w-full max-w-7xl space-y-8 sm:space-y-10 lg:space-y-12 px-4 pb-8 sm:px-6 sm:pb-12 lg:px-8 lg:pb-16">
+         <div className="mx-auto w-full max-w-7xl space-y-4 sm:space-y-6 md:space-y-8 lg:space-y-12 px-3 sm:px-4 md:px-6 pb-6 sm:pb-8 md:pb-12 lg:px-8 lg:pb-16">
           {/* Page Header */}
-          <section className="rounded-3xl border border-border/60 bg-card/70 px-6 py-8 text-center shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:px-10 sm:py-12">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 sm:h-14 sm:w-14">
-                <Brain className="h-6 w-6 text-primary" />
+          <section className="rounded-2xl sm:rounded-3xl border border-border/60 bg-card/70 px-4 sm:px-6 md:px-10 py-6 sm:py-8 md:py-12 text-center shadow-sm supports-[backdrop-filter]:backdrop-blur-sm">
+              <div className="mx-auto mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 items-center justify-center rounded-xl sm:rounded-2xl bg-primary/10">
+                <Brain className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 text-primary" />
               </div>
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-foreground px-2">
                 {t('portfolio.title')}
               </h1>
-              <p className="mx-auto mt-3 max-w-2xl text-base text-muted-foreground sm:text-lg">
+              <p className="mx-auto mt-2 sm:mt-3 max-w-2xl text-sm sm:text-base md:text-lg text-muted-foreground px-2">
                 {t('portfolio.subtitle')}
               </p>
           </section>
@@ -308,32 +308,32 @@ const PortfolioImplementation = () => {
           <PortfolioValueCards totalPortfolioValue={totalPortfolioValue} totalInvestedValue={investedValue} totalCashValue={totalCash} loading={loading} />
 
           {/* Risk Profile Required Alert */}
-          {user && !riskProfile && <div className="bg-amber-50/70 dark:bg-amber-950/20 backdrop-blur-xl border border-amber-200/50 dark:border-amber-800/50 rounded-3xl p-8 shadow-xl">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
-                      <AlertCircle className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+          {user && !riskProfile && <div className="bg-amber-50/70 dark:bg-amber-950/20 backdrop-blur-xl border border-amber-200/50 dark:border-amber-800/50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
+                  <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center flex-shrink-0">
+                      <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 dark:text-amber-400" />
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-amber-800 dark:text-amber-200 mb-1">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-sm sm:text-base font-semibold text-amber-800 dark:text-amber-200 mb-1 break-words">
                         {t('portfolio.riskProfileRequired')}
                       </h3>
-                      <p className="text-amber-700 dark:text-amber-300">
+                      <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-300 break-words">
                         {t('portfolio.riskProfileRequiredDesc')}
                       </p>
                     </div>
                   </div>
-                  <Button onClick={() => navigate('/portfolio-advisor')} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl px-6 py-3 shadow-lg hover:shadow-xl transition-all duration-200">
-                    <User className="w-4 h-4 mr-2" />
+                  <Button onClick={() => navigate('/portfolio-advisor')} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl sm:rounded-2xl px-4 sm:px-6 py-2 sm:py-3 shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm w-full sm:w-auto">
+                    <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                     {t('portfolio.createProfile.button')}
                   </Button>
                 </div>
               </div>}
 
           {/* Portfolio Overview & Community */}
-          <div className="space-y-4 sm:space-y-6 lg:space-y-8">
-            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
+          <div className="space-y-3 sm:space-y-4 md:space-y-6 lg:space-y-8">
+            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
               <PortfolioOverview
                 portfolio={activePortfolio}
                 onQuickChat={handleQuickChat}
@@ -342,8 +342,8 @@ const PortfolioImplementation = () => {
               />
             </div>
 
-            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
+            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
               <CommunityRecommendations />
             </div>
           </div>

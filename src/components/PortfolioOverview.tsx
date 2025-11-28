@@ -257,30 +257,30 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
 
   // Show login prompt if user is not authenticated
   if (!user) {
-    return <div className="space-y-6">
+    return <div className="space-y-4 sm:space-y-6">
         {/* User's Current Holdings with integrated prices and cash management */}
         <UserHoldingsManager importControls={importControls} />
 
         {/* Sector Exposure - Login Required */}
-        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-              <Building2 className="w-5 h-5 text-orange-600" />
-              Sektorexponering
+        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg sm:rounded-xl">
+          <CardHeader className="pb-3 sm:pb-4 p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg font-semibold">
+              <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 flex-shrink-0" />
+              <span className="break-words">Sektorexponering</span>
             </CardTitle>
-            <CardDescription className="text-sm text-muted-foreground">
+            <CardDescription className="text-xs sm:text-sm text-muted-foreground">
               Fördelning över olika industrisektorer
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="text-center py-12">
-              <LogIn className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2 text-foreground">Inloggning krävs</h3>
-              <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+          <CardContent className="p-4 sm:p-6 pt-0">
+            <div className="text-center py-8 sm:py-12">
+              <LogIn className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 opacity-50 text-muted-foreground" />
+              <h3 className="text-base sm:text-lg font-medium mb-2 text-foreground">Inloggning krävs</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 max-w-sm mx-auto px-2">
                 Logga in för att se din sektorfördelning och portföljanalys
               </p>
-              <Button onClick={() => navigate('/auth')} className="bg-primary hover:bg-primary/90">
-                <LogIn className="w-4 h-4 mr-2" />
+              <Button onClick={() => navigate('/auth')} className="bg-primary hover:bg-primary/90 text-xs sm:text-sm w-full sm:w-auto">
+                <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                 Logga in
               </Button>
             </div>
@@ -288,29 +288,29 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </Card>
 
         {/* AI-Recommended Holdings - Login Required */}
-        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
-          <CardHeader className="pb-4">
+        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg sm:rounded-xl">
+          <CardHeader className="pb-3 sm:pb-4 p-4 sm:p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  <Brain className="w-5 h-5 text-purple-600" />
-                  AI-Rekommenderade Innehav
+              <div className="min-w-0 flex-1">
+                <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                  <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 flex-shrink-0" />
+                  <span className="break-words">AI-Rekommenderade Innehav</span>
                 </CardTitle>
-                <CardDescription className="text-sm text-muted-foreground mt-1">
+                <CardDescription className="text-xs sm:text-sm text-muted-foreground mt-1">
                   Aktier som AI-advisorn rekommenderar för din portfölj
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-center py-12">
-              <LogIn className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2 text-foreground">Inloggning krävs</h3>
-              <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+          <CardContent className="p-4 sm:p-6 pt-0">
+            <div className="text-center py-8 sm:py-12">
+              <LogIn className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 opacity-50 text-muted-foreground" />
+              <h3 className="text-base sm:text-lg font-medium mb-2 text-foreground">Inloggning krävs</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 max-w-sm mx-auto px-2">
                 Logga in för att få personliga AI-rekommendationer för din portfölj
               </p>
-              <Button onClick={() => navigate('/auth')} className="bg-primary hover:bg-primary/90">
-                <LogIn className="w-4 h-4 mr-2" />
+              <Button onClick={() => navigate('/auth')} className="bg-primary hover:bg-primary/90 text-xs sm:text-sm w-full sm:w-auto">
+                <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                 Logga in
               </Button>
             </div>
@@ -318,29 +318,29 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </Card>
 
         {/* AI Insights - Login Required */}
-        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
-          <CardHeader className="pb-4">
+        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg sm:rounded-xl">
+          <CardHeader className="pb-3 sm:pb-4 p-4 sm:p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-                  <Brain className="w-5 h-5 text-purple-600" />
-                  AI-insikter och rekommendationer
+              <div className="min-w-0 flex-1">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg font-semibold">
+                  <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 flex-shrink-0" />
+                  <span className="break-words">AI-insikter och rekommendationer</span>
                 </CardTitle>
-                <CardDescription className="text-sm text-muted-foreground mt-1">
+                <CardDescription className="text-xs sm:text-sm text-muted-foreground mt-1">
                   Personaliserade förslag baserat på din portfölj och marknadstrender
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-center py-12">
-              <LogIn className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2 text-foreground">Inloggning krävs</h3>
-              <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+          <CardContent className="p-4 sm:p-6 pt-0">
+            <div className="text-center py-8 sm:py-12">
+              <LogIn className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 opacity-50 text-muted-foreground" />
+              <h3 className="text-base sm:text-lg font-medium mb-2 text-foreground">Inloggning krävs</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 max-w-sm mx-auto px-2">
                 Logga in för att få personliga AI-insikter och investeringsförslag
               </p>
-              <Button onClick={() => navigate('/auth')} className="bg-primary hover:bg-primary/90">
-                <LogIn className="w-4 h-4 mr-2" />
+              <Button onClick={() => navigate('/auth')} className="bg-primary hover:bg-primary/90 text-xs sm:text-sm w-full sm:w-auto">
+                <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                 Logga in
               </Button>
             </div>
@@ -348,25 +348,25 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </Card>
 
         {/* Quick Actions - Login Required */}
-        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-              <Zap className="w-5 h-5 text-blue-600" />
-              Snabbåtgärder för portfölj
+        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg sm:rounded-xl">
+          <CardHeader className="pb-3 sm:pb-4 p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg font-semibold">
+              <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+              <span className="break-words">Snabbåtgärder för portfölj</span>
             </CardTitle>
-            <CardDescription className="text-sm text-muted-foreground mt-1">
+            <CardDescription className="text-xs sm:text-sm text-muted-foreground mt-1">
               AI-assisterade funktioner för att optimera din portfölj
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="text-center py-12">
-              <LogIn className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2 text-foreground">Inloggning krävs</h3>
-              <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+          <CardContent className="p-4 sm:p-6 pt-0">
+            <div className="text-center py-8 sm:py-12">
+              <LogIn className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 opacity-50 text-muted-foreground" />
+              <h3 className="text-base sm:text-lg font-medium mb-2 text-foreground">Inloggning krävs</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 max-w-sm mx-auto px-2">
                 Logga in för att få tillgång till AI-assisterade portföljfunktioner
               </p>
-              <Button onClick={() => navigate('/auth')} className="bg-primary hover:bg-primary/90">
-                <LogIn className="w-4 h-4 mr-2" />
+              <Button onClick={() => navigate('/auth')} className="bg-primary hover:bg-primary/90 text-xs sm:text-sm w-full sm:w-auto">
+                <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                 Logga in
               </Button>
             </div>
@@ -375,7 +375,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       </div>;
   }
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
       <UserHoldingsManager sectorData={exposureData.sectorData} importControls={importControls} />
 
       <AIRecommendations />
@@ -387,43 +387,43 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
 
 
       {/* AI Insights from Database - NOW FIFTH */}
-      {insights.length > 0 && <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
-          <CardHeader className="pb-4">
+      {insights.length > 0 && <Card className="border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg sm:rounded-xl">
+          <CardHeader className="pb-3 sm:pb-4 p-4 sm:p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-                  <Brain className="w-5 h-5 text-purple-600" />
-                  AI-insikter och rekommendationer
-                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 ml-2">
+              <div className="min-w-0 flex-1">
+                <CardTitle className="flex flex-wrap items-center gap-2 text-base sm:text-lg font-semibold">
+                  <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 flex-shrink-0" />
+                  <span className="break-words">AI-insikter och rekommendationer</span>
+                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-[10px] xs:text-xs">
                     {insights.filter(i => !i.is_read).length} nya
                   </Badge>
                 </CardTitle>
-                <CardDescription className="text-sm text-muted-foreground mt-1">
+                <CardDescription className="text-xs sm:text-sm text-muted-foreground mt-1">
                   Personaliserade förslag baserat på din portfölj och marknadstrender
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {insights.slice(0, 5).map(insight => <div key={insight.id} className={`p-4 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${getInsightColor(insight.severity)} ${!insight.is_read ? 'ring-2 ring-purple-200' : ''}`} onClick={() => handleInsightAction(insight)}>
-                  <div className="flex items-start gap-3">
-                    {getInsightIcon(insight.insight_type)}
+          <CardContent className="p-4 sm:p-6 pt-0">
+            <div className="space-y-3 sm:space-y-4">
+              {insights.slice(0, 5).map(insight => <div key={insight.id} className={`p-3 sm:p-4 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${getInsightColor(insight.severity)} ${!insight.is_read ? 'ring-2 ring-purple-200' : ''}`} onClick={() => handleInsightAction(insight)}>
+                  <div className="flex items-start gap-2 sm:gap-3">
+                    <div className="flex-shrink-0 mt-0.5">{getInsightIcon(insight.insight_type)}</div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-medium text-sm">{insight.title}</h4>
-                        {!insight.is_read && <Badge variant="secondary" className="text-xs">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
+                        <h4 className="font-medium text-xs sm:text-sm break-words">{insight.title}</h4>
+                        {!insight.is_read && <Badge variant="secondary" className="text-[10px] xs:text-xs">
                             Ny
                           </Badge>}
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-[10px] xs:text-xs">
                           {insight.severity}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
+                      <p className="text-[10px] xs:text-xs text-muted-foreground leading-relaxed break-words">
                         {insight.description}
                       </p>
                       {insight.action_required && <div className="mt-2">
-                          <Badge variant="destructive" className="text-xs">
+                          <Badge variant="destructive" className="text-[10px] xs:text-xs">
                             Åtgärd krävs
                           </Badge>
                         </div>}
