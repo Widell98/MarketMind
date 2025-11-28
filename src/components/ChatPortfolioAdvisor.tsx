@@ -726,10 +726,9 @@ const ChatPortfolioAdvisor = () => {
             typeof priceData?.price === 'number' && Number.isFinite(priceData.price) && priceData.price > 0
               ? priceData.price
               : null;
-          const resolvedCurrency =
-            typeof priceData?.currency === 'string' && priceData.currency.trim().length > 0
-              ? priceData.currency.trim().toUpperCase()
-              : null;
+       const resolvedCurrency = holding.currencyManuallyEdited 
+  ? holding.currency?.trim()?.toUpperCase() 
+  : (ticker?.currency?.trim()?.toUpperCase() || holding.currency?.trim()?.toUpperCase() || 'SEK');
 
           if (resolvedPrice !== null) {
             setFinnhubPriceCache(prev => {
