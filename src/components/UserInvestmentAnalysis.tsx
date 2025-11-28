@@ -894,106 +894,53 @@ const UserInvestmentAnalysis = ({
 
       {advisorPlan && (
         <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-blue-50/30 dark:from-slate-900/90 dark:to-blue-900/10 backdrop-blur-sm border border-blue-200/30 dark:border-blue-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
-          <CardHeader className="pb-8 pt-8">
+          <CardHeader className="pb-6 pt-8">
             <CardTitle className="flex items-center gap-4 text-2xl font-bold">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center shadow-inner border border-blue-200/30 dark:border-blue-700/30">
                 <Brain className="w-7 h-7 text-transparent bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text" />
               </div>
-              <span className="text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text">
-                {isAnalysis ? 'Senaste Portföljanalys' : 'Senaste Portföljgenerering'}
-              </span>
-              <Badge className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-transparent bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text border-blue-300/30 dark:border-blue-700/30 rounded-2xl font-semibold px-4 py-2 shadow-sm">
-                {isAnalysis ? 'Portföljanalys' : 'Personlig Strategi'}
-              </Badge>
+              <div className="flex-1">
+                <div className="text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text">
+                  {isAnalysis ? 'Senaste Portföljanalys' : 'Senaste Portföljgenerering'}
+                </div>
+                {advisorPlan.actionSummary && (
+                  <p className="text-lg font-medium text-slate-700 dark:text-slate-300 mt-2">
+                    {advisorPlan.actionSummary}
+                  </p>
+                )}
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-8">
-            {advisorPlan.actionSummary && (
-              <div className="mb-6 p-6 bg-gradient-to-r from-white/60 to-blue-50/20 dark:from-slate-800/60 dark:to-blue-900/10 rounded-2xl border border-blue-200/20 dark:border-blue-800/20 shadow-sm backdrop-blur-sm">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">
-                  {isAnalysis ? 'Sammanfattning' : 'Handlingsplan'}
-                </h3>
-                <p className="text-base leading-relaxed text-slate-700 dark:text-slate-300">
-                  {advisorPlan.actionSummary}
-                </p>
-              </div>
-            )}
-            
-            {advisorPlan.riskAlignment && (
-              <div className="mb-6 p-6 bg-gradient-to-r from-white/60 to-blue-50/20 dark:from-slate-800/60 dark:to-blue-900/10 rounded-2xl border border-blue-200/20 dark:border-blue-800/20 shadow-sm backdrop-blur-sm">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">
-                  {isAnalysis ? 'Portföljanalys' : 'Risk & Allokering'}
-                </h3>
-                <div className="text-base leading-relaxed text-slate-700 dark:text-slate-300 prose prose-lg max-w-none">
-                  {formatAIStrategy(advisorPlan.riskAlignment)}
-                </div>
-              </div>
-            )}
-
-            {!isAnalysis && advisorPlan.assets && advisorPlan.assets.length > 0 && (
-              <div className="mb-6 p-6 bg-gradient-to-r from-white/60 to-blue-50/20 dark:from-slate-800/60 dark:to-blue-900/10 rounded-2xl border border-blue-200/20 dark:border-blue-800/20 shadow-sm backdrop-blur-sm">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-                  Rekommenderade Innehav
-                </h3>
-                <div className="space-y-3">
-                  {advisorPlan.assets.map((asset, index) => (
-                    <div key={index} className="p-4 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h4 className="font-semibold text-slate-900 dark:text-slate-100">
-                            {asset.name}
-                            {asset.ticker && (
-                              <span className="ml-2 text-sm text-slate-500 dark:text-slate-400">
-                                ({asset.ticker})
-                              </span>
-                            )}
-                          </h4>
-                          {asset.riskRole && (
-                            <Badge className="mt-1 text-xs">
-                              {asset.riskRole}
-                            </Badge>
-                          )}
-                        </div>
-                        {asset.allocationPercent !== undefined && (
-                          <span className="text-lg font-bold text-primary">
-                            {asset.allocationPercent}%
-                          </span>
-                        )}
-                      </div>
-                      {asset.rationale && (
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
-                          {asset.rationale}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {!isAnalysis && advisorPlan.nextSteps && advisorPlan.nextSteps.length > 0 && (
-              <div className="mb-6 p-6 bg-gradient-to-r from-white/60 to-blue-50/20 dark:from-slate-800/60 dark:to-blue-900/10 rounded-2xl border border-blue-200/20 dark:border-blue-800/20 shadow-sm backdrop-blur-sm">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-                  Nästa Steg
-                </h3>
-                <ul className="space-y-2">
-                  {advisorPlan.nextSteps.map((step, index) => (
-                    <li key={index} className="flex items-start gap-3 text-base text-slate-700 dark:text-slate-300">
-                      <CheckCircle className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                      <span>{step}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {advisorPlan.disclaimer && (
-              <div className="mt-6 p-4 bg-slate-100/50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
-                <p className="text-xs text-slate-600 dark:text-slate-400 italic">
-                  {advisorPlan.disclaimer}
-                </p>
-              </div>
-            )}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Button
+                onClick={() => navigate('/ai-chatt', { 
+                  state: { 
+                    createNewSession: true,
+                    sessionName: 'Portföljanalys',
+                    initialMessage: 'Analysera min nuvarande portfölj och ge mig en detaljerad bedömning av allokering, risknivå och diversifiering.'
+                  } 
+                })}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl px-6 py-3 font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                <Brain className="w-5 h-5 mr-2" />
+                Analysera portfölj
+              </Button>
+              <Button
+                onClick={() => navigate('/ai-chatt', { 
+                  state: { 
+                    createNewSession: true,
+                    sessionName: 'Förbättra portfölj',
+                    initialMessage: 'Hjälp mig förbättra min portfölj. Ge mig konkreta förslag på hur jag kan optimera allokeringen, minska risker och öka diversifieringen.'
+                  } 
+                })}
+                variant="outline"
+                className="flex-1 border-2 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl px-6 py-3 font-semibold transition-all duration-300"
+              >
+                <TrendingUp className="w-5 h-5 mr-2" />
+                Förbättra innehav
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
