@@ -2093,35 +2093,40 @@ const ChatPortfolioAdvisor = () => {
       setPortfolioResult(result);
       setIsComplete(true);
 
-      const isOptimizationResult = result.mode === 'optimize';
-      const shouldPersistRecommendations = !isOptimizationResult;
+    // --- KORREKT LOGIK FÖR ATT KONTROLLERA REGISTRERINGSLÄGE ---
+      // Vi använder 'registration' mode från backenden
+      const isRegistrationMode = result.mode === 'registration'; 
+      const shouldPersistNewRecommendations = !isRegistrationMode; 
+      // -----------------------------------------------------------
 
-      // Extract and save AI recommendations from the response
-      if (shouldPersistRecommendations && result.aiResponse) {
-        await saveAIRecommendationsAsHoldings(result.aiResponse);
+      // Save user holdings to database if they exist (holding_type: 'stock' - detta är korrekt)
+      if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
+        await saveUserHoldings(conversationData.currentHoldings);
       }
+      
+      // Sparar nya rekommendationer BARA om vi inte är i registreringsläge
+      if (shouldPersistNewRecommendations) { // Denna check är nu avgörande
+        // Extract and save AI recommendations from the raw text response
+        if (result.aiResponse) {
+          await saveAIRecommendationsAsHoldings(result.aiResponse);
+        }
 
-      // Also save portfolio recommended stocks if they exist
-      if (
-        shouldPersistRecommendations &&
-        result.portfolio?.recommended_stocks &&
-        Array.isArray(result.portfolio.recommended_stocks) &&
-        result.portfolio.recommended_stocks.length > 0
-      ) {
-        await saveRecommendedStocks(result.portfolio.recommended_stocks);
+        // Also save portfolio recommended stocks if they exist (structured JSON)
+        if (
+          result.portfolio?.recommended_stocks &&
+          Array.isArray(result.portfolio.recommended_stocks) &&
+          result.portfolio.recommended_stocks.length > 0
+        ) {
+          await saveRecommendedStocks(result.portfolio.recommended_stocks);
+        }
       }
 
       await refetch();
 
-    setTimeout(() => {
-        if (isOptimizationResult) { // Detta är samma som isOptimizationFlow baserat på resultatet
-          // --- HÄR ÄNDRAR VI BEKRÄFTELSEN ---
+      setTimeout(() => {
+        // Justera meddelandet till användaren
+        if (isRegistrationMode) {
           addBotMessage('✅ Din portfölj är nu registrerad och analyserad. Här är en sammanfattning av ditt nuvarande läge:');
-          
-          // Om vi vill vara extra tydliga med att inga åtgärder krävs:
-          if (result.plan?.nextSteps?.length > 0) {
-             // AI:n har genererat next_steps (som nu är "Portföljen är sparad" etc enligt backend-ändringen)
-          }
         } else {
           addBotMessage('🎉 Din personliga portföljstrategi är klar! Här är mina rekommendationer:');
         }
