@@ -2566,64 +2566,119 @@ const ChatPortfolioAdvisor = () => {
         ? plan.nextSteps.slice(0, 2)
         : genericNextSteps;
 
-      // Format text with proper line breaks
+      // Format text with proper line breaks and markdown-like formatting
       const formatText = (text: string) => {
         return text.split('\n').filter(line => line.trim().length > 0);
       };
 
+      // Enhanced text formatting with support for bold, lists, etc.
+      const formatRichText = (text: string) => {
+        // Split by paragraphs
+        const paragraphs = text.split('\n\n').filter(p => p.trim().length > 0);
+        return paragraphs.map((para, idx) => {
+          // Check if it's a list item
+          if (para.trim().startsWith('-') || para.trim().startsWith('•')) {
+            const items = para.split(/\n(?=-|•)/).map(item => item.replace(/^[-•]\s*/, '').trim());
+            return { type: 'list', items, key: `list-${idx}` };
+          }
+          // Check for bold text (**text**)
+          const parts = para.split(/(\*\*[^*]+\*\*)/g);
+          return { type: 'paragraph', parts, key: `para-${idx}` };
+        });
+      };
+
+      const renderRichText = (content: Array<{ type: string; parts?: string[]; items?: string[]; key: string }>) => {
+        return content.map((item) => {
+          if (item.type === 'list') {
+            return (
+              <ul key={item.key} className="space-y-2 mt-3 list-none pl-0">
+                {item.items?.map((listItem, idx) => (
+                  <li key={idx} className="flex items-start gap-3">
+                    <span className="text-primary mt-1.5 text-lg leading-none flex-shrink-0">•</span>
+                    <span className="flex-1 leading-7 text-foreground/90">{listItem}</span>
+                  </li>
+                ))}
+              </ul>
+            );
+          }
+          return (
+            <p key={item.key} className="leading-7 text-foreground/90 mb-4 last:mb-0">
+              {item.parts?.map((part, partIdx) => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                  const boldText = part.slice(2, -2);
+                  return <strong key={partIdx} className="font-semibold text-foreground">{boldText}</strong>;
+                }
+                return <span key={partIdx}>{part}</span>;
+              })}
+            </p>
+          );
+        });
+      };
+
       return (
-        <div className="space-y-5 text-base leading-relaxed text-foreground max-w-5xl mx-auto w-full">
-          {/* Main summary box */}
-          <div className="rounded-lg border-2 border-border/80 bg-card p-7 shadow-md">
+        <div className="space-y-6 text-base leading-relaxed text-foreground max-w-5xl mx-auto w-full animate-in fade-in-50 slide-in-from-bottom-4 duration-500">
+          {/* Main summary box - Enhanced */}
+          <div className="rounded-xl border-2 border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 p-8 shadow-lg backdrop-blur-sm">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center border-2 border-primary/30 shadow-sm">
+                <TrendingUp className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-foreground">Portföljsammanfattning</h3>
+                <p className="text-sm text-muted-foreground mt-1">Din personliga analys</p>
+              </div>
+            </div>
+            
+            <div className="mb-6 pb-6 border-b border-border/50">
+              <p className="text-xl font-semibold text-foreground leading-8 bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
+                {riskProfileText}
+              </p>
+            </div>
+            
+            <div className="prose prose-sm max-w-none dark:prose-invert">
+              {renderRichText(formatRichText(portfolioDescription))}
+            </div>
+          </div>
+
+          {/* Why section - Enhanced */}
+          <div className="rounded-xl border border-primary/10 bg-gradient-to-br from-card/80 to-card/40 p-7 shadow-md backdrop-blur-sm">
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
-                <span className="text-lg">🔵</span>
+              <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+                <Brain className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               </div>
-              <h3 className="text-xl font-semibold text-foreground">Portföljsammanfattning</h3>
+              <p className="text-sm font-bold uppercase tracking-wider text-foreground">Varför denna bedömning?</p>
             </div>
-            <p className="text-lg font-semibold text-foreground mb-5 leading-7">{riskProfileText}</p>
-            <div className="space-y-3 text-base leading-8 text-foreground/90">
-              {formatText(portfolioDescription).map((line, idx) => (
-                <p key={idx} className="leading-8">{line}</p>
-              ))}
+            <div className="pl-2">
+              {renderRichText(formatRichText(whyText))}
             </div>
           </div>
 
-          {/* Why section */}
-          <div className="rounded-lg border border-border/60 bg-card/60 p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-xl">💡</span>
-              <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Varför denna bedömning?</p>
-            </div>
-            <div className="space-y-3 text-base leading-8 text-foreground/90 pl-8">
-              {formatText(whyText).map((line, idx) => (
-                <p key={idx} className="leading-8">{line}</p>
-              ))}
-            </div>
-          </div>
-
-          {/* Next steps */}
+          {/* Next steps - Enhanced */}
           {finalNextSteps.length > 0 && (
-            <div className="rounded-lg border border-border/60 bg-card/60 p-6 shadow-sm">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-xl">⚠️</span>
-                <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Prioriterade nästa steg</p>
+            <div className="rounded-xl border border-primary/10 bg-gradient-to-br from-card/80 to-card/40 p-7 shadow-md backdrop-blur-sm">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                  <AlertTriangle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <p className="text-sm font-bold uppercase tracking-wider text-foreground">Prioriterade nästa steg</p>
               </div>
-              <ul className="space-y-3 text-base leading-8 text-foreground/90 list-none pl-8">
+              <ul className="space-y-4 text-base leading-7 text-foreground/90 list-none pl-2">
                 {finalNextSteps.map((step, index) => (
-                  <li key={`step-${index}`} className="flex items-start gap-3">
-                    <span className="text-muted-foreground mt-2 text-lg leading-none">•</span>
-                    <span className="flex-1 leading-8">{step}</span>
+                  <li key={`step-${index}`} className="flex items-start gap-4 group">
+                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center text-sm font-bold text-primary mt-0.5 group-hover:bg-primary/20 transition-colors">
+                      {index + 1}
+                    </div>
+                    <span className="flex-1 leading-7 pt-0.5">{step}</span>
                   </li>
                 ))}
               </ul>
             </div>
           )}
 
-          {/* Disclaimer */}
-          <div className="rounded-lg border-t border-border/40 pt-5 mt-3">
-            <p className="text-sm text-muted-foreground/80 italic text-center leading-6">
-              *Analysen är informationsbaserad och ej rådgivning.*
+          {/* Disclaimer - Enhanced */}
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 mt-2">
+            <p className="text-xs text-amber-700 dark:text-amber-400 font-medium text-center leading-5">
+              ⚠️ Analysen är informationsbaserad och ej rådgivning. Investeringar innebär risk.
             </p>
           </div>
 
@@ -2640,53 +2695,63 @@ const ChatPortfolioAdvisor = () => {
       );
     }
 
-    // Original format for new portfolio recommendations
+    // Original format for new portfolio recommendations - Enhanced
     return (
-      <div className="space-y-5 text-sm leading-relaxed text-foreground">
-        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-start gap-3">
-              <div className="rounded-lg bg-primary text-primary-foreground p-2 shadow-sm">
-                <Sparkles className="h-5 w-5" />
+      <div className="space-y-6 text-base leading-relaxed text-foreground animate-in fade-in-50 slide-in-from-bottom-4 duration-500">
+        {/* Main summary card - Enhanced */}
+        <div className="rounded-xl border-2 border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-card p-6 shadow-lg backdrop-blur-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-start gap-4 flex-1">
+              <div className="rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground p-3 shadow-md">
+                <Sparkles className="h-6 w-6" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2 flex-1">
                 {plan.actionSummary && (
-                  <p className="text-base font-semibold text-foreground">{plan.actionSummary}</p>
+                  <p className="text-xl font-bold text-foreground leading-7">{plan.actionSummary}</p>
                 )}
                 {plan.riskAlignment && (
-                  <p className="text-sm text-primary/80">{plan.riskAlignment}</p>
+                  <p className="text-sm leading-6 text-foreground/80">{plan.riskAlignment}</p>
                 )}
               </div>
             </div>
-            <div className="flex flex-wrap gap-2 text-xs font-medium uppercase tracking-wide text-primary">
-              <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
-                Ny portföljplan
+            <div className="flex flex-wrap gap-2 sm:ml-4">
+              <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary font-semibold px-3 py-1.5">
+                ✨ Ny portföljplan
               </Badge>
             </div>
           </div>
         </div>
 
-        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-primary">Varför denna bedömning?</p>
-          <p className="mt-1 text-sm leading-6 text-foreground">{detailedReasoning}</p>
+        {/* Why section - Enhanced */}
+        <div className="rounded-xl border border-primary/10 bg-gradient-to-br from-card/80 to-card/40 p-6 shadow-md backdrop-blur-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+              <Brain className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <p className="text-sm font-bold uppercase tracking-wider text-foreground">Varför denna bedömning?</p>
+          </div>
+          <p className="text-base leading-7 text-foreground/90 pl-12">{detailedReasoning}</p>
         </div>
 
         {displayNextSteps.length > 0 && (
-          <Card className="border-border/80 bg-card/70 shadow-sm">
-            <CardHeader className="flex flex-row items-start gap-3 space-y-0 pb-3">
-              <div className="rounded-md bg-amber-50 p-2 text-amber-700">
-                <AlertTriangle className="h-4 w-4" />
+          <Card className="border-2 border-primary/10 bg-gradient-to-br from-card/90 to-card/50 shadow-lg backdrop-blur-sm">
+            <CardHeader className="flex flex-row items-start gap-4 space-y-0 pb-4">
+              <div className="rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 p-3 border border-blue-500/20">
+                <AlertTriangle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Så går du vidare</p>
-                <CardTitle className="text-base font-semibold text-foreground">Prioriterade nästa steg</CardTitle>
+              <div className="flex-1">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Så går du vidare</p>
+                <CardTitle className="text-xl font-bold text-foreground">Prioriterade nästa steg</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="pt-0">
-              <ol className="mt-1 space-y-2 list-decimal list-inside text-base leading-7">
+            <CardContent className="pt-0 pl-4">
+              <ol className="space-y-3 list-none text-base leading-7">
                 {displayNextSteps.map((step, index) => (
-                  <li key={`step-${index}`} className="text-foreground">
-                    {step}
+                  <li key={`step-${index}`} className="flex items-start gap-4 group">
+                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center text-sm font-bold text-primary mt-0.5 group-hover:bg-primary/20 transition-colors">
+                      {index + 1}
+                    </div>
+                    <span className="flex-1 text-foreground pt-0.5">{step}</span>
                   </li>
                 ))}
               </ol>
@@ -2695,14 +2760,19 @@ const ChatPortfolioAdvisor = () => {
         )}
 
         {plan.assets.length > 0 && !isOptimization && (
-          <div className="space-y-3 rounded-lg border border-border/80 bg-background/50 p-3">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Föreslagna åtgärder per tillgång</h4>
-              <Badge variant="secondary" className="text-[10px]">
+          <div className="space-y-4 rounded-xl border-2 border-primary/10 bg-gradient-to-br from-card/90 to-card/50 p-6 shadow-lg backdrop-blur-sm">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                </div>
+                <h4 className="text-base font-bold uppercase tracking-wide text-foreground">Föreslagna åtgärder per tillgång</h4>
+              </div>
+              <Badge variant="secondary" className="text-xs font-semibold px-3 py-1">
                 {plan.assets.length} förslag
               </Badge>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               {plan.assets.map((_asset, index) => {
                 const displayAsset = assetsToDisplay[index];
                 const actionLabel = displayAsset.actionType ? getActionLabel(displayAsset.actionType) : null;
@@ -2710,51 +2780,51 @@ const ChatPortfolioAdvisor = () => {
                 const changeDisplay = formatSignedPercent(displayAsset.changePercent);
 
                 return (
-                  <div key={`${displayAsset.name}-${index}`} className="flex h-full flex-col gap-3 rounded-xl border bg-card/70 p-4 shadow-sm">
+                  <div key={`${displayAsset.name}-${index}`} className="group flex h-full flex-col gap-4 rounded-xl border-2 border-border/60 bg-gradient-to-br from-card to-card/50 p-5 shadow-md hover:shadow-lg hover:border-primary/30 transition-all duration-300">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <p className="text-base font-semibold text-foreground">{displayAsset.name}</p>
+                      <div className="space-y-2 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-lg font-bold text-foreground">{displayAsset.name}</p>
                           {displayAsset.ticker && (
-                            <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                            <Badge variant="outline" className="text-xs uppercase tracking-wide border-primary/30 bg-primary/5 text-primary font-semibold">
                               {displayAsset.ticker}
                             </Badge>
                           )}
                         </div>
                         {displayAsset.riskRole && (
-                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                            Roll i portföljen: {displayAsset.riskRole}
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
+                            Roll: {displayAsset.riskRole}
                           </p>
                         )}
                       </div>
                       <div className="flex flex-col items-end gap-2 text-xs">
                         <div className="flex flex-wrap justify-end gap-1.5">
                           {actionLabel && (
-                            <Badge variant="secondary" className="text-[11px]">
-                              Åtgärd: {actionLabel}
+                            <Badge variant="secondary" className="text-xs font-semibold">
+                              {actionLabel}
                             </Badge>
                           )}
                           {allocationDisplay && !(isOptimization && (!displayAsset.allocationPercent || displayAsset.allocationPercent === 0)) && (
-                            <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">
-                              Vikt: {allocationDisplay}
+                            <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary font-semibold">
+                              {allocationDisplay}
                             </Badge>
                           )}
                           {changeDisplay && (
                             <Badge
                               variant="outline"
-                              className={`${getChangeBadgeClass(displayAsset.changePercent)} border-border/60 bg-background/80`}
+                              className={`${getChangeBadgeClass(displayAsset.changePercent)} border-border/60 bg-background/80 font-semibold`}
                             >
-                              Förändring {changeDisplay}
+                              {changeDisplay}
                             </Badge>
                           )}
                         </div>
                       </div>
                     </div>
                     {displayAsset.rationale && (
-                      <p className="text-sm leading-6 text-muted-foreground">{displayAsset.rationale}</p>
+                      <p className="text-sm leading-6 text-foreground/80 border-t border-border/40 pt-3">{displayAsset.rationale}</p>
                     )}
                     {displayAsset.notes && (
-                      <div className="rounded-md border border-dashed border-border/80 bg-muted/20 p-2 text-xs text-muted-foreground">
+                      <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3 text-xs text-foreground/70 leading-relaxed">
                         {displayAsset.notes}
                       </div>
                     )}
@@ -2766,36 +2836,38 @@ const ChatPortfolioAdvisor = () => {
         )}
 
         {!isOptimization && complementaryIdeas.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <span>Kompletterande idéer som passar din portfölj</span>
+          <div className="space-y-4 rounded-xl border-2 border-primary/10 bg-gradient-to-br from-card/90 to-card/50 p-6 shadow-lg backdrop-blur-sm">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                <Sparkles className="h-5 w-5 text-primary" />
+              </div>
+              <h4 className="text-base font-bold uppercase tracking-wide text-foreground">Kompletterande idéer som passar din portfölj</h4>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               {complementaryIdeas.map((idea, idx) => (
                 <div
                   key={`${idea.name}-${idea.symbol ?? idx}`}
-                  className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-3 shadow-sm"
+                  className="group rounded-xl border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-primary/0 p-4 shadow-sm hover:shadow-md hover:border-primary/50 transition-all duration-300"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-medium text-foreground">{idea.name}</p>
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex-1">
+                      <p className="font-bold text-foreground text-base">{idea.name}</p>
                       {idea.symbol && (
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground">{idea.symbol}</p>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground mt-1 font-medium">{idea.symbol}</p>
                       )}
                     </div>
                     {(() => {
                       const allocationSuggestion = formatPercentValue(idea.allocation);
                       if (!allocationSuggestion) return null;
                       return (
-                        <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">
-                          Förslag: {allocationSuggestion}
+                        <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary font-semibold flex-shrink-0">
+                          {allocationSuggestion}
                         </Badge>
                       );
                     })()}
                   </div>
                   {idea.reasoning && (
-                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{idea.reasoning}</p>
+                    <p className="mt-3 text-sm leading-relaxed text-foreground/80 border-t border-primary/20 pt-3">{idea.reasoning}</p>
                   )}
                 </div>
               ))}
@@ -2804,9 +2876,11 @@ const ChatPortfolioAdvisor = () => {
         )}
 
         {plan.disclaimer && (
-          <p className="text-xs text-muted-foreground italic border-t border-border/60 pt-3">
-            {plan.disclaimer}
-          </p>
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 mt-2">
+            <p className="text-xs text-amber-700 dark:text-amber-400 font-medium text-center leading-5">
+              ⚠️ {plan.disclaimer}
+            </p>
+          </div>
         )}
       </div>
     );
