@@ -272,7 +272,8 @@ serve(async (req) => {
 
   try {
     const { riskProfileId, userId, conversationPrompt, conversationData } = await req.json();
-
+    const hasExistingPortfolio = conversationData?.hasCurrentPortfolio === true || conversationData?.hasCurrentPortfolio === 'yes';
+    
     console.log('Generate portfolio request:', {
       riskProfileId,
       userId,
@@ -529,6 +530,16 @@ serve(async (req) => {
       contextInfo += `\n\nVIKTIGT: Föreslå ALDRIG aktier som användaren redan äger.`;
     }
 
+    if (hasExistingPortfolio && conversationData && typeof conversationData === 'object' && conversationData.currentHoldings) {
+        const holdingsList = conversationData.currentHoldings
+          .map((h: any) => `${h.name} (${h.symbol || 'Saknar ticker'}), Andel: ${h.allocation_percent || 'Ej angiven'}, Köppris: ${h.purchasePrice || 'Ej angivet'} ${h.currency || 'SEK'}`)
+          .join('\n- ');
+          
+        if (holdingsList.length > 0) {
+            contextInfo += `\n\nBEFINTLIGA INNEHAV I PORTFÖLJ SOM SKA REGISTRERAS:\n- ${holdingsList}`;
+        }
+    }
+
     const interestList = (() => {
       if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
         const raw = conversationData as Record<string, unknown>;
@@ -649,8 +660,62 @@ serve(async (req) => {
     const serializedConversationData = conversationData && typeof conversationData === 'object'
       ? JSON.stringify(conversationData, null, 2)
       : '{}';
+    
+// --- BÖRJA ERSÄTTA HÄRIFRÅN ---
+    
+    let systemPrompt = '';
+    let userMessage = '';
 
-    const systemPrompt = `Du är en svensk licensierad och auktoriserad investeringsrådgivare med lång erfarenhet av att skapa skräddarsydda portföljer. Du följer Finansinspektionens regler och MiFID II, prioriterar kundens mål, tidshorisont och riskkapacitet samt kommunicerar tydligt på svenska.
+    const baseRiskProfileSummary = `Riskprofil (sammanfattning):
+- Ålder: ${riskProfile.age || 'Ej angiven'}
+- Årsinkomst: ${riskProfile.annual_income ? riskProfile.annual_income.toLocaleString('sv-SE') + ' SEK' : 'Ej angiven'}
+- Månatligt investeringsbelopp: ${monthlyInvestmentSummary}
+- Risktolerans: ${riskProfile.risk_tolerance || 'Medel'}
+- Investeringsmål: ${riskProfile.investment_goal || 'Långsiktig tillväxt'}
+- Tidshorisont: ${riskProfile.investment_horizon || 'Lång'}
+- Erfarenhet: ${riskProfile.investment_experience || 'Medel'}
+- Riskkomfort: ${riskProfile.risk_comfort_level || 5}/10
+- Intressesektorer: ${riskProfile.sector_interests && riskProfile.sector_interests.length ? riskProfile.sector_interests.join(', ') : 'Ej angivet'}
+- Nuvarande portföljvärde: ${riskProfile.current_portfolio_value ? riskProfile.current_portfolio_value.toLocaleString('sv-SE') + ' SEK' : '0 SEK'}`;
+
+    if (hasExistingPortfolio) {
+      // FALL 1: BEFINTLIG PORTFÖLJ (Registrering)
+      systemPrompt = `Du är en professionell portföljförvaltare. Din uppgift är att REGISTRERA och SAMMANFATTA kundens nuvarande portfölj.
+      
+      VIKTIGT:
+      - Du ska INTE ge förslag på nya aktier.
+      - Du ska INTE föreslå omstrukturering eller försäljning.
+      - Du ska returnera de aktier/innehav som kunden REDAN HAR som "recommended_assets" men med action_type "hold" eller "monitor".
+      - Om kunden inte angivit specifika innehav, ge en generell kommentar om deras strategi baserat på riskprofilen.
+
+      Formatkrav (JSON):
+      {
+        "summary": "En bekräftelse på att portföljen är registrerad samt en kort analys av nuvarande fördelning/risk (ca 3-4 meningar).",
+        "risk_alignment": "Hur nuvarande portfölj verkar stämma överens med deras riskprofil.",
+        "next_steps": ["1. Portföljen är nu sparad.", "2. Följ utvecklingen via översikten.", "3. Återkom om du vill ha konkreta optimeringsförslag i framtiden."],
+        "recommended_assets": [
+          {
+            "name": "Namn på nuvarande innehav",
+            "ticker": "Ticker",
+            "sector": "Sektor",
+            "allocation_percent": "Nuvarande vikt (uppskatta om okänt, totalt 100%)",
+            "rationale": "Kort kommentar om innehavets roll i nuvarande portfölj",
+            "risk_role": "Bas / Tillväxt / Skydd / Kassaflöde",
+            "action_type": "hold"
+          }
+        ],
+        "disclaimer": "Detta är en sammanfattning av din registrerade portfölj."
+      }`;
+
+      userMessage = `Registrera min nuvarande portfölj baserat på datan nedan. Ge inga köpråd, sammanfatta bara läget.
+
+${serializedConversationData}
+
+Svara ENDAST med giltig JSON enligt formatet.`;
+
+    } else {
+      // FALL 2: NY PORTFÖLJ (Rådgivning)
+      systemPrompt = `Du är en svensk licensierad och auktoriserad investeringsrådgivare med lång erfarenhet av att skapa skräddarsydda portföljer. Du följer Finansinspektionens regler och MiFID II, prioriterar kundens mål, tidshorisont och riskkapacitet samt kommunicerar tydligt på svenska.
 
 Tillgänglig klientinformation:
 ${contextInfo}
@@ -695,29 +760,15 @@ Formatkrav:
 - Undvik överdrivna varningar men påminn om risk och att historisk avkastning inte garanterar framtida resultat.
 `;
 
-    const baseRiskProfileSummary = `Riskprofil (sammanfattning):
-- Ålder: ${riskProfile.age || 'Ej angiven'}
-- Årsinkomst: ${riskProfile.annual_income ? riskProfile.annual_income.toLocaleString('sv-SE') + ' SEK' : 'Ej angiven'}
-- Månatligt investeringsbelopp: ${monthlyInvestmentSummary}
-- Risktolerans: ${riskProfile.risk_tolerance || 'Medel'}
-- Investeringsmål: ${riskProfile.investment_goal || 'Långsiktig tillväxt'}
-- Tidshorisont: ${riskProfile.investment_horizon || 'Lång'}
-- Erfarenhet: ${riskProfile.investment_experience || 'Medel'}
-- Riskkomfort: ${riskProfile.risk_comfort_level || 5}/10
-- Intressesektorer: ${riskProfile.sector_interests && riskProfile.sector_interests.length ? riskProfile.sector_interests.join(', ') : 'Ej angivet'}
-- Nuvarande portföljvärde: ${riskProfile.current_portfolio_value ? riskProfile.current_portfolio_value.toLocaleString('sv-SE') + ' SEK' : '0 SEK'}`;
-
-    const userMessage = `Skapa en personlig portfölj baserad på följande användardata:
+      userMessage = `Skapa en personlig portfölj baserad på följande användardata:
 
 ${serializedConversationData}
 
 Tänk särskilt på:
-
 Risktolerans: ${riskToleranceSummary}
 Investeringsmål: ${investmentGoalSummary}
 Tidshorisont: ${horizonSummary}
 Intressen/Sektorer: ${interestList}
-Mest intresserad av: ${preferredAssets}
 Tillgängligt kapital: ${availableCapitalSummary}
 Månatligt investeringsbelopp: ${monthlyInvestmentSummary}
 Erfarenhetsnivå: ${experienceSummary}
@@ -730,7 +781,9 @@ Erfarenhetsnivå: ${experienceSummary}
 - Om användaren är aggressiv → inkludera tillväxtaktier, krypto och innovativa ETF:er.
 
 Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerställ att all text är på svenska.`;
+    }
 
+    // --- SLUTA ERSÄTTA HÄR (innan 'const messages = ...') ---
     const messages: Array<{ role: 'system' | 'user'; content: string }> = [
       { role: 'system', content: systemPrompt }
     ];
@@ -888,7 +941,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
 
     console.log('Returning response with normalized plan:', normalizedResponse.substring(0, 200));
 
-    return jsonResponse({
+   const responsePayload: Record<string, any> = {
       success: true,
       portfolio: portfolio,
       aiRecommendations: normalizedResponse,
@@ -896,9 +949,10 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
       aiResponseRaw: aiRecommendationsRaw,
       plan: structuredPlan,
       confidence: calculateConfidence(recommendedStocks, riskProfile),
-      recommendedStocks: recommendedStocks
-    });
-
+      recommendedStocks: recommendedStocks,
+      mode: hasExistingPortfolio ? 'registration' : 'new' // Lägger till mode-flagga
+    };
+  return jsonResponse(responsePayload);
   } catch (error) {
     console.error('Error in generate-portfolio function:', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
