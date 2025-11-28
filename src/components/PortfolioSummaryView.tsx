@@ -70,38 +70,62 @@ const PortfolioSummaryView = ({ portfolio }: PortfolioSummaryViewProps) => {
         </div>
       </div>
 
-      {/* Action buttons - Replaces "Why section" */}
-      {!isAnalysis && (
+      {/* Why section - Enhanced */}
+      {advisorPlan.risk_alignment && !isAnalysis && (
         <div className="rounded-lg sm:rounded-xl border border-primary/10 bg-gradient-to-br from-card/80 to-card/40 p-4 sm:p-6 shadow-md backdrop-blur-sm">
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-            <Button
-              onClick={() => navigate('/ai-chatt', { 
-                state: { 
-                  createNewSession: true,
-                  sessionName: 'Portföljanalys',
-                  initialMessage: 'Analysera min nuvarande portfölj och ge mig en detaljerad bedömning av allokering, risknivå och diversifiering.'
-                } 
-              })}
-              className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl px-4 sm:px-6 py-2.5 sm:py-3 font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              <Brain className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-              Analysera portfölj
-            </Button>
-            <Button
-              onClick={() => navigate('/ai-chatt', { 
-                state: { 
-                  createNewSession: true,
-                  sessionName: 'Förbättra portfölj',
-                  initialMessage: 'Hjälp mig förbättra min portfölj. Ge mig konkreta förslag på hur jag kan optimera allokeringen, minska risker och öka diversifieringen.'
-                } 
-              })}
-              variant="outline"
-              className="flex-1 border-2 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl px-4 sm:px-6 py-2.5 sm:py-3 font-semibold transition-all duration-300"
-            >
-              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-              Förbättra innehav
-            </Button>
+          <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-amber-500/10 flex items-center justify-center border border-amber-500/20 flex-shrink-0">
+              <Brain className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <p className="text-xs sm:text-sm font-bold uppercase tracking-wider text-foreground">Varför denna bedömning?</p>
           </div>
+          <p className="text-sm sm:text-base leading-6 sm:leading-7 text-foreground/90 pl-0 sm:pl-10 sm:pl-12 break-words">{advisorPlan.risk_alignment}</p>
+        </div>
+      )}
+
+      {/* Action buttons - Matching /ai-chatt style */}
+      {!isAnalysis && (
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <Button
+            onClick={() => navigate('/ai-chatt', { 
+              state: { 
+                createNewSession: true,
+                sessionName: 'Portföljanalys',
+                initialMessage: 'Analysera min nuvarande portfölj och ge mig en detaljerad bedömning av allokering, risknivå och diversifiering.'
+              } 
+            })}
+            className="h-auto justify-start rounded-[18px] border border-[#144272]/20 bg-white/90 px-4 py-4 text-left shadow-[0_18px_45px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:border-[#205295]/40 hover:bg-[#144272]/10 hover:shadow-[0_24px_55px_rgba(15,23,42,0.08)] dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none dark:hover:bg-ai-surface-muted/70 flex-1"
+          >
+            <div className="flex items-start gap-3 w-full">
+              <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-[#144272]/12 text-primary shadow-sm transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted flex-shrink-0">
+                <Brain className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 space-y-1 flex-1">
+                <p className="text-sm font-semibold text-foreground">Analysera portfölj</p>
+                <p className="text-xs text-ai-text-muted">Få en detaljerad bedömning av allokering, risknivå och diversifiering</p>
+              </div>
+            </div>
+          </Button>
+          <Button
+            onClick={() => navigate('/ai-chatt', { 
+              state: { 
+                createNewSession: true,
+                sessionName: 'Förbättra portfölj',
+                initialMessage: 'Hjälp mig förbättra min portfölj. Ge mig konkreta förslag på hur jag kan optimera allokeringen, minska risker och öka diversifieringen.'
+              } 
+            })}
+            className="h-auto justify-start rounded-[18px] border border-[#144272]/20 bg-white/90 px-4 py-4 text-left shadow-[0_18px_45px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:border-[#205295]/40 hover:bg-[#144272]/10 hover:shadow-[0_24px_55px_rgba(15,23,42,0.08)] dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none dark:hover:bg-ai-surface-muted/70 flex-1"
+          >
+            <div className="flex items-start gap-3 w-full">
+              <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-[#144272]/12 text-primary shadow-sm transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted flex-shrink-0">
+                <TrendingUp className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 space-y-1 flex-1">
+                <p className="text-sm font-semibold text-foreground">Förbättra innehav</p>
+                <p className="text-xs text-ai-text-muted">Få konkreta förslag på optimering av allokering och riskhantering</p>
+              </div>
+            </div>
+          </Button>
         </div>
       )}
 
@@ -139,37 +163,65 @@ const PortfolioSummaryView = ({ portfolio }: PortfolioSummaryViewProps) => {
             </div>
           )}
 
-          {/* Action buttons for analyses */}
-          <div className="p-4 sm:p-6 rounded-lg sm:rounded-xl border-2 border-primary/20 bg-gradient-to-br from-card/80 to-card/40 shadow-md backdrop-blur-sm">
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-              <Button
-                onClick={() => navigate('/ai-chatt', { 
-                  state: { 
-                    createNewSession: true,
-                    sessionName: 'Portföljanalys',
-                    initialMessage: 'Analysera min nuvarande portfölj och ge mig en detaljerad bedömning av allokering, risknivå och diversifiering.'
-                  } 
-                })}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl px-4 sm:px-6 py-2.5 sm:py-3 font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                <Brain className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                Analysera portfölj
-              </Button>
-              <Button
-                onClick={() => navigate('/ai-chatt', { 
-                  state: { 
-                    createNewSession: true,
-                    sessionName: 'Förbättra portfölj',
-                    initialMessage: 'Hjälp mig förbättra min portfölj. Ge mig konkreta förslag på hur jag kan optimera allokeringen, minska risker och öka diversifieringen.'
-                  } 
-                })}
-                variant="outline"
-                className="flex-1 border-2 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl px-4 sm:px-6 py-2.5 sm:py-3 font-semibold transition-all duration-300"
-              >
-                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                Förbättra innehav
-              </Button>
+          {/* Detailed Analysis from risk_alignment - Larger and more prominent */}
+          {advisorPlan.risk_alignment && (
+            <div className="p-4 sm:p-6 rounded-lg sm:rounded-xl border-2 border-primary/20 bg-gradient-to-br from-card/80 to-card/40 shadow-md backdrop-blur-sm">
+              <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-500/10 flex items-center justify-center border border-amber-500/20 flex-shrink-0">
+                  <Brain className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <h4 className="text-base sm:text-lg font-bold text-foreground">Detaljerad analys</h4>
+              </div>
+              <div className="prose prose-sm max-w-none dark:prose-invert">
+                <p className="text-sm sm:text-base leading-6 sm:leading-7 text-foreground/90 whitespace-pre-line break-words">
+                  {advisorPlan.risk_alignment}
+                </p>
+              </div>
             </div>
+          )}
+
+          {/* Action buttons for analyses - Matching /ai-chatt style */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <Button
+              onClick={() => navigate('/ai-chatt', { 
+                state: { 
+                  createNewSession: true,
+                  sessionName: 'Portföljanalys',
+                  initialMessage: 'Analysera min nuvarande portfölj och ge mig en detaljerad bedömning av allokering, risknivå och diversifiering.'
+                } 
+              })}
+              className="h-auto justify-start rounded-[18px] border border-[#144272]/20 bg-white/90 px-4 py-4 text-left shadow-[0_18px_45px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:border-[#205295]/40 hover:bg-[#144272]/10 hover:shadow-[0_24px_55px_rgba(15,23,42,0.08)] dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none dark:hover:bg-ai-surface-muted/70 flex-1"
+            >
+              <div className="flex items-start gap-3 w-full">
+                <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-[#144272]/12 text-primary shadow-sm transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted flex-shrink-0">
+                  <Brain className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 space-y-1 flex-1">
+                  <p className="text-sm font-semibold text-foreground">Analysera portfölj</p>
+                  <p className="text-xs text-ai-text-muted">Få en detaljerad bedömning av allokering, risknivå och diversifiering</p>
+                </div>
+              </div>
+            </Button>
+            <Button
+              onClick={() => navigate('/ai-chatt', { 
+                state: { 
+                  createNewSession: true,
+                  sessionName: 'Förbättra portfölj',
+                  initialMessage: 'Hjälp mig förbättra min portfölj. Ge mig konkreta förslag på hur jag kan optimera allokeringen, minska risker och öka diversifieringen.'
+                } 
+              })}
+              className="h-auto justify-start rounded-[18px] border border-[#144272]/20 bg-white/90 px-4 py-4 text-left shadow-[0_18px_45px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:border-[#205295]/40 hover:bg-[#144272]/10 hover:shadow-[0_24px_55px_rgba(15,23,42,0.08)] dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none dark:hover:bg-ai-surface-muted/70 flex-1"
+            >
+              <div className="flex items-start gap-3 w-full">
+                <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-[#144272]/12 text-primary shadow-sm transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted flex-shrink-0">
+                  <TrendingUp className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 space-y-1 flex-1">
+                  <p className="text-sm font-semibold text-foreground">Förbättra innehav</p>
+                  <p className="text-xs text-ai-text-muted">Få konkreta förslag på optimering av allokering och riskhantering</p>
+                </div>
+              </div>
+            </Button>
           </div>
         </div>
       )}
