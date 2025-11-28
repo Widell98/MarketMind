@@ -872,53 +872,6 @@ const UserInvestmentAnalysis = ({
           </CardContent>
         </Card>
 
-      {!advisorPlan && aiStrategyText && (
-        <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-blue-50/30 dark:from-slate-900/90 dark:to-blue-900/10 backdrop-blur-sm border border-blue-200/30 dark:border-blue-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
-          <CardHeader className="pb-8 pt-8">
-            <CardTitle className="flex items-center gap-4 text-2xl font-bold">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center shadow-inner border border-blue-200/30 dark:border-blue-700/30">
-                <Brain className="w-7 h-7 text-transparent bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text" />
-              </div>
-              <span className="text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text">
-                {isAnalysis ? 'Senaste Portföljanalys' : 'AI-Genererad Investeringsstrategi'}
-              </span>
-              <Badge className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-transparent bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text border-blue-300/30 dark:border-blue-700/30 rounded-2xl font-semibold px-4 py-2 shadow-sm">
-                {isAnalysis ? 'Portföljanalys' : 'Personlig Analys'}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-8">
-            <div className="prose prose-lg max-w-none text-foreground p-8 bg-gradient-to-br from-white/60 to-blue-50/20 dark:from-slate-800/60 dark:to-blue-900/10 rounded-3xl border border-blue-200/20 dark:border-blue-800/20 shadow-inner backdrop-blur-sm">
-              <div className="text-base leading-relaxed text-slate-700 dark:text-slate-300">
-                {formatAIStrategy(aiStrategyText)}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {advisorPlan && (
-        <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-blue-50/30 dark:from-slate-900/90 dark:to-blue-900/10 backdrop-blur-sm border border-blue-200/30 dark:border-blue-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
-          <CardHeader className="pb-6 pt-8">
-            <CardTitle className="flex items-center gap-4 text-2xl font-bold">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center shadow-inner border border-blue-200/30 dark:border-blue-700/30">
-                <Brain className="w-7 h-7 text-transparent bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text" />
-              </div>
-              <div className="flex-1">
-                <div className="text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text">
-                  {isAnalysis ? 'Senaste Portföljanalys' : 'Senaste Portföljgenerering'}
-                </div>
-                {advisorPlan.actionSummary && (
-                  <p className="text-lg font-medium text-slate-700 dark:text-slate-300 mt-2">
-                    {advisorPlan.actionSummary}
-                  </p>
-                )}
-              </div>
-            </CardTitle>
-          </CardHeader>
-        </Card>
-      )}
-
       {/* Conversation Context - Apple-inspired */}
       {/* {conversationData && Object.keys(conversationData).length > 0 && <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-green-50/30 dark:from-slate-900/90 dark:to-green-900/10 backdrop-blur-sm border border-green-200/30 dark:border-green-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
           <CardHeader className="pb-8 pt-8">
