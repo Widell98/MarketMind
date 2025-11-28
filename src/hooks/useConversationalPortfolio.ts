@@ -302,8 +302,67 @@ export const useConversationalPortfolio = () => {
   };
 
   const computeHoldingsWithPercentages = (
-    holdings: ConversationData['currentHoldings'] | undefined
+    holdings: ConversationData['currentHoldings'] | undefined,
+    actualHoldingsFromDB?: Array<{
+      name?: string;
+      symbol?: string;
+      quantity?: number;
+      current_price_per_unit?: number;
+      current_value?: number;
+      purchase_price?: number;
+      currency?: string;
+    }>
   ): WeightedHolding[] => {
+    // If we have actual holdings from DB, use them with current values (including returns)
+    if (actualHoldingsFromDB && actualHoldingsFromDB.length > 0) {
+      const normalizedHoldings = actualHoldingsFromDB
+        .map(holding => {
+          const quantity = typeof holding.quantity === 'number' ? holding.quantity : (holding.quantity ? Number(holding.quantity) : 0);
+          
+          // Use current_value if available (includes returns), otherwise calculate from current_price_per_unit
+          let estimatedValue = 0;
+          if (holding.current_value && typeof holding.current_value === 'number' && holding.current_value > 0) {
+            estimatedValue = holding.current_value;
+          } else if (holding.current_price_per_unit && typeof holding.current_price_per_unit === 'number' && quantity > 0) {
+            estimatedValue = holding.current_price_per_unit * quantity;
+          } else if (holding.purchase_price && typeof holding.purchase_price === 'number' && quantity > 0) {
+            // Fallback to purchase_price if current values not available
+            estimatedValue = holding.purchase_price * quantity;
+          }
+
+          if (!Number.isFinite(quantity) || quantity <= 0 || estimatedValue <= 0) {
+            return null;
+          }
+
+          return {
+            name: holding.name || '',
+            symbol: holding.symbol,
+            quantity,
+            price: holding.current_price_per_unit || holding.purchase_price || 0,
+            estimatedValue,
+          };
+        })
+        .filter((item): item is {
+          name: string;
+          symbol?: string;
+          quantity: number;
+          price: number;
+          estimatedValue: number;
+        } => Boolean(item));
+
+      const totalEstimatedHoldingValue = normalizedHoldings.reduce((sum, holding) => sum + holding.estimatedValue, 0);
+
+      return normalizedHoldings
+        .map(holding => ({
+          ...holding,
+          weight: totalEstimatedHoldingValue > 0
+            ? (holding.estimatedValue / totalEstimatedHoldingValue) * 100
+            : null,
+        }))
+        .sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0));
+    }
+
+    // Fallback to conversationData holdings (using purchasePrice)
     const normalizedHoldings = (holdings ?? [])
       .map(holding => {
         const quantity = typeof holding.quantity === 'number' ? holding.quantity : Number(holding.quantity);
@@ -344,7 +403,11 @@ export const useConversationalPortfolio = () => {
       .sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0));
   };
 
-  const buildEnhancedAIPrompt = (conversationData: ConversationData, mode: 'new' | 'optimize') => {
+  const buildEnhancedAIPrompt = (
+    conversationData: ConversationData, 
+    mode: 'new' | 'optimize',
+    holdingsWithPercentagesOverride?: WeightedHolding[]
+  ) => {
     const mapValue = (value: string | undefined, mapping: Record<string, string>) => {
       if (!value) return undefined;
       const normalized = value.toLowerCase();
@@ -395,7 +458,7 @@ export const useConversationalPortfolio = () => {
     const formatBoolean = (value: boolean | undefined) =>
       typeof value === 'boolean' ? (value ? 'Ja' : 'Nej') : 'Ej angivet';
 
-    const holdingsWithPercentages = computeHoldingsWithPercentages(conversationData.currentHoldings);
+    const holdingsWithPercentages = holdingsWithPercentagesOverride || computeHoldingsWithPercentages(conversationData.currentHoldings);
 
     const investmentGoalText = mapValue(conversationData.investmentGoal, {
       pension: 'Pensionssparande',
@@ -1110,7 +1173,40 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
           ? 'optimize'
           : 'new';
 
-    const holdingsWithPercentages = computeHoldingsWithPercentages(conversationData.currentHoldings);
+    // Fetch actual holdings from DB when analyzing existing portfolio (optimize mode)
+    // This ensures we use current values with returns, not just purchase prices
+    let actualHoldingsFromDB: Array<{
+      name?: string;
+      symbol?: string;
+      quantity?: number;
+      current_price_per_unit?: number;
+      current_value?: number;
+      purchase_price?: number;
+      currency?: string;
+    }> | undefined = undefined;
+
+    if (mode === 'optimize' && user) {
+      try {
+        const { data: dbHoldings, error } = await supabase
+          .from('user_holdings')
+          .select('name, symbol, quantity, current_price_per_unit, current_value, purchase_price, currency')
+          .eq('user_id', user.id)
+          .eq('holding_type', 'stock')
+          .not('quantity', 'is', null)
+          .gt('quantity', 0);
+
+        if (!error && dbHoldings && dbHoldings.length > 0) {
+          actualHoldingsFromDB = dbHoldings;
+        }
+      } catch (error) {
+        console.warn('Could not fetch actual holdings from DB, using conversationData holdings:', error);
+      }
+    }
+
+    const holdingsWithPercentages = computeHoldingsWithPercentages(
+      conversationData.currentHoldings,
+      actualHoldingsFromDB
+    );
 
     const ensureString = (value: unknown): string | undefined =>
       typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
@@ -2205,7 +2301,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       const liquidCapitalValue = resolvedLiquidCapital !== null ? resolvedLiquidCapital : null;
       const targetAmountValue = resolvedTargetAmount !== null ? resolvedTargetAmount : null;
 
-      const enhancedPrompt = buildEnhancedAIPrompt(mergedConversationData, mode);
+      const enhancedPrompt = buildEnhancedAIPrompt(mergedConversationData, mode, holdingsWithPercentages);
 
       const normalizedOptimizationGoals = ensureStringArray(mergedConversationData.optimizationGoals) ?? [];
       if (normalizedOptimizationGoals.length > 0) {
