@@ -697,6 +697,44 @@ serve(async (req) => {
       return null; // Don't use default - only use if actually answered
     })();
 
+    const horizonSummary = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (hasValue(raw.timeHorizon) && typeof raw.timeHorizon === 'string' && raw.timeHorizon.trim().length > 0) {
+          return raw.timeHorizon.trim();
+        }
+      }
+      return null; // Don't use default - only use if actually answered
+    })();
+
+    const availableCapitalSummary = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (typeof raw.availableCapital === 'number' && Number.isFinite(raw.availableCapital)) {
+          return `${raw.availableCapital.toLocaleString('sv-SE')} SEK`;
+        }
+        if (typeof raw.availableCapital === 'string' && raw.availableCapital.trim().length > 0) {
+          return raw.availableCapital.trim();
+        }
+      }
+      if (typeof riskProfile?.liquid_capital === 'number') {
+        return `${riskProfile.liquid_capital.toLocaleString('sv-SE')} SEK`;
+      }
+      return 'Ej angivet';
+    })();
+
+    const experienceSummary = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (typeof raw.investmentExperienceLevel === 'string' && raw.investmentExperienceLevel.trim().length > 0) {
+          return raw.investmentExperienceLevel.trim();
+        }
+        if (typeof raw.marketExperience === 'string' && raw.marketExperience.trim().length > 0) {
+          return raw.marketExperience.trim();
+        }
+      }
+      return riskProfile?.investment_experience || 'Ej angivet';
+    })();
 
     const serializedConversationData = conversationData && typeof conversationData === 'object'
       ? JSON.stringify(conversationData, null, 2)
