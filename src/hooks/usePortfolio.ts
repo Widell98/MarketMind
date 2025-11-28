@@ -34,6 +34,7 @@ export type PortfolioRecommendation = Recommendation;
 
 export const usePortfolio = () => {
   const [activePortfolio, setActivePortfolio] = useState<Portfolio | null>(null);
+  const [latestAnalysis, setLatestAnalysis] = useState<Portfolio | null>(null);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -42,9 +43,11 @@ export const usePortfolio = () => {
   useEffect(() => {
     if (user) {
       fetchActivePortfolio();
+      fetchLatestAnalysis();
       fetchRecommendations();
     } else {
       setActivePortfolio(null);
+      setLatestAnalysis(null);
       setRecommendations([]);
       setLoading(false);
     }
@@ -82,6 +85,39 @@ export const usePortfolio = () => {
       console.error('Error fetching portfolio:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchLatestAnalysis = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('user_portfolios')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', false)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching latest analysis:', error);
+        return;
+      }
+
+      if (data) {
+        // Convert the data to match our Portfolio interface
+        const analysis: Portfolio = {
+          ...data,
+          recommended_stocks: Array.isArray(data.recommended_stocks) ? data.recommended_stocks : []
+        };
+        setLatestAnalysis(analysis);
+      } else {
+        setLatestAnalysis(null);
+      }
+    } catch (error) {
+      console.error('Error fetching latest analysis:', error);
     }
   };
 
@@ -167,12 +203,13 @@ export const usePortfolio = () => {
   const refetch = async () => {
     if (user) {
       setLoading(true);
-      await Promise.all([fetchActivePortfolio(), fetchRecommendations()]);
+      await Promise.all([fetchActivePortfolio(), fetchLatestAnalysis(), fetchRecommendations()]);
     }
   };
 
   return {
     activePortfolio,
+    latestAnalysis,
     recommendations,
     loading,
     generatePortfolio,

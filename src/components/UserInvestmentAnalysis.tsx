@@ -40,6 +40,7 @@ const UserInvestmentAnalysis = ({
   } = useRiskProfile();
   const {
     activePortfolio,
+    latestAnalysis,
     loading: portfolioLoading
   } = usePortfolio();
   const [showResetDialog, setShowResetDialog] = useState(false);
@@ -271,10 +272,24 @@ const UserInvestmentAnalysis = ({
   const handleCreateNewProfile = () => {
     navigate('/portfolio-advisor');
   };
-  const aiStrategyData = activePortfolio?.asset_allocation?.ai_strategy;
-  const aiStrategyRaw = activePortfolio?.asset_allocation?.ai_strategy_raw;
-  const structuredPlan = activePortfolio?.asset_allocation?.structured_plan;
-  const conversationData = activePortfolio?.asset_allocation?.conversation_data || {};
+  // Determine which to display: show the most recent one (portfolio or analysis) based on created_at
+  const displayPortfolio = useMemo(() => {
+    if (!latestAnalysis && !activePortfolio) return null;
+    if (!latestAnalysis) return activePortfolio;
+    if (!activePortfolio) return latestAnalysis;
+    
+    // Both exist - return the most recent one
+    const analysisDate = new Date(latestAnalysis.created_at);
+    const portfolioDate = new Date(activePortfolio.created_at);
+    return analysisDate > portfolioDate ? latestAnalysis : activePortfolio;
+  }, [latestAnalysis, activePortfolio]);
+  
+  const isAnalysis = displayPortfolio === latestAnalysis && displayPortfolio?.is_active === false;
+  
+  const aiStrategyData = displayPortfolio?.asset_allocation?.ai_strategy;
+  const aiStrategyRaw = displayPortfolio?.asset_allocation?.ai_strategy_raw;
+  const structuredPlan = displayPortfolio?.asset_allocation?.structured_plan;
+  const conversationData = displayPortfolio?.asset_allocation?.conversation_data || {};
 
   const advisorPlan = useAdvisorPlan(structuredPlan, aiStrategyData, aiStrategyRaw);
 
@@ -860,10 +875,10 @@ const UserInvestmentAnalysis = ({
                 <Brain className="w-7 h-7 text-transparent bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text" />
               </div>
               <span className="text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text">
-                AI-Genererad Investeringsstrategi
+                {isAnalysis ? 'Senaste Portföljanalys' : 'AI-Genererad Investeringsstrategi'}
               </span>
               <Badge className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-transparent bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text border-blue-300/30 dark:border-blue-700/30 rounded-2xl font-semibold px-4 py-2 shadow-sm">
-                Personlig Analys
+                {isAnalysis ? 'Portföljanalys' : 'Personlig Analys'}
               </Badge>
             </CardTitle>
           </CardHeader>
@@ -874,6 +889,28 @@ const UserInvestmentAnalysis = ({
               </div>
             </div>
           </CardContent>
+        </Card>
+      )}
+
+      {advisorPlan && (
+        <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-blue-50/30 dark:from-slate-900/90 dark:to-blue-900/10 backdrop-blur-sm border border-blue-200/30 dark:border-blue-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
+          <CardHeader className="pb-6 pt-8">
+            <CardTitle className="flex items-center gap-4 text-2xl font-bold">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center shadow-inner border border-blue-200/30 dark:border-blue-700/30">
+                <Brain className="w-7 h-7 text-transparent bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text" />
+              </div>
+              <div className="flex-1">
+                <div className="text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text">
+                  {isAnalysis ? 'Senaste Portföljanalys' : 'Senaste Portföljgenerering'}
+                </div>
+                {advisorPlan.actionSummary && (
+                  <p className="text-lg font-medium text-slate-700 dark:text-slate-300 mt-2">
+                    {advisorPlan.actionSummary}
+                  </p>
+                )}
+              </div>
+            </CardTitle>
+          </CardHeader>
         </Card>
       )}
 
@@ -942,34 +979,6 @@ const UserInvestmentAnalysis = ({
           </CardContent>
         </Card>} */}
 
-      {/* Risk Profile Summary - Apple-inspired */}
-      {riskProfile.sector_interests && riskProfile.sector_interests.length > 0 && (
-        <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-purple-50/30 dark:from-slate-900/90 dark:to-purple-900/10 backdrop-blur-sm border border-purple-200/30 dark:border-purple-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
-          <CardHeader className="pb-8 pt-8">
-            <CardTitle className="flex items-center gap-4 text-2xl font-bold">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 flex items-center justify-center shadow-inner border border-purple-200/30 dark:border-purple-700/30">
-                <TrendingUp className="w-7 h-7 text-transparent bg-gradient-to-br from-purple-600 to-pink-600 bg-clip-text" />
-              </div>
-              <span className="text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text">
-                Sektorintressen
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-8">
-            <div className="flex flex-wrap gap-4">
-              {riskProfile.sector_interests.map((sector, index) => (
-                <Badge
-                  key={index}
-                  variant="outline"
-                  className="capitalize px-6 py-3 rounded-2xl font-semibold text-base border-purple-300/30 dark:border-purple-700/30 text-purple-700 dark:text-purple-300 bg-gradient-to-r from-purple-50/50 to-pink-50/30 dark:from-purple-900/20 dark:to-pink-900/10 hover:bg-gradient-to-r hover:from-purple-100/60 hover:to-pink-100/40 dark:hover:from-purple-800/30 dark:hover:to-pink-800/20 hover:scale-105 transition-all duration-300 shadow-sm hover:shadow-md backdrop-blur-sm"
-                >
-                  {sector}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
     );
   };

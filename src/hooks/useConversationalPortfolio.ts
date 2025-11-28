@@ -107,6 +107,35 @@ export const useConversationalPortfolio = () => {
     return [];
   };
 
+  // Helper function to get known stock sectors
+  const getKnownStockSector = (stockName: string): string => {
+    const sectorMap: Record<string, string> = {
+      'Investor': 'Finans',
+      'Volvo': 'Industri', 
+      'Ericsson': 'Teknologi',
+      'H&M': 'Konsument',
+      'Spotify': 'Teknologi',
+      'Evolution Gaming': 'Teknologi',
+      'Elekta': 'Hälsa',
+      'Atlas Copco': 'Industri',
+      'Sandvik': 'Industri',
+      'SKF': 'Industri',
+      'Telia': 'Teknologi',
+      'Nordea': 'Finans',
+      'SEB': 'Finans',
+      'Handelsbanken': 'Finans',
+      'Swedbank': 'Finans',
+      'Saab': 'Industri',
+      'Kinnevik': 'Finans',
+      'ICA Gruppen': 'Konsument',
+      'Getinge': 'Hälsa',
+      'Boliden': 'Råvaror',
+      'SSAB': 'Industri',
+      'Autoliv': 'Industri'
+    };
+    return sectorMap[stockName] || 'Övrigt';
+  };
+
   // Enhanced stock recommendation extraction - completely dynamic
   const extractStockRecommendations = (aiResponse: string): StockRecommendation[] => {
     const recommendations: StockRecommendation[] = [];
@@ -273,8 +302,67 @@ export const useConversationalPortfolio = () => {
   };
 
   const computeHoldingsWithPercentages = (
-    holdings: ConversationData['currentHoldings'] | undefined
+    holdings: ConversationData['currentHoldings'] | undefined,
+    actualHoldingsFromDB?: Array<{
+      name?: string;
+      symbol?: string;
+      quantity?: number;
+      current_price_per_unit?: number;
+      current_value?: number;
+      purchase_price?: number;
+      currency?: string;
+    }>
   ): WeightedHolding[] => {
+    // If we have actual holdings from DB, use them with current values (including returns)
+    if (actualHoldingsFromDB && actualHoldingsFromDB.length > 0) {
+      const normalizedHoldings = actualHoldingsFromDB
+        .map(holding => {
+          const quantity = typeof holding.quantity === 'number' ? holding.quantity : (holding.quantity ? Number(holding.quantity) : 0);
+          
+          // Use current_value if available (includes returns), otherwise calculate from current_price_per_unit
+          let estimatedValue = 0;
+          if (holding.current_value && typeof holding.current_value === 'number' && holding.current_value > 0) {
+            estimatedValue = holding.current_value;
+          } else if (holding.current_price_per_unit && typeof holding.current_price_per_unit === 'number' && quantity > 0) {
+            estimatedValue = holding.current_price_per_unit * quantity;
+          } else if (holding.purchase_price && typeof holding.purchase_price === 'number' && quantity > 0) {
+            // Fallback to purchase_price if current values not available
+            estimatedValue = holding.purchase_price * quantity;
+          }
+
+          if (!Number.isFinite(quantity) || quantity <= 0 || estimatedValue <= 0) {
+            return null;
+          }
+
+          return {
+            name: holding.name || '',
+            symbol: holding.symbol,
+            quantity,
+            price: holding.current_price_per_unit || holding.purchase_price || 0,
+            estimatedValue,
+          };
+        })
+        .filter((item): item is {
+          name: string;
+          symbol?: string;
+          quantity: number;
+          price: number;
+          estimatedValue: number;
+        } => Boolean(item));
+
+      const totalEstimatedHoldingValue = normalizedHoldings.reduce((sum, holding) => sum + holding.estimatedValue, 0);
+
+      return normalizedHoldings
+        .map(holding => ({
+          ...holding,
+          weight: totalEstimatedHoldingValue > 0
+            ? (holding.estimatedValue / totalEstimatedHoldingValue) * 100
+            : null,
+        }))
+        .sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0));
+    }
+
+    // Fallback to conversationData holdings (using purchasePrice)
     const normalizedHoldings = (holdings ?? [])
       .map(holding => {
         const quantity = typeof holding.quantity === 'number' ? holding.quantity : Number(holding.quantity);
@@ -315,7 +403,11 @@ export const useConversationalPortfolio = () => {
       .sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0));
   };
 
-  const buildEnhancedAIPrompt = (conversationData: ConversationData, mode: 'new' | 'optimize') => {
+  const buildEnhancedAIPrompt = (
+    conversationData: ConversationData, 
+    mode: 'new' | 'optimize',
+    holdingsWithPercentagesOverride?: WeightedHolding[]
+  ) => {
     const mapValue = (value: string | undefined, mapping: Record<string, string>) => {
       if (!value) return undefined;
       const normalized = value.toLowerCase();
@@ -366,7 +458,7 @@ export const useConversationalPortfolio = () => {
     const formatBoolean = (value: boolean | undefined) =>
       typeof value === 'boolean' ? (value ? 'Ja' : 'Nej') : 'Ej angivet';
 
-    const holdingsWithPercentages = computeHoldingsWithPercentages(conversationData.currentHoldings);
+    const holdingsWithPercentages = holdingsWithPercentagesOverride || computeHoldingsWithPercentages(conversationData.currentHoldings);
 
     const investmentGoalText = mapValue(conversationData.investmentGoal, {
       pension: 'Pensionssparande',
@@ -571,174 +663,205 @@ export const useConversationalPortfolio = () => {
     const liquidCapitalText = formatCurrency(conversationData.liquidCapital);
     const currentPortfolioValueText = formatCurrency(conversationData.currentPortfolioValue);
 
-    const formattedAge = typeof conversationData.age === 'number'
+    // Helper function to check if a value is actually provided (not null/undefined/empty)
+    const hasValue = (value: any): boolean => {
+      if (value === null || value === undefined) return false;
+      if (typeof value === 'string' && value.trim() === '') return false;
+      if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) return false;
+      if (Array.isArray(value) && value.length === 0) return false;
+      return true;
+    };
+
+    // Only include age if it's actually provided
+    const formattedAge = typeof conversationData.age === 'number' && conversationData.age > 0
       ? `${conversationData.age} år`
-      : 'Ej angiven';
+      : null;
 
-    const formattedMonthlyInvestment = monthlyInvestmentText === 'Ej angivet'
-      ? 'Ej angivet'
-      : `${monthlyInvestmentText} SEK`;
+    // Only include monthly investment if it's actually provided
+    const formattedMonthlyInvestment = monthlyInvestmentText && monthlyInvestmentText !== 'Ej angivet'
+      ? `${monthlyInvestmentText} SEK`
+      : null;
 
-    let prompt = `Skapa en detaljerad och personlig portföljstrategi baserat på följande omfattande konsultation:
+    // Build base profile - only include fields that are actually answered
+    const baseProfileParts: string[] = [];
+    
+    // These are the core base questions that should always be included if answered
+    if (typeof conversationData.isBeginnerInvestor === 'boolean') {
+      baseProfileParts.push(`- Erfarenhetsnivå: ${conversationData.isBeginnerInvestor ? 'Nybörjare (första gången investera)' : 'Erfaren investerare (flera års erfarenhet)'}`);
+    }
+    
+    if (formattedAge) {
+      baseProfileParts.push(`- Ålder: ${formattedAge}`);
+    }
+    
+    if (formattedMonthlyInvestment) {
+      baseProfileParts.push(`- Månatligt investeringsbelopp: ${formattedMonthlyInvestment}`);
+    }
+    
+    if (investmentGoalText && investmentGoalText !== 'Ej angivet') {
+      baseProfileParts.push(`- Investeringsmål: ${investmentGoalText}`);
+    }
+    
+    if (timeHorizonText && timeHorizonText !== 'Ej angivet') {
+      baseProfileParts.push(`- Tidshorisont: ${timeHorizonText}`);
+    }
+    
+    if (riskToleranceText && riskToleranceText !== 'Ej angivet') {
+      baseProfileParts.push(`- Risktolerans: ${riskToleranceText}`);
+    }
+    
+    if (typeof conversationData.hasCurrentPortfolio === 'boolean') {
+      baseProfileParts.push(`- Befintlig portfölj: ${formatBoolean(conversationData.hasCurrentPortfolio)}`);
+    }
+
+    let prompt = `Skapa en detaljerad och personlig portföljstrategi baserat på följande konsultation:
 
 GRUNDLÄGGANDE PROFIL:
-- Erfarenhetsnivå: ${conversationData.isBeginnerInvestor ? 'Nybörjare (första gången investera)' : 'Erfaren investerare (flera års erfarenhet)'}
-- Ålder: ${formattedAge}
-- Månatligt investeringsbelopp: ${formattedMonthlyInvestment}
-- Investeringsmål: ${investmentGoalText}
-- Tidshorisont: ${timeHorizonText}
-- Risktolerans: ${riskToleranceText}
-- Befintlig portfölj: ${formatBoolean(conversationData.hasCurrentPortfolio)}`;
+${baseProfileParts.length > 0 ? baseProfileParts.join('\n') : '- Endast grundläggande information tillgänglig'}`;
 
+    // Additional profile information - only include if actually provided
+    const additionalProfileParts: string[] = [];
+    
     if (annualIncomeText && annualIncomeText !== 'Ej angivet') {
-      prompt += `
-- Årsinkomst: ${annualIncomeText} SEK`;
+      additionalProfileParts.push(`- Årsinkomst: ${annualIncomeText} SEK`);
     }
 
     if (monthlyIncomeText && monthlyIncomeText !== 'Ej angivet') {
-      prompt += `
-- Månadsinkomst: ${monthlyIncomeText}`;
+      additionalProfileParts.push(`- Månadsinkomst: ${monthlyIncomeText}`);
     }
 
     if (availableCapitalText && availableCapitalText !== 'Ej angivet') {
-      prompt += `
-- Tillgängligt kapital för investeringar: ${availableCapitalText}`;
+      additionalProfileParts.push(`- Tillgängligt kapital för investeringar: ${availableCapitalText}`);
     }
 
-    if (preferredAssetsText) {
-      prompt += `
-- Mest intresserad av: ${preferredAssetsText}`;
+    if (preferredAssetsText && preferredAssetsText !== 'Ej angivet') {
+      additionalProfileParts.push(`- Mest intresserad av: ${preferredAssetsText}`);
     }
 
-    if (conversationData.sectors && conversationData.sectors.length > 0) {
-      prompt += `
-- Favoritbranscher: ${conversationData.sectors.join(', ')}`;
+    if (hasValue(conversationData.sectors) && conversationData.sectors && conversationData.sectors.length > 0) {
+      additionalProfileParts.push(`- Favoritbranscher: ${conversationData.sectors.join(', ')}`);
+    }
+    
+    if (additionalProfileParts.length > 0) {
+      prompt += `\n\n${additionalProfileParts.join('\n')}`;
     }
 
+    // Optimization-specific fields - only include if mode is optimize and values are provided
     if (mode === 'optimize') {
-      if (conversationData.currentPortfolioStrategy) {
-        prompt += `
-- Nuvarande strategi: ${conversationData.currentPortfolioStrategy}`;
+      const optimizationParts: string[] = [];
+      
+      if (hasValue(conversationData.currentPortfolioStrategy)) {
+        optimizationParts.push(`- Nuvarande strategi: ${conversationData.currentPortfolioStrategy}`);
       }
 
-      if (optimizationGoalsText && optimizationGoalsText.length > 0) {
-        prompt += `
-- Optimeringsmål: ${optimizationGoalsText.join(', ')}`;
+      if (hasValue(optimizationGoalsText) && optimizationGoalsText && optimizationGoalsText.length > 0) {
+        optimizationParts.push(`- Optimeringsmål: ${optimizationGoalsText.join(', ')}`);
       }
 
-      if (optimizationPreferenceText) {
-        prompt += `
-- Önskat arbetssätt: ${optimizationPreferenceText}`;
+      if (hasValue(optimizationPreferenceText)) {
+        optimizationParts.push(`- Önskat arbetssätt: ${optimizationPreferenceText}`);
       }
 
-      if (optimizationTimelineText) {
-        prompt += `
-- Tidslinje för förändringar: ${optimizationTimelineText}`;
+      if (hasValue(optimizationTimelineText)) {
+        optimizationParts.push(`- Tidslinje för förändringar: ${optimizationTimelineText}`);
       }
 
-      if (optimizationRiskFocusText) {
-        prompt += `
-- Största riskoro idag: ${optimizationRiskFocusText}`;
+      if (hasValue(optimizationRiskFocusText)) {
+        optimizationParts.push(`- Största riskoro idag: ${optimizationRiskFocusText}`);
       }
 
-      if (optimizationDiversificationText && optimizationDiversificationText.length > 0) {
-        prompt += `
-- Områden att diversifiera mot: ${optimizationDiversificationText.join(', ')}`;
+      if (hasValue(optimizationDiversificationText) && optimizationDiversificationText && optimizationDiversificationText.length > 0) {
+        optimizationParts.push(`- Områden att diversifiera mot: ${optimizationDiversificationText.join(', ')}`);
+      }
+      
+      if (optimizationParts.length > 0) {
+        prompt += `\n\nOPTIMERINGSDATA:\n${optimizationParts.join('\n')}`;
       }
     }
 
+    // Financial details - only include if actually provided
+    const financialParts: string[] = [];
+    
     if (liquidCapitalText && liquidCapitalText !== 'Ej angivet') {
-      prompt += `
-- Likvida medel: ${liquidCapitalText} SEK`;
+      financialParts.push(`- Likvida medel: ${liquidCapitalText} SEK`);
     }
 
-    if (emergencyBufferText) {
-      prompt += `
-- Buffert (antal månader): ${emergencyBufferText}`;
+    if (hasValue(emergencyBufferText)) {
+      financialParts.push(`- Buffert (antal månader): ${emergencyBufferText}`);
     }
 
-    if (emergencyFundText) {
-      prompt += `
-- Buffertstatus: ${emergencyFundText}`;
+    if (hasValue(emergencyFundText)) {
+      financialParts.push(`- Buffertstatus: ${emergencyFundText}`);
     }
 
-    if (conversationData.financialObligations && conversationData.financialObligations.length > 0) {
-      prompt += `
-- Ekonomiska förpliktelser: ${conversationData.financialObligations.join(', ')}`;
+    if (hasValue(conversationData.financialObligations) && conversationData.financialObligations && conversationData.financialObligations.length > 0) {
+      financialParts.push(`- Ekonomiska förpliktelser: ${conversationData.financialObligations.join(', ')}`);
     }
 
-    if (conversationData.housingSituation) {
-      prompt += `
-- Bostadssituation: ${conversationData.housingSituation}`;
+    if (hasValue(conversationData.housingSituation)) {
+      financialParts.push(`- Bostadssituation: ${conversationData.housingSituation}`);
     }
 
     if (typeof conversationData.hasLoans === 'boolean') {
-      prompt += `
-- Har ytterligare lån: ${conversationData.hasLoans ? 'Ja' : 'Nej'}`;
+      financialParts.push(`- Har ytterligare lån: ${conversationData.hasLoans ? 'Ja' : 'Nej'}`);
     }
 
-    if (conversationData.loanDetails) {
-      prompt += `
-- Lånedetaljer: ${conversationData.loanDetails}`;
+    if (hasValue(conversationData.loanDetails)) {
+      financialParts.push(`- Lånedetaljer: ${conversationData.loanDetails}`);
     }
 
     if (typeof conversationData.hasChildren === 'boolean') {
-      prompt += `
-- Har barn/försörjningsansvar: ${conversationData.hasChildren ? 'Ja' : 'Nej'}`;
+      financialParts.push(`- Har barn/försörjningsansvar: ${conversationData.hasChildren ? 'Ja' : 'Nej'}`);
     }
 
     if (currentPortfolioValueText && currentPortfolioValueText !== 'Ej angivet') {
-      prompt += `
-- Nuvarande portföljvärde: ${currentPortfolioValueText} SEK`;
+      financialParts.push(`- Nuvarande portföljvärde: ${currentPortfolioValueText} SEK`);
+    }
+    
+    if (financialParts.length > 0) {
+      prompt += `\n\nEKONOMISK SITUATION:\n${financialParts.join('\n')}`;
     }
 
     if (mode === 'optimize') {
       prompt += `
 
-OPTIMERING AV BEFINTLIG PORTFÖLJ:
-1. Gör en djup analys av nuvarande innehav, allokering och riskprofil innan du föreslår förändringar.
-2. Koppla varje rekommendation direkt till användarens uttryckta optimeringsmål och tidslinje.
-3. Ge konkreta åtgärdsförslag för hur portföljen kan förbättras (t.ex. rebalansering, reducera avgifter, minska koncentrationsrisk).
-4. Identifiera styrkor/svagheter i befintliga innehav och föreslå tydliga förbättringar.
-5. Om användaren vill undvika nya investeringar, fokusera på omstrukturering av befintliga innehav snarare än att skapa en ny portfölj.
-6. Om användaren accepterar nya idéer, föreslå endast kompletterande innehav som adresserar deras mål och förklara exakt hur de integreras.
-7. Ge en prioriterad handlingsplan med tidsramar för genomförande.
-8. Kommentera riskhantering, diversifiering och eventuella skatteeffekter baserat på användarens svar.
-9. Använd samma numrerade format för rekommendationer men markera tydligt om det handlar om behålla, öka, minska eller nytt innehav.
-10. Avsluta med en sammanfattning av förväntad effekt av optimeringen.`;
+ANALYS AV BEFINTLIG PORTFÖLJ (INGA REKOMMENDATIONER):
+VIKTIGT: Du ska ENDAST ge en analys och sammanfattning av den nuvarande portföljen. Du får INTE generera några köpråd, säljråd eller omstruktureringsförslag.
+
+1. Analysera den nuvarande portföljens risknivå baserat på innehav, allokering och diversifiering.
+2. Beskriv fördelningen av innehav (sektorer, geografi, storlek).
+3. Identifiera vad som ser bra ut i portföljen (styrkor, välbalanserade delar, bra diversifiering).
+4. Ge en sammanfattning av portföljens nuvarande status och profil.
+5. Kommentera riskhantering och diversifiering baserat på användarens riskprofil.
+6. INKLUDERA INGA köp-, sälj- eller omstruktureringsrekommendationer.
+7. INKLUDERA INGA action_type fält som "increase", "reduce", "sell", "add", eller "rebalance".
+8. Fokusera enbart på att beskriva och analysera det som finns, inte på vad som bör ändras.
+
+FORMAT FÖR SVARET:
+- action_summary: Börja med riskprofilen (t.ex. "Aggressiv riskprofil – hög tillväxtorientering" eller "Konservativ riskprofil – fokus på stabilitet"). Detta ska vara en kort, tydlig beskrivning på en rad. INKLUDERA INTE detaljerad portföljbeskrivning här.
+- risk_alignment: En LÅNG, GEDIGEN analys (minst 5-8 meningar, helst längre) som inkluderar:
+  * Specifik beskrivning av alla viktiga innehav med deras tickers och ungefärlig vikt i portföljen
+  * Sektorfördelning och geografisk spridning (Sverige, USA, Europa, etc.)
+  * Koncentrationsrisker: identifiera om vissa innehav eller sektorer står för en stor del av portföljen
+  * DOLD EXPONERING: Om användaren har fonder eller investmentbolag, analysera vilka underliggande innehav dessa kan innehålla och hur det påverkar den faktiska allokeringen. Exempel: "Om du äger Investor (INVE-B) som är 20% av portföljen, och Investor i sin tur äger 10% i Atlas Copco, har du en dold exponering på 2% mot Atlas Copco utöver eventuell direkt exponering"
+  * Risknivå: bedöm hur portföljens faktiska risknivå matchar användarens angivna riskprofil
+  * Diversifiering: analysera om portföljen är väl diversifierad eller om den är koncentrerad i få innehav/sektorer
+  * Styrkor och svagheter i portföljens sammansättning
+  Använd naturligt språk, var konkret och specifik. Nämn aktier, fonder och investmentbolag med deras tickers. Detta ska vara en omfattande, professionell portföljanalys.
+- next_steps: Generella råd om övervakning (max 2 punkter), t.ex. "Övervaka utvecklingen i de mest koncentrerade innehaven" eller "Bredda geografiskt och sektoriellt över tid". INGA specifika köp/sälj-åtgärder. Var kortfattad och konkret.
+- recommended_assets: Tom lista [].
+- complementary_assets: Tom lista [].
+- disclaimer: "Analysen är informationsbaserad och ej rådgivning."
+
+VIKTIGT: action_summary och risk_alignment ska INTE upprepa samma information. action_summary är bara riskprofilen på en rad. risk_alignment är den detaljerade beskrivningen av portföljen.`;
 
       prompt += `
 
-FORMATKRAV FÖR OPTIMERING:
-- Returnera ett JSON-objekt med fälten: action_summary, risk_alignment, next_steps (lista), recommended_assets (lista), complementary_assets (lista om nya idéer behövs), disclaimer.
-- Varje post i recommended_assets ska innehålla: name, ticker, allocation_percent eller target_weight, change_percent (om relevant), rationale, action_type (behåll/increase/reduce/sell/add/rebalance), samt valfria notes.
-- Markera åtgärder för befintliga innehav med action_type i {"hold","increase","reduce","sell","rebalance"} och använd change_percent för att beskriva viktjusteringar.
-- Placera endast nya eller kompletterande innehav i complementary_assets och sätt deras action_type till "add".
+FORMATKRAV FÖR ANALYS:
+- Returnera ett JSON-objekt med fälten: action_summary (kort beskrivning av riskprofil), risk_alignment (detaljerad analys av portföljens sammansättning och matchning med riskprofil), next_steps (max 2 generella övervakningsråd), recommended_assets (tom lista []), complementary_assets (tom lista []), disclaimer.
+- recommended_assets och complementary_assets ska vara tomma listor [].
+- Fokusera på att beskriva portföljen i action_summary och risk_alignment med naturligt, läsbart språk.
 `;
-
-      if (conversationData.optimizationPreference === 'analyze_only') {
-        prompt += `
-SPECIALINSTRUKTIONER (ANALYZERA UTAN NYA KÖP):
-- Föreslå inga nya tickers. action_type "add" ska inte förekomma.
-- Fokusera på att beskriva hur befintliga positioner kan justeras (behålla/öka/minska/sälja) och varför.
-- Lyft särskilt fram kostnader, riskreducering och överlapp som bör trimmas bort.
-`;
-      } else if (conversationData.optimizationPreference === 'improve_with_new_ideas') {
-        prompt += `
-SPECIALINSTRUKTIONER (KOMPLETTERA MED NYA IDÉER):
-- Identifiera högst fyra kompletterande innehav som tydligt löser användarens mål.
-- Ange en föreslagen procentandel eller vikt för varje nytt innehav och motivera integrationen.
-- Beskriv hur nya idéer påverkar helheten och vilka befintliga positioner som eventuellt kan minskas för att ge plats.
-- För varje ny rekommendation, specificera vilken överviktad position som ska trimmas (t.ex. "Sälj 15% av Apple") och hur mycket kapital som flyttas för att finansiera köpet, särskilt om någon post utgör mer än 20% av portföljen.
-`;
-      } else if (conversationData.optimizationPreference === 'rebalance') {
-        prompt += `
-SPECIALINSTRUKTIONER (REBALANSERING):
-- Ange konkreta viktförändringar och köp-/säljåtgärder för att nå målvikter.
-- Använd change_percent för att förtydliga hur mycket varje innehav ska ökas eller minskas och prioritera åtgärderna.
-- Introducera endast nya innehav om de behövs för att fylla identifierade luckor och markera dem då som action_type "add".
-`;
-      }
 
       if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
         prompt += `
@@ -770,56 +893,51 @@ NUVARANDE INNEHAV SOM SKA ANALYSERAS: ${conversationData.currentHoldings.map(h =
 
           if (concentrationAlerts.length > 0) {
             prompt += `
-- Koncentrationsrisker som måste adresseras: ${concentrationAlerts.join(', ')}. Ange exakt hur mycket av dessa positioner som bör säljas eller trimmats för att frigöra kapital till förbättringar.`;
+- Koncentrationsrisker att notera: ${concentrationAlerts.join(', ')}. Observera dessa i din analys, men föreslå INGA åtgärder.`;
           }
         }
       }
 
     } else if (conversationData.isBeginnerInvestor === true) {
-      prompt += `
+      // Beginner investor profile - only include if values are provided
+      const beginnerParts: string[] = [];
 
-NYBÖRJARE - UTFÖRLIG EKONOMISK PROFIL:`;
-
-      if (conversationData.interests && conversationData.interests.length > 0) {
-        prompt += `
-- Personliga intressen: ${conversationData.interests.join(', ')}`;
+      if (hasValue(conversationData.interests) && conversationData.interests && conversationData.interests.length > 0) {
+        beginnerParts.push(`- Personliga intressen: ${conversationData.interests.join(', ')}`);
       }
 
-      if (conversationData.companies && conversationData.companies.length > 0) {
-        prompt += `
-- Företag de gillar: ${conversationData.companies.join(', ')}`;
+      if (hasValue(conversationData.companies) && conversationData.companies && conversationData.companies.length > 0) {
+        beginnerParts.push(`- Företag de gillar: ${conversationData.companies.join(', ')}`);
       }
 
-      if (sustainabilityText) {
-        prompt += `
-- Hållbarhetspreferens: ${sustainabilityText}`;
+      if (hasValue(sustainabilityText)) {
+        beginnerParts.push(`- Hållbarhetspreferens: ${sustainabilityText}`);
       }
 
-      if (geographicText) {
-        prompt += `
-- Geografisk preferens: ${geographicText}`;
+      if (hasValue(geographicText)) {
+        beginnerParts.push(`- Geografisk preferens: ${geographicText}`);
       }
 
-      if (marketCrashText) {
-        prompt += `
-- Reaktion på börskrasch: ${marketCrashText}`;
+      if (hasValue(marketCrashText)) {
+        beginnerParts.push(`- Reaktion på börskrasch: ${marketCrashText}`);
       }
 
-      if (conversationData.volatilityComfort) {
-        prompt += `
-- Komfort med volatilitet: ${conversationData.volatilityComfort}/10`;
+      if (hasValue(conversationData.volatilityComfort) && typeof conversationData.volatilityComfort === 'number') {
+        beginnerParts.push(`- Komfort med volatilitet: ${conversationData.volatilityComfort}/10`);
       }
 
-      if (portfolioHelpText) {
-        prompt += `
-- Önskad hjälp från rådgivaren: ${portfolioHelpText}`;
+      if (hasValue(portfolioHelpText)) {
+        beginnerParts.push(`- Önskad hjälp från rådgivaren: ${portfolioHelpText}`);
       }
 
-      if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
-        prompt += `
-- Nuvarande innehav: ${conversationData.currentHoldings.map(h =>
+      if (hasValue(conversationData.currentHoldings) && conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
+        beginnerParts.push(`- Nuvarande innehav: ${conversationData.currentHoldings.map(h =>
           `${h.name} (${h.quantity} st à ${h.purchasePrice} ${h.currency?.trim()?.toUpperCase() || 'SEK'})`
-        ).join(', ')}`;
+        ).join(', ')}`);
+      }
+      
+      if (beginnerParts.length > 0) {
+        prompt += `\n\nNYBÖRJARE - UTFÖRLIG EKONOMISK PROFIL:\n${beginnerParts.join('\n')}`;
       }
 
       prompt += `
@@ -845,75 +963,65 @@ EXEMPEL (ANPASSA MED ANVÄNDARSPECIFIKA DATA):
   2. **Investmentbolag B (TICKER-B)**: Kort beskrivning kopplad till användarens mål. Allokering: 20%`;
 
     } else {
-      prompt += `
+      // Experienced investor profile - only include if values are provided
+      const experiencedParts: string[] = [];
 
-ERFAREN INVESTERARE - AVANCERAD PROFIL:`;
-
-      if (marketExperienceText) {
-        prompt += `
-- Investeringserfarenhet: ${marketExperienceText}`;
+      if (hasValue(marketExperienceText)) {
+        experiencedParts.push(`- Investeringserfarenhet: ${marketExperienceText}`);
       }
 
-      if (previousPerformanceText) {
-        prompt += `
-- Historisk prestanda vs marknad: ${previousPerformanceText}`;
+      if (hasValue(previousPerformanceText)) {
+        experiencedParts.push(`- Historisk prestanda vs marknad: ${previousPerformanceText}`);
       }
 
-      if (conversationData.currentAllocation) {
-        prompt += `
-- Nuvarande allokering: ${conversationData.currentAllocation}`;
+      if (hasValue(conversationData.currentAllocation)) {
+        experiencedParts.push(`- Nuvarande allokering: ${conversationData.currentAllocation}`);
       }
 
-      if (conversationData.sectorExposure && conversationData.sectorExposure.length > 0) {
-        prompt += `
-- Befintlig sektorexponering: ${conversationData.sectorExposure.join(', ')}`;
+      if (hasValue(conversationData.sectorExposure) && conversationData.sectorExposure && conversationData.sectorExposure.length > 0) {
+        experiencedParts.push(`- Befintlig sektorexponering: ${conversationData.sectorExposure.join(', ')}`);
       }
 
-      if (investmentStyleText) {
-        prompt += `
-- Investeringsstil: ${investmentStyleText}`;
+      if (hasValue(investmentStyleText)) {
+        experiencedParts.push(`- Investeringsstil: ${investmentStyleText}`);
       }
 
-      if (dividendRequirementText) {
-        prompt += `
-- Direktavkastningskrav: ${dividendRequirementText}`;
+      if (hasValue(dividendRequirementText)) {
+        experiencedParts.push(`- Direktavkastningskrav: ${dividendRequirementText}`);
       }
 
-      if (conversationData.maxDrawdownTolerance) {
-        prompt += `
-- Maximal drawdown-tolerans: ${conversationData.maxDrawdownTolerance}/10`;
+      if (hasValue(conversationData.maxDrawdownTolerance) && typeof conversationData.maxDrawdownTolerance === 'number') {
+        experiencedParts.push(`- Maximal drawdown-tolerans: ${conversationData.maxDrawdownTolerance}/10`);
       }
 
-      if (conversationData.taxConsideration) {
-        prompt += `
-- Skatteoptimering: ${conversationData.taxConsideration}`;
+      if (hasValue(conversationData.taxConsideration)) {
+        experiencedParts.push(`- Skatteoptimering: ${conversationData.taxConsideration}`);
       }
 
-      if (portfolioSizeText) {
-        prompt += `
-- Portföljstorlek: ${portfolioSizeText}`;
+      if (hasValue(portfolioSizeText)) {
+        experiencedParts.push(`- Portföljstorlek: ${portfolioSizeText}`);
       }
 
-      if (tradingFrequencyText) {
-        prompt += `
-- Handelsfrekvens: ${tradingFrequencyText}`;
+      if (hasValue(tradingFrequencyText)) {
+        experiencedParts.push(`- Handelsfrekvens: ${tradingFrequencyText}`);
       }
 
-      if (rebalancingText) {
-        prompt += `
-- Rebalanseringsfrekvens: ${rebalancingText}`;
+      if (hasValue(rebalancingText)) {
+        experiencedParts.push(`- Rebalanseringsfrekvens: ${rebalancingText}`);
       }
 
-      if (marketCrashText) {
-        prompt += `
-- Reaktion på börskrasch: ${marketCrashText}`;
+      if (hasValue(marketCrashText)) {
+        experiencedParts.push(`- Reaktion på börskrasch: ${marketCrashText}`);
       }
 
-      if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
-        prompt += `
-- Nuvarande innehav: ${conversationData.currentHoldings.map(h =>
+      if (hasValue(conversationData.currentHoldings) && conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
+        experiencedParts.push(`- Nuvarande innehav: ${conversationData.currentHoldings.map(h =>
           `${h.name} (${h.quantity} st à ${h.purchasePrice} ${h.currency?.trim()?.toUpperCase() || 'SEK'})`
-        ).join(', ')}`;
+        ).join(', ')}`);
+      }
+      
+      if (experiencedParts.length > 0) {
+        prompt += `\n\nERFAREN INVESTERARE - AVANCERAD PROFIL:\n${experiencedParts.join('\n')}`;
       }
 
       prompt += `
@@ -945,84 +1053,60 @@ EXEMPEL (ANPASSA MED ANVÄNDARSPECIFIKA DATA):
 
     const combinedGoalAmount = conversationData.specificGoalAmount || conversationData.targetAmount;
 
-    if (
-      investmentPurposes ||
-      combinedGoalAmount ||
-      conversationData.targetDate ||
-      typeof conversationData.preferredStockCount === 'number' ||
-      typeof conversationData.controlImportance === 'number' ||
-      typeof conversationData.panicSellingHistory === 'boolean' ||
-      conversationData.activityPreference ||
-      conversationData.portfolioChangeFrequency ||
-      conversationData.overexposureAwareness ||
-      conversationData.communicationStyle ||
-      conversationData.preferredResponseLength ||
-      conversationData.additionalNotes
-    ) {
-      prompt += `
+    // Deep preferences - only include if values are actually provided
+    const deepPreferenceParts: string[] = [];
 
-FÖRDJUPADE PREFERENSER:`;
-
-      if (investmentPurposes) {
-        prompt += `
-- Investeringssyften: ${investmentPurposes.join(', ')}`;
+      if (hasValue(investmentPurposes) && investmentPurposes && investmentPurposes.length > 0) {
+        deepPreferenceParts.push(`- Investeringssyften: ${investmentPurposes.join(', ')}`);
       }
 
-      if (combinedGoalAmount) {
-        prompt += `
-- Specifikt målbelopp: ${combinedGoalAmount}`;
+      if (hasValue(combinedGoalAmount)) {
+        deepPreferenceParts.push(`- Specifikt målbelopp: ${combinedGoalAmount}`);
       }
 
-      if (conversationData.targetDate) {
-        prompt += `
-- Måldatum för uppnått mål: ${conversationData.targetDate}`;
+      if (hasValue(conversationData.targetDate)) {
+        deepPreferenceParts.push(`- Måldatum för uppnått mål: ${conversationData.targetDate}`);
       }
 
-      if (typeof conversationData.preferredStockCount === 'number') {
-        prompt += `
-- Önskat antal innehav i portföljen: ${conversationData.preferredStockCount}`;
+      if (hasValue(conversationData.preferredStockCount) && typeof conversationData.preferredStockCount === 'number') {
+        deepPreferenceParts.push(`- Önskat antal innehav i portföljen: ${conversationData.preferredStockCount}`);
       }
 
-      if (typeof conversationData.controlImportance === 'number') {
-        prompt += `
-- Kontrollbehov (1-5): ${conversationData.controlImportance}`;
+      if (hasValue(conversationData.controlImportance) && typeof conversationData.controlImportance === 'number') {
+        deepPreferenceParts.push(`- Kontrollbehov (1-5): ${conversationData.controlImportance}`);
       }
 
       if (typeof conversationData.panicSellingHistory === 'boolean') {
-        prompt += `
-- Har paniksålt tidigare: ${conversationData.panicSellingHistory ? 'Ja' : 'Nej'}`;
+        deepPreferenceParts.push(`- Har paniksålt tidigare: ${conversationData.panicSellingHistory ? 'Ja' : 'Nej'}`);
       }
 
-      if (conversationData.activityPreference) {
-        prompt += `
-- Aktivitetspreferens: ${conversationData.activityPreference}`;
+      if (hasValue(conversationData.activityPreference)) {
+        deepPreferenceParts.push(`- Aktivitetspreferens: ${conversationData.activityPreference}`);
       }
 
-      if (conversationData.portfolioChangeFrequency || conversationData.rebalancingFrequency) {
-        prompt += `
-- Föredragen ombalanseringsfrekvens: ${conversationData.portfolioChangeFrequency || rebalancingText || conversationData.rebalancingFrequency}`;
+      if (hasValue(conversationData.portfolioChangeFrequency) || hasValue(conversationData.rebalancingFrequency)) {
+        deepPreferenceParts.push(`- Föredragen ombalanseringsfrekvens: ${conversationData.portfolioChangeFrequency || rebalancingText || conversationData.rebalancingFrequency}`);
       }
 
-      if (conversationData.overexposureAwareness) {
-        prompt += `
-- Medvetenhet kring överexponering: ${conversationData.overexposureAwareness}`;
+      if (hasValue(conversationData.overexposureAwareness)) {
+        deepPreferenceParts.push(`- Medvetenhet kring överexponering: ${conversationData.overexposureAwareness}`);
       }
 
-      if (conversationData.communicationStyle) {
-        prompt += `
-- Önskad kommunikationsstil: ${conversationData.communicationStyle}`;
+      if (hasValue(conversationData.communicationStyle)) {
+        deepPreferenceParts.push(`- Önskad kommunikationsstil: ${conversationData.communicationStyle}`);
       }
 
-      if (conversationData.preferredResponseLength) {
-        prompt += `
-- Önskad svarslängd: ${conversationData.preferredResponseLength}`;
+      if (hasValue(conversationData.preferredResponseLength)) {
+        deepPreferenceParts.push(`- Önskad svarslängd: ${conversationData.preferredResponseLength}`);
       }
 
-      if (conversationData.additionalNotes) {
-        prompt += `
-- Ytterligare anteckningar: ${conversationData.additionalNotes}`;
+      if (hasValue(conversationData.additionalNotes)) {
+        deepPreferenceParts.push(`- Ytterligare anteckningar: ${conversationData.additionalNotes}`);
       }
-    }
+      
+      if (deepPreferenceParts.length > 0) {
+        prompt += `\n\nFÖRDJUPADE PREFERENSER:\n${deepPreferenceParts.join('\n')}`;
+      }
 
     prompt += `
 
@@ -1089,7 +1173,40 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
           ? 'optimize'
           : 'new';
 
-    const holdingsWithPercentages = computeHoldingsWithPercentages(conversationData.currentHoldings);
+    // Fetch actual holdings from DB when analyzing existing portfolio (optimize mode)
+    // This ensures we use current values with returns, not just purchase prices
+    let actualHoldingsFromDB: Array<{
+      name?: string;
+      symbol?: string;
+      quantity?: number;
+      current_price_per_unit?: number;
+      current_value?: number;
+      purchase_price?: number;
+      currency?: string;
+    }> | undefined = undefined;
+
+    if (mode === 'optimize' && user) {
+      try {
+        const { data: dbHoldings, error } = await supabase
+          .from('user_holdings')
+          .select('name, symbol, quantity, current_price_per_unit, current_value, purchase_price, currency')
+          .eq('user_id', user.id)
+          .eq('holding_type', 'stock')
+          .not('quantity', 'is', null)
+          .gt('quantity', 0);
+
+        if (!error && dbHoldings && dbHoldings.length > 0) {
+          actualHoldingsFromDB = dbHoldings;
+        }
+      } catch (error) {
+        console.warn('Could not fetch actual holdings from DB, using conversationData holdings:', error);
+      }
+    }
+
+    const holdingsWithPercentages = computeHoldingsWithPercentages(
+      conversationData.currentHoldings,
+      actualHoldingsFromDB
+    );
 
     const ensureString = (value: unknown): string | undefined =>
       typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
@@ -2178,11 +2295,13 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         ? { self_reported: mergedConversationData.currentAllocation }
         : mergedConversationData.currentAllocation || {};
 
-      const monthlyInvestmentAmount = resolvedMonthlyInvestment !== null ? resolvedMonthlyInvestment : 5000;
+      const monthlyInvestmentAmount = resolvedMonthlyInvestment !== null 
+        ? resolvedMonthlyInvestment 
+        : (existingProfileData?.monthly_investment_amount ?? null);
       const liquidCapitalValue = resolvedLiquidCapital !== null ? resolvedLiquidCapital : null;
       const targetAmountValue = resolvedTargetAmount !== null ? resolvedTargetAmount : null;
 
-      const enhancedPrompt = buildEnhancedAIPrompt(mergedConversationData, mode);
+      const enhancedPrompt = buildEnhancedAIPrompt(mergedConversationData, mode, holdingsWithPercentages);
 
       const normalizedOptimizationGoals = ensureStringArray(mergedConversationData.optimizationGoals) ?? [];
       if (normalizedOptimizationGoals.length > 0) {
@@ -2215,7 +2334,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       const normalizedOptimizationRiskFocus = ensureString(mergedConversationData.optimizationRiskFocus) ?? null;
 
       const riskProfileData = {
-        age: mergedConversationData.age ?? existingProfileData.age ?? 25,
+        age: mergedConversationData.age ?? existingProfileData.age ?? null,
         monthly_investment_amount: monthlyInvestmentAmount,
         investment_horizon: mergedConversationData.timeHorizon || null,
         investment_goal: mergedConversationData.investmentGoal || 'growth',
@@ -2297,9 +2416,25 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
 
       if (typeof structuredPlan === 'string') {
         try {
-          structuredPlan = JSON.parse(structuredPlan);
+          // Remove markdown code blocks if present
+          let cleanedPlan = structuredPlan.trim();
+          if (cleanedPlan.startsWith('```json')) {
+            cleanedPlan = cleanedPlan.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+          } else if (cleanedPlan.startsWith('```')) {
+            cleanedPlan = cleanedPlan.replace(/^```\s*/, '').replace(/\s*```$/, '');
+          }
+          structuredPlan = JSON.parse(cleanedPlan);
         } catch (error) {
           console.warn('Failed to parse structured plan string:', error);
+          // Try to extract JSON from the string if it contains markdown
+          try {
+            const jsonMatch = structuredPlan.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              structuredPlan = JSON.parse(jsonMatch[0]);
+            }
+          } catch (secondError) {
+            console.warn('Failed to extract JSON from markdown:', secondError);
+          }
         }
       }
 
@@ -2316,7 +2451,14 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         const textCandidates = [aiResponse.aiRecommendations, aiResponse.aiResponse, aiResponse.response];
         for (const candidate of textCandidates) {
           if (typeof candidate === 'string' && candidate.trim().length > 0) {
-            return candidate;
+            // Remove markdown code blocks if present
+            let cleaned = candidate.trim();
+            if (cleaned.startsWith('```json')) {
+              cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+            } else if (cleaned.startsWith('```')) {
+              cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+            }
+            return cleaned;
           }
         }
 
@@ -2381,42 +2523,22 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       structuredPlan = normalizedTrades.structuredPlan;
 
       if (mode === 'optimize') {
-        const isValidPreference = (
-          value: unknown
-        ): value is NonNullable<ConversationData['optimizationPreference']> =>
-          value === 'analyze_only' || value === 'improve_with_new_ideas' || value === 'rebalance';
-
-        const preference = isValidPreference(mergedConversationData.optimizationPreference)
-          ? mergedConversationData.optimizationPreference
-          : 'analyze_only';
-
-        mergedConversationData.optimizationPreference = preference;
-        const isAdd = (rec: StockRecommendation) => (rec.actionType || '').toLowerCase() === 'add';
-
-        if (preference === 'analyze_only') {
-          complementaryIdeas = [];
-          stockRecommendations = stockRecommendations.filter(rec => !isAdd(rec));
-        } else if (preference === 'improve_with_new_ideas') {
-          if (complementaryIdeas.length === 0) {
-            complementaryIdeas = stockRecommendations.filter(isAdd);
-          }
-          complementaryIdeas = complementaryIdeas.filter(isAdd);
-        } else if (preference === 'rebalance') {
-          if (complementaryIdeas.length === 0) {
-            complementaryIdeas = stockRecommendations.filter(isAdd);
-          } else {
-            complementaryIdeas = complementaryIdeas.filter(isAdd);
-          }
-
-          stockRecommendations = stockRecommendations.filter(rec => !isAdd(rec) || complementaryIdeas.every(idea => idea.name !== rec.name));
+        // När användaren har en befintlig portfölj, ska vi endast ge analys
+        // Inga köp-, sälj- eller omstruktureringsrekommendationer ska genereras
+        // Men structuredPlan ska innehålla analysen med risker, allokering osv.
+        complementaryIdeas = [];
+        stockRecommendations = [];
+        
+        // Se till att structuredPlan innehåller analysinformation men ta bort rekommendationer och nästa steg
+        if (structuredPlan && typeof structuredPlan === 'object') {
+          // Ta bort next_steps och recommended_assets från analyser
+          structuredPlan = {
+            ...structuredPlan,
+            next_steps: [],
+            recommended_assets: [],
+            complementary_assets: []
+          };
         }
-
-        if (preference !== 'improve_with_new_ideas') {
-          stockRecommendations = stockRecommendations.filter(rec => !isAdd(rec));
-        }
-
-        stockRecommendations = dedupeRecommendations(stockRecommendations);
-        complementaryIdeas = dedupeRecommendations(complementaryIdeas);
       }
 
       if (stockRecommendations.length === 0) {
@@ -2457,6 +2579,49 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       const baseRiskScore = riskTolerance === 'aggressive' ? 7 : riskTolerance === 'conservative' ? 3 : 5;
       const combinedRiskScore = Math.round((baseRiskScore + comfortScore) / 2);
 
+      // Calculate allocation summary from current holdings for analyses
+      const calculateAllocationFromHoldings = (holdings: typeof holdingsWithPercentages) => {
+        let stocksTotal = 0;
+        let bondsTotal = 0;
+        let cashTotal = 0;
+        
+        if (holdings.length === 0) {
+          return { stocks: 0, bonds: 0, cash: 0 };
+        }
+
+        holdings.forEach(holding => {
+          const percentage = holding.weight || 0;
+          // Classify based on sector or name
+          const sector = (holding as any).sector?.toLowerCase() || '';
+          const name = (holding.name || '').toLowerCase();
+          
+          if (sector.includes('bank') || sector.includes('fastighet') || 
+              name.includes('bank') || name.includes('fastighet') || 
+              sector.includes('financial') || sector.includes('real estate')) {
+            bondsTotal += percentage;
+          } else if (sector.includes('cash') || name.includes('kontant') || name.includes('cash')) {
+            cashTotal += percentage;
+          } else {
+            stocksTotal += percentage;
+          }
+        });
+
+        // Normalize to 100%
+        const total = stocksTotal + bondsTotal + cashTotal;
+        if (total > 0 && total !== 100) {
+          const scale = 100 / total;
+          stocksTotal = stocksTotal * scale;
+          bondsTotal = bondsTotal * scale;
+          cashTotal = cashTotal * scale;
+        }
+
+        return {
+          stocks: Math.round(stocksTotal),
+          bonds: Math.round(bondsTotal),
+          cash: Math.round(cashTotal)
+        };
+      };
+
       // Create enhanced asset allocation with all conversation data and AI analysis
       const assetAllocation = {
         conversation_data: JSON.parse(JSON.stringify(mergedConversationData)),
@@ -2467,6 +2632,13 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         structured_plan: structuredPlan,
         stock_recommendations: stockRecommendations,
         complementary_ideas: complementaryIdeas,
+        allocation_summary: mode === 'optimize' && holdingsWithPercentages.length > 0
+          ? calculateAllocationFromHoldings(holdingsWithPercentages)
+          : (stockRecommendations.length > 0 ? {
+              stocks: stockRecommendations.reduce((sum, s) => sum + (s.allocation || 0), 0),
+              bonds: 0,
+              cash: 0
+            } : undefined),
         risk_profile_summary: {
           experience_level: investmentExperienceLevel,
           risk_comfort: riskComfortLevel,
@@ -2480,7 +2652,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
           prompt_length: enhancedPrompt.length,
           response_length: aiRecommendationText?.length || 0,
           ai_model: 'gpt-4o',
-          analysis_type: 'comprehensive_portfolio_strategy'
+          analysis_type: mode === 'optimize' ? 'portfolio_analysis' : 'comprehensive_portfolio_strategy'
         }
       };
 
@@ -2523,9 +2695,37 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
           description: "Din personliga portföljstrategi har skapats med förbättrad riskanalys",
         });
       } else {
+        // For analysis mode (optimize), save the analysis as a portfolio record with is_active: false
+        // This allows users to view their analysis history on /profile
+        const analysisPortfolioData = {
+          user_id: user.id,
+          risk_profile_id: riskProfile.id,
+          portfolio_name: 'Portföljanalys',
+          asset_allocation: assetAllocation,
+          recommended_stocks: [], // No recommendations for analysis
+          total_value: 0,
+          expected_return: expectedReturn,
+          risk_score: combinedRiskScore,
+          is_active: false // Mark as inactive since it's an analysis, not an active portfolio
+        };
+
+        const { data: analysisPortfolio, error: portfolioError } = await supabase
+          .from('user_portfolios')
+          .insert(analysisPortfolioData)
+          .select()
+          .single();
+
+        if (portfolioError) {
+          console.error('Error saving portfolio analysis:', portfolioError);
+          // Don't fail the whole operation if saving fails
+        } else {
+          portfolioRecord = analysisPortfolio;
+          console.log('Portfolio analysis saved successfully:', analysisPortfolio.id);
+        }
+        
         toast({
           title: "Analys klar!",
-          description: "Din befintliga portfölj har analyserats och optimeringsförslag har genererats.",
+          description: "Din befintliga portfölj har analyserats. Se sammanfattningen nedan.",
         });
       }
 
