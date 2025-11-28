@@ -4,16 +4,20 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePortfolios } from '@/hooks/usePortfolios';
 import { Portfolio } from '@/hooks/usePortfolio';
+import PortfolioSummaryView from '@/components/PortfolioSummaryView';
 import {
   Briefcase,
   Calendar,
   TrendingUp,
   ExternalLink,
-  FileText
+  FileText,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
+import { useState } from 'react';
 
 interface SavedPortfoliosSectionProps {
   onViewPortfolio?: (portfolio: Portfolio) => void;
@@ -22,6 +26,7 @@ interface SavedPortfoliosSectionProps {
 const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps) => {
   const { portfolios, loading } = usePortfolios();
   const navigate = useNavigate();
+  const [expandedPortfolioId, setExpandedPortfolioId] = useState<string | null>(null);
 
   const handleViewPortfolio = (portfolio: Portfolio) => {
     if (onViewPortfolio) {
@@ -185,15 +190,48 @@ const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps
                   </div>
                 )}
 
-                <Button
-                  onClick={() => handleViewPortfolio(portfolio)}
-                  variant="outline"
-                  size="sm"
-                  className="w-full sm:w-auto"
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Visa detaljer
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      if (expandedPortfolioId === portfolio.id) {
+                        setExpandedPortfolioId(null);
+                      } else {
+                        setExpandedPortfolioId(portfolio.id);
+                      }
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 sm:flex-initial"
+                  >
+                    {expandedPortfolioId === portfolio.id ? (
+                      <>
+                        <ChevronUp className="w-4 h-4 mr-2" />
+                        Dölj sammanfattning
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-4 h-4 mr-2" />
+                        Visa sammanfattning
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => handleViewPortfolio(portfolio)}
+                    variant="outline"
+                    size="sm"
+                    className="sm:w-auto"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Visa detaljer
+                  </Button>
+                </div>
+
+                {/* Full portfolio summary */}
+                {expandedPortfolioId === portfolio.id && (
+                  <div className="mt-6 pt-6 border-t border-border">
+                    <PortfolioSummaryView portfolio={portfolio} />
+                  </div>
+                )}
               </div>
             );
           })}
