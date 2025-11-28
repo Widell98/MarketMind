@@ -9,7 +9,6 @@ import {
   Briefcase,
   Calendar,
   TrendingUp,
-  ExternalLink,
   FileText,
   ChevronDown,
   ChevronUp
@@ -27,15 +26,6 @@ const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps
   const { portfolios, loading } = usePortfolios();
   const navigate = useNavigate();
   const [expandedPortfolioId, setExpandedPortfolioId] = useState<string | null>(null);
-
-  const handleViewPortfolio = (portfolio: Portfolio) => {
-    if (onViewPortfolio) {
-      onViewPortfolio(portfolio);
-    } else {
-      // Navigate to portfolio advisor with portfolio context
-      navigate('/portfolio-advisor', { state: { portfolioId: portfolio.id } });
-    }
-  };
 
   const formatDate = (dateString: string) => {
     try {
@@ -190,41 +180,30 @@ const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps
                     </div>
                   )}
 
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => {
-                        if (expandedPortfolioId === portfolio.id) {
-                          setExpandedPortfolioId(null);
-                        } else {
-                          setExpandedPortfolioId(portfolio.id);
-                        }
-                      }}
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 sm:flex-initial"
-                    >
-                      {expandedPortfolioId === portfolio.id ? (
-                        <>
-                          <ChevronUp className="w-4 h-4 mr-2" />
-                          Dölj sammanfattning
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="w-4 h-4 mr-2" />
-                          Visa sammanfattning
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      onClick={() => handleViewPortfolio(portfolio)}
-                      variant="outline"
-                      size="sm"
-                      className="sm:w-auto"
-                    >
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      Visa detaljer
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={() => {
+                      if (expandedPortfolioId === portfolio.id) {
+                        setExpandedPortfolioId(null);
+                      } else {
+                        setExpandedPortfolioId(portfolio.id);
+                      }
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="w-full sm:w-auto"
+                  >
+                    {expandedPortfolioId === portfolio.id ? (
+                      <>
+                        <ChevronUp className="w-4 h-4 mr-2" />
+                        Dölj sammanfattning
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-4 h-4 mr-2" />
+                        Visa sammanfattning
+                      </>
+                    )}
+                  </Button>
 
                   {/* Full portfolio summary */}
                   {expandedPortfolioId === portfolio.id && (
