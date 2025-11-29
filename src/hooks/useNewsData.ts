@@ -14,7 +14,7 @@ interface NewsItem {
 
 type NewsSentiment = 'bullish' | 'bearish' | 'neutral';
 
-interface NewsDigestSummary {
+export type NewsDigestSummary = {
   id: string;
   headline: string;
   overview: string;
@@ -22,7 +22,7 @@ interface NewsDigestSummary {
   focusToday: string[];
   sentiment: NewsSentiment;
   generatedAt: string;
-}
+};
 
 const normalizeStringArray = (value: unknown): string[] => {
   if (Array.isArray(value)) {
