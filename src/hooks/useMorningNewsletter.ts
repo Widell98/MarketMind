@@ -17,7 +17,7 @@ export const useMorningNewsletter = () => {
       setLoading(true);
       setError(null);
       
-      const { data, error: functionError } = await supabase.functions.invoke('generate-morning-newsletter');
+      const { data, error: functionError } = await supabase.functions.invoke('ai-morning-brief');
       
       if (functionError) {
         throw new Error(functionError.message);
