@@ -14,13 +14,46 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+type NewsItem = {
+  id: string;
+  headline: string;
+  summary: string;
+  category: string;
+  source: string;
+  publishedAt: string;
+  url: string;
+};
+
+type NewsDigestSummary = {
+  id: string;
+  headline: string;
+  overview: string;
+  keyHighlights: string[];
+  focusToday: string[];
+  sentiment: 'bullish' | 'bearish' | 'neutral';
+  generatedAt: string;
+  digestHash: string;
+};
+
+type BroadcastOptions = {
+  type?: string;
+  broadcastSummary?: boolean;
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { type = 'news' } = await req.json();
+    let requestOptions: BroadcastOptions = {};
+    try {
+      requestOptions = await req.json();
+    } catch {
+      requestOptions = {};
+    }
+
+    const { type = 'news', broadcastSummary = true } = requestOptions ?? {};
     console.log(`Fetching ${type} data with smart caching...`);
     
     let data;
@@ -29,7 +62,22 @@ serve(async (req) => {
     } else if (type === 'momentum') {
       data = await fetchMarketMomentumWithCache();
     } else {
-      data = await fetchLiveNewsData();
+      const newsItems = await fetchLiveNewsData() as NewsItem[];
+      let summaryPayload: Omit<NewsDigestSummary, 'digestHash'> | null = null;
+
+      try {
+        const digestHash = await computeNewsDigestHash(newsItems);
+        const summary = await generateNewsDigestSummary(newsItems, digestHash);
+        await persistNewsDigestSummary(summary, broadcastSummary);
+        summaryPayload = serializeNewsDigestSummary(summary);
+      } catch (summaryError) {
+        console.error('Failed to generate or distribute news digest summary:', summaryError);
+      }
+
+      data = {
+        news: newsItems,
+        summary: summaryPayload,
+      };
     }
     
     return new Response(JSON.stringify(data), {
@@ -438,4 +486,430 @@ function getMockNewsData() {
       url: '#'
     }
   ];
+}
+
+const textEncoder = new TextEncoder();
+const DIGEST_INSIGHT_TYPE = 'news_digest';
+const DIGEST_BROADCAST_CHUNK_SIZE = 25;
+const DEFAULT_FOCUS_TOPICS = ['Makro', 'Teknik', 'Sverige'];
+const DEFAULT_DIGEST_SENTIMENT: NewsDigestSummary['sentiment'] = 'neutral';
+
+function serializeNewsDigestSummary(summary: NewsDigestSummary | null): Omit<NewsDigestSummary, 'digestHash'> | null {
+  if (!summary) {
+    return null;
+  }
+
+  const { digestHash: _digestHash, ...rest } = summary;
+  return rest;
+}
+
+async function computeNewsDigestHash(newsItems: NewsItem[]): Promise<string> {
+  const digestSource = newsItems.length
+    ? newsItems
+        .slice(0, 10)
+        .map((item) => `${item.headline}|${item.summary}|${item.category}|${item.source}`)
+        .join('\n')
+    : `empty_${new Date().toISOString()}`;
+
+  const hashBuffer = await crypto.subtle.digest('SHA-256', textEncoder.encode(digestSource));
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+      .filter((entry) => entry.length > 0);
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return value
+      .split(/\n|•|-/)
+      .map((entry) => entry.replace(/^\s*[-•]\s*/, '').trim())
+      .filter((entry) => entry.length > 0);
+  }
+
+  return [];
+}
+
+function formatCategoryLabel(category: string | undefined): string {
+  if (!category) {
+    return 'Marknad';
+  }
+
+  const normalized = category.toLowerCase();
+  switch (normalized) {
+    case 'macro':
+      return 'Makro';
+    case 'tech':
+      return 'Teknik';
+    case 'earnings':
+      return 'Rapporter';
+    case 'commodities':
+      return 'Råvaror';
+    case 'sweden':
+      return 'Sverige';
+    case 'global':
+      return 'Globalt';
+    default:
+      return category.charAt(0).toUpperCase() + category.slice(1);
+  }
+}
+
+function pickFocusTopics(newsItems: NewsItem[]): string[] {
+  const uniqueCategories = Array.from(
+    new Set(
+      newsItems
+        .map((item) => item.category)
+        .filter((category): category is string => typeof category === 'string' && category.trim().length > 0),
+    ),
+  );
+
+  if (uniqueCategories.length === 0) {
+    return DEFAULT_FOCUS_TOPICS;
+  }
+
+  return uniqueCategories.slice(0, 3).map((category) => formatCategoryLabel(category));
+}
+
+function buildFallbackHighlights(newsItems: NewsItem[]): string[] {
+  if (!newsItems.length) {
+    return [
+      'Marknaden höll sig relativt lugn men investerare följer centralbankernas nästa steg.',
+      'Teknik- och energisektorn fortsätter att styra sentimentet inför kommande rapporter.',
+    ];
+  }
+
+  return newsItems.slice(0, 4).map((item) => `${item.headline} – ${item.summary}`);
+}
+
+function buildFallbackOverview(newsItems: NewsItem[]): string {
+  if (!newsItems.length) {
+    return 'Marknaden bevakade övergripande makrohändelser samtidigt som fokus låg på centralbankernas vägval och rapportsäsongens fortsättning.';
+  }
+
+  const primary = newsItems[0];
+  const secondary = newsItems[1];
+  const parts = [`${primary.source}: ${primary.summary}`];
+
+  if (secondary) {
+    parts.push(`Dessutom: ${secondary.summary}`);
+  }
+
+  return parts.join(' ');
+}
+
+function deriveSentimentFromNews(newsItems: NewsItem[]): NewsDigestSummary['sentiment'] {
+  if (!newsItems.length) {
+    return DEFAULT_DIGEST_SENTIMENT;
+  }
+
+  const categoryWeights = newsItems.reduce(
+    (acc, item) => {
+      const normalizedSummary = item.summary.toLowerCase();
+      if (/(stiger|rekord|lyfte|växte|expansion|tillväxt)/.test(normalizedSummary)) {
+        acc.bullish += 1;
+      }
+      if (/(faller|oro|press|nedgång|sänker|brist|osäker)/.test(normalizedSummary)) {
+        acc.bearish += 1;
+      }
+      return acc;
+    },
+    { bullish: 0, bearish: 0 },
+  );
+
+  if (categoryWeights.bullish > categoryWeights.bearish) {
+    return 'bullish';
+  }
+
+  if (categoryWeights.bearish > categoryWeights.bullish) {
+    return 'bearish';
+  }
+
+  return DEFAULT_DIGEST_SENTIMENT;
+}
+
+function buildFallbackDigestSummary(newsItems: NewsItem[], digestHash: string): NewsDigestSummary {
+  const generatedAt = new Date().toISOString();
+  const keyHighlights = buildFallbackHighlights(newsItems);
+
+  return {
+    id: `digest_${digestHash.slice(0, 12)}`,
+    headline: newsItems[0]?.headline ?? 'Marknaden i fokus',
+    overview: buildFallbackOverview(newsItems),
+    keyHighlights,
+    focusToday: pickFocusTopics(newsItems),
+    sentiment: deriveSentimentFromNews(newsItems),
+    generatedAt,
+    digestHash,
+  };
+}
+
+function extractJsonPayload(content: string): string {
+  const trimmed = content.trim();
+  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fencedMatch?.[1]) {
+    return fencedMatch[1].trim();
+  }
+  return trimmed;
+}
+
+async function generateNewsDigestSummary(newsItems: NewsItem[], digestHash: string): Promise<NewsDigestSummary> {
+  if (!openAIApiKey) {
+    console.warn('Missing OPENAI_API_KEY for digest summary, using fallback content.');
+    return buildFallbackDigestSummary(newsItems, digestHash);
+  }
+
+  try {
+    const newsContext = newsItems
+      .slice(0, 10)
+      .map((item, index) => {
+        const published = item.publishedAt ? `(${item.publishedAt})` : '';
+        return `${index + 1}. ${item.headline} ${published} – ${item.summary}`;
+      })
+      .join('\n');
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        temperature: 0.4,
+        max_tokens: 1200,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Du är en svensk finansredaktör som skriver morgonbrev. Svara alltid med giltig JSON utan text före eller efter.',
+          },
+          {
+            role: 'user',
+            content: `Sammanfatta gårdagens viktigaste finansiella nyheter på svenska och skapa ett kort morgonbrev.
+Returnera JSON med följande struktur:
+{
+  "id": "unik-sträng",
+  "headline": "Kort huvudrubrik",
+  "overview": "2–3 meningar som sammanfattar marknadsläget",
+  "key_highlights": ["bullet 1", "bullet 2"],
+  "focus_today": ["tema 1", "tema 2"],
+  "sentiment": "bullish|bearish|neutral",
+  "generated_at": "ISO-tidpunkt"
+}
+
+Nyhetsunderlag:
+${newsContext || 'Inga nyheter tillgängliga – håll det generellt.'}`,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI digest request failed:', errorText);
+      return buildFallbackDigestSummary(newsItems, digestHash);
+    }
+
+    const data = await response.json();
+    const rawContent = data?.choices?.[0]?.message?.content;
+    if (typeof rawContent !== 'string' || !rawContent.trim()) {
+      console.warn('OpenAI digest response missing content, using fallback.');
+      return buildFallbackDigestSummary(newsItems, digestHash);
+    }
+
+    const normalizedPayload = extractJsonPayload(rawContent);
+    const parsed = JSON.parse(normalizedPayload) as Record<string, unknown>;
+
+    const keyHighlights = normalizeStringArray(parsed.key_highlights ?? parsed.highlights ?? parsed.keyHighlights);
+    const focusToday = normalizeStringArray(parsed.focus_today ?? parsed.watchlist ?? parsed.focus);
+    const overviewText =
+      typeof parsed.overview === 'string' && parsed.overview.trim()
+        ? parsed.overview.trim()
+        : typeof parsed.summary === 'string'
+          ? parsed.summary.trim()
+          : null;
+
+    return {
+      id:
+        typeof parsed.id === 'string' && parsed.id.trim().length > 0
+          ? parsed.id.trim()
+          : `digest_${digestHash.slice(0, 12)}`,
+      headline:
+        typeof parsed.headline === 'string' && parsed.headline.trim().length > 0
+          ? parsed.headline.trim()
+          : newsItems[0]?.headline ?? 'Marknaden i fokus',
+      overview: overviewText ?? buildFallbackOverview(newsItems),
+      keyHighlights: keyHighlights.length > 0 ? keyHighlights : buildFallbackHighlights(newsItems),
+      focusToday: focusToday.length > 0 ? focusToday : pickFocusTopics(newsItems),
+      sentiment:
+        typeof parsed.sentiment === 'string'
+          ? (['bullish', 'bearish', 'neutral'].includes(parsed.sentiment.toLowerCase())
+              ? (parsed.sentiment.toLowerCase() as NewsDigestSummary['sentiment'])
+              : deriveSentimentFromNews(newsItems))
+          : deriveSentimentFromNews(newsItems),
+      generatedAt:
+        typeof parsed.generated_at === 'string' && parsed.generated_at.trim().length > 0
+          ? parsed.generated_at
+          : new Date().toISOString(),
+      digestHash,
+    };
+  } catch (error) {
+    console.error('Failed to generate AI-based news digest summary:', error);
+    return buildFallbackDigestSummary(newsItems, digestHash);
+  }
+}
+
+async function fetchLatestDigestHash(): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('ai_insights_cache')
+      .select('insights_data')
+      .eq('insight_type', DIGEST_INSIGHT_TYPE)
+      .eq('is_personalized', false)
+      .is('user_id', null)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Unable to fetch existing digest hash:', error);
+      return null;
+    }
+
+    const insightsData = data?.insights_data;
+    if (Array.isArray(insightsData) && insightsData.length > 0) {
+      const metadata = (insightsData[0] as Record<string, any>)?.metadata;
+      if (metadata && typeof metadata.digest_hash === 'string') {
+        return metadata.digest_hash;
+      }
+    }
+  } catch (error) {
+    console.warn('Unexpected error when reading digest hash:', error);
+  }
+
+  return null;
+}
+
+function buildDigestInsightPayload(summary: NewsDigestSummary) {
+  return {
+    id: summary.id,
+    title: summary.headline,
+    content: summary.overview,
+    confidence_score: 0.72,
+    insight_type: DIGEST_INSIGHT_TYPE,
+    key_factors: summary.keyHighlights.slice(0, 5),
+    metadata: {
+      digest_hash: summary.digestHash,
+      focus_today: summary.focusToday,
+      sentiment: summary.sentiment,
+      generated_at: summary.generatedAt,
+    },
+  };
+}
+
+async function upsertGlobalDigest(summary: NewsDigestSummary, digestInsight: Record<string, unknown>) {
+  const expiresAt = new Date(summary.generatedAt);
+  expiresAt.setDate(expiresAt.getDate() + 1);
+
+  const { error } = await supabase
+    .from('ai_insights_cache')
+    .upsert(
+      {
+        user_id: null,
+        insight_type: DIGEST_INSIGHT_TYPE,
+        is_personalized: false,
+        insights_data: [digestInsight],
+        updated_at: summary.generatedAt,
+        expires_at: expiresAt.toISOString(),
+      },
+      {
+        onConflict: 'user_id,insight_type,is_personalized',
+      },
+    );
+
+  if (error) {
+    throw error;
+  }
+}
+
+async function broadcastDigestToUsers(summary: NewsDigestSummary, digestInsight: Record<string, unknown>) {
+  try {
+    const { data: profiles, error } = await supabase.from('profiles').select('id');
+    if (error) {
+      console.error('Failed to fetch profiles for digest broadcast:', error);
+      return;
+    }
+
+    const userIds =
+      profiles
+        ?.map((profile) => profile.id)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0) ?? [];
+
+    if (userIds.length === 0) {
+      console.log('No users found for news digest broadcast.');
+      return;
+    }
+
+    for (let i = 0; i < userIds.length; i += DIGEST_BROADCAST_CHUNK_SIZE) {
+      const chunk = userIds.slice(i, i + DIGEST_BROADCAST_CHUNK_SIZE);
+      await Promise.all(
+        chunk.map(async (userId) => {
+          const { error: upsertError } = await supabase
+            .from('user_ai_insights')
+            .upsert(
+              {
+                user_id: userId,
+                insight_type: DIGEST_INSIGHT_TYPE,
+                is_personalized: false,
+                insights_data: [digestInsight],
+                updated_at: summary.generatedAt,
+              },
+              {
+                onConflict: 'user_id,insight_type,is_personalized',
+              },
+            );
+
+          if (upsertError) {
+            console.error(`Failed to upsert news digest for user ${userId}`, upsertError);
+          }
+        }),
+      );
+    }
+
+    console.log(`Broadcasted news digest summary to ${userIds.length} användare.`);
+  } catch (error) {
+    console.error('Unexpected error while broadcasting news digest:', error);
+  }
+}
+
+async function persistNewsDigestSummary(summary: NewsDigestSummary, shouldBroadcast: boolean) {
+  if (!summary) {
+    return;
+  }
+
+  const latestHash = await fetchLatestDigestHash();
+  if (latestHash === summary.digestHash) {
+    console.log('News digest already up-to-date; skipping persistence.');
+    return;
+  }
+
+  const digestInsight = buildDigestInsightPayload(summary);
+
+  try {
+    await upsertGlobalDigest(summary, digestInsight);
+  } catch (error) {
+    console.error('Failed to upsert global digest cache:', error);
+    return;
+  }
+
+  if (!shouldBroadcast) {
+    console.log('Skipping digest broadcast (disabled by request option).');
+    return;
+  }
+
+  await broadcastDigestToUsers(summary, digestInsight);
 }
