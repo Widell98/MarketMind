@@ -13,6 +13,7 @@ import { useDiscoverReportSummaries } from '@/hooks/useDiscoverReportSummaries';
 import { useMarketData } from '@/hooks/useMarketData';
 import { useNewsData } from '@/hooks/useNewsData';
 import { useMarketOverviewInsights, type MarketOverviewInsight } from '@/hooks/useMarketOverviewInsights';
+import { useMorningNewsletter } from '@/hooks/useMorningNewsletter';
 
 type Sentiment = 'bullish' | 'bearish' | 'neutral';
 
@@ -54,6 +55,7 @@ const DiscoverNews = () => {
   const { marketData, loading: marketLoading, error: marketError, refetch: refetchMarketData } = useMarketData();
   const { newsData, loading: newsLoading, error: newsError } = useNewsData();
   const { data: overviewInsights = [], isLoading: insightsLoading } = useMarketOverviewInsights();
+  const { newsletter, loading: newsletterLoading, error: newsletterError } = useMorningNewsletter();
 
   const companyCount = useMemo(
     () => new Set(reports.map((report) => report.companyName?.trim())).size,
@@ -214,14 +216,84 @@ const DiscoverNews = () => {
                     <h3 className="text-2xl sm:text-3xl font-bold text-foreground">Morgonrapporten</h3>
                   </div>
                   <Badge variant="secondary" className="rounded-full bg-primary/10 text-xs font-medium text-primary border-primary/20">
-                    Genererad kl 07:00
+                    {newsletter?.generated_at 
+                      ? `Genererad ${new Date(newsletter.generated_at).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`
+                      : 'Genererad kl 07:00'}
                   </Badge>
                 </div>
                 
-                <p className="text-sm sm:text-base leading-relaxed text-muted-foreground">
-                  {heroInsight?.content ??
-                    'AI sammanfattar gårdagens marknadsrörelser och vad som väntar i dag. Följ höjdpunkterna och få ett par snabba fokusområden innan börsen öppnar.'}
-                </p>
+                {newsletterLoading ? (
+                  <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-6 text-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">Genererar morgonbrev...</p>
+                  </div>
+                ) : newsletterError ? (
+                  <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-6 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Kunde inte ladda morgonbrevet. Försök igen senare.
+                    </p>
+                  </div>
+                ) : newsletter?.content ? (
+                  <>
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                      <div 
+                        className="text-sm sm:text-base leading-relaxed text-foreground whitespace-pre-line newsletter-content"
+                      >
+                        {newsletter.content.split('\n').map((line, idx) => {
+                          // Convert markdown-style headers to HTML
+                          if (line.startsWith('## ')) {
+                            return (
+                              <h3 key={idx} className="text-lg font-bold mt-6 mb-3 text-foreground">
+                                {line.slice(3)}
+                              </h3>
+                            );
+                          }
+                          if (line.startsWith('### ')) {
+                            return (
+                              <h4 key={idx} className="text-base font-semibold mt-4 mb-2 text-foreground">
+                                {line.slice(4)}
+                              </h4>
+                            );
+                          }
+                          if (line.trim().startsWith('**') && line.trim().endsWith('**')) {
+                            return (
+                              <p key={idx} className="font-semibold text-foreground mb-2">
+                                {line.trim().slice(2, -2)}
+                              </p>
+                            );
+                          }
+                          if (line.trim() === '') {
+                            return <br key={idx} />;
+                          }
+                          // Handle bold text within paragraphs
+                          const parts = line.split(/(\*\*[^*]+\*\*)/g);
+                          return (
+                            <p key={idx} className="mb-3 text-muted-foreground">
+                              {parts.map((part, partIdx) => 
+                                part.startsWith('**') && part.endsWith('**') ? (
+                                  <strong key={partIdx} className="text-foreground font-semibold">
+                                    {part.slice(2, -2)}
+                                  </strong>
+                                ) : (
+                                  part
+                                )
+                              )}
+                            </p>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {newsletter.date && (
+                      <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-border/60">
+                        Sammanfattning av marknaden för {newsletter.date}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm sm:text-base leading-relaxed text-muted-foreground">
+                    AI sammanfattar gårdagens marknadsrörelser och vad som väntar i dag. Följ höjdpunkterna och få ett par snabba fokusområden innan börsen öppnar.
+                  </p>
+                )}
                 
                 <Separator className="bg-border/60" />
                 
