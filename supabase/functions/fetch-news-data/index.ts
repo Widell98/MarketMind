@@ -14,6 +14,12 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+const resendApiKey = Deno.env.get('RESEND_API_KEY');
+const newsDigestFromEmail = Deno.env.get('NEWS_DIGEST_FROM_EMAIL') ?? Deno.env.get('RESEND_FROM_EMAIL');
+const newsDigestSubjectPrefix = Deno.env.get('NEWS_DIGEST_SUBJECT_PREFIX') ?? 'Morgonrapport';
+const digestPushWebhook = Deno.env.get('NEWS_DIGEST_PUSH_WEBHOOK');
+const digestNotificationApiKey = Deno.env.get('NEWS_DIGEST_NOTIFICATION_KEY');
+
 type NewsItem = {
   id: string;
   headline: string;
@@ -836,12 +842,12 @@ async function upsertGlobalDigest(summary: NewsDigestSummary, digestInsight: Rec
   }
 }
 
-async function broadcastDigestToUsers(summary: NewsDigestSummary, digestInsight: Record<string, unknown>) {
+async function broadcastDigestToUsers(summary: NewsDigestSummary, digestInsight: Record<string, unknown>): Promise<string[]> {
   try {
     const { data: profiles, error } = await supabase.from('profiles').select('id');
     if (error) {
       console.error('Failed to fetch profiles for digest broadcast:', error);
-      return;
+      return [];
     }
 
     const userIds =
@@ -851,7 +857,7 @@ async function broadcastDigestToUsers(summary: NewsDigestSummary, digestInsight:
 
     if (userIds.length === 0) {
       console.log('No users found for news digest broadcast.');
-      return;
+      return [];
     }
 
     for (let i = 0; i < userIds.length; i += DIGEST_BROADCAST_CHUNK_SIZE) {
@@ -881,8 +887,10 @@ async function broadcastDigestToUsers(summary: NewsDigestSummary, digestInsight:
     }
 
     console.log(`Broadcasted news digest summary to ${userIds.length} användare.`);
+    return userIds;
   } catch (error) {
     console.error('Unexpected error while broadcasting news digest:', error);
+    return [];
   }
 }
 
@@ -911,5 +919,169 @@ async function persistNewsDigestSummary(summary: NewsDigestSummary, shouldBroadc
     return;
   }
 
-  await broadcastDigestToUsers(summary, digestInsight);
+  const recipientUserIds = await broadcastDigestToUsers(summary, digestInsight);
+  await triggerDigestNotificationWebhooks(summary, recipientUserIds);
+}
+
+const DIGEST_EMAIL_BATCH_SIZE = 50;
+
+async function triggerDigestNotificationWebhooks(summary: NewsDigestSummary, recipientUserIds: string[]): Promise<void> {
+  await Promise.all([
+    sendNewsDigestEmails(summary),
+    sendDigestPushNotifications(summary, recipientUserIds),
+  ]);
+}
+
+async function sendNewsDigestEmails(summary: NewsDigestSummary): Promise<void> {
+  if (!resendApiKey || !newsDigestFromEmail) {
+    console.log('Resend configuration missing; skipping email digest broadcast.');
+    return;
+  }
+
+  const subscriberEmails = await fetchSubscriberEmails();
+  if (subscriberEmails.length === 0) {
+    console.log('No subscriber emails found for digest notification.');
+    return;
+  }
+
+  const subject = `${newsDigestSubjectPrefix}: ${summary.headline}`;
+  const htmlBody = buildDigestEmailHtml(summary);
+  const textBody = buildDigestEmailText(summary);
+
+  for (let i = 0; i < subscriberEmails.length; i += DIGEST_EMAIL_BATCH_SIZE) {
+    const chunk = subscriberEmails.slice(i, i + DIGEST_EMAIL_BATCH_SIZE);
+
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${resendApiKey}`,
+        },
+        body: JSON.stringify({
+          from: newsDigestFromEmail,
+          to: chunk,
+          subject,
+          html: htmlBody,
+          text: textBody,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Resend digest email failed:', { status: response.status, error: errorText });
+      }
+    } catch (error) {
+      console.error('Error sending digest emails via Resend:', error);
+    }
+  }
+}
+
+async function fetchSubscriberEmails(): Promise<string[]> {
+  try {
+    const { data, error } = await supabase
+      .from('subscribers')
+      .select('email')
+      .eq('subscribed', true);
+
+    if (error) {
+      console.error('Failed to fetch subscriber emails for digest notification:', error);
+      return [];
+    }
+
+    const deduplicated = Array.from(
+      new Set(
+        data
+          ?.map((entry) => entry.email?.trim())
+          .filter((email): email is string => typeof email === 'string' && email.length > 0) ?? [],
+      ),
+    );
+
+    return deduplicated;
+  } catch (error) {
+    console.error('Unexpected error fetching subscriber emails:', error);
+    return [];
+  }
+}
+
+function buildDigestEmailHtml(summary: NewsDigestSummary): string {
+  const highlightList = summary.keyHighlights
+    .map((item) => `<li style="margin-bottom:8px;">${item}</li>`)
+    .join('');
+  const focusList = summary.focusToday
+    .map((item) => `<span style="display:inline-block;padding:4px 10px;margin:4px;border-radius:999px;background:#eef2ff;">${item}</span>`)
+    .join('');
+
+  return `
+    <div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+      <p style="font-size:12px;color:#64748b;margin:0;">${new Date(summary.generatedAt).toLocaleString('sv-SE')}</p>
+      <h1 style="font-size:22px;margin:8px 0;">${summary.headline}</h1>
+      <p style="font-size:15px;line-height:1.6;margin-bottom:16px;">${summary.overview}</p>
+      <h2 style="font-size:16px;margin-bottom:6px;">Gårdagens höjdpunkter</h2>
+      <ul style="padding-left:18px;margin-top:0;">${highlightList}</ul>
+      <h2 style="font-size:16px;margin:18px 0 6px;">Fokus idag</h2>
+      <div>${focusList}</div>
+      <p style="font-size:13px;color:#64748b;margin-top:24px;">
+        Sentiment: ${summary.sentiment === 'bullish' ? 'Positivt' : summary.sentiment === 'bearish' ? 'Försiktigt' : 'Neutral'}
+      </p>
+    </div>
+  `;
+}
+
+function buildDigestEmailText(summary: NewsDigestSummary): string {
+  const highlights = summary.keyHighlights.map((item, index) => `${index + 1}. ${item}`).join('\n');
+  const focus = summary.focusToday.join(', ');
+
+  return [
+    `${summary.headline}`,
+    '',
+    summary.overview,
+    '',
+    'Gårdagens höjdpunkter:',
+    highlights,
+    '',
+    `Fokus idag: ${focus}`,
+    '',
+    `Sentiment: ${summary.sentiment}`,
+    '',
+    `Genererad: ${new Date(summary.generatedAt).toLocaleString('sv-SE')}`,
+  ].join('\n');
+}
+
+async function sendDigestPushNotifications(summary: NewsDigestSummary, recipientUserIds: string[]): Promise<void> {
+  if (!digestPushWebhook) {
+    return;
+  }
+
+  await postDigestWebhook(digestPushWebhook, summary, recipientUserIds);
+}
+
+async function postDigestWebhook(endpoint: string, summary: NewsDigestSummary, recipientUserIds: string[]): Promise<void> {
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(digestNotificationApiKey ? { 'X-API-Key': digestNotificationApiKey } : {}),
+      },
+      body: JSON.stringify({
+        type: 'news_digest',
+        headline: summary.headline,
+        overview: summary.overview,
+        keyHighlights: summary.keyHighlights,
+        focusToday: summary.focusToday,
+        sentiment: summary.sentiment,
+        generatedAt: summary.generatedAt,
+        recipientCount: recipientUserIds.length,
+        recipients: recipientUserIds.slice(0, 50),
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Digest push webhook failed', { status: response.status, error: errorText });
+    }
+  } catch (error) {
+    console.error('Failed to call digest push webhook', error);
+  }
 }

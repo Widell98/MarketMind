@@ -52,7 +52,7 @@ const DiscoverNews = () => {
   const navigate = useNavigate();
   const { reports, loading: reportsLoading } = useDiscoverReportSummaries(24);
   const { marketData, loading: marketLoading, error: marketError, refetch: refetchMarketData } = useMarketData();
-  const { newsData, loading: newsLoading, error: newsError } = useNewsData();
+  const { newsData, newsSummary, loading: newsLoading, error: newsError } = useNewsData();
   const { data: overviewInsights = [], isLoading: insightsLoading } = useMarketOverviewInsights();
 
   const companyCount = useMemo(
@@ -66,7 +66,7 @@ const DiscoverNews = () => {
   );
 
   const heroInsight = overviewInsights[0];
-  const heroSentiment = deriveSentimentFromInsight(heroInsight);
+  const heroSentiment = newsSummary?.sentiment ?? deriveSentimentFromInsight(heroInsight);
   const heroIndices = marketData?.marketIndices ?? [];
   const lastUpdated = marketData?.lastUpdated ? new Date(marketData.lastUpdated) : null;
   const reportHighlights = useMemo(() => reports.slice(0, 3), [reports]);
@@ -129,7 +129,18 @@ const DiscoverNews = () => {
 
   const topNewsHighlights = useMemo(() => (newsData ?? []).slice(0, 3), [newsData]);
 
+  const digestHighlights = useMemo(() => {
+    if (newsSummary?.keyHighlights?.length) {
+      return newsSummary.keyHighlights;
+    }
+    return [];
+  }, [newsSummary]);
+
   const focusAreas = useMemo(() => {
+    if (newsSummary?.focusToday?.length) {
+      return newsSummary.focusToday.slice(0, 3);
+    }
+
     if (heroInsight?.key_factors?.length) {
       return heroInsight.key_factors.slice(0, 3);
     }
@@ -139,7 +150,7 @@ const DiscoverNews = () => {
     }
 
     return ['Marknadspuls', 'Rapporter', 'Nyheter'];
-  }, [heroInsight, trendingCategories]);
+  }, [newsSummary, heroInsight, trendingCategories]);
 
   const formatPublishedLabel = (isoString?: string) => {
     if (!isoString) return 'Okänd tid';
@@ -147,6 +158,19 @@ const DiscoverNews = () => {
     if (Number.isNaN(date.getTime())) return 'Okänd tid';
     return date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
   };
+
+  const formatGeneratedLabel = (isoString?: string) => {
+    if (!isoString) return 'Genererad kl 07:00';
+    const date = new Date(isoString);
+    if (Number.isNaN(date.getTime())) return 'Genererad kl 07:00';
+    return `Genererad ${date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
+  };
+
+  const heroHeadline = newsSummary?.headline ?? 'Morgonrapporten';
+  const heroDescription =
+    newsSummary?.overview ??
+    heroInsight?.content ??
+    'AI sammanfattar gårdagens marknadsrörelser och vad som väntar i dag. Följ höjdpunkterna och få ett par snabba fokusområden innan börsen öppnar.';
 
   return (
     <Layout>
@@ -211,21 +235,41 @@ const DiscoverNews = () => {
                         AI-genererat nyhetsbrev
                       </p>
                     </div>
-                    <h3 className="text-2xl sm:text-3xl font-bold text-foreground">Morgonrapporten</h3>
+                    <h3 className="text-2xl sm:text-3xl font-bold text-foreground">{heroHeadline}</h3>
                   </div>
                   <Badge variant="secondary" className="rounded-full bg-primary/10 text-xs font-medium text-primary border-primary/20">
-                    Genererad kl 07:00
+                    {formatGeneratedLabel(newsSummary?.generatedAt)}
                   </Badge>
                 </div>
                 
                 <p className="text-sm sm:text-base leading-relaxed text-muted-foreground">
-                  {heroInsight?.content ??
-                    'AI sammanfattar gårdagens marknadsrörelser och vad som väntar i dag. Följ höjdpunkterna och få ett par snabba fokusområden innan börsen öppnar.'}
+                  {heroDescription}
                 </p>
                 
                 <Separator className="bg-border/60" />
                 
                 <div className="space-y-5">
+                  {digestHighlights.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          AI-sammanfattning
+                        </p>
+                      </div>
+                      <ul className="space-y-2">
+                        {digestHighlights.map((highlight, index) => (
+                          <li
+                            key={`digest-highlight-${index}`}
+                            className="rounded-2xl border border-border/60 bg-muted/30 p-3 text-sm text-muted-foreground leading-relaxed"
+                          >
+                            {highlight}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <Clock className="h-4 w-4 text-muted-foreground" />
