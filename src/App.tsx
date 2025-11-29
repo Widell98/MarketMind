@@ -20,6 +20,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import PortfolioImplementation from "./pages/PortfolioImplementation";
 import PortfolioAdvisor from "./pages/PortfolioAdvisor";
+import Goals from "./pages/Goals";
 import AIChat from "./pages/AIChat";
 import Learning from "./pages/Learning";
 import SocialIndex from "./pages/SocialIndex";
@@ -61,6 +62,7 @@ function App() {
                     <Route path="/auth/reset-password" element={<ResetPassword />} />
                     <Route path="/portfolio-implementation" element={<PortfolioImplementation />} />
                     <Route path="/portfolio-advisor" element={<PortfolioAdvisor />} />
+                    <Route path="/goals" element={<Goals />} />
                     <Route path="/ai-chat" element={<AIChat />} />
                     <Route path="/ai-chatt" element={<AIChat />} />
                     <Route path="/learning" element={<Learning />} />

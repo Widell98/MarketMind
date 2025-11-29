@@ -21,6 +21,7 @@ const translations = {
     'nav.aiChat': 'AI-Assistent',
     'nav.mainMenu': 'Huvudmeny',
     'nav.aiTools': 'AI-Verktyg',
+    'nav.goals': 'Mål & Framsteg',
     'nav.account': 'Konto',
     'nav.login': 'Logga in',
     
@@ -150,6 +151,7 @@ const translations = {
     'nav.aiChat': 'AI Assistant',
     'nav.mainMenu': 'Main Menu',
     'nav.aiTools': 'AI Tools',
+    'nav.goals': 'Goals & Progress',
     'nav.account': 'Account',
     'nav.login': 'Login',
     

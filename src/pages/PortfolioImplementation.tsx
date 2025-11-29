@@ -14,11 +14,14 @@ import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { Button } from '@/components/ui/button';
-import { Brain, AlertCircle, User, Upload } from 'lucide-react';
+import { Brain, AlertCircle, User, Upload, Target } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
 import { useToast } from '@/hooks/use-toast';
 import { normalizeShareClassTicker, parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
 import { supabase } from '@/integrations/supabase/client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import Goals from './Goals';
+
 const PortfolioImplementation = () => {
   const {
     actualHoldings,
@@ -330,23 +333,38 @@ const PortfolioImplementation = () => {
                 </div>
               </div>}
 
-          {/* Portfolio Overview & Community */}
-          <div className="space-y-3 sm:space-y-4 md:space-y-6 lg:space-y-8">
-            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
-              <PortfolioOverview
-                portfolio={activePortfolio}
-                onQuickChat={handleQuickChat}
-                onActionClick={handleActionClick}
-                importControls={portfolioImportControls}
-              />
-            </div>
 
-            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
-              <CommunityRecommendations />
-            </div>
-          </div>
+          {/* Portfolio Overview & Community */}
+          <Tabs defaultValue="overview" className="w-full space-y-6">
+            <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
+              <TabsTrigger value="overview">Översikt</TabsTrigger>
+              <TabsTrigger value="goals" className="flex items-center gap-2">
+                <Target className="h-4 w-4" />
+                Mål & Framsteg
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="space-y-6">
+              <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
+                <PortfolioOverview
+                  portfolio={activePortfolio}
+                  onQuickChat={handleQuickChat}
+                  onActionClick={handleActionClick}
+                  importControls={portfolioImportControls}
+                />
+              </div>
+
+              <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
+                <CommunityRecommendations />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="goals">
+              <Goals embedded />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 

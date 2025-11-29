@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Home, TrendingUp, BarChart3, Lock, Brain, Sparkles, User, Settings, HelpCircle } from 'lucide-react';
+import { Home, TrendingUp, BarChart3, Lock, Brain, Sparkles, User, Settings, HelpCircle, Target } from 'lucide-react';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import HelpButton from '@/components/HelpButton';
@@ -20,6 +20,11 @@ const AppSidebar = () => {
     name: t('nav.aiChat'),
     href: '/ai-chatt',
     icon: Brain
+  }, {
+    name: t('nav.goals'),
+    href: '/goals',
+    icon: Target,
+    requiresAuth: true
   }];
   const mainNavigation = [{
     name: t('nav.home'),
