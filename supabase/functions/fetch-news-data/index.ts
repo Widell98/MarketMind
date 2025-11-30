@@ -141,6 +141,7 @@ Regler:
 - Hitta inte på verkliga URL:er – använd \"#\" som placeholder.`;
 
   const raw = await callOpenAI(systemPrompt, userPrompt, 2200);
+  logAiResponse("morning_brief", raw);
   const parsed = parseJsonPayload(raw);
   const morningBrief = normalizeMorningBrief(parsed?.morning_brief ?? parsed?.brief ?? parsed?.newsletter ?? {});
   const news = normalizeNewsItems(parsed?.news_items ?? parsed?.news ?? []);
@@ -167,8 +168,15 @@ Returnera JSON:
 }`;
 
   const raw = await callOpenAI(systemPrompt, userPrompt, 1400);
+  logAiResponse("market_momentum", raw);
   const parsed = parseJsonPayload(raw);
   return normalizeMomentumItems(parsed?.items ?? []);
+}
+
+function logAiResponse(label: string, content: string) {
+  const maxLength = 800;
+  const preview = content.length > maxLength ? `${content.slice(0, maxLength)}…` : content;
+  console.log(`[AI RESPONSE] ${label}:`, preview);
 }
 
 function parseJsonPayload(content: string): Record<string, unknown> {
