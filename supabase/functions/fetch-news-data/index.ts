@@ -20,10 +20,6 @@ serve(async (req) => {
     const type = typeof body?.type === "string" ? body.type : "news";
 
     switch (type) {
-      case "calendar": {
-        const events = await generateFinancialCalendar();
-        return jsonResponse(events);
-      }
       case "momentum": {
         const items = await generateMarketMomentum();
         return jsonResponse(items);
@@ -151,38 +147,6 @@ Regler:
   return { morningBrief, news };
 }
 
-async function generateFinancialCalendar() {
-  const today = new Date();
-  const nextWeek = new Date(today);
-  nextWeek.setDate(nextWeek.getDate() + 7);
-
-  const systemPrompt =
-    "Du är en kalenderredaktör som sammanställer finansiella händelser för svenska investerare. Svara alltid med giltig JSON.";
-
-  const userPrompt = `Skapa en realistisk finansiell kalender för perioden ${today.toLocaleDateString("sv-SE")} till ${nextWeek.toLocaleDateString(
-    "sv-SE",
-  )}.
-Returnera JSON:
-{
-  "events": [
-    {
-      "id": "string",
-      "date": "YYYY-MM-DD",
-      "time": "HH:MM",
-      "title": "string",
-      "description": "string",
-      "importance": "high|medium|low",
-      "category": "earnings|economic|dividend|central_bank|other",
-      "region": "Sweden|EU|US|Global"
-    }
-  ]
-}`;
-
-  const raw = await callOpenAI(systemPrompt, userPrompt, 1600);
-  const parsed = parseJsonPayload(raw);
-  return normalizeCalendarEvents(parsed?.events ?? []);
-}
-
 async function generateMarketMomentum() {
   const systemPrompt =
     "Du är en svensk marknadsstrateg som beskriver momentum och sentiment. Svara alltid med giltig JSON.";
@@ -307,21 +271,6 @@ function normalizeNewsItems(items: unknown[]): Array<Record<string, string>> {
         url: typeof item.url === "string" && item.url.trim().length > 0 ? item.url.trim() : "#",
       };
     });
-}
-
-function normalizeCalendarEvents(events: unknown[]): Array<Record<string, string>> {
-  return events
-    .filter((event): event is Record<string, unknown> => !!event && typeof event === "object")
-    .map((event, index) => ({
-      id: typeof event.id === "string" && event.id.trim().length > 0 ? event.id.trim() : `cal_${index}`,
-      date: typeof event.date === "string" ? event.date : new Date().toISOString().split("T")[0],
-      time: typeof event.time === "string" ? event.time : "09:00",
-      title: typeof event.title === "string" ? event.title.trim() : "Okänd händelse",
-      description: typeof event.description === "string" ? event.description.trim() : "Beskrivning saknas",
-      importance: typeof event.importance === "string" ? event.importance : "medium",
-      category: typeof event.category === "string" ? event.category : "other",
-      region: typeof event.region === "string" ? event.region : "Global",
-    }));
 }
 
 function normalizeMomentumItems(items: unknown[]): Array<Record<string, string>> {
