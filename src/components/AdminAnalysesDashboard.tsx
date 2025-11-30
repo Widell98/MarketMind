@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
-import { BarChart3, Calendar, FileText, Pencil, Plus, Trash2, User } from 'lucide-react';
+import { BarChart3, Calendar, FileText, Pencil, Plus, RefreshCw, Trash2, User } from 'lucide-react';
 
 import AIGenerationAdminControls from '@/components/AIGenerationAdminControls';
 import {
@@ -91,6 +91,7 @@ const AdminAnalysesDashboard: React.FC = () => {
   const [loadingAnalyses, setLoadingAnalyses] = useState(false);
   const [editingReport, setEditingReport] = useState<GeneratedReport | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [isRefreshingNews, setIsRefreshingNews] = useState(false);
   const [editForm, setEditForm] = useState({
     reportTitle: '',
     companyName: '',
@@ -200,6 +201,31 @@ const AdminAnalysesDashboard: React.FC = () => {
   const closeEditDialog = () => {
     setEditDialogOpen(false);
     resetEditState();
+  };
+
+  const handleRefreshNews = async () => {
+    setIsRefreshingNews(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-news-data', {
+        body: { forceRefresh: true },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Nyheter uppdaterade',
+        description: 'Morgonrapporten har uppdaterats med senaste data.',
+      });
+    } catch (error) {
+      console.error('Error refreshing news:', error);
+      toast({
+        title: 'Misslyckades att uppdatera',
+        description: 'Ett fel uppstod vid uppdatering av nyheter.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRefreshingNews(false);
+    }
   };
 
   const updateReportMutation = useMutation<GeneratedReport, Error, UpdateReportPayload>({
@@ -378,7 +404,18 @@ const AdminAnalysesDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <AIGenerationAdminControls onReportGenerated={handleReportGenerated} />
+      <div className="flex justify-between items-start">
+        <AIGenerationAdminControls onReportGenerated={handleReportGenerated} />
+        <Button 
+          variant="outline" 
+          onClick={handleRefreshNews} 
+          disabled={isRefreshingNews}
+          className="gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshingNews ? 'animate-spin' : ''}`} />
+          {isRefreshingNews ? 'Uppdaterar...' : 'Uppdatera Morgonrapport'}
+        </Button>
+      </div>
 
       <Card>
         <CardHeader>

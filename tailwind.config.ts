@@ -137,7 +137,9 @@ export default {
 			},
 			fontFamily: {
 				sans: ['Inter', 'sans-serif'],
-				heading: ['Montserrat', 'sans-serif']
+				heading: ['Montserrat', 'sans-serif'],
+				serif: ['Playfair Display', 'serif'],
+				mono: ['JetBrains Mono', 'monospace']
 			}
 		}
 	},

@@ -9,6 +9,7 @@ const corsHeaders = {
 };
 
 const openAIApiKey = Deno.env.get("OPENAI_API_KEY");
+const tavilyApiKey = Deno.env.get("TAVILY_API_KEY");
 const OPENAI_MODEL = "gpt-5.1";
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -74,12 +75,279 @@ function jsonResponse(payload: unknown, status = 200): Response {
   });
 }
 
+// --- Date Helper Functions ---
+
+function isWeekend(date: Date): boolean {
+  const day = date.getDay();
+  return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
+}
+
+function getWeekStart(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+  return new Date(d.setDate(diff));
+}
+
+function getWeekEnd(date: Date): Date {
+  const weekStart = getWeekStart(date);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  return weekEnd;
+}
+
+function getPreviousWeekday(date: Date): Date {
+  const prev = new Date(date);
+  prev.setDate(prev.getDate() - 1);
+  
+  // If it's Monday, go back to Friday
+  if (prev.getDay() === 1) {
+    prev.setDate(prev.getDate() - 3); // Go back 3 more days to Friday
+  } else if (prev.getDay() === 0) {
+    // If it's Sunday, go back to Friday
+    prev.setDate(prev.getDate() - 2);
+  } else if (prev.getDay() === 6) {
+    // If it's Saturday, go back to Friday
+    prev.setDate(prev.getDate() - 1);
+  }
+  
+  return prev;
+}
+
+// --- Tavily Helper Functions ---
+
+function extractSourceName(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.replace(/^www\./, "");
+    
+    // Map common domains to readable names
+    const sourceMap: Record<string, string> = {
+      "bloomberg.com": "Bloomberg",
+      "reuters.com": "Reuters",
+      "cnbc.com": "CNBC",
+      "wsj.com": "Wall Street Journal",
+      "di.se": "Dagens Industri",
+      "svd.se": "Svenska Dagbladet",
+      "dn.se": "Dagens Nyheter",
+      "affarsvarlden.se": "Affärsvärlden",
+      "privataaffarer.se": "Privata Affärer",
+      "breakit.se": "Breakit",
+      "marketwatch.com": "MarketWatch",
+      "investing.com": "Investing.com",
+      "ft.com": "Financial Times",
+    };
+    
+    const domain = hostname.split("/")[0];
+    return sourceMap[domain] || domain.split(".")[0].charAt(0).toUpperCase() + domain.split(".")[0].slice(1);
+  } catch {
+    return "Okänd källa";
+  }
+}
+
+function extractDomain(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+async function fetchTavilyNews(query: string, maxResults = 15, days = 1): Promise<TavilyArticle[]> {
+  if (!tavilyApiKey) {
+    console.warn("TAVILY_API_KEY is not configured. Skipping Tavily search.");
+    return [];
+  }
+
+  try {
+    const response = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        api_key: tavilyApiKey,
+        query,
+        search_depth: "basic",
+        include_domains: [
+            "bloomberg.com", 
+            "reuters.com", 
+            "cnbc.com", 
+            "wsj.com", 
+            "di.se", 
+            "svd.se/naringsliv", 
+            "dn.se/ekonomi", 
+            "affarsvarlden.se",
+            "privataaffarer.se",
+            "breakit.se",
+            "marketwatch.com",
+            "investing.com",
+            "ft.com"
+        ],
+        topic: "news",
+        max_results: maxResults,
+        days: days
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Tavily API error:", errorText);
+      return [];
+    }
+
+    const data = await response.json();
+    if (Array.isArray(data.results) && data.results.length > 0) {
+      return data.results
+        .filter((r: any) => r.title && r.url && r.content)
+        .map((r: any) => ({
+          title: typeof r.title === "string" ? r.title.trim() : "",
+          content: typeof r.content === "string" ? r.content.trim() : (typeof r.snippet === "string" ? r.snippet.trim() : ""),
+          url: typeof r.url === "string" ? r.url.trim() : "",
+          source: extractSourceName(r.url || ""),
+          published_date: typeof r.published_date === "string" ? r.published_date : undefined,
+          domain: extractDomain(r.url || ""),
+        }))
+        .filter((article: TavilyArticle) => article.title && article.url && article.content);
+    }
+    return [];
+  } catch (error) {
+    console.error("Failed to fetch from Tavily:", error);
+    return [];
+  }
+}
+
+async function fetchMultipleTavilySearches(queries: string[], maxResultsPerQuery = 20, days = 1): Promise<TavilyArticle[]> {
+  console.log(`[fetchMultipleTavilySearches] Starting ${queries.length} searches`);
+  
+  const allArticles: TavilyArticle[] = [];
+  const seenUrls = new Set<string>();
+  
+  // Run all searches in parallel
+  const searchPromises = queries.map(query => fetchTavilyNews(query, maxResultsPerQuery, days));
+  const results = await Promise.all(searchPromises);
+  
+  // Combine and deduplicate
+  for (const articles of results) {
+    for (const article of articles) {
+      if (!seenUrls.has(article.url)) {
+        seenUrls.add(article.url);
+        allArticles.push(article);
+      }
+    }
+  }
+  
+  console.log(`[fetchMultipleTavilySearches] Combined ${allArticles.length} unique articles from ${queries.length} searches`);
+  
+  // Sort by published_date (newest first) if available
+  allArticles.sort((a, b) => {
+    if (a.published_date && b.published_date) {
+      return new Date(b.published_date).getTime() - new Date(a.published_date).getTime();
+    }
+    if (a.published_date) return -1;
+    if (b.published_date) return 1;
+    return 0;
+  });
+  
+  return allArticles;
+}
+
+// --- Article Summarization ---
+
+async function categorizeArticle(title: string, content: string): Promise<string> {
+  const lowerTitle = title.toLowerCase();
+  const lowerContent = content.toLowerCase();
+  
+  if (lowerTitle.includes("kvartalsrapport") || lowerTitle.includes("earnings") || lowerTitle.includes("resultat") || lowerContent.includes("kvartalsrapport")) {
+    return "earnings";
+  }
+  if (lowerTitle.includes("tech") || lowerTitle.includes("teknologi") || lowerContent.includes("tech") || lowerContent.includes("ai ") || lowerContent.includes("artificiell")) {
+    return "tech";
+  }
+  if (lowerTitle.includes("sverige") || lowerTitle.includes("svensk") || lowerContent.includes("sverige") || lowerContent.includes("svensk")) {
+    return "sweden";
+  }
+  if (lowerTitle.includes("råvara") || lowerTitle.includes("commodit") || lowerTitle.includes("guld") || lowerTitle.includes("olja")) {
+    return "commodities";
+  }
+  if (lowerTitle.includes("makro") || lowerTitle.includes("ekonomi") || lowerTitle.includes("ränta") || lowerContent.includes("makro")) {
+    return "macro";
+  }
+  return "global";
+}
+
+async function summarizeArticle(article: TavilyArticle): Promise<NewsItem> {
+  const category = await categorizeArticle(article.title, article.content);
+  
+  // If OpenAI is not available, use original content as summary
+  if (!openAIApiKey) {
+    const summary = article.content.length > 200 
+      ? article.content.slice(0, 200) + "..."
+      : article.content;
+    
+    return {
+      id: `news_${crypto.randomUUID()}`,
+      headline: article.title,
+      summary,
+      category,
+      source: article.source,
+      publishedAt: article.published_date ? new Date(article.published_date).toISOString() : new Date().toISOString(),
+      url: article.url,
+    };
+  }
+
+  try {
+    const systemPrompt = "Du är en svensk finansjournalist som sammanfattar nyhetsartiklar. Du svarar alltid med en kort sammanfattning på svenska (max 2-3 meningar).";
+    
+    const userPrompt = `Sammanfatta följande artikel på svenska. Behåll all faktisk information men omskriv texten för att undvika upprepning. Använd inte samma meningar som originalet. Max 2-3 meningar.
+
+Rubrik: ${article.title}
+
+Innehåll:
+${article.content.slice(0, 1000)}
+
+Sammanfattning:`;
+
+    const summary = await callOpenAI(systemPrompt, userPrompt, 150);
+    
+    return {
+      id: `news_${crypto.randomUUID()}`,
+      headline: article.title,
+      summary: summary.trim() || article.content.slice(0, 200),
+      category,
+      source: article.source,
+      publishedAt: article.published_date ? new Date(article.published_date).toISOString() : new Date().toISOString(),
+      url: article.url,
+    };
+  } catch (error) {
+    console.error("Failed to summarize article:", error);
+    // Fallback to original content
+    const summary = article.content.length > 200 
+      ? article.content.slice(0, 200) + "..."
+      : article.content;
+    
+    return {
+      id: `news_${crypto.randomUUID()}`,
+      headline: article.title,
+      summary,
+      category,
+      source: article.source,
+      publishedAt: article.published_date ? new Date(article.published_date).toISOString() : new Date().toISOString(),
+      url: article.url,
+    };
+  }
+}
+
+// --- OpenAI Helper Functions ---
+
 async function callOpenAI(systemPrompt: string, userPrompt: string, maxTokens = 1800): Promise<string> {
   if (!openAIApiKey) {
     throw new Error("OPENAI_API_KEY is not configured");
   }
 
-  const response = await fetch("https://api.openai.com/v1/responses", {
+  // Try chat/completions endpoint first (standard for gpt-5.1)
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -87,25 +355,25 @@ async function callOpenAI(systemPrompt: string, userPrompt: string, maxTokens = 
     },
     body: JSON.stringify({
       model: OPENAI_MODEL,
-      max_output_tokens: maxTokens,
-      reasoning: { effort: "medium" },
-      text: { verbosity: "medium" },
-      input: [
+      messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
+      temperature: 0.7,
+      stream: false,
     }),
   });
 
   if (!response.ok) {
     const errorText = await safeReadText(response);
+    console.error("OpenAI API error response:", errorText);
     throw new Error(`OpenAI request failed (${response.status}): ${errorText}`);
   }
 
   const data = await response.json();
   const text = extractText(data);
   if (!text || text.trim().length === 0) {
-    console.error("OpenAI raw response", data);
+    console.error("OpenAI raw response:", JSON.stringify(data, null, 2));
     throw new Error("OpenAI response did not contain text output");
   }
   return text;
@@ -131,6 +399,15 @@ type MorningBrief = {
   sections: MorningSection[];
 };
 
+type TavilyArticle = {
+  title: string;
+  content: string;
+  url: string;
+  source: string;
+  published_date?: string;
+  domain: string;
+};
+
 type NewsItem = {
   id: string;
   headline: string;
@@ -148,57 +425,319 @@ type GeneratedMorningBrief = {
   digestHash: string;
 };
 
-async function generateMorningBrief(): Promise<GeneratedMorningBrief> {
+async function generateWeeklySummary(): Promise<GeneratedMorningBrief> {
   const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-
+  const weekStart = getWeekStart(today);
+  const weekEnd = getWeekEnd(today);
+  
+  console.log(`[generateWeeklySummary] Generating weekly summary for week ${weekStart.toLocaleDateString("sv-SE")} - ${weekEnd.toLocaleDateString("sv-SE")}`);
+  
+  // 1. Get all briefs from the week
+  const weekBriefs = await getWeekBriefs(weekStart, weekEnd);
+  console.log(`[generateWeeklySummary] Found ${weekBriefs.length} briefs from the week`);
+  
+  // 2. Fetch news from the entire week
+  const weeklyQueries = [
+    "week in review financial markets stock market weekly summary",
+    "market performance this week major events",
+    "economic data releases this week",
+    "financial news sweden global markets this week"
+  ];
+  
+  const tavilyArticles = await fetchMultipleTavilySearches(weeklyQueries, 15, 7);
+  console.log(`[generateWeeklySummary] Fetched ${tavilyArticles.length} articles from the week`);
+  
+  // 3. Summarize top articles
+  const summarizedNews: NewsItem[] = [];
+  for (const article of tavilyArticles.slice(0, 8)) {
+    try {
+      const summarized = await summarizeArticle(article);
+      summarizedNews.push(summarized);
+    } catch (error) {
+      console.error("Failed to summarize article for weekly summary:", error);
+    }
+  }
+  
+  // 4. Create context from week briefs and articles
+  const weekBriefsContext = weekBriefs.length > 0
+    ? weekBriefs.map((brief, idx) => 
+        `Dag ${idx + 1} (${new Date(brief.morningBrief.generatedAt).toLocaleDateString("sv-SE")}):\n` +
+        `Rubrik: ${brief.morningBrief.headline}\n` +
+        `Översikt: ${brief.morningBrief.overview}\n` +
+        `Höjdpunkter: ${brief.morningBrief.keyHighlights.join(", ")}\n`
+      ).join("\n\n")
+    : "Inga tidigare briefs tillgängliga för veckan.";
+  
+  const tavilyContext = tavilyArticles.length > 0
+    ? tavilyArticles.map((a) => `- ${a.title} (${a.source}): ${a.content.slice(0, 300)}...`).join("\n")
+    : "";
+  
   const systemPrompt =
-    "Du är en svensk finansredaktör som skriver morgonbrev och strukturerade nyhetssammanfattningar. Du svarar alltid med giltig JSON.";
+    "Du är en svensk finansredaktör som skriver veckosammanfattningar. Du skriver långa, detaljerade texter som går igenom hela veckan. Du svarar alltid med giltig JSON.";
+  
+  const userPrompt = `Skriv en omfattande veckosammanfattning för veckan ${weekStart.toLocaleDateString("sv-SE")} - ${weekEnd.toLocaleDateString("sv-SE")}.
 
-  const userPrompt = `Skriv ett kort AI-genererat morgonbrev för datumet ${today.toLocaleDateString("sv-SE")}.
-Inkludera både sammanfattning och 6–8 nyhetsrubriker relevanta för svenska investerare.
-Fokusera på händelser och sentiment från ${yesterday.toLocaleDateString("sv-SE")} (gårdagen). Ange tider och datum i svensk tidszon där det är relevant.
+VIKTIGT: Detta är en veckosammanfattning, inte dagliga nyheter. Skriv en lång, detaljerad text (5-8 stycken) som går igenom:
+- Viktigaste händelserna i veckan
+- Marknadens utveckling och trender
+- Sentiment och förändringar över veckan
+- Utblick mot nästa vecka
+
+Veckans dagliga briefs:
+---
+${weekBriefsContext}
+---
+
+Veckans nyhetsartiklar:
+---
+${tavilyContext || "Inga nyhetsartiklar tillgängliga för veckan."}
+---
 
 FORMAT (måste följas exakt):
 {
   "morning_brief": {
-    "headline": "string",
-    "overview": "2-3 meningar",
-    "key_highlights": ["bullet"],
-    "focus_today": ["tema"],
+    "headline": "Veckosammanfattning: [Kort beskrivning av veckan]",
+    "overview": "LÅNG TEXT (5-8 stycken) som går igenom hela veckan. Beskriv viktigaste händelserna, marknadens utveckling, sentiment och trender. Var detaljerad och omfattande.",
+    "key_highlights": [
+      "Viktigaste händelsen 1 från veckan",
+      "Viktigaste händelsen 2",
+      "Viktigaste händelsen 3",
+      "Viktigaste händelsen 4",
+      "Viktigaste händelsen 5",
+      "Viktigaste händelsen 6",
+      "Viktigaste händelsen 7"
+    ],
+    "focus_today": ["Tema 1 för nästa vecka", "Tema 2", "Tema 3"],
     "sentiment": "bullish"|"bearish"|"neutral",
     "generated_at": "ISO timestamp",
     "sections": [
-      { "title": "string", "body": "korta stycken" }
+      { 
+        "title": "Marknadens utveckling", 
+        "body": "Detaljerad text (2-3 stycken) om marknadens utveckling under veckan." 
+      },
+      { 
+        "title": "Viktiga händelser", 
+        "body": "Detaljerad text (2-3 stycken) om viktiga händelser från veckan." 
+      },
+      { 
+        "title": "Utblick framåt", 
+        "body": "Detaljerad text (2-3 stycken) om vad som kan komma nästa vecka." 
+      },
+      { 
+        "title": "Sverige och globalt", 
+        "body": "Detaljerad text (2-3 stycken) om svenska och globala perspektiv." 
+      }
     ]
-  },
-  "news_items": [
-    {
-      "id": "slug",
-      "headline": "string",
-      "summary": "1-2 meningar",
-      "category": "macro|tech|earnings|sweden|global|commodities",
-      "source": "string",
-      "published_at": "ISO timestamp",
-      "url": "https://"
-    }
-  ]
+  }
 }
 
 Regler:
-- Fakta ska vara plausibla för Q4 2024 / början 2025.
-- Blanda svenska och internationella perspektiv.
-- Inga procenttal eller siffror som känns orimliga.
-- Hitta inte på verkliga URL:er – använd \"#\" som placeholder.`;
+- Skriv en LÅNG, detaljerad overview (5-8 stycken minimum)
+- Gå igenom hela veckan, inte bara idag
+- Fokusera på trender och utveckling över tid
+- Var omfattande och detaljerad`;
 
-  const raw = await callOpenAI(systemPrompt, userPrompt, 2200);
-  logAiResponse("morning_brief", raw);
-  const parsed = parseJsonPayload(raw);
-  const morningBrief = normalizeMorningBrief(parsed?.morning_brief ?? parsed?.brief ?? parsed?.newsletter ?? {});
-  const news = normalizeNewsItems(parsed?.news_items ?? parsed?.news ?? []);
-  const digestHash = await computeDigestHash({ morningBrief, news });
-  return { morningBrief, news, rawPayload: parsed ?? {}, digestHash };
+  let morningBrief: MorningBrief;
+  
+  if (openAIApiKey) {
+    try {
+      const raw = await callOpenAI(systemPrompt, userPrompt, 3000);
+      logAiResponse("weekly_summary", raw);
+      const parsed = parseJsonPayload(raw);
+      morningBrief = normalizeMorningBrief((parsed?.morning_brief ?? parsed?.brief ?? parsed?.newsletter ?? {}) as Record<string, unknown>);
+    } catch (error) {
+      console.error("Failed to generate weekly summary:", error);
+      // Fallback weekly summary
+      morningBrief = {
+        id: `weekly_${crypto.randomUUID()}`,
+        headline: `Veckosammanfattning ${weekStart.toLocaleDateString("sv-SE")} - ${weekEnd.toLocaleDateString("sv-SE")}`,
+        overview: weekBriefs.length > 0
+          ? `Denna vecka präglades av flera viktiga händelser på finansmarknaderna. ${weekBriefs.map(b => b.morningBrief.headline).join(" ")}. Marknaderna visade varierande sentiment genom veckan med både positiva och negativa signaler.`
+          : "Ingen veckosammanfattning tillgänglig.",
+        keyHighlights: weekBriefs.flatMap(b => b.morningBrief.keyHighlights).slice(0, 7),
+        focusToday: ["Nästa vecka", "Marknadstrender", "Ekonomiska indikatorer"],
+        sentiment: "neutral",
+        generatedAt: new Date().toISOString(),
+        sections: [],
+      };
+    }
+  } else {
+    morningBrief = {
+      id: `weekly_${crypto.randomUUID()}`,
+      headline: `Veckosammanfattning ${weekStart.toLocaleDateString("sv-SE")} - ${weekEnd.toLocaleDateString("sv-SE")}`,
+      overview: "Ingen veckosammanfattning tillgänglig.",
+      keyHighlights: [],
+      focusToday: ["Nästa vecka", "Marknadstrender", "Ekonomiska indikatorer"],
+      sentiment: "neutral",
+      generatedAt: new Date().toISOString(),
+      sections: [],
+    };
+  }
+
+  const digestHash = await computeDigestHash({ morningBrief, news: summarizedNews });
+  console.log(`[generateWeeklySummary] Returning: morningBrief=${!!morningBrief}, newsCount=${summarizedNews.length}`);
+  return { morningBrief, news: summarizedNews, rawPayload: {}, digestHash };
+}
+
+async function generateMorningBrief(): Promise<GeneratedMorningBrief> {
+  const today = new Date();
+  
+  // Check if it's weekend - if so, generate weekly summary
+  if (isWeekend(today)) {
+    console.log(`[generateMorningBrief] Weekend detected, generating weekly summary`);
+    return await generateWeeklySummary();
+  }
+  
+  const yesterday = getPreviousWeekday(today);
+  
+  // 1. Get previous day's brief for context
+  const previousBrief = await getPreviousDayBrief(today);
+  const previousKeywords = previousBrief ? extractKeywordsFromBrief(previousBrief.morningBrief) : [];
+  console.log(`[generateMorningBrief] Previous day brief found: ${!!previousBrief}, keywords: ${previousKeywords.slice(0, 5).join(", ")}`);
+  
+  // 2. Build search queries based on categories and previous day's context
+  const baseQueries = [
+    "central bank interest rates inflation GDP economic data",
+    "stock market earnings reports company results",
+    "technology stocks AI tech companies innovation",
+    "sweden stock market swedish economy",
+    "oil prices commodities gold metals",
+    "global markets international trade geopolitics"
+  ];
+  
+  // Add follow-up queries based on previous day if available
+  const followUpQueries: string[] = [];
+  if (previousBrief && previousBrief.morningBrief.headline) {
+    followUpQueries.push(`follow-up ${previousBrief.morningBrief.headline}`);
+    if (previousKeywords.length > 0) {
+      followUpQueries.push(previousKeywords.slice(0, 3).join(" "));
+    }
+  }
+  
+  const allQueries = [...baseQueries, ...followUpQueries];
+  
+  // 3. Fetch news from multiple Tavily searches
+  const tavilyArticles = await fetchMultipleTavilySearches(allQueries, 20, 1);
+  console.log(`[generateMorningBrief] Fetched ${tavilyArticles.length} articles from Tavily`);
+  
+  // 4. Summarize each article with AI (up to 20 articles)
+  const summarizedNews: NewsItem[] = [];
+  for (const article of tavilyArticles.slice(0, 20)) {
+    try {
+      const summarized = await summarizeArticle(article);
+      summarizedNews.push(summarized);
+      console.log(`[generateMorningBrief] Successfully summarized article: ${summarized.headline.substring(0, 50)}...`);
+    } catch (error) {
+      console.error("Failed to summarize article:", error);
+      // Skip this article if summarization fails
+    }
+  }
+  console.log(`[generateMorningBrief] Total summarized news: ${summarizedNews.length}`);
+
+  // 3. Create context string for morning brief generation
+  const tavilyContext = tavilyArticles.length > 0
+    ? tavilyArticles.map((a) => `- ${a.title} (${a.source}): ${a.content.slice(0, 300)}...`).join("\n")
+    : "";
+  
+  const previousDayContext = previousBrief
+    ? `Gårdagens huvudnyhet: ${previousBrief.morningBrief.headline}\n` +
+      `Gårdagens översikt: ${previousBrief.morningBrief.overview}\n` +
+      `Gårdagens teman: ${previousBrief.morningBrief.focusToday.join(", ")}\n`
+    : "";
+
+  const systemPrompt =
+    "Du är en svensk finansredaktör som skriver morgonbrev och strukturerade nyhetssammanfattningar baserat på faktiska nyhetsartiklar. Du svarar alltid med giltig JSON.";
+
+  const userPrompt = `Skriv ett detaljerat morgonbrev för datumet ${today.toLocaleDateString("sv-SE")} baserat på följande faktiska nyhetsartiklar.
+
+VIKTIGT: Du ska INTE skapa egna nyheter. Använd endast informationen från artiklarna nedan.
+
+${previousDayContext ? `KONTEKST FRÅN GÅRDAGEN:\n---\n${previousDayContext}---\n\nAnvänd detta som bakgrund för att förstå utvecklingen, men fokusera på DAGENS nyheter.\n\n` : ""}Faktiska nyhetsartiklar för idag:
+---
+${tavilyContext || "Inga nyhetsartiklar tillgängliga för idag."}
+---
+
+Baserat på dessa artiklar, skapa:
+- En huvudrubrik som sammanfattar den viktigaste nyheten
+- En översikt (3-4 meningar) för Hero-kortet
+- 5 korta nyhetspunkter för "Snabbkollen"
+- 3 teman för "Fokus idag"
+- Exakt 3 fördjupande sektioner (t.ex. Makro, Tech, Marknad) baserat på artiklarna
+- Ett sentiment (bullish/bearish/neutral) baserat på artiklarnas innehåll
+
+Fokusera på händelser och sentiment från ${yesterday.toLocaleDateString("sv-SE")} (gårdagen) och natten till idag.
+
+FORMAT (måste följas exakt):
+{
+  "morning_brief": {
+    "headline": "Kort, slagkraftig huvudrubrik (max 6 ord)",
+    "overview": "Engagerande ingress för huvudnyheten (3-4 meningar). Detta visas i det stora Hero-kortet.",
+    "key_highlights": [
+      "Kort nyhetspunkt 1 (max 1 mening)",
+      "Kort nyhetspunkt 2",
+      "Kort nyhetspunkt 3",
+      "Kort nyhetspunkt 4",
+      "Kort nyhetspunkt 5"
+    ],
+    "focus_today": ["Tema 1", "Tema 2", "Tema 3"],
+    "sentiment": "bullish"|"bearish"|"neutral",
+    "generated_at": "ISO timestamp",
+    "sections": [
+      { 
+        "title": "Rubrik för sektion 1 (t.ex. 'Makroläget')", 
+        "body": "Innehållsrik text (2-3 stycken) baserat på artiklarna." 
+      },
+      { "title": "Rubrik för sektion 2", "body": "..." },
+      { "title": "Rubrik för sektion 3", "body": "..." }
+    ]
+  }
+}
+
+Regler:
+- Använd endast information från de faktiska artiklarna ovan.
+- Var specifik med siffror och fakta från artiklarna.
+- Blanda svenska och internationella perspektiv baserat på artiklarna.`;
+
+  let morningBrief: MorningBrief;
+  
+  if (tavilyArticles.length > 0 && openAIApiKey) {
+    try {
+      const raw = await callOpenAI(systemPrompt, userPrompt, 2000);
+      logAiResponse("morning_brief", raw);
+      const parsed = parseJsonPayload(raw);
+      morningBrief = normalizeMorningBrief((parsed?.morning_brief ?? parsed?.brief ?? parsed?.newsletter ?? {}) as Record<string, unknown>);
+    } catch (error) {
+      console.error("Failed to generate morning brief:", error);
+      // Fallback morning brief
+      morningBrief = {
+        id: `brief_${crypto.randomUUID()}`,
+        headline: "Dagens Nyheter",
+        overview: tavilyArticles[0]?.title || "Marknadsläget just nu",
+        keyHighlights: tavilyArticles.slice(0, 5).map(a => a.title),
+        focusToday: ["Nyheter", "Marknad", "Analys"],
+        sentiment: "neutral",
+        generatedAt: new Date().toISOString(),
+        sections: [],
+      };
+    }
+  } else {
+    // Fallback if no articles or OpenAI unavailable
+    morningBrief = {
+      id: `brief_${crypto.randomUUID()}`,
+      headline: "Dagens Nyheter",
+      overview: "Inga nyheter tillgängliga för idag.",
+      keyHighlights: [],
+      focusToday: ["Nyheter", "Marknad", "Analys"],
+      sentiment: "neutral",
+      generatedAt: new Date().toISOString(),
+      sections: [],
+    };
+  }
+
+  const digestHash = await computeDigestHash({ morningBrief, news: summarizedNews });
+  console.log(`[generateMorningBrief] Returning: morningBrief=${!!morningBrief}, newsCount=${summarizedNews.length}`);
+  console.log(`[generateMorningBrief] News items sample:`, summarizedNews.slice(0, 2).map(n => ({ headline: n.headline, source: n.source })));
+  return { morningBrief, news: summarizedNews, rawPayload: {}, digestHash };
 }
 
 async function generateMarketMomentum() {
@@ -223,7 +762,7 @@ Returnera JSON:
   const raw = await callOpenAI(systemPrompt, userPrompt, 1400);
   logAiResponse("market_momentum", raw);
   const parsed = parseJsonPayload(raw);
-  return normalizeMomentumItems(parsed?.items ?? []);
+  return normalizeMomentumItems((parsed?.items ?? []) as unknown[]);
 }
 
 function logAiResponse(label: string, content: string) {
@@ -297,6 +836,162 @@ async function getLatestStoredBrief(): Promise<{ morningBrief: MorningBrief; new
   return { morningBrief, news: newsItems };
 }
 
+async function getPreviousDayBrief(targetDate: Date): Promise<{ morningBrief: MorningBrief; news: NewsItem[] } | null> {
+  if (!supabaseClient) {
+    return null;
+  }
+
+  const previousDay = getPreviousWeekday(targetDate);
+  const startOfDay = new Date(previousDay);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(previousDay);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const { data, error } = await supabaseClient
+    .from("morning_briefs")
+    .select(
+      "id, generated_at, headline, overview, key_highlights, focus_today, sentiment, sections, news_items"
+    )
+    .gte("generated_at", startOfDay.toISOString())
+    .lte("generated_at", endOfDay.toISOString())
+    .order("generated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to read previous day brief", error);
+    return null;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const sectionsArray = Array.isArray(data.sections)
+    ? (data.sections as unknown[])
+        .map((section) => {
+          const record = section as Record<string, unknown>;
+          const title = typeof record.title === "string" ? record.title.trim() : "";
+          const body = typeof record.body === "string" ? record.body.trim() : "";
+          if (!title && !body) {
+            return null;
+          }
+          return { title, body };
+        })
+        .filter((section): section is MorningSection => !!section)
+    : [];
+
+  const morningBrief: MorningBrief = {
+    id: data.id,
+    headline: data.headline,
+    overview: data.overview,
+    keyHighlights: Array.isArray(data.key_highlights) ? data.key_highlights : [],
+    focusToday: Array.isArray(data.focus_today) ? data.focus_today : [],
+    sentiment:
+      data.sentiment === "bullish" || data.sentiment === "bearish" || data.sentiment === "neutral"
+        ? data.sentiment
+        : "neutral",
+    generatedAt: data.generated_at,
+    sections: sectionsArray,
+  };
+
+  const newsItems = Array.isArray(data.news_items) ? (data.news_items as NewsItem[]) : [];
+
+  return { morningBrief, news: newsItems };
+}
+
+async function getWeekBriefs(weekStart: Date, weekEnd: Date): Promise<{ morningBrief: MorningBrief; news: NewsItem[] }[]> {
+  if (!supabaseClient) {
+    return [];
+  }
+
+  const { data, error } = await supabaseClient
+    .from("morning_briefs")
+    .select(
+      "id, generated_at, headline, overview, key_highlights, focus_today, sentiment, sections, news_items"
+    )
+    .gte("generated_at", weekStart.toISOString())
+    .lte("generated_at", weekEnd.toISOString())
+    .order("generated_at", { ascending: true });
+
+  if (error) {
+    console.error("Failed to read week briefs", error);
+    return [];
+  }
+
+  if (!data || !Array.isArray(data)) {
+    return [];
+  }
+
+  return data.map((item) => {
+    const sectionsArray = Array.isArray(item.sections)
+      ? (item.sections as unknown[])
+          .map((section) => {
+            const record = section as Record<string, unknown>;
+            const title = typeof record.title === "string" ? record.title.trim() : "";
+            const body = typeof record.body === "string" ? record.body.trim() : "";
+            if (!title && !body) {
+              return null;
+            }
+            return { title, body };
+          })
+          .filter((section): section is MorningSection => !!section)
+      : [];
+
+    const morningBrief: MorningBrief = {
+      id: item.id,
+      headline: item.headline,
+      overview: item.overview,
+      keyHighlights: Array.isArray(item.key_highlights) ? item.key_highlights : [],
+      focusToday: Array.isArray(item.focus_today) ? item.focus_today : [],
+      sentiment:
+        item.sentiment === "bullish" || item.sentiment === "bearish" || item.sentiment === "neutral"
+          ? item.sentiment
+          : "neutral",
+      generatedAt: item.generated_at,
+      sections: sectionsArray,
+    };
+
+    const newsItems = Array.isArray(item.news_items) ? (item.news_items as NewsItem[]) : [];
+
+    return { morningBrief, news: newsItems };
+  });
+}
+
+function extractKeywordsFromBrief(brief: MorningBrief): string[] {
+  const keywords: string[] = [];
+  
+  // Extract from headline
+  if (brief.headline) {
+    keywords.push(...brief.headline.toLowerCase().split(/\s+/).filter(w => w.length > 3));
+  }
+  
+  // Extract from overview
+  if (brief.overview) {
+    const overviewWords = brief.overview.toLowerCase().split(/\s+/);
+    keywords.push(...overviewWords.filter(w => w.length > 4));
+  }
+  
+  // Extract from key highlights
+  brief.keyHighlights.forEach(highlight => {
+    keywords.push(...highlight.toLowerCase().split(/\s+/).filter(w => w.length > 3));
+  });
+  
+  // Extract from focus today
+  brief.focusToday.forEach(focus => {
+    keywords.push(focus.toLowerCase());
+  });
+  
+  // Remove duplicates and common words
+  const commonWords = new Set(['och', 'för', 'att', 'det', 'som', 'är', 'på', 'med', 'av', 'till', 'den', 'en', 'ett', 'har', 'inte', 'kan', 'ska', 'var', 'vid', 'om', 'men', 'eller', 'när', 'så', 'där', 'från', 'genom', 'under', 'över', 'efter', 'innan', 'mellan', 'mot', 'utan', 'hos', 'trots', 'tack', 'vare', 'än', 'ju', 'nog', 'väl', 'bara', 'också', 'redan', 'alltid', 'aldrig', 'nästan', 'ganska', 'mycket', 'lite', 'mer', 'mest', 'mindre', 'minst']);
+  
+  const uniqueKeywords = Array.from(new Set(keywords))
+    .filter(w => !commonWords.has(w))
+    .slice(0, 10); // Take top 10 keywords
+  
+  return uniqueKeywords;
+}
+
 async function storeMorningBrief(generated: GeneratedMorningBrief) {
   if (!supabaseClient) {
     console.warn("Supabase client is not configured; cannot store morning brief.");
@@ -361,39 +1056,17 @@ function extractJsonPayload(content: string): string {
 }
 
 function extractText(data: unknown): string | null {
+  // Handle chat/completions format (standard for gpt-5.1) - match portfolio-ai-chat pattern
+  if (data && typeof data === "object") {
+    const rawContent = (data as { choices?: Array<{ message?: { content?: unknown } }> })?.choices?.[0]?.message?.content;
+    if (typeof rawContent === "string" && rawContent.trim().length > 0) {
+      return rawContent;
+    }
+  }
+
+  // Fallback: Handle responses API format (legacy)
   if (typeof (data as { output_text?: unknown })?.output_text === "string") {
     return (data as { output_text: string }).output_text;
-  }
-
-  const output = (data as { output?: unknown })?.output;
-  if (Array.isArray(output)) {
-    for (const block of output) {
-      if (typeof block === "object" && block !== null) {
-        const content = (block as { content?: unknown })?.content;
-        if (Array.isArray(content)) {
-          for (const part of content) {
-            if (typeof part === "object" && part !== null) {
-              const partType = (part as { type?: string }).type;
-              if ((partType === "output_text" || partType === "text") && typeof (part as { text?: unknown }).text === "string") {
-                return (part as { text: string }).text;
-              }
-            }
-          }
-        }
-        if (typeof (block as { text?: unknown }).text === "string") {
-          return (block as { text: string }).text;
-        }
-      }
-    }
-  }
-
-  const content = (data as { content?: unknown })?.content;
-  if (Array.isArray(content)) {
-    for (const part of content) {
-      if (typeof part === "object" && part !== null && typeof (part as { text?: unknown }).text === "string") {
-        return (part as { text: string }).text;
-      }
-    }
   }
 
   return null;
