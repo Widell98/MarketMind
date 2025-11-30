@@ -1,8 +1,19 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Brain, Sparkles, ArrowRight, LayoutGrid, List as ListIcon, Trash2, Loader2 } from 'lucide-react';
+import {
+  Brain,
+  Sparkles,
+  ArrowRight,
+  LayoutGrid,
+  List as ListIcon,
+  Trash2,
+  Loader2,
+  Table as TableIcon,
+  Info,
+  CircleDot
+} from 'lucide-react';
 import RecommendationCard from '@/components/RecommendationCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -29,6 +40,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 
 const AIRecommendations = () => {
   const { user } = useAuth();
@@ -47,31 +65,154 @@ const AIRecommendations = () => {
     close: closeAddHoldingDialog,
   } = usePersistentDialogOpenState(ADD_HOLDING_DIALOG_STORAGE_KEY, 'ai-recommendations');
   const [selectedRecommendation, setSelectedRecommendation] = useState<UserHolding | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'grid' | 'table'>('list');
   const [isAllRecommendationsOpen, setIsAllRecommendationsOpen] = useState(false);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [isClearingRecommendations, setIsClearingRecommendations] = useState(false);
   const [recommendationToDelete, setRecommendationToDelete] = useState<UserHolding | null>(null);
   const [isDeletingRecommendation, setIsDeletingRecommendation] = useState(false);
+  const [sortOption, setSortOption] = useState<'recommended' | 'alpha' | 'sector'>('recommended');
+  const [isMobile, setIsMobile] = useState(false);
   const totalRecommendations = aiRecommendations.length;
+  const sortedRecommendations = useMemo(() => {
+    const recommendationsCopy = [...aiRecommendations];
+
+    switch (sortOption) {
+      case 'alpha':
+        return recommendationsCopy.sort((a, b) => a.name.localeCompare(b.name));
+      case 'sector':
+        return recommendationsCopy.sort((a, b) => (a.sector || '').localeCompare(b.sector || ''));
+      case 'recommended':
+      default:
+        return recommendationsCopy.sort((a, b) => (b.allocation || 0) - (a.allocation || 0));
+    }
+  }, [aiRecommendations, sortOption]);
+
   const displayedRecommendations = useMemo(
-    () => aiRecommendations.slice(0, 6),
-    [aiRecommendations]
+    () => sortedRecommendations.slice(0, 6),
+    [sortedRecommendations]
   );
+
+  const averageAllocation = useMemo(() => {
+    if (sortedRecommendations.length === 0) return 0;
+    const total = sortedRecommendations.reduce((sum, rec) => sum + (rec.allocation || 0), 0);
+    return Math.round(total / sortedRecommendations.length);
+  }, [sortedRecommendations]);
+
+  const sectorCount = useMemo(() => {
+    const sectors = sortedRecommendations.map((rec) => rec.sector).filter(Boolean) as string[];
+    return new Set(sectors).size;
+  }, [sortedRecommendations]);
+
+  const marketCount = useMemo(() => {
+    const markets = sortedRecommendations.map((rec) => rec.market).filter(Boolean) as string[];
+    return new Set(markets).size;
+  }, [sortedRecommendations]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const updateIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    updateIsMobile();
+    window.addEventListener('resize', updateIsMobile);
+    return () => window.removeEventListener('resize', updateIsMobile);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      setViewMode('table');
+    }
+  }, []);
+
+  const renderMobileDetails = (recommendation: UserHolding) => {
+    const tags = buildRecommendationTags(recommendation);
+
+    return (
+      <div className="space-y-2">
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {tags.map((tag) => (
+              <Badge key={tag} variant="outline" className="text-[11px] rounded-full px-2 py-0">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        )}
+        {typeof recommendation.allocation === 'number' && (
+          <div className="flex items-center gap-2 text-foreground">
+            <Badge variant="secondary" className="text-[11px] rounded-full px-2 py-0">
+              Föreslagen vikt
+            </Badge>
+            <span className="font-medium">{Math.round(recommendation.allocation)}%</span>
+          </div>
+        )}
+        <div className="space-y-1 text-muted-foreground/90">
+          {recommendation.sector && <div>Sektor: {recommendation.sector}</div>}
+          {recommendation.market && <div>Marknad: {recommendation.market}</div>}
+        </div>
+      </div>
+    );
+  };
 
   const renderRecommendationCard = (recommendation: UserHolding) => (
     <RecommendationCard
       key={recommendation.id}
       title={recommendation.name}
       description={formatRecommendationDescription(recommendation)}
-      tags={buildRecommendationTags(recommendation)}
+      tags={isMobile ? [] : buildRecommendationTags(recommendation)}
       isAI
+      stackedActions
+      descriptionClamp={isMobile ? 3 : 2}
+      mobileDetails={isMobile ? renderMobileDetails(recommendation) : undefined}
       onAdd={(e) => handleAddToPortfolio(recommendation, e)}
       onDiscuss={(e) => handleDiscussWithAI(recommendation, e)}
       onDelete={(e) => handleDeleteRecommendationRequest(recommendation, e)}
       onClick={() => handleViewRecommendation(recommendation)}
     />
   );
+
+  const renderCardCollection = (
+    recommendations: UserHolding[],
+    options?: { constrainHeight?: boolean }
+  ) => {
+    const cardWidthClass = viewMode === 'grid' ? 'min-w-[240px]' : 'min-w-[280px]';
+
+    if (isMobile) {
+      return (
+        <div className="relative">
+          <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+            {recommendations.map((recommendation) => (
+              <div
+                key={recommendation.id}
+                className={`snap-start ${cardWidthClass} max-w-[320px] flex-shrink-0`}
+              >
+                {renderRecommendationCard(recommendation)}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (viewMode === 'grid') {
+      return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {recommendations.map(renderRecommendationCard)}
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className={`grid grid-cols-1 xl:grid-cols-2 gap-4 ${options?.constrainHeight ? 'sm:max-h-96 sm:overflow-y-auto' : ''}`}
+      >
+        {recommendations.map(renderRecommendationCard)}
+      </div>
+    );
+  };
 
   const formatRecommendationDescription = (recommendation: UserHolding) => {
     const parts: string[] = [];
@@ -334,53 +475,168 @@ const AIRecommendations = () => {
               </AlertDialog>
             </div>
           </div>
-        </CardHeader>
-
-        <CardContent className="p-6 sm:p-8">
-          {/* Header: antal och vy-val */}
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-            <div className="text-sm text-muted-foreground font-medium text-center sm:text-left">
-              {totalRecommendations} AI-rekommendationer
-            </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-              <div className="flex items-center justify-center sm:justify-end gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setViewMode('list')}
-                  className={viewMode === 'list' ? 'text-primary' : 'text-muted-foreground'}
-                >
-                  <ListIcon className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setViewMode('grid')}
-                  className={viewMode === 'grid' ? 'text-primary' : 'text-muted-foreground'}
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </Button>
+          <div className="mt-6 hidden lg:grid grid-cols-1 xl:grid-cols-4 gap-3">
+            <div className="flex items-center gap-3 p-4 rounded-2xl bg-background/60 border border-border/40 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Info className="w-5 h-5 text-primary" />
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/ai-chatt')}
-                className="w-full sm:w-auto text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl font-medium"
-              >
-                Få fler <ArrowRight className="w-3 h-3 ml-1" />
-              </Button>
+              <div>
+                <p className="text-xs uppercase text-muted-foreground">Genomsnittlig vikt</p>
+                <p className="text-xl font-semibold text-foreground">{averageAllocation}%</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-4 rounded-2xl bg-background/60 border border-border/40 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <CircleDot className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs uppercase text-muted-foreground">Sektorspridning</p>
+                <p className="text-xl font-semibold text-foreground">{sectorCount} sektorer</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-4 rounded-2xl bg-background/60 border border-border/40 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs uppercase text-muted-foreground">Marknadstäckning</p>
+                <p className="text-xl font-semibold text-foreground">{marketCount || '–'} marknader</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-primary/10 via-purple/10 to-primary/10 border border-primary/20 shadow-sm">
+              <div>
+                <p className="text-xs uppercase text-primary">Sortera</p>
+                <p className="text-sm text-foreground">Välj prioritering för dina AI-tips</p>
+              </div>
+              <Select value={sortOption} onValueChange={(value) => setSortOption(value as typeof sortOption)}>
+                <SelectTrigger className="w-36 bg-background/80 border-border/40 text-sm">
+                  <SelectValue placeholder="Sortera" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="recommended">Rekommenderad vikt</SelectItem>
+                  <SelectItem value="alpha">Alfabetiskt</SelectItem>
+                  <SelectItem value="sector">Sektor</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
+        </CardHeader>
 
-          {/* Grid- eller listvy */}
-          {viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {displayedRecommendations.map(renderRecommendationCard)}
+          <CardContent className="p-6 sm:p-8">
+            {/* Header: antal och vy-val */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+              <div className="text-sm text-muted-foreground font-medium text-center sm:text-left">
+                {totalRecommendations} AI-rekommendationer
+              </div>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                <div className="sm:hidden w-full">
+                  <div className="grid grid-cols-2 bg-muted/60 rounded-full p-1 text-xs shadow-inner">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setViewMode('grid')}
+                      className={`h-8 rounded-full ${viewMode === 'grid' ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground'}`}
+                    >
+                      <LayoutGrid className="h-3 w-3 mr-1" /> Kort
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setViewMode('list')}
+                      className={`h-8 rounded-full ${viewMode === 'list' ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground'}`}
+                    >
+                      <ListIcon className="h-3 w-3 mr-1" /> Lista
+                    </Button>
+                  </div>
+                </div>
+                <div className="hidden sm:flex items-center justify-center sm:justify-end gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setViewMode('list')}
+                    className={`rounded-full ${viewMode === 'list' ? 'text-primary bg-muted/60' : 'text-muted-foreground'}`}
+                  >
+                    <ListIcon className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setViewMode('grid')}
+                    className={`rounded-full ${viewMode === 'grid' ? 'text-primary bg-muted/60' : 'text-muted-foreground'}`}
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setViewMode('table')}
+                    className={`hidden lg:inline-flex rounded-full ${viewMode === 'table' ? 'text-primary bg-muted/60' : 'text-muted-foreground'}`}
+                  >
+                    <TableIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/ai-chatt')}
+                  className="w-full sm:w-auto text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl font-medium"
+                >
+                  Få fler <ArrowRight className="w-3 h-3 ml-1" />
+                </Button>
+              </div>
+            </div>
+
+          {/* Grid-, list- eller tabellvy */}
+          {viewMode === 'table' && !isMobile ? (
+            <div className="hidden lg:block overflow-hidden rounded-2xl border border-border/30 shadow-sm">
+              <div className="grid grid-cols-7 bg-muted/50 px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">
+                <span>Namn</span>
+                <span>Symbol</span>
+                <span>Sektor</span>
+                <span>Marknad</span>
+                <span className="text-right pr-4">Föreslagen vikt</span>
+                <span className="text-center">AI-insikt</span>
+                <span className="text-right">Åtgärder</span>
+              </div>
+              <div className="divide-y divide-border/30">
+                {sortedRecommendations.map((recommendation) => (
+                  <div
+                    key={recommendation.id}
+                    className="grid grid-cols-7 items-center px-4 py-4 text-sm hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="font-medium text-foreground truncate">{recommendation.name}</div>
+                    <div className="text-muted-foreground truncate">{recommendation.symbol || '–'}</div>
+                    <div className="text-muted-foreground truncate">{recommendation.sector || '–'}</div>
+                    <div className="text-muted-foreground truncate">{recommendation.market || '–'}</div>
+                    <div className="text-right pr-4 font-semibold text-primary">
+                      {typeof recommendation.allocation === 'number' ? `${Math.round(recommendation.allocation)}%` : '–'}
+                    </div>
+                    <div className="text-center">
+                      <Badge variant="outline" className="rounded-full border-primary/30 text-primary bg-primary/10">AI</Badge>
+                    </div>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="rounded-xl"
+                        onClick={(e) => handleDiscussWithAI(recommendation, e)}
+                      >
+                        Diskutera
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="rounded-xl"
+                        onClick={(e) => handleAddToPortfolio(recommendation, e)}
+                      >
+                        Lägg till
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
-            <div className="space-y-4 sm:max-h-96 sm:overflow-y-auto">
-              {displayedRecommendations.map(renderRecommendationCard)}
-            </div>
+            renderCardCollection(displayedRecommendations, { constrainHeight: viewMode === 'list' })
           )}
 
           {/* Visa alla-knapp */}
@@ -450,41 +706,113 @@ const AIRecommendations = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
-            <span className="text-sm text-muted-foreground text-center sm:text-left">
-              {totalRecommendations} AI-rekommendationer
-            </span>
-            <div className="flex items-center justify-center sm:justify-end gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setViewMode('list')}
-                className={viewMode === 'list' ? 'text-primary' : 'text-muted-foreground'}
-              >
-                <ListIcon className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setViewMode('grid')}
-                className={viewMode === 'grid' ? 'text-primary' : 'text-muted-foreground'}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
+              <span className="text-sm text-muted-foreground text-center sm:text-left">
+                {totalRecommendations} AI-rekommendationer
+              </span>
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <div className="sm:hidden w-full">
+                  <div className="grid grid-cols-2 bg-muted/60 rounded-full p-1 text-xs shadow-inner">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setViewMode('grid')}
+                      className={`h-8 rounded-full ${viewMode === 'grid' ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground'}`}
+                    >
+                      <LayoutGrid className="h-3 w-3 mr-1" /> Kort
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setViewMode('list')}
+                      className={`h-8 rounded-full ${viewMode === 'list' ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground'}`}
+                    >
+                      <ListIcon className="h-3 w-3 mr-1" /> Lista
+                    </Button>
+                  </div>
+                </div>
+                <div className="hidden sm:flex items-center justify-center sm:justify-end gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setViewMode('list')}
+                    className={`rounded-full ${viewMode === 'list' ? 'text-primary bg-muted/60' : 'text-muted-foreground'}`}
+                  >
+                    <ListIcon className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setViewMode('grid')}
+                    className={`rounded-full ${viewMode === 'grid' ? 'text-primary bg-muted/60' : 'text-muted-foreground'}`}
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setViewMode('table')}
+                    className={`hidden lg:inline-flex rounded-full ${viewMode === 'table' ? 'text-primary bg-muted/60' : 'text-muted-foreground'}`}
+                  >
+                    <TableIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div className="mt-4 max-h-[60vh] overflow-y-auto pr-1">
-            {viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {aiRecommendations.map(renderRecommendationCard)}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {aiRecommendations.map(renderRecommendationCard)}
-              </div>
-            )}
-          </div>
+            <div className="mt-4 max-h-[60vh] overflow-y-auto pr-1">
+              {viewMode === 'table' && !isMobile ? (
+                <div className="hidden lg:block overflow-hidden rounded-2xl border border-border/30 shadow-sm">
+                  <div className="grid grid-cols-7 bg-muted/50 px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">
+                    <span>Namn</span>
+                    <span>Symbol</span>
+                    <span>Sektor</span>
+                    <span>Marknad</span>
+                    <span className="text-right pr-4">Föreslagen vikt</span>
+                    <span className="text-center">AI-insikt</span>
+                    <span className="text-right">Åtgärder</span>
+                  </div>
+                  <div className="divide-y divide-border/30">
+                    {sortedRecommendations.map((recommendation) => (
+                      <div
+                        key={recommendation.id}
+                        className="grid grid-cols-7 items-center px-4 py-4 text-sm hover:bg-muted/30 transition-colors"
+                      >
+                        <div className="font-medium text-foreground truncate">{recommendation.name}</div>
+                        <div className="text-muted-foreground truncate">{recommendation.symbol || '–'}</div>
+                        <div className="text-muted-foreground truncate">{recommendation.sector || '–'}</div>
+                        <div className="text-muted-foreground truncate">{recommendation.market || '–'}</div>
+                        <div className="text-right pr-4 font-semibold text-primary">
+                          {typeof recommendation.allocation === 'number' ? `${Math.round(recommendation.allocation)}%` : '–'}
+                        </div>
+                        <div className="text-center">
+                          <Badge variant="outline" className="rounded-full border-primary/30 text-primary bg-primary/10">AI</Badge>
+                        </div>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                          size="sm"
+                          variant="secondary"
+                          className="rounded-xl"
+                          onClick={(e) => handleDiscussWithAI(recommendation, e)}
+                        >
+                          Diskutera
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="rounded-xl"
+                          onClick={(e) => handleAddToPortfolio(recommendation, e)}
+                        >
+                          Lägg till
+                        </Button>
+                      </div>
+                    </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                renderCardCollection(sortedRecommendations)
+              )}
+            </div>
         </DialogContent>
       </Dialog>
 
