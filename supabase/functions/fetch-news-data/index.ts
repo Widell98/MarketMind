@@ -138,7 +138,7 @@ Regler:
 - Fakta ska vara plausibla för Q4 2024 / början 2025.
 - Blanda svenska och internationella perspektiv.
 - Inga procenttal eller siffror som känns orimliga.
-- Hitta inte på verkliga URL:er – använd `#` som placeholder.`;
+- Hitta inte på verkliga URL:er – använd \"#\" som placeholder.`;
 
   const raw = await callOpenAI(systemPrompt, userPrompt, 2200);
   const parsed = parseJsonPayload(raw);
