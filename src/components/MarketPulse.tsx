@@ -30,12 +30,20 @@ const MarketPulseBase: React.FC<MarketPulseBaseProps> = ({ marketData, loading, 
 
   if (loading && !marketData) {
     return (
-      <div className="w-full">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg sm:text-xl font-semibold text-finance-navy dark:text-white">Market Pulse</h2>
+      <div className="w-full space-y-6">
+        <div className="flex justify-between items-center">
+          <div className="space-y-1">
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground">Market Pulse</h2>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Realtidsmarknadsdata
+            </p>
+          </div>
         </div>
-        <div className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <div className="flex justify-center items-center py-12">
+          <div className="text-center space-y-3">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+            <p className="text-sm text-muted-foreground">Laddar marknadsdata…</p>
+          </div>
         </div>
       </div>
     );
@@ -43,15 +51,20 @@ const MarketPulseBase: React.FC<MarketPulseBaseProps> = ({ marketData, loading, 
 
   if (error && !marketData) {
     return (
-      <div className="w-full">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg sm:text-xl font-semibold text-finance-navy dark:text-white">Market Pulse</h2>
+      <div className="w-full space-y-6">
+        <div className="flex justify-between items-center">
+          <div className="space-y-1">
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground">Market Pulse</h2>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Realtidsmarknadsdata
+            </p>
+          </div>
         </div>
-        <div className="text-center py-8">
-          <p className="text-red-600 dark:text-red-400 mb-4">Failed to load market data</p>
-          <Button onClick={refetch} variant="outline" size="sm">
+        <div className="text-center py-12 space-y-4">
+          <p className="text-sm font-medium text-destructive">Kunde inte ladda marknadsdata</p>
+          <Button onClick={refetch} variant="outline" size="sm" className="rounded-xl">
             <RefreshCw className="h-4 w-4 mr-2" />
-            Retry
+            Försök igen
           </Button>
         </div>
       </div>
@@ -59,11 +72,16 @@ const MarketPulseBase: React.FC<MarketPulseBaseProps> = ({ marketData, loading, 
   }
 
   return (
-    <div className="w-full">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg sm:text-xl font-semibold text-finance-navy dark:text-white">Market Pulse</h2>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-finance-gray dark:text-gray-400">
+    <div className="w-full space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="space-y-1">
+          <h2 className="text-2xl sm:text-3xl font-bold text-foreground">Market Pulse</h2>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Realtidsmarknadsdata
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
             Uppdaterad {formatTime(data.lastUpdated)}
           </span>
           <Button 
@@ -71,45 +89,60 @@ const MarketPulseBase: React.FC<MarketPulseBaseProps> = ({ marketData, loading, 
             variant="ghost" 
             size="sm"
             disabled={loading}
-            className="h-6 w-6 p-0"
+            className="h-8 w-8 p-0 rounded-lg hover:bg-primary/10"
           >
-            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''} text-muted-foreground`} />
           </Button>
         </div>
       </div>
 
       {/* Market Indices Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-2 mb-6">
-        {data.marketIndices.map((index) => (
-          <div key={index.symbol} className="card-finance p-3 sm:p-2 flex flex-col">
-            <div className="text-xs text-finance-gray dark:text-gray-400 mb-0.5">{index.symbol}</div>
-            <div className="font-medium text-sm sm:text-base dark:text-white">{index.price.toLocaleString('sv-SE')}</div>
-            <div className={index.change >= 0 ? 'stock-up text-xs' : 'stock-down text-xs'}>
-              {index.change >= 0 ? '+' : ''}{index.change.toFixed(2)} ({index.changePercent.toFixed(2)}%)
-            </div>
+      {data.marketIndices.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+            Marknadsindex
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {data.marketIndices.map((index) => (
+              <div 
+                key={index.symbol} 
+                className="rounded-2xl border border-border/60 bg-muted/30 p-4 hover:bg-muted/50 hover:border-primary/30 transition-all"
+              >
+                <div className="text-xs font-medium text-muted-foreground mb-1">{index.symbol}</div>
+                <div className="font-bold text-base sm:text-lg text-foreground mb-1">
+                  {index.price.toLocaleString('sv-SE', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                </div>
+                <div className={`text-xs font-semibold ${index.change >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                  {index.change >= 0 ? '+' : ''}{index.change.toFixed(2)} ({index.changePercent >= 0 ? '+' : ''}{index.changePercent.toFixed(2)}%)
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
       {/* Top Performers */}
       {data.topStocks.length > 0 && (
-        <div className="mb-6">
-          <h3 className="text-sm font-medium mb-3 text-finance-blue dark:text-blue-400">Topprestanda</h3>
-          <div className="space-y-3 sm:space-y-2">
+        <div>
+          <h3 className="text-sm font-semibold mb-3 text-foreground">Topprestanda</h3>
+          <div className="space-y-2">
             {data.topStocks.map((stock) => (
-              <div key={stock.symbol} className="card-finance p-4 sm:p-3 flex justify-between items-center">
+              <div 
+                key={stock.symbol} 
+                className="rounded-2xl border border-border/60 bg-muted/30 p-4 hover:bg-muted/50 hover:border-primary/30 transition-all flex justify-between items-center"
+              >
                 <div className="flex flex-col min-w-0 flex-1">
-                  <div className="font-medium text-sm dark:text-white">{stock.symbol}</div>
-                  <div className="text-xs text-finance-gray dark:text-gray-400 truncate">{stock.name}</div>
+                  <div className="font-semibold text-sm text-foreground">{stock.symbol}</div>
+                  <div className="text-xs text-muted-foreground truncate">{stock.name}</div>
                 </div>
-                <div className="flex items-center ml-4">
+                <div className="flex items-center gap-3 ml-4">
                   <div className="hidden sm:block">
                     <Sparkline data={stock.sparklineData} color="#22C55E" />
                   </div>
-                  <div className="ml-2 text-right">
-                    <div className="font-medium text-sm dark:text-white">${stock.price.toFixed(2)}</div>
-                    <div className="stock-up text-xs">
-                      +{stock.change.toFixed(2)} ({stock.changePercent.toFixed(2)}%)
+                  <div className="text-right">
+                    <div className="font-semibold text-sm text-foreground">${stock.price.toFixed(2)}</div>
+                    <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                      +{stock.change.toFixed(2)} (+{stock.changePercent.toFixed(2)}%)
                     </div>
                   </div>
                 </div>
@@ -122,21 +155,24 @@ const MarketPulseBase: React.FC<MarketPulseBaseProps> = ({ marketData, loading, 
       {/* Bottom Performers */}
       {data.bottomStocks.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium mb-3 text-finance-blue dark:text-blue-400">Lägsta prestanda</h3>
-          <div className="space-y-3 sm:space-y-2">
+          <h3 className="text-sm font-semibold mb-3 text-foreground">Lägsta prestanda</h3>
+          <div className="space-y-2">
             {data.bottomStocks.map((stock) => (
-              <div key={stock.symbol} className="card-finance p-4 sm:p-3 flex justify-between items-center">
+              <div 
+                key={stock.symbol} 
+                className="rounded-2xl border border-border/60 bg-muted/30 p-4 hover:bg-muted/50 hover:border-primary/30 transition-all flex justify-between items-center"
+              >
                 <div className="flex flex-col min-w-0 flex-1">
-                  <div className="font-medium text-sm dark:text-white">{stock.symbol}</div>
-                  <div className="text-xs text-finance-gray dark:text-gray-400 truncate">{stock.name}</div>
+                  <div className="font-semibold text-sm text-foreground">{stock.symbol}</div>
+                  <div className="text-xs text-muted-foreground truncate">{stock.name}</div>
                 </div>
-                <div className="flex items-center ml-4">
+                <div className="flex items-center gap-3 ml-4">
                   <div className="hidden sm:block">
                     <Sparkline data={stock.sparklineData} color="#EF4444" />
                   </div>
-                  <div className="ml-2 text-right">
-                    <div className="font-medium text-sm dark:text-white">${stock.price.toFixed(2)}</div>
-                    <div className="stock-down text-xs">
+                  <div className="text-right">
+                    <div className="font-semibold text-sm text-foreground">${stock.price.toFixed(2)}</div>
+                    <div className="text-xs font-medium text-rose-600 dark:text-rose-400">
                       {stock.change.toFixed(2)} ({stock.changePercent.toFixed(2)}%)
                     </div>
                   </div>
