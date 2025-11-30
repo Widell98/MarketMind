@@ -52,7 +52,7 @@ const DiscoverNews = () => {
   const navigate = useNavigate();
   const { reports, loading: reportsLoading } = useDiscoverReportSummaries(24);
   const { marketData, loading: marketLoading, error: marketError, refetch: refetchMarketData } = useMarketData();
-  const { newsData, newsSummary, loading: newsLoading, error: newsError } = useNewsData();
+  const { newsData, morningBrief, loading: newsLoading, error: newsError } = useNewsData();
   const { data: overviewInsights = [], isLoading: insightsLoading } = useMarketOverviewInsights();
 
   const companyCount = useMemo(
@@ -66,7 +66,7 @@ const DiscoverNews = () => {
   );
 
   const heroInsight = overviewInsights[0];
-  const heroSentiment = newsSummary?.sentiment ?? deriveSentimentFromInsight(heroInsight);
+  const heroSentiment = morningBrief?.sentiment ?? deriveSentimentFromInsight(heroInsight);
   const heroIndices = marketData?.marketIndices ?? [];
   const lastUpdated = marketData?.lastUpdated ? new Date(marketData.lastUpdated) : null;
   const reportHighlights = useMemo(() => reports.slice(0, 3), [reports]);
@@ -130,15 +130,15 @@ const DiscoverNews = () => {
   const topNewsHighlights = useMemo(() => (newsData ?? []).slice(0, 3), [newsData]);
 
   const digestHighlights = useMemo(() => {
-    if (newsSummary?.keyHighlights?.length) {
-      return newsSummary.keyHighlights;
+    if (morningBrief?.keyHighlights?.length) {
+      return morningBrief.keyHighlights;
     }
     return [];
-  }, [newsSummary]);
+  }, [morningBrief]);
 
   const focusAreas = useMemo(() => {
-    if (newsSummary?.focusToday?.length) {
-      return newsSummary.focusToday.slice(0, 3);
+    if (morningBrief?.focusToday?.length) {
+      return morningBrief.focusToday.slice(0, 3);
     }
 
     if (heroInsight?.key_factors?.length) {
@@ -150,7 +150,7 @@ const DiscoverNews = () => {
     }
 
     return ['Marknadspuls', 'Rapporter', 'Nyheter'];
-  }, [newsSummary, heroInsight, trendingCategories]);
+  }, [morningBrief, heroInsight, trendingCategories]);
 
   const formatPublishedLabel = (isoString?: string) => {
     if (!isoString) return 'Okänd tid';
@@ -166,9 +166,9 @@ const DiscoverNews = () => {
     return `Genererad ${date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
   };
 
-  const heroHeadline = newsSummary?.headline ?? 'Morgonrapporten';
+  const heroHeadline = morningBrief?.headline ?? 'Morgonrapporten';
   const heroDescription =
-    newsSummary?.overview ??
+    morningBrief?.overview ??
     heroInsight?.content ??
     'AI sammanfattar gårdagens marknadsrörelser och vad som väntar i dag. Följ höjdpunkterna och få ett par snabba fokusområden innan börsen öppnar.';
 
@@ -238,7 +238,7 @@ const DiscoverNews = () => {
                     <h3 className="text-2xl sm:text-3xl font-bold text-foreground">{heroHeadline}</h3>
                   </div>
                   <Badge variant="secondary" className="rounded-full bg-primary/10 text-xs font-medium text-primary border-primary/20">
-                    {formatGeneratedLabel(newsSummary?.generatedAt)}
+                    {formatGeneratedLabel(morningBrief?.generatedAt)}
                   </Badge>
                 </div>
                 

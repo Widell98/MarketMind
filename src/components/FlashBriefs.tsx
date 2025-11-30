@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { useNewsData, type NewsDigestSummary } from '../hooks/useNewsData';
+import { useNewsData, type AiMorningBrief } from '../hooks/useNewsData';
 import NewsCard from './ui/NewsCard';
 import { Loader2, RefreshCw, Sparkles, Clock } from 'lucide-react';
 import { Button } from './ui/button';
@@ -8,7 +8,7 @@ import type { NewsItem } from '@/mockData/newsData';
 
 type FlashBriefsContentProps = {
   newsData: NewsItem[];
-  newsSummary?: NewsDigestSummary | null;
+  morningBrief?: AiMorningBrief | null;
   showSummary?: boolean;
   loading: boolean;
   error: string | null;
@@ -19,7 +19,7 @@ type FlashBriefsContentProps = {
 
 const FlashBriefsContent: React.FC<FlashBriefsContentProps> = ({
   newsData,
-  newsSummary,
+  morningBrief,
   showSummary = true,
   loading,
   error,
@@ -28,13 +28,13 @@ const FlashBriefsContent: React.FC<FlashBriefsContentProps> = ({
   showHeader = true,
 }) => {
   const generatedLabel = useMemo(() => {
-    if (!newsSummary?.generatedAt) return '';
-    const date = new Date(newsSummary.generatedAt);
+    if (!morningBrief?.generatedAt) return '';
+    const date = new Date(morningBrief.generatedAt);
     if (Number.isNaN(date.getTime())) {
       return '';
     }
     return date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
-  }, [newsSummary?.generatedAt]);
+  }, [morningBrief?.generatedAt]);
 
   if (loading && newsData.length === 0) {
     return (
@@ -111,7 +111,7 @@ const FlashBriefsContent: React.FC<FlashBriefsContentProps> = ({
         </div>
       )}
 
-      {showSummary && newsSummary && (
+      {showSummary && morningBrief && (
         <div className="mb-5 rounded-3xl border border-border/70 bg-muted/40 p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-center gap-2">
@@ -120,7 +120,7 @@ const FlashBriefsContent: React.FC<FlashBriefsContentProps> = ({
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   AI-sammanfattning
                 </p>
-                <p className="text-base font-semibold text-foreground">{newsSummary.headline}</p>
+                <p className="text-base font-semibold text-foreground">{morningBrief.headline}</p>
               </div>
             </div>
             {generatedLabel && (
@@ -130,10 +130,10 @@ const FlashBriefsContent: React.FC<FlashBriefsContentProps> = ({
               </div>
             )}
           </div>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{newsSummary.overview}</p>
-          {newsSummary.keyHighlights?.length > 0 && (
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{morningBrief.overview}</p>
+          {morningBrief.keyHighlights?.length > 0 && (
             <ul className="mt-4 space-y-2">
-              {newsSummary.keyHighlights.slice(0, 3).map((item, index) => (
+              {morningBrief.keyHighlights.slice(0, 3).map((item, index) => (
                 <li
                   key={`flash-digest-${index}`}
                   className="rounded-2xl border border-border/60 bg-background/60 p-3 text-sm leading-relaxed text-muted-foreground"
@@ -158,7 +158,7 @@ const FlashBriefsContent: React.FC<FlashBriefsContentProps> = ({
 type FlashBriefsProps = {
   manual?: boolean;
   newsItems?: NewsItem[];
-  newsSummary?: NewsDigestSummary | null;
+  morningBrief?: AiMorningBrief | null;
   showSummary?: boolean;
   loading?: boolean;
   error?: string | null;
@@ -170,7 +170,7 @@ type FlashBriefsProps = {
 const FlashBriefs: React.FC<FlashBriefsProps> = ({
   manual = false,
   newsItems,
-  newsSummary,
+  morningBrief,
   showSummary = true,
   loading,
   error,
@@ -182,7 +182,7 @@ const FlashBriefs: React.FC<FlashBriefsProps> = ({
     return (
       <FlashBriefsContent
         newsData={newsItems ?? []}
-        newsSummary={newsSummary}
+        morningBrief={morningBrief}
         showSummary={showSummary}
         loading={loading ?? false}
         error={error ?? null}
@@ -193,18 +193,13 @@ const FlashBriefs: React.FC<FlashBriefsProps> = ({
     );
   }
 
-  const {
-    newsData,
-    newsSummary: hookSummary,
-    loading: hookLoading,
-    error: hookError,
-    refetch: hookRefetch,
-  } = useNewsData();
+  const { newsData, morningBrief: hookSummary, loading: hookLoading, error: hookError, refetch: hookRefetch } =
+    useNewsData();
 
   return (
     <FlashBriefsContent
       newsData={newsData}
-      newsSummary={hookSummary}
+      morningBrief={hookSummary}
       showSummary={showSummary}
       loading={hookLoading}
       error={hookError}

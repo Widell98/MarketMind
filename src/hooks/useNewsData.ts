@@ -14,7 +14,7 @@ interface NewsItem {
 
 type NewsSentiment = 'bullish' | 'bearish' | 'neutral';
 
-export type NewsDigestSummary = {
+export type AiMorningBrief = {
   id: string;
   headline: string;
   overview: string;
@@ -54,7 +54,7 @@ const coerceSentiment = (value: unknown): NewsSentiment => {
   return 'neutral';
 };
 
-const parseNewsSummary = (payload: unknown): NewsDigestSummary | null => {
+const parseMorningBrief = (payload: unknown): AiMorningBrief | null => {
   if (!payload || typeof payload !== 'object') {
     return null;
   }
@@ -77,11 +77,13 @@ const parseNewsSummary = (payload: unknown): NewsDigestSummary | null => {
     generatedAt:
       typeof raw.generatedAt === 'string' && raw.generatedAt.length > 0
         ? raw.generatedAt
-        : new Date().toISOString(),
+        : typeof raw.generated_at === 'string' && raw.generated_at.length > 0
+          ? raw.generated_at
+          : new Date().toISOString(),
   };
 };
 
-const parseNewsResponse = (payload: unknown): { news: NewsItem[]; summary: NewsDigestSummary | null } => {
+const parseNewsResponse = (payload: unknown): { news: NewsItem[]; summary: AiMorningBrief | null } => {
   if (Array.isArray(payload)) {
     return { news: payload as NewsItem[], summary: null };
   }
@@ -89,7 +91,9 @@ const parseNewsResponse = (payload: unknown): { news: NewsItem[]; summary: NewsD
   if (payload && typeof payload === 'object') {
     const raw = payload as Record<string, unknown>;
     const news = Array.isArray(raw.news) ? (raw.news as NewsItem[]) : [];
-    const summary = parseNewsSummary(raw.summary);
+    const summary = parseMorningBrief(
+      raw.morningBrief ?? raw.morning_brief ?? raw.summary ?? raw.brief ?? raw.newsletter
+    );
     return { news, summary };
   }
 
@@ -98,7 +102,7 @@ const parseNewsResponse = (payload: unknown): { news: NewsItem[]; summary: NewsD
 
 export const useNewsData = () => {
   const [newsData, setNewsData] = useState<NewsItem[]>([]);
-  const [newsSummary, setNewsSummary] = useState<NewsDigestSummary | null>(null);
+  const [morningBrief, setMorningBrief] = useState<AiMorningBrief | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -115,7 +119,7 @@ export const useNewsData = () => {
 
       const parsed = parseNewsResponse(data);
       setNewsData(parsed.news);
-      setNewsSummary(parsed.summary);
+      setMorningBrief(parsed.summary);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch news data';
       setError(errorMessage);
@@ -134,5 +138,5 @@ export const useNewsData = () => {
     return () => clearInterval(interval);
   }, []);
 
-  return { newsData, newsSummary, loading, error, refetch: fetchNewsData };
+  return { newsData, morningBrief, loading, error, refetch: fetchNewsData };
 };

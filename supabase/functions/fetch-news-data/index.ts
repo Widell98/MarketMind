@@ -1,656 +1,224 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8'
+import { jsonrepair } from "https://esm.sh/jsonrepair@3.6.1";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-const resendApiKey = Deno.env.get('RESEND_API_KEY');
-const newsDigestFromEmail = Deno.env.get('NEWS_DIGEST_FROM_EMAIL') ?? Deno.env.get('RESEND_FROM_EMAIL');
-const newsDigestSubjectPrefix = Deno.env.get('NEWS_DIGEST_SUBJECT_PREFIX') ?? 'Morgonrapport';
-const digestPushWebhook = Deno.env.get('NEWS_DIGEST_PUSH_WEBHOOK');
-const digestNotificationApiKey = Deno.env.get('NEWS_DIGEST_NOTIFICATION_KEY');
-
-type NewsItem = {
-  id: string;
-  headline: string;
-  summary: string;
-  category: string;
-  source: string;
-  publishedAt: string;
-  url: string;
-};
-
-type NewsDigestSummary = {
-  id: string;
-  headline: string;
-  overview: string;
-  keyHighlights: string[];
-  focusToday: string[];
-  sentiment: 'bullish' | 'bearish' | 'neutral';
-  generatedAt: string;
-  digestHash: string;
-};
-
-type BroadcastOptions = {
-  type?: string;
-  broadcastSummary?: boolean;
-};
+const openAIApiKey = Deno.env.get("OPENAI_API_KEY");
+const OPENAI_MODEL = "gpt-5.1";
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    let requestOptions: BroadcastOptions = {};
-    try {
-      requestOptions = await req.json();
-    } catch {
-      requestOptions = {};
-    }
+    const body = await readJsonBody(req);
+    const type = typeof body?.type === "string" ? body.type : "news";
 
-    const { type = 'news', broadcastSummary = true } = requestOptions ?? {};
-    console.log(`Fetching ${type} data with smart caching...`);
-    
-    let data;
-    if (type === 'calendar') {
-      data = await fetchFinancialCalendarWithCache();
-    } else if (type === 'momentum') {
-      data = await fetchMarketMomentumWithCache();
-    } else {
-      const newsItems = await fetchLiveNewsData() as NewsItem[];
-      let summaryPayload: Omit<NewsDigestSummary, 'digestHash'> | null = null;
-
-      try {
-        const digestHash = await computeNewsDigestHash(newsItems);
-        const summary = await generateNewsDigestSummary(newsItems, digestHash);
-        await persistNewsDigestSummary(summary, broadcastSummary);
-        summaryPayload = serializeNewsDigestSummary(summary);
-      } catch (summaryError) {
-        console.error('Failed to generate or distribute news digest summary:', summaryError);
+    switch (type) {
+      case "calendar": {
+        const events = await generateFinancialCalendar();
+        return jsonResponse(events);
       }
-
-      data = {
-        news: newsItems,
-        summary: summaryPayload,
-      };
+      case "momentum": {
+        const items = await generateMarketMomentum();
+        return jsonResponse(items);
+      }
+      case "news":
+      default: {
+        const { morningBrief, news } = await generateMorningBrief();
+        return jsonResponse({ morningBrief, news });
+      }
     }
-    
-    return new Response(JSON.stringify(data), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
   } catch (error) {
-    console.error(`Error fetching data:`, error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    console.error("fetch-news-data error", error);
+    const message = error instanceof Error ? error.message : "Unexpected server error";
+    return jsonResponse({ error: message }, 500);
   }
 });
 
-async function fetchFinancialCalendarWithCache() {
-  const cacheKey = `calendar_${new Date().toISOString().split('T')[0]}`;
-  
-  // Försök hämta från cache först
-  const { data: cachedData } = await supabase
-    .from('financial_calendar_cache')
-    .select('data, expires_at')
-    .eq('cache_key', cacheKey)
-    .single();
-
-  if (cachedData && new Date(cachedData.expires_at) > new Date()) {
-    console.log('Returning cached calendar data');
-    return cachedData.data;
-  }
-
-  // Om ingen cache eller utgången, hämta ny data
-  const freshData = await fetchFinancialCalendarData();
-  
-  // Spara i cache (gäller till midnatt nästa dag)
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 1);
-  expiresAt.setHours(0, 0, 0, 0);
-
-  await supabase
-    .from('financial_calendar_cache')
-    .upsert({
-      cache_key: cacheKey,
-      data: freshData,
-      expires_at: expiresAt.toISOString()
-    });
-
-  return freshData;
-}
-
-async function fetchMarketMomentumWithCache() {
-  const cacheKey = `momentum_${new Date().toISOString().split('T')[0]}_${Math.floor(Date.now() / (4 * 60 * 60 * 1000))}`;
-  
-  // Försök hämta från cache (uppdateras var 4:e timme)
-  const { data: cachedData } = await supabase
-    .from('market_momentum_cache')
-    .select('data, expires_at')
-    .eq('cache_key', cacheKey)
-    .single();
-
-  if (cachedData && new Date(cachedData.expires_at) > new Date()) {
-    console.log('Returning cached momentum data');
-    return cachedData.data;
-  }
-
-  const freshData = await fetchMarketMomentumData();
-  
-  // Cache gäller i 4 timmar
-  const expiresAt = new Date(Date.now() + 4 * 60 * 60 * 1000);
-
-  await supabase
-    .from('market_momentum_cache')
-    .upsert({
-      cache_key: cacheKey,
-      data: freshData,
-      expires_at: expiresAt.toISOString()
-    });
-
-  return freshData;
-}
-
-async function fetchFinancialCalendarData() {
-  if (!openAIApiKey) {
-    console.log('No OpenAI key, using mock calendar data');
-    return getMockCalendarData();
-  }
-
+async function readJsonBody(req: Request): Promise<Record<string, unknown> | null> {
   try {
-    const today = new Date();
-    const nextWeek = new Date(today);
-    nextWeek.setDate(today.getDate() + 7);
-    
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: 'Du är en finansiell kalenderexpert. Generera aktuella och realistiska finansiella händelser baserat på verkliga marknadsförhållanden och aktuella ekonomiska trender. Inkludera svenska och internationella händelser som påverkar finansmarknaderna. Formatera som JSON array med id, time, title, description, importance (high/medium/low), category (earnings/economic/dividend/central_bank/announcement/other), company (optional), date (YYYY-MM-DD format), och dayOfWeek (på svenska).'
-          },
-          {
-            role: 'user',
-            content: `Skapa en realistisk finansiell kalender för perioden ${today.toLocaleDateString('sv-SE')} till ${nextWeek.toLocaleDateString('sv-SE')}. Basera på verkliga marknadsförhållanden December 2024/Januari 2025. Inkludera:
-            
-            SVENSKA HÄNDELSER:
-            - Riksbankens räntebesked och inflationsdata
-            - Kvartalsrapporter från svenska storbolag
-            - Ekonomisk statistik från SCB
-            - Utdelningsannonsering
-            
-            INTERNATIONELLA HÄNDELSER:
-            - Fed:s räntebeslut och makrodata från USA
-            - ECB:s penningpolitik
-            - Kvartalsrapporter från stora tech- och finansbolag
-            - Centralbanksbesked
-            - Viktig ekonomisk data som påverkar svenska marknader
-            - Stora eknomiska händelser
-    
-            
-            Gör händelserna trovärdiga och relevanta för nuvarande marknadssituation och årstid.`
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 2000,
-      }),
-    });
-
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-    
-    try {
-      const calendarItems = JSON.parse(content);
-      return Array.isArray(calendarItems) ? calendarItems : getMockCalendarData();
-    } catch (parseError) {
-      console.error('Error parsing AI calendar response:', parseError);
-      return getMockCalendarData();
+    if (req.body === null) {
+      return null;
     }
-  } catch (error) {
-    console.error('Error calling OpenAI for calendar:', error);
-    return getMockCalendarData();
-  }
-}
-
-async function fetchMarketMomentumData() {
-  if (!openAIApiKey) {
-    console.log('No OpenAI key, using mock momentum data');
-    return getMockMomentumData();
-  }
-
-  try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: 'Du är en erfaren marknadsanalytiker. Generera aktuell marknadsmomentum-data baserat på verkliga trender och marknadsförhållanden för svenska och globala marknader. Fokusera på realistiska och aktuella trender. Formatera som JSON array med id, title, description, trend (up/down/neutral), change (procentuell förändring med + eller -), timeframe, och sentiment (bullish/bearish/positive/stable/neutral).'
-          },
-          {
-            role: 'user',
-            content: `Analysera aktuellt marknadsmomentum för ${new Date().toLocaleDateString('sv-SE')} baserat på verkliga marknadsförhållanden slutet av 2024/början av 2025. Inkludera:
-            
-            - AI och teknologisektorn (NVIDIA, Microsoft, Google, svenska tech)
-            - Centralbankspolitik (Fed, ECB, Riksbanken)
-            - Geopolitiska faktorer och deras marknadsimpakt
-            - Sektorrotation mellan tech, finans, råvaror, hälsovård
-            - Institutionellt flöde och volymanalys
-            - Volatilitet och risksentiment (VIX-nivåer)
-            - Emerging markets vs utvecklade marknader
-            - Svenska specifika faktorer (kronkurs, export, råvaror)
-            - ESG och hållbarhetsinvesteringar
-            - Räntekänslighet och obligationsmarknaden
-            - Stora eknomiska händelser
-            
-            Skapa 6-8 trovärdiga momentumtrender med realistiska procenttal och tidsramar.`
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 2500,
-      }),
-    });
-
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-    
-    try {
-      const momentumItems = JSON.parse(content);
-      return Array.isArray(momentumItems) ? momentumItems : getMockMomentumData();
-    } catch (parseError) {
-      console.error('Error parsing AI momentum response:', parseError);
-      return getMockMomentumData();
-    }
-  } catch (error) {
-    console.error('Error calling OpenAI for momentum:', error);
-    return getMockMomentumData();
-  }
-}
-
-async function fetchLiveNewsData() {
-  if (!openAIApiKey) {
-    console.log('No OpenAI key, using mock news');
-    return getMockNewsData();
-  }
-
-  try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: 'Du är en finansiell nyhetsanalytiker. Generera aktuella och realistiska finansiella nyheter baserat på verkliga marknadsförhållanden för slutet av 2024/början av 2025. Inkludera svenska och internationella nyheter. Formatera som JSON array med id, headline, summary, category (macro/tech/earnings/commodities/global/sweden), source, publishedAt (ISO format), och url (använd # som placeholder).'
-          },
-          {
-            role: 'user',
-            content: `Skapa 8-10 aktuella finansiella nyheter för ${new Date().toLocaleDateString('sv-SE')} baserat på verkliga marknadsförhållanden. Inkludera:
-            
-            SVENSKA NYHETER:
-            - Utveckling för svenska storbolag och Stockholmsbörsen
-            - Riksbankens politik och svenska ekonomin
-            - Bostadsmarknaden och ränteutveckling
-            - Svenska exportföretag och kronkursen
-            
-            INTERNATIONELLA NYHETER:
-            - Fed och amerikansk ekonomi
-            - AI-sektorn och teknikjättar
-            - Geopolitiska händelser med marknadsimpakt
-            - Europeiska marknader och ECB
-            - Råvarumarknader och energi
-            - Kryptovalutor och digitala tillgångar
-            - Stora eknomiska händelser
-            
-            Gör nyheterna trovärdiga, relevanta och intressanta för svenska investerare.`
-          }
-        ],
-        temperature: 0.8,
-        max_tokens: 3000,
-      }),
-    });
-
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-    
-    try {
-      const newsItems = JSON.parse(content);
-      return Array.isArray(newsItems) ? newsItems : getMockNewsData();
-    } catch (parseError) {
-      console.error('Error parsing AI news response:', parseError);
-      return getMockNewsData();
-    }
-  } catch (error) {
-    console.error('Error calling OpenAI for news:', error);
-    return getMockNewsData();
-  }
-}
-
-function getMockCalendarData() {
-  const today = new Date();
-  const thisWeek = [];
-  
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-    const dayName = date.toLocaleDateString('sv-SE', { weekday: 'long' });
-    
-    if (i === 0) {
-      thisWeek.push({
-        id: `cal_${i}_1`,
-        time: '08:30',
-        title: 'Inflationsdata (KPI)',
-        description: 'Månatlig konsumentprisindex från SCB',
-        importance: 'high',
-        category: 'economic',
-        date: date.toISOString().split('T')[0],
-        dayOfWeek: dayName
-      });
-    } else if (i === 1) {
-      thisWeek.push({
-        id: `cal_${i}_1`,
-        time: '09:00',
-        title: 'H&M Q4 Rapport',
-        description: 'Kvartalsrapport från H&M',
-        importance: 'medium',
-        category: 'earnings',
-        company: 'H&M',
-        date: date.toISOString().split('T')[0],
-        dayOfWeek: dayName
-      });
-    } else if (i === 2) {
-      thisWeek.push({
-        id: `cal_${i}_1`,
-        time: '14:30',
-        title: 'Riksbankens Beslut',
-        description: 'Räntebeslut från Sveriges Riksbank',
-        importance: 'high',
-        category: 'central_bank',
-        date: date.toISOString().split('T')[0],
-        dayOfWeek: dayName
-      });
-    }
-  }
-  
-  return thisWeek;
-}
-
-function getMockMomentumData() {
-  return [
-    {
-      id: '1',
-      title: 'AI-sektorn accelererar',
-      description: 'NVIDIA och Microsoft driver teknikrallyt med nya AI-genombrott',
-      trend: 'up',
-      change: '+4.2%',
-      timeframe: '24h',
-      sentiment: 'bullish'
-    },
-    {
-      id: '2',
-      title: 'Institutionellt inflöde',
-      description: 'Pensionsfonder och hedgefonder ökar aktieexponeringen inför nyåret',
-      trend: 'up',
-      change: '+22%',
-      timeframe: 'Vecka',
-      sentiment: 'positive'
-    },
-    {
-      id: '3',
-      title: 'Ränteoroshet avtar',
-      description: 'Marknadens förväntningar på Fed-sänkningar stabiliseras',
-      trend: 'neutral',
-      change: '-0.8%',
-      timeframe: 'Månad',
-      sentiment: 'stable'
-    },
-    {
-      id: '4',
-      title: 'Råvarusektorn under press',
-      description: 'Kina-oro och stark dollar påverkar råvarupriser negativt',
-      trend: 'down',
-      change: '-3.1%',
-      timeframe: '3 dagar',
-      sentiment: 'bearish'
-    }
-  ];
-}
-
-function getMockNewsData() {
-  const now = new Date();
-  return [
-    {
-      id: 'news_1',
-      headline: 'Riksbanken överväger ytterligare räntesänkning i januari',
-      summary: 'Sveriges Riksbank signalerar möjliga räntesänkningar på 0,25% i januari baserat på fallande inflation.',
-      category: 'sweden',
-      source: 'Svenska Dagbladet',
-      publishedAt: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
-      url: '#'
-    },
-    {
-      id: 'news_2',
-      headline: 'Svenska AI-bolag attraherar rekordinvesteringar',
-      summary: 'Venture capital-investeringar i svenska AI-startups når nya höjder under Q4 2024.',
-      category: 'tech',
-      source: 'Dagens Industri',
-      publishedAt: new Date(now.getTime() - 4 * 60 * 60 * 1000).toISOString(),
-      url: '#'
-    },
-    {
-      id: 'news_3',
-      headline: 'Oljepriset stiger på geopolitisk oro',
-      summary: 'Brent-oljan klättrar över $80/fat efter spänningar i Mellanöstern påverkar leveranser.',
-      category: 'commodities',
-      source: 'Bloomberg',
-      publishedAt: new Date(now.getTime() - 6 * 60 * 60 * 1000).toISOString(),
-      url: '#'
-    },
-    {
-      id: 'news_4',
-      headline: 'Fed håller räntorna stabila inför årsskiftet',
-      summary: 'Federal Reserve behåller styrräntan men öppnar för flexibilitet baserat på inflationsdata.',
-      category: 'macro',
-      source: 'Financial Times',
-      publishedAt: new Date(now.getTime() - 8 * 60 * 60 * 1000).toISOString(),
-      url: '#'
-    },
-    {
-      id: 'news_5',
-      headline: 'Volvo rapporterar stark efterfrågan på elbilar',
-      summary: 'Volvo Cars överträffar förväntningarna med 35% ökning av elbilsförsäljning i Q4.',
-      category: 'earnings',
-      source: 'Reuters',
-      publishedAt: new Date(now.getTime() - 10 * 60 * 60 * 1000).toISOString(),
-      url: '#'
-    }
-  ];
-}
-
-const textEncoder = new TextEncoder();
-const DIGEST_INSIGHT_TYPE = 'news_digest';
-const DIGEST_BROADCAST_CHUNK_SIZE = 25;
-const DEFAULT_FOCUS_TOPICS = ['Makro', 'Teknik', 'Sverige'];
-const DEFAULT_DIGEST_SENTIMENT: NewsDigestSummary['sentiment'] = 'neutral';
-
-function serializeNewsDigestSummary(summary: NewsDigestSummary | null): Omit<NewsDigestSummary, 'digestHash'> | null {
-  if (!summary) {
+    return await req.json();
+  } catch (_error) {
     return null;
   }
-
-  const { digestHash: _digestHash, ...rest } = summary;
-  return rest;
 }
 
-async function computeNewsDigestHash(newsItems: NewsItem[]): Promise<string> {
-  const digestSource = newsItems.length
-    ? newsItems
-        .slice(0, 10)
-        .map((item) => `${item.headline}|${item.summary}|${item.category}|${item.source}`)
-        .join('\n')
-    : `empty_${new Date().toISOString()}`;
-
-  const hashBuffer = await crypto.subtle.digest('SHA-256', textEncoder.encode(digestSource));
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
+function jsonResponse(payload: unknown, status = 200): Response {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 }
 
-function normalizeStringArray(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value
-      .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
-      .filter((entry) => entry.length > 0);
+async function callOpenAI(systemPrompt: string, userPrompt: string, maxTokens = 1800): Promise<string> {
+  if (!openAIApiKey) {
+    throw new Error("OPENAI_API_KEY is not configured");
   }
 
-  if (typeof value === 'string' && value.trim().length > 0) {
-    return value
-      .split(/\n|•|-/)
-      .map((entry) => entry.replace(/^\s*[-•]\s*/, '').trim())
-      .filter((entry) => entry.length > 0);
-  }
-
-  return [];
-}
-
-function formatCategoryLabel(category: string | undefined): string {
-  if (!category) {
-    return 'Marknad';
-  }
-
-  const normalized = category.toLowerCase();
-  switch (normalized) {
-    case 'macro':
-      return 'Makro';
-    case 'tech':
-      return 'Teknik';
-    case 'earnings':
-      return 'Rapporter';
-    case 'commodities':
-      return 'Råvaror';
-    case 'sweden':
-      return 'Sverige';
-    case 'global':
-      return 'Globalt';
-    default:
-      return category.charAt(0).toUpperCase() + category.slice(1);
-  }
-}
-
-function pickFocusTopics(newsItems: NewsItem[]): string[] {
-  const uniqueCategories = Array.from(
-    new Set(
-      newsItems
-        .map((item) => item.category)
-        .filter((category): category is string => typeof category === 'string' && category.trim().length > 0),
-    ),
-  );
-
-  if (uniqueCategories.length === 0) {
-    return DEFAULT_FOCUS_TOPICS;
-  }
-
-  return uniqueCategories.slice(0, 3).map((category) => formatCategoryLabel(category));
-}
-
-function buildFallbackHighlights(newsItems: NewsItem[]): string[] {
-  if (!newsItems.length) {
-    return [
-      'Marknaden höll sig relativt lugn men investerare följer centralbankernas nästa steg.',
-      'Teknik- och energisektorn fortsätter att styra sentimentet inför kommande rapporter.',
-    ];
-  }
-
-  return newsItems.slice(0, 4).map((item) => `${item.headline} – ${item.summary}`);
-}
-
-function buildFallbackOverview(newsItems: NewsItem[]): string {
-  if (!newsItems.length) {
-    return 'Marknaden bevakade övergripande makrohändelser samtidigt som fokus låg på centralbankernas vägval och rapportsäsongens fortsättning.';
-  }
-
-  const primary = newsItems[0];
-  const secondary = newsItems[1];
-  const parts = [`${primary.source}: ${primary.summary}`];
-
-  if (secondary) {
-    parts.push(`Dessutom: ${secondary.summary}`);
-  }
-
-  return parts.join(' ');
-}
-
-function deriveSentimentFromNews(newsItems: NewsItem[]): NewsDigestSummary['sentiment'] {
-  if (!newsItems.length) {
-    return DEFAULT_DIGEST_SENTIMENT;
-  }
-
-  const categoryWeights = newsItems.reduce(
-    (acc, item) => {
-      const normalizedSummary = item.summary.toLowerCase();
-      if (/(stiger|rekord|lyfte|växte|expansion|tillväxt)/.test(normalizedSummary)) {
-        acc.bullish += 1;
-      }
-      if (/(faller|oro|press|nedgång|sänker|brist|osäker)/.test(normalizedSummary)) {
-        acc.bearish += 1;
-      }
-      return acc;
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${openAIApiKey}`,
     },
-    { bullish: 0, bearish: 0 },
-  );
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      max_output_tokens: maxTokens,
+      reasoning: { effort: "medium" },
+      text: { verbosity: "medium" },
+      input: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    }),
+  });
 
-  if (categoryWeights.bullish > categoryWeights.bearish) {
-    return 'bullish';
+  if (!response.ok) {
+    const errorText = await safeReadText(response);
+    throw new Error(`OpenAI request failed (${response.status}): ${errorText}`);
   }
 
-  if (categoryWeights.bearish > categoryWeights.bullish) {
-    return 'bearish';
+  const data = await response.json();
+  const text = extractText(data);
+  if (!text || text.trim().length === 0) {
+    console.error("OpenAI raw response", data);
+    throw new Error("OpenAI response did not contain text output");
   }
-
-  return DEFAULT_DIGEST_SENTIMENT;
+  return text;
 }
 
-function buildFallbackDigestSummary(newsItems: NewsItem[], digestHash: string): NewsDigestSummary {
-  const generatedAt = new Date().toISOString();
-  const keyHighlights = buildFallbackHighlights(newsItems);
+async function safeReadText(response: Response): Promise<string> {
+  try {
+    return await response.text();
+  } catch (_error) {
+    return "<failed to read body>";
+  }
+}
 
-  return {
-    id: `digest_${digestHash.slice(0, 12)}`,
-    headline: newsItems[0]?.headline ?? 'Marknaden i fokus',
-    overview: buildFallbackOverview(newsItems),
-    keyHighlights,
-    focusToday: pickFocusTopics(newsItems),
-    sentiment: deriveSentimentFromNews(newsItems),
-    generatedAt,
-    digestHash,
-  };
+async function generateMorningBrief() {
+  const today = new Date();
+  const systemPrompt =
+    "Du är en svensk finansredaktör som skriver morgonbrev och strukturerade nyhetssammanfattningar. Du svarar alltid med giltig JSON.";
+
+  const userPrompt = `Skriv ett kort AI-genererat morgonbrev för datumet ${today.toLocaleDateString("sv-SE")}.
+Inkludera både sammanfattning och 6–8 nyhetsrubriker relevanta för svenska investerare.
+
+FORMAT (måste följas exakt):
+{
+  "morning_brief": {
+    "headline": "string",
+    "overview": "2-3 meningar",
+    "key_highlights": ["bullet"],
+    "focus_today": ["tema"],
+    "sentiment": "bullish"|"bearish"|"neutral",
+    "generated_at": "ISO timestamp",
+    "sections": [
+      { "title": "string", "body": "korta stycken" }
+    ]
+  },
+  "news_items": [
+    {
+      "id": "slug",
+      "headline": "string",
+      "summary": "1-2 meningar",
+      "category": "macro|tech|earnings|sweden|global|commodities",
+      "source": "string",
+      "published_at": "ISO timestamp",
+      "url": "https://"
+    }
+  ]
+}
+
+Regler:
+- Fakta ska vara plausibla för Q4 2024 / början 2025.
+- Blanda svenska och internationella perspektiv.
+- Inga procenttal eller siffror som känns orimliga.
+- Hitta inte på verkliga URL:er – använd `#` som placeholder.`;
+
+  const raw = await callOpenAI(systemPrompt, userPrompt, 2200);
+  const parsed = parseJsonPayload(raw);
+  const morningBrief = normalizeMorningBrief(parsed?.morning_brief ?? parsed?.brief ?? parsed?.newsletter ?? {});
+  const news = normalizeNewsItems(parsed?.news_items ?? parsed?.news ?? []);
+  return { morningBrief, news };
+}
+
+async function generateFinancialCalendar() {
+  const today = new Date();
+  const nextWeek = new Date(today);
+  nextWeek.setDate(nextWeek.getDate() + 7);
+
+  const systemPrompt =
+    "Du är en kalenderredaktör som sammanställer finansiella händelser för svenska investerare. Svara alltid med giltig JSON.";
+
+  const userPrompt = `Skapa en realistisk finansiell kalender för perioden ${today.toLocaleDateString("sv-SE")} till ${nextWeek.toLocaleDateString(
+    "sv-SE",
+  )}.
+Returnera JSON:
+{
+  "events": [
+    {
+      "id": "string",
+      "date": "YYYY-MM-DD",
+      "time": "HH:MM",
+      "title": "string",
+      "description": "string",
+      "importance": "high|medium|low",
+      "category": "earnings|economic|dividend|central_bank|other",
+      "region": "Sweden|EU|US|Global"
+    }
+  ]
+}`;
+
+  const raw = await callOpenAI(systemPrompt, userPrompt, 1600);
+  const parsed = parseJsonPayload(raw);
+  return normalizeCalendarEvents(parsed?.events ?? []);
+}
+
+async function generateMarketMomentum() {
+  const systemPrompt =
+    "Du är en svensk marknadsstrateg som beskriver momentum och sentiment. Svara alltid med giltig JSON.";
+  const userPrompt = `Sammanfatta aktuellt marknadsmomentum för globala marknader.
+Returnera JSON:
+{
+  "items": [
+    {
+      "id": "string",
+      "title": "string",
+      "description": "string",
+      "trend": "up|down|neutral",
+      "change": "+3.2%",
+      "timeframe": "24h|vecka|månad",
+      "sentiment": "bullish|bearish|neutral|stable"
+    }
+  ]
+}`;
+
+  const raw = await callOpenAI(systemPrompt, userPrompt, 1400);
+  const parsed = parseJsonPayload(raw);
+  return normalizeMomentumItems(parsed?.items ?? []);
+}
+
+function parseJsonPayload(content: string): Record<string, unknown> {
+  const normalized = extractJsonPayload(content);
+  try {
+    return JSON.parse(normalized);
+  } catch (error) {
+    try {
+      return JSON.parse(jsonrepair(normalized));
+    } catch (repairError) {
+      console.error("Failed to parse OpenAI JSON", { normalized, error, repairError });
+      throw new Error("OpenAI response was not valid JSON");
+    }
+  }
 }
 
 function extractJsonPayload(content: string): string {
@@ -662,426 +230,145 @@ function extractJsonPayload(content: string): string {
   return trimmed;
 }
 
-async function generateNewsDigestSummary(newsItems: NewsItem[], digestHash: string): Promise<NewsDigestSummary> {
-  if (!openAIApiKey) {
-    console.warn('Missing OPENAI_API_KEY for digest summary, using fallback content.');
-    return buildFallbackDigestSummary(newsItems, digestHash);
+function extractText(data: unknown): string | null {
+  if (typeof (data as { output_text?: unknown })?.output_text === "string") {
+    return (data as { output_text: string }).output_text;
   }
 
-  try {
-    const newsContext = newsItems
-      .slice(0, 10)
-      .map((item, index) => {
-        const published = item.publishedAt ? `(${item.publishedAt})` : '';
-        return `${index + 1}. ${item.headline} ${published} – ${item.summary}`;
-      })
-      .join('\n');
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        temperature: 0.4,
-        max_tokens: 1200,
-        messages: [
-          {
-            role: 'system',
-            content:
-              'Du är en svensk finansredaktör som skriver morgonbrev. Svara alltid med giltig JSON utan text före eller efter.',
-          },
-          {
-            role: 'user',
-            content: `Sammanfatta gårdagens viktigaste finansiella nyheter på svenska och skapa ett kort morgonbrev.
-Returnera JSON med följande struktur:
-{
-  "id": "unik-sträng",
-  "headline": "Kort huvudrubrik",
-  "overview": "2–3 meningar som sammanfattar marknadsläget",
-  "key_highlights": ["bullet 1", "bullet 2"],
-  "focus_today": ["tema 1", "tema 2"],
-  "sentiment": "bullish|bearish|neutral",
-  "generated_at": "ISO-tidpunkt"
-}
-
-Nyhetsunderlag:
-${newsContext || 'Inga nyheter tillgängliga – håll det generellt.'}`,
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OpenAI digest request failed:', errorText);
-      return buildFallbackDigestSummary(newsItems, digestHash);
-    }
-
-    const data = await response.json();
-    const rawContent = data?.choices?.[0]?.message?.content;
-    if (typeof rawContent !== 'string' || !rawContent.trim()) {
-      console.warn('OpenAI digest response missing content, using fallback.');
-      return buildFallbackDigestSummary(newsItems, digestHash);
-    }
-
-    const normalizedPayload = extractJsonPayload(rawContent);
-    const parsed = JSON.parse(normalizedPayload) as Record<string, unknown>;
-
-    const keyHighlights = normalizeStringArray(parsed.key_highlights ?? parsed.highlights ?? parsed.keyHighlights);
-    const focusToday = normalizeStringArray(parsed.focus_today ?? parsed.watchlist ?? parsed.focus);
-    const overviewText =
-      typeof parsed.overview === 'string' && parsed.overview.trim()
-        ? parsed.overview.trim()
-        : typeof parsed.summary === 'string'
-          ? parsed.summary.trim()
-          : null;
-
-    return {
-      id:
-        typeof parsed.id === 'string' && parsed.id.trim().length > 0
-          ? parsed.id.trim()
-          : `digest_${digestHash.slice(0, 12)}`,
-      headline:
-        typeof parsed.headline === 'string' && parsed.headline.trim().length > 0
-          ? parsed.headline.trim()
-          : newsItems[0]?.headline ?? 'Marknaden i fokus',
-      overview: overviewText ?? buildFallbackOverview(newsItems),
-      keyHighlights: keyHighlights.length > 0 ? keyHighlights : buildFallbackHighlights(newsItems),
-      focusToday: focusToday.length > 0 ? focusToday : pickFocusTopics(newsItems),
-      sentiment:
-        typeof parsed.sentiment === 'string'
-          ? (['bullish', 'bearish', 'neutral'].includes(parsed.sentiment.toLowerCase())
-              ? (parsed.sentiment.toLowerCase() as NewsDigestSummary['sentiment'])
-              : deriveSentimentFromNews(newsItems))
-          : deriveSentimentFromNews(newsItems),
-      generatedAt:
-        typeof parsed.generated_at === 'string' && parsed.generated_at.trim().length > 0
-          ? parsed.generated_at
-          : new Date().toISOString(),
-      digestHash,
-    };
-  } catch (error) {
-    console.error('Failed to generate AI-based news digest summary:', error);
-    return buildFallbackDigestSummary(newsItems, digestHash);
-  }
-}
-
-async function fetchLatestDigestHash(): Promise<string | null> {
-  try {
-    const { data, error } = await supabase
-      .from('ai_insights_cache')
-      .select('insights_data')
-      .eq('insight_type', DIGEST_INSIGHT_TYPE)
-      .eq('is_personalized', false)
-      .is('user_id', null)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      console.warn('Unable to fetch existing digest hash:', error);
-      return null;
-    }
-
-    const insightsData = data?.insights_data;
-    if (Array.isArray(insightsData) && insightsData.length > 0) {
-      const metadata = (insightsData[0] as Record<string, any>)?.metadata;
-      if (metadata && typeof metadata.digest_hash === 'string') {
-        return metadata.digest_hash;
+  const output = (data as { output?: unknown })?.output;
+  if (Array.isArray(output)) {
+    for (const block of output) {
+      if (typeof block === "object" && block !== null) {
+        const content = (block as { content?: unknown })?.content;
+        if (Array.isArray(content)) {
+          for (const part of content) {
+            if (typeof part === "object" && part !== null) {
+              const partType = (part as { type?: string }).type;
+              if ((partType === "output_text" || partType === "text") && typeof (part as { text?: unknown }).text === "string") {
+                return (part as { text: string }).text;
+              }
+            }
+          }
+        }
+        if (typeof (block as { text?: unknown }).text === "string") {
+          return (block as { text: string }).text;
+        }
       }
     }
-  } catch (error) {
-    console.warn('Unexpected error when reading digest hash:', error);
+  }
+
+  const content = (data as { content?: unknown })?.content;
+  if (Array.isArray(content)) {
+    for (const part of content) {
+      if (typeof part === "object" && part !== null && typeof (part as { text?: unknown }).text === "string") {
+        return (part as { text: string }).text;
+      }
+    }
   }
 
   return null;
 }
 
-function buildDigestInsightPayload(summary: NewsDigestSummary) {
+function normalizeMorningBrief(raw: Record<string, unknown>): Record<string, unknown> {
+  const headline = typeof raw?.headline === "string" && raw.headline.trim().length > 0 ? raw.headline.trim() : "Morgonrapporten";
+  const overview = typeof raw?.overview === "string" && raw.overview.trim().length > 0
+    ? raw.overview.trim()
+    : "AI-genererad morgonbrief saknar beskrivning.";
+
   return {
-    id: summary.id,
-    title: summary.headline,
-    content: summary.overview,
-    confidence_score: 0.72,
-    insight_type: DIGEST_INSIGHT_TYPE,
-    key_factors: summary.keyHighlights.slice(0, 5),
-    metadata: {
-      digest_hash: summary.digestHash,
-      focus_today: summary.focusToday,
-      sentiment: summary.sentiment,
-      generated_at: summary.generatedAt,
-    },
+    id: typeof raw?.id === "string" && raw.id.trim().length > 0 ? raw.id.trim() : `brief_${crypto.randomUUID()}`,
+    headline,
+    overview,
+    keyHighlights: normalizeStringArray(raw?.key_highlights ?? raw?.highlights ?? raw?.keyHighlights),
+    focusToday: normalizeStringArray(raw?.focus_today ?? raw?.focus ?? raw?.focusToday),
+    sentiment: normalizeSentiment(raw?.sentiment),
+    generatedAt: normalizeIsoString(raw?.generated_at) ?? new Date().toISOString(),
+    sections: Array.isArray(raw?.sections)
+      ? (raw.sections as unknown[]).map((section) => ({
+          title: typeof (section as { title?: string })?.title === "string" ? (section as { title: string }).title.trim() : "",
+          body: typeof (section as { body?: string })?.body === "string" ? (section as { body: string }).body.trim() : "",
+        })).filter((section) => section.title || section.body)
+      : [],
   };
 }
 
-async function upsertGlobalDigest(summary: NewsDigestSummary, digestInsight: Record<string, unknown>) {
-  const expiresAt = new Date(summary.generatedAt);
-  expiresAt.setDate(expiresAt.getDate() + 1);
-
-  const { error } = await supabase
-    .from('ai_insights_cache')
-    .upsert(
-      {
-        user_id: null,
-        insight_type: DIGEST_INSIGHT_TYPE,
-        is_personalized: false,
-        insights_data: [digestInsight],
-        updated_at: summary.generatedAt,
-        expires_at: expiresAt.toISOString(),
-      },
-      {
-        onConflict: 'user_id,insight_type,is_personalized',
-      },
-    );
-
-  if (error) {
-    throw error;
-  }
-}
-
-async function broadcastDigestToUsers(summary: NewsDigestSummary, digestInsight: Record<string, unknown>): Promise<string[]> {
-  try {
-    const { data: profiles, error } = await supabase.from('profiles').select('id');
-    if (error) {
-      console.error('Failed to fetch profiles for digest broadcast:', error);
-      return [];
-    }
-
-    const userIds =
-      profiles
-        ?.map((profile) => profile.id)
-        .filter((id): id is string => typeof id === 'string' && id.length > 0) ?? [];
-
-    if (userIds.length === 0) {
-      console.log('No users found for news digest broadcast.');
-      return [];
-    }
-
-    for (let i = 0; i < userIds.length; i += DIGEST_BROADCAST_CHUNK_SIZE) {
-      const chunk = userIds.slice(i, i + DIGEST_BROADCAST_CHUNK_SIZE);
-      await Promise.all(
-        chunk.map(async (userId) => {
-          const { error: upsertError } = await supabase
-            .from('user_ai_insights')
-            .upsert(
-              {
-                user_id: userId,
-                insight_type: DIGEST_INSIGHT_TYPE,
-                is_personalized: false,
-                insights_data: [digestInsight],
-                updated_at: summary.generatedAt,
-              },
-              {
-                onConflict: 'user_id,insight_type,is_personalized',
-              },
-            );
-
-          if (upsertError) {
-            console.error(`Failed to upsert news digest for user ${userId}`, upsertError);
-          }
-        }),
-      );
-    }
-
-    console.log(`Broadcasted news digest summary to ${userIds.length} användare.`);
-    return userIds;
-  } catch (error) {
-    console.error('Unexpected error while broadcasting news digest:', error);
-    return [];
-  }
-}
-
-async function persistNewsDigestSummary(summary: NewsDigestSummary, shouldBroadcast: boolean) {
-  if (!summary) {
-    return;
-  }
-
-  const latestHash = await fetchLatestDigestHash();
-  if (latestHash === summary.digestHash) {
-    console.log('News digest already up-to-date; skipping persistence.');
-    return;
-  }
-
-  const digestInsight = buildDigestInsightPayload(summary);
-
-  try {
-    await upsertGlobalDigest(summary, digestInsight);
-  } catch (error) {
-    console.error('Failed to upsert global digest cache:', error);
-    return;
-  }
-
-  if (!shouldBroadcast) {
-    console.log('Skipping digest broadcast (disabled by request option).');
-    return;
-  }
-
-  const recipientUserIds = await broadcastDigestToUsers(summary, digestInsight);
-  await triggerDigestNotificationWebhooks(summary, recipientUserIds);
-}
-
-const DIGEST_EMAIL_BATCH_SIZE = 50;
-
-async function triggerDigestNotificationWebhooks(summary: NewsDigestSummary, recipientUserIds: string[]): Promise<void> {
-  await Promise.all([
-    sendNewsDigestEmails(summary),
-    sendDigestPushNotifications(summary, recipientUserIds),
-  ]);
-}
-
-async function sendNewsDigestEmails(summary: NewsDigestSummary): Promise<void> {
-  if (!resendApiKey || !newsDigestFromEmail) {
-    console.log('Resend configuration missing; skipping email digest broadcast.');
-    return;
-  }
-
-  const subscriberEmails = await fetchSubscriberEmails();
-  if (subscriberEmails.length === 0) {
-    console.log('No subscriber emails found for digest notification.');
-    return;
-  }
-
-  const subject = `${newsDigestSubjectPrefix}: ${summary.headline}`;
-  const htmlBody = buildDigestEmailHtml(summary);
-  const textBody = buildDigestEmailText(summary);
-
-  for (let i = 0; i < subscriberEmails.length; i += DIGEST_EMAIL_BATCH_SIZE) {
-    const chunk = subscriberEmails.slice(i, i + DIGEST_EMAIL_BATCH_SIZE);
-
-    try {
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${resendApiKey}`,
-        },
-        body: JSON.stringify({
-          from: newsDigestFromEmail,
-          to: chunk,
-          subject,
-          html: htmlBody,
-          text: textBody,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Resend digest email failed:', { status: response.status, error: errorText });
-      }
-    } catch (error) {
-      console.error('Error sending digest emails via Resend:', error);
-    }
-  }
-}
-
-async function fetchSubscriberEmails(): Promise<string[]> {
-  try {
-    const { data, error } = await supabase
-      .from('subscribers')
-      .select('email')
-      .eq('subscribed', true);
-
-    if (error) {
-      console.error('Failed to fetch subscriber emails for digest notification:', error);
-      return [];
-    }
-
-    const deduplicated = Array.from(
-      new Set(
-        data
-          ?.map((entry) => entry.email?.trim())
-          .filter((email): email is string => typeof email === 'string' && email.length > 0) ?? [],
-      ),
-    );
-
-    return deduplicated;
-  } catch (error) {
-    console.error('Unexpected error fetching subscriber emails:', error);
-    return [];
-  }
-}
-
-function buildDigestEmailHtml(summary: NewsDigestSummary): string {
-  const highlightList = summary.keyHighlights
-    .map((item) => `<li style="margin-bottom:8px;">${item}</li>`)
-    .join('');
-  const focusList = summary.focusToday
-    .map((item) => `<span style="display:inline-block;padding:4px 10px;margin:4px;border-radius:999px;background:#eef2ff;">${item}</span>`)
-    .join('');
-
-  return `
-    <div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
-      <p style="font-size:12px;color:#64748b;margin:0;">${new Date(summary.generatedAt).toLocaleString('sv-SE')}</p>
-      <h1 style="font-size:22px;margin:8px 0;">${summary.headline}</h1>
-      <p style="font-size:15px;line-height:1.6;margin-bottom:16px;">${summary.overview}</p>
-      <h2 style="font-size:16px;margin-bottom:6px;">Gårdagens höjdpunkter</h2>
-      <ul style="padding-left:18px;margin-top:0;">${highlightList}</ul>
-      <h2 style="font-size:16px;margin:18px 0 6px;">Fokus idag</h2>
-      <div>${focusList}</div>
-      <p style="font-size:13px;color:#64748b;margin-top:24px;">
-        Sentiment: ${summary.sentiment === 'bullish' ? 'Positivt' : summary.sentiment === 'bearish' ? 'Försiktigt' : 'Neutral'}
-      </p>
-    </div>
-  `;
-}
-
-function buildDigestEmailText(summary: NewsDigestSummary): string {
-  const highlights = summary.keyHighlights.map((item, index) => `${index + 1}. ${item}`).join('\n');
-  const focus = summary.focusToday.join(', ');
-
-  return [
-    `${summary.headline}`,
-    '',
-    summary.overview,
-    '',
-    'Gårdagens höjdpunkter:',
-    highlights,
-    '',
-    `Fokus idag: ${focus}`,
-    '',
-    `Sentiment: ${summary.sentiment}`,
-    '',
-    `Genererad: ${new Date(summary.generatedAt).toLocaleString('sv-SE')}`,
-  ].join('\n');
-}
-
-async function sendDigestPushNotifications(summary: NewsDigestSummary, recipientUserIds: string[]): Promise<void> {
-  if (!digestPushWebhook) {
-    return;
-  }
-
-  await postDigestWebhook(digestPushWebhook, summary, recipientUserIds);
-}
-
-async function postDigestWebhook(endpoint: string, summary: NewsDigestSummary, recipientUserIds: string[]): Promise<void> {
-  try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(digestNotificationApiKey ? { 'X-API-Key': digestNotificationApiKey } : {}),
-      },
-      body: JSON.stringify({
-        type: 'news_digest',
-        headline: summary.headline,
-        overview: summary.overview,
-        keyHighlights: summary.keyHighlights,
-        focusToday: summary.focusToday,
-        sentiment: summary.sentiment,
-        generatedAt: summary.generatedAt,
-        recipientCount: recipientUserIds.length,
-        recipients: recipientUserIds.slice(0, 50),
-      }),
+function normalizeNewsItems(items: unknown[]): Array<Record<string, string>> {
+  return items
+    .filter((item): item is Record<string, unknown> => !!item && typeof item === "object")
+    .map((item, index) => {
+      const id = typeof item.id === "string" && item.id.trim().length > 0 ? item.id.trim() : `news_${index}`;
+      return {
+        id,
+        headline: typeof item.headline === "string" ? item.headline.trim() : "Okänd rubrik",
+        summary: typeof item.summary === "string" ? item.summary.trim() : "Sammanfattning saknas.",
+        category: typeof item.category === "string" ? item.category.trim().toLowerCase() : "global",
+        source: typeof item.source === "string" ? item.source.trim() : "AI-genererat",
+        publishedAt: normalizeIsoString((item as { published_at?: string }).published_at) ?? new Date().toISOString(),
+        url: typeof item.url === "string" && item.url.trim().length > 0 ? item.url.trim() : "#",
+      };
     });
+}
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Digest push webhook failed', { status: response.status, error: errorText });
-    }
-  } catch (error) {
-    console.error('Failed to call digest push webhook', error);
+function normalizeCalendarEvents(events: unknown[]): Array<Record<string, string>> {
+  return events
+    .filter((event): event is Record<string, unknown> => !!event && typeof event === "object")
+    .map((event, index) => ({
+      id: typeof event.id === "string" && event.id.trim().length > 0 ? event.id.trim() : `cal_${index}`,
+      date: typeof event.date === "string" ? event.date : new Date().toISOString().split("T")[0],
+      time: typeof event.time === "string" ? event.time : "09:00",
+      title: typeof event.title === "string" ? event.title.trim() : "Okänd händelse",
+      description: typeof event.description === "string" ? event.description.trim() : "Beskrivning saknas",
+      importance: typeof event.importance === "string" ? event.importance : "medium",
+      category: typeof event.category === "string" ? event.category : "other",
+      region: typeof event.region === "string" ? event.region : "Global",
+    }));
+}
+
+function normalizeMomentumItems(items: unknown[]): Array<Record<string, string>> {
+  return items
+    .filter((item): item is Record<string, unknown> => !!item && typeof item === "object")
+    .map((item, index) => ({
+      id: typeof item.id === "string" && item.id.trim().length > 0 ? item.id : `momentum_${index}`,
+      title: typeof item.title === "string" ? item.title.trim() : "Marknadspuls",
+      description: typeof item.description === "string" ? item.description.trim() : "Beskrivning saknas",
+      trend: typeof item.trend === "string" ? item.trend : "neutral",
+      change: typeof item.change === "string" ? item.change : "0%",
+      timeframe: typeof item.timeframe === "string" ? item.timeframe : "24h",
+      sentiment: typeof item.sentiment === "string" ? item.sentiment : "neutral",
+    }));
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+      .filter((entry) => entry.length > 0);
   }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value
+      .split(/\n|\r|•|-/)
+      .map((entry) => entry.replace(/^\s*[-•]\s*/, "").trim())
+      .filter((entry) => entry.length > 0);
+  }
+
+  return [];
+}
+
+function normalizeIsoString(value: unknown): string | null {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return null;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function normalizeSentiment(value: unknown): "bullish" | "bearish" | "neutral" {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "bullish" || normalized === "bearish" || normalized === "neutral") {
+      return normalized;
+    }
+  }
+  return "neutral";
 }
