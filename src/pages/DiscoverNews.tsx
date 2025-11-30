@@ -3,12 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Clock, Loader2, Sparkles } from 'lucide-react';
 
 import Layout from '@/components/Layout';
-import ReportHighlightCard from '@/components/ReportHighlightCard';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { useDiscoverReportSummaries } from '@/hooks/useDiscoverReportSummaries';
 import { useNewsData } from '@/hooks/useNewsData';
 import { useMarketOverviewInsights } from '@/hooks/useMarketOverviewInsights';
 
@@ -34,13 +31,10 @@ const formatCategoryLabel = (category?: string) => {
 };
 
 const DiscoverNews = () => {
-  const navigate = useNavigate();
-  const { reports, loading: reportsLoading } = useDiscoverReportSummaries(24);
   const { newsData, morningBrief } = useNewsData();
   const { data: overviewInsights = [], isLoading: insightsLoading } = useMarketOverviewInsights();
 
   const heroInsight = overviewInsights[0];
-  const reportHighlights = useMemo(() => reports.slice(0, 3), [reports]);
 
   const trendingCategories = useMemo(() => {
     if (!newsData?.length) return [] as { category: string; count: number }[];
@@ -149,40 +143,6 @@ const DiscoverNews = () => {
               </p>
             </div>
           </div>
-
-          {/* Reports Section */}
-          {(reportHighlights.length > 0 || reportsLoading) && (
-            <section className="space-y-6 rounded-3xl border border-border/60 bg-gradient-to-br from-card/90 to-card/60 backdrop-blur-sm p-6 shadow-lg sm:p-8 lg:p-10">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Senaste AI-genererade rapporterna
-                  </p>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-foreground">Viktiga höjdpunkter</h2>
-                </div>
-                <Button 
-                  variant="ghost" 
-                  className="rounded-xl hover:bg-primary/10 hover:text-primary transition-colors" 
-                  onClick={() => navigate('/discover')}
-                >
-                  Visa alla rapporter
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-              {reportsLoading && reportHighlights.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border/70 bg-muted/30 px-6 py-16 text-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">Laddar rapporter…</p>
-                </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {reportHighlights.map((report) => (
-                    <ReportHighlightCard key={report.id} report={report} />
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
 
           <div className="space-y-6">
             <Card id="morgonrapport" className="border-border/60 bg-gradient-to-br from-card/90 to-card/70 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow">
