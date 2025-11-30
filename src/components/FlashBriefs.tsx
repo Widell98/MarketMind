@@ -1,13 +1,15 @@
 
-import React from 'react';
-import { useNewsData } from '../hooks/useNewsData';
+import React, { useMemo } from 'react';
+import { useNewsData, type AiMorningBrief } from '../hooks/useNewsData';
 import NewsCard from './ui/NewsCard';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, Sparkles, Clock } from 'lucide-react';
 import { Button } from './ui/button';
 import type { NewsItem } from '@/mockData/newsData';
 
 type FlashBriefsContentProps = {
   newsData: NewsItem[];
+  morningBrief?: AiMorningBrief | null;
+  showSummary?: boolean;
   loading: boolean;
   error: string | null;
   refetch?: () => void;
@@ -17,12 +19,23 @@ type FlashBriefsContentProps = {
 
 const FlashBriefsContent: React.FC<FlashBriefsContentProps> = ({
   newsData,
+  morningBrief,
+  showSummary = true,
   loading,
   error,
   refetch,
   title = 'Flash Briefs',
   showHeader = true,
 }) => {
+  const generatedLabel = useMemo(() => {
+    if (!morningBrief?.generatedAt) return '';
+    const date = new Date(morningBrief.generatedAt);
+    if (Number.isNaN(date.getTime())) {
+      return '';
+    }
+    return date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+  }, [morningBrief?.generatedAt]);
+
   if (loading && newsData.length === 0) {
     return (
       <div className="w-full">
@@ -98,6 +111,41 @@ const FlashBriefsContent: React.FC<FlashBriefsContentProps> = ({
         </div>
       )}
 
+      {showSummary && morningBrief && (
+        <div className="mb-5 rounded-3xl border border-border/70 bg-muted/40 p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  AI-sammanfattning
+                </p>
+                <p className="text-base font-semibold text-foreground">{morningBrief.headline}</p>
+              </div>
+            </div>
+            {generatedLabel && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Clock className="h-3.5 w-3.5" />
+                <span>Genererad {generatedLabel}</span>
+              </div>
+            )}
+          </div>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{morningBrief.overview}</p>
+          {morningBrief.keyHighlights?.length > 0 && (
+            <ul className="mt-4 space-y-2">
+              {morningBrief.keyHighlights.slice(0, 3).map((item, index) => (
+                <li
+                  key={`flash-digest-${index}`}
+                  className="rounded-2xl border border-border/60 bg-background/60 p-3 text-sm leading-relaxed text-muted-foreground"
+                >
+                  {item}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       <div className="space-y-4 sm:space-y-3">
         {newsData.map((newsItem) => (
           <NewsCard key={newsItem.id} news={newsItem} />
@@ -110,6 +158,8 @@ const FlashBriefsContent: React.FC<FlashBriefsContentProps> = ({
 type FlashBriefsProps = {
   manual?: boolean;
   newsItems?: NewsItem[];
+  morningBrief?: AiMorningBrief | null;
+  showSummary?: boolean;
   loading?: boolean;
   error?: string | null;
   refetch?: () => void;
@@ -120,6 +170,8 @@ type FlashBriefsProps = {
 const FlashBriefs: React.FC<FlashBriefsProps> = ({
   manual = false,
   newsItems,
+  morningBrief,
+  showSummary = true,
   loading,
   error,
   refetch,
@@ -130,6 +182,8 @@ const FlashBriefs: React.FC<FlashBriefsProps> = ({
     return (
       <FlashBriefsContent
         newsData={newsItems ?? []}
+        morningBrief={morningBrief}
+        showSummary={showSummary}
         loading={loading ?? false}
         error={error ?? null}
         refetch={refetch}
@@ -139,11 +193,14 @@ const FlashBriefs: React.FC<FlashBriefsProps> = ({
     );
   }
 
-  const { newsData, loading: hookLoading, error: hookError, refetch: hookRefetch } = useNewsData();
+  const { newsData, morningBrief: hookSummary, loading: hookLoading, error: hookError, refetch: hookRefetch } =
+    useNewsData();
 
   return (
     <FlashBriefsContent
       newsData={newsData}
+      morningBrief={hookSummary}
+      showSummary={showSummary}
       loading={hookLoading}
       error={hookError}
       refetch={hookRefetch}
