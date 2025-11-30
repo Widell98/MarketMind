@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { jsonrepair } from "https://esm.sh/jsonrepair@3.6.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,6 +10,10 @@ const corsHeaders = {
 
 const openAIApiKey = Deno.env.get("OPENAI_API_KEY");
 const OPENAI_MODEL = "gpt-5.1";
+const supabaseUrl = Deno.env.get("SUPABASE_URL");
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const supabaseClient = supabaseUrl && supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceKey) : null;
+const textEncoder = new TextEncoder();
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -26,8 +31,22 @@ serve(async (req) => {
       }
       case "news":
       default: {
-        const { morningBrief, news } = await generateMorningBrief();
-        return jsonResponse({ morningBrief, news });
+        const forceRefresh = body?.forceRefresh === true;
+        const shouldPersist = body?.persist !== false;
+        const latestStored = await getLatestStoredBrief();
+        const now = new Date();
+
+        if (!forceRefresh && latestStored && isSameUtcDay(new Date(latestStored.morningBrief.generatedAt), now)) {
+          return jsonResponse(latestStored);
+        }
+
+        const generated = await generateMorningBrief();
+
+        if (shouldPersist) {
+          await storeMorningBrief(generated);
+        }
+
+        return jsonResponse({ morningBrief: generated.morningBrief, news: generated.news });
       }
     }
   } catch (error) {
@@ -100,13 +119,46 @@ async function safeReadText(response: Response): Promise<string> {
   }
 }
 
-async function generateMorningBrief() {
+type MorningSection = { title: string; body: string };
+type MorningBrief = {
+  id: string;
+  headline: string;
+  overview: string;
+  keyHighlights: string[];
+  focusToday: string[];
+  sentiment: "bullish" | "bearish" | "neutral";
+  generatedAt: string;
+  sections: MorningSection[];
+};
+
+type NewsItem = {
+  id: string;
+  headline: string;
+  summary: string;
+  category: string;
+  source: string;
+  publishedAt: string;
+  url: string;
+};
+
+type GeneratedMorningBrief = {
+  morningBrief: MorningBrief;
+  news: NewsItem[];
+  rawPayload: Record<string, unknown>;
+  digestHash: string;
+};
+
+async function generateMorningBrief(): Promise<GeneratedMorningBrief> {
   const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
   const systemPrompt =
     "Du är en svensk finansredaktör som skriver morgonbrev och strukturerade nyhetssammanfattningar. Du svarar alltid med giltig JSON.";
 
   const userPrompt = `Skriv ett kort AI-genererat morgonbrev för datumet ${today.toLocaleDateString("sv-SE")}.
 Inkludera både sammanfattning och 6–8 nyhetsrubriker relevanta för svenska investerare.
+Fokusera på händelser och sentiment från ${yesterday.toLocaleDateString("sv-SE")} (gårdagen). Ange tider och datum i svensk tidszon där det är relevant.
 
 FORMAT (måste följas exakt):
 {
@@ -145,7 +197,8 @@ Regler:
   const parsed = parseJsonPayload(raw);
   const morningBrief = normalizeMorningBrief(parsed?.morning_brief ?? parsed?.brief ?? parsed?.newsletter ?? {});
   const news = normalizeNewsItems(parsed?.news_items ?? parsed?.news ?? []);
-  return { morningBrief, news };
+  const digestHash = await computeDigestHash({ morningBrief, news });
+  return { morningBrief, news, rawPayload: parsed ?? {}, digestHash };
 }
 
 async function generateMarketMomentum() {
@@ -177,6 +230,111 @@ function logAiResponse(label: string, content: string) {
   const maxLength = 800;
   const preview = content.length > maxLength ? `${content.slice(0, maxLength)}…` : content;
   console.log(`[AI RESPONSE] ${label}:`, preview);
+}
+
+async function computeDigestHash(payload: unknown): Promise<string> {
+  const encoded = textEncoder.encode(JSON.stringify(payload));
+  const hashBuffer = await crypto.subtle.digest("SHA-256", encoded);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function getLatestStoredBrief(): Promise<{ morningBrief: MorningBrief; news: NewsItem[] } | null> {
+  if (!supabaseClient) {
+    console.warn("Supabase client is not configured; cannot fetch cached morning brief.");
+    return null;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("morning_briefs")
+    .select(
+      "id, generated_at, headline, overview, key_highlights, focus_today, sentiment, sections, news_items"
+    )
+    .order("generated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to read cached morning brief", error);
+    return null;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const sectionsArray = Array.isArray(data.sections)
+    ? (data.sections as unknown[])
+        .map((section) => {
+          const record = section as Record<string, unknown>;
+          const title = typeof record.title === "string" ? record.title.trim() : "";
+          const body = typeof record.body === "string" ? record.body.trim() : "";
+          if (!title && !body) {
+            return null;
+          }
+          return { title, body };
+        })
+        .filter((section): section is MorningSection => !!section)
+    : [];
+
+  const morningBrief: MorningBrief = {
+    id: data.id,
+    headline: data.headline,
+    overview: data.overview,
+    keyHighlights: Array.isArray(data.key_highlights) ? data.key_highlights : [],
+    focusToday: Array.isArray(data.focus_today) ? data.focus_today : [],
+    sentiment:
+      data.sentiment === "bullish" || data.sentiment === "bearish" || data.sentiment === "neutral"
+        ? data.sentiment
+        : "neutral",
+    generatedAt: data.generated_at,
+    sections: sectionsArray,
+  };
+
+  const newsItems = Array.isArray(data.news_items) ? (data.news_items as NewsItem[]) : [];
+
+  return { morningBrief, news: newsItems };
+}
+
+async function storeMorningBrief(generated: GeneratedMorningBrief) {
+  if (!supabaseClient) {
+    console.warn("Supabase client is not configured; cannot store morning brief.");
+    return;
+  }
+
+  const { morningBrief, news, rawPayload, digestHash } = generated;
+
+  const { error } = await supabaseClient
+    .from("morning_briefs")
+    .upsert(
+      {
+        generated_at: morningBrief.generatedAt,
+        headline: morningBrief.headline,
+        overview: morningBrief.overview,
+        key_highlights: morningBrief.keyHighlights,
+        focus_today: morningBrief.focusToday,
+        sentiment: morningBrief.sentiment,
+        sections: morningBrief.sections,
+        news_items: news,
+        digest_hash: digestHash,
+        raw_payload: rawPayload,
+        status: "ready",
+      },
+      { onConflict: "digest_hash" }
+    );
+
+  if (error) {
+    console.error("Failed to store morning brief", error);
+  }
+}
+
+function isSameUtcDay(a: Date, b: Date): boolean {
+  return (
+    a.getUTCFullYear() === b.getUTCFullYear() &&
+    a.getUTCMonth() === b.getUTCMonth() &&
+    a.getUTCDate() === b.getUTCDate()
+  );
 }
 
 function parseJsonPayload(content: string): Record<string, unknown> {
@@ -241,7 +399,7 @@ function extractText(data: unknown): string | null {
   return null;
 }
 
-function normalizeMorningBrief(raw: Record<string, unknown>): Record<string, unknown> {
+function normalizeMorningBrief(raw: Record<string, unknown>): MorningBrief {
   const headline = typeof raw?.headline === "string" && raw.headline.trim().length > 0 ? raw.headline.trim() : "Morgonrapporten";
   const overview = typeof raw?.overview === "string" && raw.overview.trim().length > 0
     ? raw.overview.trim()
@@ -256,15 +414,22 @@ function normalizeMorningBrief(raw: Record<string, unknown>): Record<string, unk
     sentiment: normalizeSentiment(raw?.sentiment),
     generatedAt: normalizeIsoString(raw?.generated_at) ?? new Date().toISOString(),
     sections: Array.isArray(raw?.sections)
-      ? (raw.sections as unknown[]).map((section) => ({
-          title: typeof (section as { title?: string })?.title === "string" ? (section as { title: string }).title.trim() : "",
-          body: typeof (section as { body?: string })?.body === "string" ? (section as { body: string }).body.trim() : "",
-        })).filter((section) => section.title || section.body)
+      ? (raw.sections as unknown[])
+          .map((section) => {
+            const record = section as Record<string, unknown>;
+            const title = typeof record.title === "string" ? record.title.trim() : "";
+            const body = typeof record.body === "string" ? record.body.trim() : "";
+            if (!title && !body) {
+              return null;
+            }
+            return { title, body };
+          })
+          .filter((section): section is MorningSection => !!section)
       : [],
   };
 }
 
-function normalizeNewsItems(items: unknown[]): Array<Record<string, string>> {
+function normalizeNewsItems(items: unknown[]): NewsItem[] {
   return items
     .filter((item): item is Record<string, unknown> => !!item && typeof item === "object")
     .map((item, index) => {
