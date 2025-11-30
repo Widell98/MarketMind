@@ -4,113 +4,43 @@ import { ArrowRight, Clock, Loader2, Sparkles } from 'lucide-react';
 
 import Layout from '@/components/Layout';
 import ReportHighlightCard from '@/components/ReportHighlightCard';
-import MarketPulse from '@/components/MarketPulse';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useDiscoverReportSummaries } from '@/hooks/useDiscoverReportSummaries';
-import { useMarketData } from '@/hooks/useMarketData';
 import { useNewsData } from '@/hooks/useNewsData';
-import { useMarketOverviewInsights, type MarketOverviewInsight } from '@/hooks/useMarketOverviewInsights';
+import { useMarketOverviewInsights } from '@/hooks/useMarketOverviewInsights';
 
-type Sentiment = 'bullish' | 'bearish' | 'neutral';
-
-const SENTIMENT_META: Record<Sentiment, { label: string; badgeClass: string }> = {
-  bullish: { label: 'Positivt sentiment', badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  bearish: { label: 'Försiktigt sentiment', badgeClass: 'bg-rose-50 text-rose-700 border-rose-200' },
-  neutral: { label: 'Neutral ton', badgeClass: 'bg-amber-50 text-amber-700 border-amber-200' },
+const formatCategoryLabel = (category?: string) => {
+  if (!category) return 'Marknad';
+  const normalized = category.toLowerCase();
+  switch (normalized) {
+    case 'macro':
+      return 'Makro';
+    case 'tech':
+      return 'Teknik';
+    case 'earnings':
+      return 'Rapporter';
+    case 'commodities':
+      return 'Råvaror';
+    case 'sweden':
+      return 'Sverige';
+    case 'global':
+      return 'Globalt';
+    default:
+      return category.charAt(0).toUpperCase() + category.slice(1);
+  }
 };
-
-const deriveSentimentFromInsight = (insight?: MarketOverviewInsight): Sentiment => {
-  if (!insight) return 'neutral';
-  if (insight.sentiment) return insight.sentiment;
-  const text = `${insight.title ?? ''} ${insight.content ?? ''}`.toLowerCase();
-  if (/(stiger|uppgång|rekord|positiv|expansion|tillväxt)/.test(text)) return 'bullish';
-  if (/(faller|nedgång|oro|risk|press|svag)/.test(text)) return 'bearish';
-  return 'neutral';
-};
-
-type IndexTile = {
-  symbol: string;
-  displayLabel: string;
-  price?: number;
-  changePercent?: number;
-};
-
-const INDEX_LABELS: Record<string, string> = {
-  SPY: 'OMXS30',
-  QQQ: 'DAX',
-  DIA: 'S&P 500',
-  NDX: 'Nasdaq 100',
-};
-
-const PRIORITY_INDEX_SYMBOLS = ['SPY', 'QQQ', 'DIA', 'NDX'];
-const MAX_INDEX_TILES = 4;
 
 const DiscoverNews = () => {
   const navigate = useNavigate();
   const { reports, loading: reportsLoading } = useDiscoverReportSummaries(24);
-  const { marketData, loading: marketLoading, error: marketError, refetch: refetchMarketData } = useMarketData();
-  const { newsData, morningBrief, loading: newsLoading, error: newsError } = useNewsData();
+  const { newsData, morningBrief } = useNewsData();
   const { data: overviewInsights = [], isLoading: insightsLoading } = useMarketOverviewInsights();
 
-  const companyCount = useMemo(
-    () => new Set(reports.map((report) => report.companyName?.trim())).size,
-    [reports]
-  );
-
-  const sourceCount = useMemo(
-    () => new Set(reports.map((report) => report.sourceType ?? report.sourceDocumentName ?? 'Okänd källa')).size,
-    [reports]
-  );
-
   const heroInsight = overviewInsights[0];
-  const heroSentiment = morningBrief?.sentiment ?? deriveSentimentFromInsight(heroInsight);
-  const heroIndices = marketData?.marketIndices ?? [];
-  const lastUpdated = marketData?.lastUpdated ? new Date(marketData.lastUpdated) : null;
   const reportHighlights = useMemo(() => reports.slice(0, 3), [reports]);
-  
-  const normalizedIndices = useMemo<IndexTile[]>(() => {
-    return heroIndices.map((index) => ({
-      symbol: index.symbol,
-      price: index.price,
-      changePercent: index.changePercent,
-      displayLabel: INDEX_LABELS[index.symbol] ?? index.name ?? index.symbol,
-    }));
-  }, [heroIndices]);
-
-  const prioritizedIndices = useMemo<IndexTile[]>(() => {
-    if (!normalizedIndices.length) return [];
-
-    const prioritized: IndexTile[] = [];
-
-    PRIORITY_INDEX_SYMBOLS.forEach((symbol) => {
-      const match = normalizedIndices.find((idx) => idx.symbol === symbol);
-      if (match) {
-        prioritized.push(match);
-      }
-    });
-
-    normalizedIndices.forEach((idx) => {
-      if (!prioritized.find((item) => item.symbol === idx.symbol)) {
-        prioritized.push(idx);
-      }
-    });
-
-    return prioritized.slice(0, MAX_INDEX_TILES);
-  }, [normalizedIndices]);
-
-  const indexTiles = useMemo<(IndexTile | null)[]>(() => {
-    const tiles = prioritizedIndices.length > 0 ? prioritizedIndices : normalizedIndices;
-    const padded = [...tiles];
-
-    while (padded.length < MAX_INDEX_TILES) {
-      padded.push(null);
-    }
-
-    return padded.slice(0, MAX_INDEX_TILES);
-  }, [normalizedIndices, prioritizedIndices]);
 
   const trendingCategories = useMemo(() => {
     if (!newsData?.length) return [] as { category: string; count: number }[];
@@ -153,11 +83,36 @@ const DiscoverNews = () => {
     }
 
     if (trendingCategories.length) {
-      return trendingCategories.map((item) => item.category).slice(0, 3);
+      return trendingCategories.map((item) => formatCategoryLabel(item.category)).slice(0, 3);
     }
 
-    return ['Marknadspuls', 'Rapporter', 'Nyheter'];
+    return ['Morgonrapport', 'Rapporter', 'Nyheter'];
   }, [morningBrief, heroInsight, trendingCategories]);
+
+  const newsByCategory = useMemo<Record<string, typeof newsData>>(() => {
+    const grouped: Record<string, typeof newsData> = {};
+    (newsData ?? []).forEach((item) => {
+      const label = formatCategoryLabel(item.category);
+      if (!grouped[label]) {
+        grouped[label] = [];
+      }
+      grouped[label].push(item);
+    });
+    return grouped;
+  }, [newsData]);
+
+  const categorySections = useMemo(() => {
+    const prioritizedLabels = trendingCategories
+      .map(({ category }) => formatCategoryLabel(category))
+      .filter((label, index, arr) => arr.indexOf(label) === index);
+
+    const additionalLabels = Object.keys(newsByCategory).filter(
+      (label) => !prioritizedLabels.includes(label),
+    );
+
+    const combined = [...prioritizedLabels, ...additionalLabels];
+    return combined.slice(0, 4);
+  }, [trendingCategories, newsByCategory]);
 
   const formatPublishedLabel = (isoString?: string) => {
     if (!isoString) return 'Okänd tid';
@@ -187,10 +142,10 @@ const DiscoverNews = () => {
           <div className="space-y-4 pt-4 sm:pt-6">
             <div className="flex flex-col gap-2">
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground tracking-tight">
-                Nyheter & Marknadspuls
+                AI-nyheter & Morgonrapport
               </h1>
               <p className="text-base sm:text-lg text-muted-foreground max-w-2xl">
-                Håll dig uppdaterad med de senaste marknadsnyheterna, AI-genererade analyser och realtidsmarknadsdata
+                Daglig AI-sammanfattning av gårdagens marknad med tematiska nyhetssvep för svenska investerare.
               </p>
             </div>
           </div>
@@ -229,9 +184,7 @@ const DiscoverNews = () => {
             </section>
           )}
 
-          {/* Main Content Grid */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Morning Report Card */}
+          <div className="space-y-6">
             <Card id="morgonrapport" className="border-border/60 bg-gradient-to-br from-card/90 to-card/70 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow">
               <CardContent className="space-y-6 p-5 sm:p-6 lg:p-8">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -248,13 +201,13 @@ const DiscoverNews = () => {
                     {formatGeneratedLabel(morningBrief?.generatedAt)}
                   </Badge>
                 </div>
-                
+
                 <p className="text-sm sm:text-base leading-relaxed text-muted-foreground">
                   {heroDescription}
                 </p>
-                
+
                 <Separator className="bg-border/60" />
-                
+
                 <div className="space-y-5">
                   {digestHighlights.length > 0 && (
                     <div>
@@ -287,8 +240,8 @@ const DiscoverNews = () => {
                     {topNewsHighlights.length ? (
                       <ul className="space-y-3">
                         {topNewsHighlights.map((item) => (
-                          <li 
-                            key={item.id} 
+                          <li
+                            key={item.id}
                             className="group rounded-2xl border border-border/60 bg-muted/30 p-4 hover:bg-muted/50 hover:border-primary/30 transition-all"
                           >
                             <p className="text-sm font-semibold text-foreground mb-1.5 group-hover:text-primary transition-colors">
@@ -330,16 +283,16 @@ const DiscoverNews = () => {
                       </div>
                     </div>
                   )}
-                  
+
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
                       Fokus idag
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {focusAreas.map((area) => (
-                        <Badge 
-                          key={area} 
-                          variant="outline" 
+                        <Badge
+                          key={area}
+                          variant="outline"
                           className="rounded-full border-border/60 text-xs font-medium hover:border-primary/40 hover:bg-primary/5 transition-colors"
                         >
                           {area}
@@ -347,55 +300,57 @@ const DiscoverNews = () => {
                       ))}
                     </div>
                   </div>
-                  
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                      Händelser att bevaka
-                    </p>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {lastUpdated
-                        ? `Marknadspulsen uppdaterades ${lastUpdated.toLocaleTimeString('sv-SE', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}. Håll ett extra öga på indexrörelserna och dagens rapportflöde.`
-                        : 'Håll koll på viktiga makrobesked och kommande rapportsläpp under dagen.'}
-                    </p>
-                  </div>
-                </div>
-                
-                <Separator className="bg-border/60" />
-                
-                <div className="flex flex-wrap gap-3">
-                  <Button 
-                    className="rounded-xl flex-1 sm:flex-none" 
-                    variant="default" 
-                    onClick={() => navigate('/news#morgonrapport')}
-                  >
-                    Läs hela morgonrapporten
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="rounded-xl border-border/70 hover:bg-primary/5 hover:border-primary/40 transition-colors"
-                  >
-                    Prenumerera på utskick
-                  </Button>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Market Pulse Card */}
-            <Card className="border-border/60 bg-gradient-to-br from-card/90 to-card/70 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow">
-              <CardContent className="p-5 sm:p-6 lg:p-8">
-                <MarketPulse
-                  useExternalData
-                  marketData={marketData}
-                  loading={marketLoading}
-                  error={marketError}
-                  refetch={refetchMarketData}
-                />
-              </CardContent>
-            </Card>
+            {categorySections.length > 0 && (
+              <section className="space-y-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tematiska nyheter</p>
+                    <h3 className="text-2xl font-bold text-foreground">Nyheter per fokusområde</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground max-w-3xl">
+                    AI grupperar gårdagens viktigaste rubriker per tema så att du snabbt ser vad som händer inom varje område.
+                  </p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {categorySections.map((label) => {
+                    const items = newsByCategory[label] ?? [];
+                    return (
+                      <Card key={label} className="border-border/70 bg-card/90">
+                        <CardContent className="space-y-4 p-5 sm:p-6">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+                              <p className="text-sm text-muted-foreground">Senaste 24 timmarna</p>
+                            </div>
+                            <Badge variant="secondary" className="rounded-full bg-muted/60 text-xs font-semibold text-muted-foreground">
+                              {items.length} nyheter
+                            </Badge>
+                          </div>
+                          <div className="space-y-3">
+                            {items.slice(0, 3).map((item) => (
+                              <div
+                                key={`${label}-${item.id}`}
+                                className="rounded-2xl border border-border/60 bg-background/60 p-3 space-y-1.5 hover:border-primary/30 transition-colors"
+                              >
+                                <p className="text-sm font-semibold text-foreground">{item.headline}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {item.source} · {formatPublishedLabel(item.publishedAt)}
+                                </p>
+                                <p className="text-sm text-muted-foreground line-clamp-2">{item.summary}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
           </div>
         </div>
       </div>
