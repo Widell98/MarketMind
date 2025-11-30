@@ -136,6 +136,13 @@ const DiscoverNews = () => {
     return [];
   }, [morningBrief]);
 
+  const briefSections = useMemo(() => {
+    if (morningBrief?.sections?.length) {
+      return morningBrief.sections;
+    }
+    return [];
+  }, [morningBrief]);
+
   const focusAreas = useMemo(() => {
     if (morningBrief?.focusToday?.length) {
       return morningBrief.focusToday.slice(0, 3);
@@ -304,6 +311,25 @@ const DiscoverNews = () => {
                       </div>
                     )}
                   </div>
+
+                  {briefSections.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                        Morgonbriefens sektioner
+                      </p>
+                      <div className="space-y-3">
+                        {briefSections.map((section, index) => (
+                          <div
+                            key={`brief-section-${index}`}
+                            className="rounded-2xl border border-border/60 bg-background/60 p-4"
+                          >
+                            <p className="text-sm font-semibold text-foreground mb-1.5">{section.title}</p>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{section.body}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">

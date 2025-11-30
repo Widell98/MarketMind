@@ -14,6 +14,11 @@ interface NewsItem {
 
 type NewsSentiment = 'bullish' | 'bearish' | 'neutral';
 
+type MorningSection = {
+  title: string;
+  body: string;
+};
+
 export type AiMorningBrief = {
   id: string;
   headline: string;
@@ -22,6 +27,7 @@ export type AiMorningBrief = {
   focusToday: string[];
   sentiment: NewsSentiment;
   generatedAt: string;
+  sections: MorningSection[];
 };
 
 const normalizeStringArray = (value: unknown): string[] => {
@@ -67,6 +73,20 @@ const parseMorningBrief = (payload: unknown): AiMorningBrief | null => {
     return null;
   }
 
+  const sections = Array.isArray(raw?.sections)
+    ? (raw.sections as unknown[])
+        .map((entry) => {
+          const record = entry as Record<string, unknown>;
+          const sectionTitle = typeof record.title === 'string' ? record.title.trim() : '';
+          const sectionBody = typeof record.body === 'string' ? record.body.trim() : '';
+          if (!sectionTitle && !sectionBody) {
+            return null;
+          }
+          return { title: sectionTitle, body: sectionBody };
+        })
+        .filter((entry): entry is MorningSection => !!entry)
+    : [];
+
   return {
     id: typeof raw.id === 'string' && raw.id.trim().length > 0 ? raw.id : 'news_digest',
     headline: headline ?? 'Marknadssvepet',
@@ -80,6 +100,7 @@ const parseMorningBrief = (payload: unknown): AiMorningBrief | null => {
         : typeof raw.generated_at === 'string' && raw.generated_at.length > 0
           ? raw.generated_at
           : new Date().toISOString(),
+    sections,
   };
 };
 
