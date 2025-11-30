@@ -184,7 +184,7 @@ const DiscoverNews = () => {
   return (
     <Layout>
       <div className="w-full pb-20 bg-background/50 min-h-screen">
-        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        <div className="mx-auto w-full max-w-[1800px] px-4 sm:px-6 lg:px-8 xl:px-12 py-8 md:py-12">
           
           <Tabs defaultValue="news" className="space-y-8">
             
@@ -237,7 +237,7 @@ const DiscoverNews = () => {
               <div className="space-y-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground mb-2">
+                    <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold tracking-tight text-foreground mb-2">
                       {isWeeklySummary ? 'Veckosammanfattning' : 'Dagens Nyheter'}
                     </h1>
                     <p className="text-muted-foreground flex items-center gap-2">
@@ -310,7 +310,7 @@ const DiscoverNews = () => {
               {/* Morning Brief Hero Section */}
               {morningBrief && (
                 <Card className="rounded-[2rem] border-border/50 shadow-lg overflow-hidden group hover:shadow-xl transition-all">
-                  <div className="relative bg-gradient-to-br from-primary/5 via-transparent to-transparent p-8 md:p-12">
+                  <div className="relative bg-gradient-to-br from-primary/5 via-transparent to-transparent p-6 md:p-8 xl:p-10">
                     <div className="flex items-start justify-between gap-4 mb-6">
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold bg-primary/10 text-primary border-primary/20">
@@ -322,13 +322,13 @@ const DiscoverNews = () => {
                       </div>
                     </div>
                     
-                    <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-foreground leading-tight mb-4 group-hover:text-primary transition-colors">
+                    <h2 className="text-2xl md:text-3xl xl:text-4xl 2xl:text-5xl font-bold tracking-tight text-foreground leading-tight mb-4 group-hover:text-primary transition-colors">
                       {morningBrief.headline}
                     </h2>
                     
                     <div className={`${isWeeklySummary ? 'prose prose-slate dark:prose-invert max-w-none' : ''} mb-6`}>
                       {isWeeklySummary ? (
-                        <div className="text-base md:text-lg text-muted-foreground leading-relaxed space-y-4 max-w-5xl">
+                        <div className="text-sm md:text-base xl:text-lg text-muted-foreground leading-relaxed space-y-4 max-w-5xl">
                           {morningBrief.overview.split('\n\n').map((paragraph, idx) => (
                             paragraph.trim() && (
                               <p key={idx} className="mb-4">
@@ -338,7 +338,7 @@ const DiscoverNews = () => {
                           ))}
                         </div>
                       ) : (
-                        <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-4xl">
+                        <p className="text-base md:text-lg xl:text-xl text-muted-foreground leading-relaxed max-w-4xl">
                           {morningBrief.overview}
                         </p>
                       )}
@@ -366,7 +366,7 @@ const DiscoverNews = () => {
               {/* Hero News Section - Only show on weekdays */}
               {!isWeeklySummary && heroNews && (
                 <Card className="rounded-[2rem] border-border/50 shadow-lg overflow-hidden group hover:shadow-xl transition-all">
-                  <div className="relative bg-gradient-to-br from-primary/5 via-transparent to-transparent p-8 md:p-12">
+                  <div className="relative bg-gradient-to-br from-primary/5 via-transparent to-transparent p-6 md:p-8 xl:p-10">
                     <div className="flex items-start justify-between gap-4 mb-6">
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold bg-primary/10 text-primary border-primary/20">
@@ -388,11 +388,11 @@ const DiscoverNews = () => {
                       </a>
                     </div>
                     
-                    <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-foreground leading-tight mb-4 group-hover:text-primary transition-colors">
+                    <h2 className="text-2xl md:text-3xl xl:text-4xl 2xl:text-5xl font-bold tracking-tight text-foreground leading-tight mb-4 group-hover:text-primary transition-colors">
                       {heroNews.headline}
                     </h2>
                     
-                    <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-6 max-w-4xl">
+                    <p className="text-base md:text-lg xl:text-xl text-muted-foreground leading-relaxed mb-6 max-w-4xl">
                       {heroNews.summary}
                     </p>
                     
@@ -426,22 +426,22 @@ const DiscoverNews = () => {
                   return (
                     <div className="space-y-6">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-2xl font-bold tracking-tight">
+                        <h3 className="text-xl xl:text-2xl font-bold tracking-tight">
                           {selectedCategory ? formatCategoryLabel(selectedCategory) : 'Alla Nyheter'}
                         </h3>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs xl:text-sm text-muted-foreground">
                           {filteredNews.length} {filteredNews.length === 1 ? 'artikel' : 'artiklar'}
                         </p>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 xl:gap-5">
                         {filteredNews.map((item) => (
                           <Card
                             key={item.id}
                             className="rounded-[1.5rem] border-border/50 bg-card hover:bg-muted/30 hover:border-border transition-all hover:shadow-md cursor-pointer group"
                             onClick={() => setSelectedNews(item)}
                           >
-                            <CardContent className="p-6 flex flex-col h-full gap-4">
+                            <CardContent className="p-4 xl:p-5 flex flex-col h-full gap-3 xl:gap-4">
                               <div className="flex items-center justify-between">
                                 <Badge variant="secondary" className="rounded-lg px-2 py-1 bg-muted font-medium text-xs">
                                   {formatCategoryLabel(item.category)}
@@ -458,11 +458,11 @@ const DiscoverNews = () => {
                                 </a>
                               </div>
                               
-                              <h4 className="font-bold text-lg leading-snug group-hover:text-primary transition-colors line-clamp-2">
+                              <h4 className="font-bold text-base xl:text-lg leading-snug group-hover:text-primary transition-colors line-clamp-2">
                                 {item.headline}
                               </h4>
                               
-                              <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed flex-1">
+                              <p className="text-xs xl:text-sm text-muted-foreground line-clamp-3 leading-relaxed flex-1">
                                 {item.summary}
                               </p>
                               
@@ -532,14 +532,14 @@ const DiscoverNews = () => {
             </TabsContent>
 
             <TabsContent value="reports" className="space-y-8 animate-fade-in mt-0">
-               <div className="rounded-[2.5rem] bg-gradient-to-br from-primary/5 via-transparent to-transparent border border-border/50 p-8 sm:p-12 text-center space-y-4">
-                 <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">AI-Rapporter</h2>
-                 <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+               <div className="rounded-[2.5rem] bg-gradient-to-br from-primary/5 via-transparent to-transparent border border-border/50 p-6 sm:p-8 xl:p-10 text-center space-y-4">
+                 <h2 className="text-2xl sm:text-3xl xl:text-4xl font-bold tracking-tight">AI-Rapporter</h2>
+                 <p className="text-base xl:text-lg text-muted-foreground max-w-2xl mx-auto">
                     Marknadens rapporter, analyserade och sammanfattade av AI på sekunder.
                  </p>
                </div>
 
-               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+               <div className="grid gap-4 xl:gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                  {reportHighlights.map((report) => (
                    <ReportHighlightCard key={report.id} report={report} />
                  ))}
