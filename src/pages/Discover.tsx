@@ -36,7 +36,7 @@ const Discover = () => {
   const [caseSortOrder, setCaseSortOrder] = useState<'asc' | 'desc'>('desc');
   const [caseViewMode, setCaseViewMode] = useState<'grid' | 'list'>('grid');
   const [featuredCaseId, setFeaturedCaseId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'cases' | 'liked' | 'upptack'>('upptack');
+  const [activeTab, setActiveTab] = useState<'cases' | 'liked' | 'upptack'>('cases');
 
   const filteredCases = useMemo(() => {
     let filtered = [...(allStockCases || [])];
@@ -186,32 +186,19 @@ const Discover = () => {
               className="w-full"
             >
               <TabsList className="mx-auto grid w-full max-w-md grid-cols-3 gap-1 rounded-2xl bg-muted p-1 shadow-sm sm:gap-2">
-                <TabsTrigger value="upptack" className="flex items-center gap-2 rounded-xl">
-                  <Sparkles className="h-4 w-4" />
-                  Upptäck
-                </TabsTrigger>
                 <TabsTrigger value="cases" className="flex items-center gap-2 rounded-xl">
                   <Layers className="h-4 w-4" />
                   Alla case
+                </TabsTrigger>
+                <TabsTrigger value="upptack" className="flex items-center gap-2 rounded-xl">
+                  <Sparkles className="h-4 w-4" />
+                  Upptäck
                 </TabsTrigger>
                 <TabsTrigger value="liked" className="flex items-center gap-2 rounded-xl">
                   <Heart className="h-4 w-4" />
                   Gillade företag
                 </TabsTrigger>
               </TabsList>
-
-              <TabsContent value="upptack" className="space-y-6 sm:space-y-8">
-                {featuredCase && (
-                  <StockCaseDetail
-                    embedded
-                    embeddedCaseId={featuredCase.id}
-                    navigationCases={navigationCases}
-                    onNavigateCase={(id) => setFeaturedCaseId(id)}
-                    showRiskWarning={false}
-                    className="rounded-3xl px-3 sm:px-6 lg:px-8 space-y-8 sm:space-y-12"
-                  />
-                )}
-              </TabsContent>
 
               <TabsContent value="cases" className="space-y-6 sm:space-y-8">
                 <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">
@@ -265,6 +252,19 @@ const Discover = () => {
                       </Button>
                     )}
                   </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="upptack" className="space-y-6 sm:space-y-8">
+                {featuredCase && (
+                  <StockCaseDetail
+                    embedded
+                    embeddedCaseId={featuredCase.id}
+                    navigationCases={navigationCases}
+                    onNavigateCase={(id) => setFeaturedCaseId(id)}
+                    showRiskWarning={false}
+                    className="rounded-3xl px-3 sm:px-6 lg:px-8 space-y-8 sm:space-y-12"
+                  />
                 )}
               </TabsContent>
 
