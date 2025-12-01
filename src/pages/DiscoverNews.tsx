@@ -561,38 +561,6 @@ const DiscoverNews = () => {
                     </p>
                   </div>
 
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Filter className="w-4 h-4" />
-                      <span>Filtrera rapporter</span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        variant={selectedReportFilter === null ? 'default' : 'outline'}
-                        size="sm"
-                        className="rounded-full"
-                        onClick={() => setSelectedReportFilter(null)}
-                      >
-                        Alla
-                      </Button>
-                      {availableReportFilters.length > 0 ? (
-                        availableReportFilters.map((filter) => (
-                          <Button
-                            key={filter}
-                            variant={selectedReportFilter === filter ? 'default' : 'outline'}
-                            size="sm"
-                            className="rounded-full"
-                            onClick={() => setSelectedReportFilter(filter)}
-                          >
-                            {filter}
-                          </Button>
-                        ))
-                      ) : (
-                        <span className="text-sm text-muted-foreground">Inga filter tillgängliga</span>
-                      )}
-                    </div>
-                  </div>
-
                     <div className="grid gap-3 sm:grid-cols-3">
                       <div className="rounded-2xl border border-border/60 bg-card/70 p-4 shadow-sm">
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Aktuella rapporter</p>
@@ -679,6 +647,38 @@ const DiscoverNews = () => {
                   <Button variant="ghost" className="rounded-full" onClick={() => navigate('/discover')}>
                     Gå till rapportbiblioteket <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
+                </div>
+
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Filter className="w-4 h-4" />
+                    <span>Filtrera rapporter</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant={selectedReportFilter === null ? 'default' : 'outline'}
+                      size="sm"
+                      className="rounded-full"
+                      onClick={() => setSelectedReportFilter(null)}
+                    >
+                      Alla
+                    </Button>
+                    {availableReportFilters.length > 0 ? (
+                      availableReportFilters.map((filter) => (
+                        <Button
+                          key={filter}
+                          variant={selectedReportFilter === filter ? 'default' : 'outline'}
+                          size="sm"
+                          className="rounded-full"
+                          onClick={() => setSelectedReportFilter(filter)}
+                        >
+                          {filter}
+                        </Button>
+                      ))
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Inga filter tillgängliga</span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid gap-4 xl:gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
