@@ -154,6 +154,45 @@ function extractDomain(url: string): string {
   }
 }
 
+const allowedNewsDomains = [
+  // Global finance & markets
+  "reuters.com",
+  "marketwatch.com",
+  "investing.com",
+  "finance.yahoo.com",
+  "marketscreener.com",
+  "seekingalpha.com",
+
+  // Macro, economy, business
+  "apnews.com",
+  "axios.com",
+  "forbes.com",
+  "fortune.com",
+
+  // Tech & AI
+  "techcrunch.com",
+  "theverge.com",
+  "wired.com",
+
+  // Swedish open sources
+  "breakit.se",
+  "privataaffarer.se",
+  "affarsvarlden.se",
+];
+
+function isAllowedDomain(domain?: string): boolean {
+  if (!domain) return false;
+  const normalized = domain.toLowerCase().replace(/^www\./, "");
+  return allowedNewsDomains.includes(normalized);
+}
+
+function filterAllowedNewsItems(items: NewsItem[]): NewsItem[] {
+  return items.filter((item) => {
+    const domain = extractDomain(item.url || "");
+    return isAllowedDomain(domain);
+  });
+}
+
 async function fetchTavilyNews(query: string, maxResults = 15, days = 1): Promise<TavilyArticle[]> {
   if (!tavilyApiKey) {
     console.warn("TAVILY_API_KEY is not configured. Skipping Tavily search.");
@@ -170,21 +209,7 @@ async function fetchTavilyNews(query: string, maxResults = 15, days = 1): Promis
         api_key: tavilyApiKey,
         query,
         search_depth: "basic",
-        include_domains: [
-            "bloomberg.com", 
-            "reuters.com", 
-            "cnbc.com", 
-            "wsj.com", 
-            "di.se", 
-            "svd.se/naringsliv", 
-            "dn.se/ekonomi", 
-            "affarsvarlden.se",
-            "privataaffarer.se",
-            "breakit.se",
-            "marketwatch.com",
-            "investing.com",
-            "ft.com"
-        ],
+        include_domains: allowedNewsDomains,
         topic: "news",
         max_results: maxResults,
         days: days
@@ -209,7 +234,7 @@ async function fetchTavilyNews(query: string, maxResults = 15, days = 1): Promis
           published_date: typeof r.published_date === "string" ? r.published_date : undefined,
           domain: extractDomain(r.url || ""),
         }))
-        .filter((article: TavilyArticle) => article.title && article.url && article.content);
+        .filter((article: TavilyArticle) => article.title && article.url && article.content && isAllowedDomain(article.domain));
     }
     return [];
   } catch (error) {
@@ -581,20 +606,25 @@ Regler:
 
 async function generateMorningBrief(): Promise<GeneratedMorningBrief> {
   const today = new Date();
-  
+
   // Check if it's weekend - if so, generate weekly summary
   if (isWeekend(today)) {
     console.log(`[generateMorningBrief] Weekend detected, generating weekly summary`);
     return await generateWeeklySummary();
   }
-  
+
   const yesterday = getPreviousWeekday(today);
-  
+
   // 1. Get previous day's brief for context
   const previousBrief = await getPreviousDayBrief(today);
   const previousKeywords = previousBrief ? extractKeywordsFromBrief(previousBrief.morningBrief) : [];
   console.log(`[generateMorningBrief] Previous day brief found: ${!!previousBrief}, keywords: ${previousKeywords.slice(0, 5).join(", ")}`);
-  
+
+  // 1b. Collect recently used news to avoid reusing old articles
+  const recentNewsItems = await getRecentNewsItems();
+  const seenNewsUrls = new Set(recentNewsItems.map((item) => item.url.toLowerCase()));
+  const seenHeadlines = new Set(recentNewsItems.map((item) => item.headline.toLowerCase()));
+
   // 2. Build search queries based on categories and previous day's context
   const baseQueries = [
     "central bank interest rates inflation GDP economic data",
@@ -613,16 +643,44 @@ async function generateMorningBrief(): Promise<GeneratedMorningBrief> {
       followUpQueries.push(previousKeywords.slice(0, 3).join(" "));
     }
   }
-  
+
   const allQueries = [...baseQueries, ...followUpQueries];
-  
+
   // 3. Fetch news from multiple Tavily searches
   const tavilyArticles = await fetchMultipleTavilySearches(allQueries, 20, 1);
   console.log(`[generateMorningBrief] Fetched ${tavilyArticles.length} articles from Tavily`);
-  
+
+  const freshTavilyArticles = tavilyArticles.filter((article) => {
+    const urlKey = article.url.toLowerCase();
+    const headlineKey = article.title.toLowerCase();
+
+    // Enforce allowed domain list to avoid stale/blocked sources
+    if (!isAllowedDomain(article.domain)) {
+      return false;
+    }
+
+    // Skip articles we've already used in recent briefs
+    if (seenNewsUrls.has(urlKey) || seenHeadlines.has(headlineKey)) {
+      return false;
+    }
+
+    // Skip articles older than 48 hours to avoid stale news
+    if (article.published_date) {
+      const published = new Date(article.published_date);
+      const hoursOld = (Date.now() - published.getTime()) / (1000 * 60 * 60);
+      if (!Number.isNaN(hoursOld) && hoursOld > 48) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  console.log(`[generateMorningBrief] Filtered down to ${freshTavilyArticles.length} fresh articles after removing old/reused ones`);
+
   // 4. Summarize each article with AI (up to 20 articles)
   const summarizedNews: NewsItem[] = [];
-  for (const article of tavilyArticles.slice(0, 20)) {
+  for (const article of freshTavilyArticles.slice(0, 20)) {
     try {
       const summarized = await summarizeArticle(article);
       summarizedNews.push(summarized);
@@ -635,8 +693,8 @@ async function generateMorningBrief(): Promise<GeneratedMorningBrief> {
   console.log(`[generateMorningBrief] Total summarized news: ${summarizedNews.length}`);
 
   // 3. Create context string for morning brief generation
-  const tavilyContext = tavilyArticles.length > 0
-    ? tavilyArticles.map((a) => `- ${a.title} (${a.source}): ${a.content.slice(0, 300)}...`).join("\n")
+  const tavilyContext = freshTavilyArticles.length > 0
+    ? freshTavilyArticles.map((a) => `- ${a.title} (${a.source}): ${a.content.slice(0, 300)}...`).join("\n")
     : "";
   
   const previousDayContext = previousBrief
@@ -700,7 +758,7 @@ Regler:
 
   let morningBrief: MorningBrief;
   
-  if (tavilyArticles.length > 0 && openAIApiKey) {
+  if (freshTavilyArticles.length > 0 && openAIApiKey) {
     try {
       const raw = await callOpenAI(systemPrompt, userPrompt, 2000);
       logAiResponse("morning_brief", raw);
@@ -712,8 +770,8 @@ Regler:
       morningBrief = {
         id: `brief_${crypto.randomUUID()}`,
         headline: "Dagens Nyheter",
-        overview: tavilyArticles[0]?.title || "Marknadsläget just nu",
-        keyHighlights: tavilyArticles.slice(0, 5).map(a => a.title),
+        overview: freshTavilyArticles[0]?.title || "Marknadsläget just nu",
+        keyHighlights: freshTavilyArticles.slice(0, 5).map(a => a.title),
         focusToday: ["Nyheter", "Marknad", "Analys"],
         sentiment: "neutral",
         generatedAt: new Date().toISOString(),
@@ -832,8 +890,9 @@ async function getLatestStoredBrief(): Promise<{ morningBrief: MorningBrief; new
   };
 
   const newsItems = Array.isArray(data.news_items) ? (data.news_items as NewsItem[]) : [];
+  const allowedNews = filterAllowedNewsItems(newsItems);
 
-  return { morningBrief, news: newsItems };
+  return { morningBrief, news: allowedNews };
 }
 
 async function getPreviousDayBrief(targetDate: Date): Promise<{ morningBrief: MorningBrief; news: NewsItem[] } | null> {
@@ -896,8 +955,9 @@ async function getPreviousDayBrief(targetDate: Date): Promise<{ morningBrief: Mo
   };
 
   const newsItems = Array.isArray(data.news_items) ? (data.news_items as NewsItem[]) : [];
+  const allowedNews = filterAllowedNewsItems(newsItems);
 
-  return { morningBrief, news: newsItems };
+  return { morningBrief, news: allowedNews };
 }
 
 async function getWeekBriefs(weekStart: Date, weekEnd: Date): Promise<{ morningBrief: MorningBrief; news: NewsItem[] }[]> {
@@ -956,6 +1016,40 @@ async function getWeekBriefs(weekStart: Date, weekEnd: Date): Promise<{ morningB
 
     return { morningBrief, news: newsItems };
   });
+}
+
+async function getRecentNewsItems(lookbackDays = 3): Promise<NewsItem[]> {
+  if (!supabaseClient) {
+    return [];
+  }
+
+  const since = new Date();
+  since.setDate(since.getDate() - lookbackDays);
+
+  const { data, error } = await supabaseClient
+    .from("morning_briefs")
+    .select("news_items, generated_at")
+    .gte("generated_at", since.toISOString())
+    .order("generated_at", { ascending: false });
+
+  if (error) {
+    console.error("Failed to fetch recent news items", error);
+    return [];
+  }
+
+  if (!data || !Array.isArray(data)) {
+    return [];
+  }
+
+  return data
+    .flatMap((row) => Array.isArray(row.news_items) ? (row.news_items as NewsItem[]) : [])
+    .filter((item) => !!item?.url)
+    .map((item) => ({
+      ...item,
+      url: typeof item.url === "string" ? item.url : "",
+      headline: typeof item.headline === "string" ? item.headline : "",
+    }))
+    .filter((item) => isAllowedDomain(extractDomain(item.url)));
 }
 
 function extractKeywordsFromBrief(brief: MorningBrief): string[] {
