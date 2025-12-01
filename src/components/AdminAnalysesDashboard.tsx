@@ -239,6 +239,8 @@ const AdminAnalysesDashboard: React.FC = () => {
         title: 'Nyheter uppdaterade',
         description: 'Morgonrapporten har uppdaterats med senaste data.',
       });
+
+      window.dispatchEvent(new CustomEvent('news-refreshed'));
     } catch (error) {
       console.error('Error refreshing news:', error);
       toast({

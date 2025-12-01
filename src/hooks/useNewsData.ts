@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface NewsItem {
@@ -223,7 +223,7 @@ export const useNewsData = (forceRefresh = false) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchNewsData = async (force = false) => {
+  const fetchNewsData = useCallback(async (force = false) => {
     try {
       setLoading(true);
       setError(null);
@@ -255,7 +255,7 @@ export const useNewsData = (forceRefresh = false) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [forceRefresh]);
 
   useEffect(() => {
     fetchNewsData(forceRefresh);
@@ -264,7 +264,16 @@ export const useNewsData = (forceRefresh = false) => {
     const interval = setInterval(() => fetchNewsData(false), 10 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [forceRefresh]);
+  }, [fetchNewsData, forceRefresh]);
+
+  useEffect(() => {
+    const handleNewsRefreshed = () => {
+      fetchNewsData(false);
+    };
+
+    window.addEventListener('news-refreshed', handleNewsRefreshed);
+    return () => window.removeEventListener('news-refreshed', handleNewsRefreshed);
+  }, [fetchNewsData]);
 
   return { 
     newsData, 
