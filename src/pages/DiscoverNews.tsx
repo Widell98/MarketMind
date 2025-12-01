@@ -1,15 +1,17 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowRight, 
+import {
+  ArrowRight,
   ArrowUpRight,
-  TrendingUp, 
-  TrendingDown, 
+  TrendingUp,
+  TrendingDown,
   Minus,
   Calendar,
   Clock,
   ExternalLink,
   Filter,
+  LineChart,
+  Sparkles,
 } from 'lucide-react';
 
 import Layout from '@/components/Layout';
@@ -73,6 +75,8 @@ const DiscoverNews = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const reportHighlights = useMemo(() => reports.slice(0, 3), [reports]);
+  const latestReport = reportHighlights[0];
+  const totalReports = reports.length;
 
   const filteredNews = useMemo(() => {
     console.log('[DiscoverNews] Filtering news:', {
@@ -519,27 +523,133 @@ const DiscoverNews = () => {
             </TabsContent>
 
             <TabsContent value="reports" className="space-y-8 animate-fade-in mt-0">
-               <div className="rounded-[2.5rem] bg-gradient-to-br from-primary/5 via-transparent to-transparent border border-border/50 p-6 sm:p-8 xl:p-10 text-center space-y-4">
-                 <h2 className="text-2xl sm:text-3xl xl:text-4xl font-bold tracking-tight">AI-Rapporter</h2>
-                 <p className="text-base xl:text-lg text-muted-foreground max-w-2xl mx-auto">
-                    Marknadens rapporter, analyserade och sammanfattade av AI på sekunder.
-                 </p>
-               </div>
+              <div className="relative overflow-hidden rounded-[2.5rem] border border-border/60 bg-gradient-to-br from-primary/10 via-background to-background shadow-lg">
+                <div className="absolute right-12 top-12 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
+                <div className="absolute left-6 bottom-4 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
 
-               <div className="grid gap-4 xl:gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                 {reportHighlights.map((report) => (
-                   <ReportHighlightCard key={report.id} report={report} />
-                 ))}
-               </div>
+                <div className="relative grid items-center gap-8 p-6 sm:p-8 xl:p-10 lg:grid-cols-[1.05fr,0.95fr]">
+                  <div className="space-y-5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary">AI-rapporter</Badge>
+                      <Badge variant="outline" className="rounded-full border-dashed">Daglig översikt</Badge>
+                      <Badge variant="outline" className="rounded-full border-border/70 text-muted-foreground">
+                        {totalReports ? `${totalReports} rapporter` : 'Samlar rapporter...'}
+                      </Badge>
+                    </div>
 
-               <div className="flex justify-center pt-8">
-                 <Button 
-                    className="rounded-full px-8 py-6 text-base font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all hover:scale-105"
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-primary/80">Rapportsektionen</p>
+                      <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground leading-tight">
+                        AI-rapporter i samma ton som nyhetsflödet
+                      </h2>
+                      <p className="text-base sm:text-lg text-muted-foreground max-w-2xl">
+                        Marknadens rapporter, analyserade och sammanfattade av AI på sekunder. Allt presenterat med samma visuella språk som nyheterna.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-2xl border border-border/60 bg-card/70 p-4 shadow-sm">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Aktuella rapporter</p>
+                        <p className="text-2xl font-bold text-foreground">{totalReports || '—'}</p>
+                        <p className="text-xs text-muted-foreground">Uppdateras automatiskt</p>
+                      </div>
+                      <div className="rounded-2xl border border-border/60 bg-card/70 p-4 shadow-sm">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Senaste insikt</p>
+                        <p className="text-lg font-semibold text-foreground leading-tight line-clamp-1">
+                          {latestReport?.companyName || 'Ingen data ännu'}
+                        </p>
+                        <p className="text-xs text-muted-foreground line-clamp-2">
+                          {latestReport?.reportTitle || 'Fånga marknadsrörelser i realtid.'}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-border/60 bg-card/70 p-4 shadow-sm">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">AI-sammanfattningar</p>
+                        <div className="mt-1 flex items-center gap-2 text-emerald-500">
+                          <Sparkles className="h-4 w-4" />
+                          <span className="text-sm font-semibold">Sekunder</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Automatiska highlights för teamet.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 rounded-3xl border border-border/60 bg-card/80 p-5 shadow-lg sm:p-6">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                          <LineChart className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Rapportöversikt</p>
+                          <p className="text-sm text-foreground">Senaste AI-sammanfattningar</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="rounded-full">Live</Badge>
+                    </div>
+
+                    <div className="space-y-3">
+                      {reportHighlights.length > 0 ? (
+                        reportHighlights.map((report) => (
+                          <div
+                            key={report.id}
+                            className="group flex items-start gap-3 rounded-2xl border border-border/60 bg-muted/20 p-4 transition hover:border-primary/40 hover:bg-primary/5"
+                          >
+                            <div className="flex-1 space-y-1">
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">{report.companyName}</p>
+                              <p className="text-sm font-semibold leading-snug text-foreground line-clamp-2">{report.reportTitle}</p>
+                              <p className="text-xs text-muted-foreground line-clamp-2">{report.summary}</p>
+                            </div>
+                            <ArrowUpRight className="mt-1 h-4 w-4 text-muted-foreground transition group-hover:text-primary" />
+                          </div>
+                        ))
+                      ) : (
+                        <div className="rounded-2xl border border-dashed border-border/60 bg-muted/10 p-4 text-sm text-muted-foreground">
+                          Samlar in rapporter...
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-xs text-muted-foreground">AI-summerade rapporter med samma visuella språk som nyhetsflödet.</p>
+                      <Button variant="outline" className="rounded-full" onClick={() => navigate('/discover')}>
+                        Utforska fler <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Senaste rapporterna</p>
+                    <h3 className="text-xl sm:text-2xl font-bold text-foreground">Djupdyk i AI-sammanfattningarna</h3>
+                  </div>
+                  <Button variant="ghost" className="rounded-full" onClick={() => navigate('/discover')}>
+                    Gå till rapportbiblioteket <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="grid gap-4 xl:gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {reportHighlights.map((report) => (
+                    <ReportHighlightCard key={report.id} report={report} />
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-dashed border-border/60 bg-card/60 p-6 text-center shadow-inner">
+                <p className="text-sm text-muted-foreground">
+                  Marknadens rapporter, analyserade och sammanfattade av AI på sekunder.
+                </p>
+                <div className="mt-4 flex justify-center">
+                  <Button
+                    className="rounded-full px-7 py-5 text-base font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all hover:scale-105"
                     onClick={() => navigate('/discover')}
                   >
-                   Utforska alla rapporter <ArrowRight className="ml-2 w-5 h-5" />
-                 </Button>
-               </div>
+                    Utforska alla rapporter <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </div>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
