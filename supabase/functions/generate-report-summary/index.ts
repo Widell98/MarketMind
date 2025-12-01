@@ -98,7 +98,67 @@ const extractImageFromHtml = (html: string, baseUrl?: string) => {
   return null;
 };
 
-const resolveLogoFromSource = async (payload: GenerateReportSummaryPayload) => {
+const buildGoogleFaviconUrl = (domain: string | null | undefined) => {
+  if (!domain) return null;
+
+  const trimmed = domain.trim();
+  if (!trimmed) return null;
+
+  const normalized = trimmed
+    .replace(/^https?:\/\//iu, "")
+    .replace(/\/.*$/u, "")
+    .toLowerCase();
+
+  if (!normalized) return null;
+
+  const encodedDomain = encodeURIComponent(`https://${normalized}`);
+  return `https://www.google.com/s2/favicons?sz=256&domain_url=${encodedDomain}`;
+};
+
+const logoCache = new Map<string, string | null>();
+
+const fetchLogoFromClearbit = async (companyName?: string | null) => {
+  const query = companyName?.trim();
+  if (!query) return null;
+
+  if (logoCache.has(query.toLowerCase())) {
+    return logoCache.get(query.toLowerCase()) ?? null;
+  }
+
+  try {
+    const response = await fetch(
+      `https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(query)}`,
+    );
+
+    if (!response.ok) {
+      logoCache.set(query.toLowerCase(), null);
+      return null;
+    }
+
+    const suggestions = await response.json();
+    if (!Array.isArray(suggestions) || suggestions.length === 0) {
+      logoCache.set(query.toLowerCase(), null);
+      return null;
+    }
+
+    const topSuggestion = suggestions[0] as { logo?: string | null; domain?: string | null };
+    const clearbitLogo = typeof topSuggestion?.logo === "string" ? topSuggestion.logo.trim() : "";
+    const domainLogo = buildGoogleFaviconUrl(topSuggestion?.domain ?? undefined);
+
+    const resolved = clearbitLogo || domainLogo || null;
+    logoCache.set(query.toLowerCase(), resolved);
+    return resolved;
+  } catch (error) {
+    console.warn("Failed to fetch logo from Clearbit", { query, error });
+    logoCache.set(query.toLowerCase(), null);
+    return null;
+  }
+};
+
+const resolveLogoFromSource = async (
+  payload: GenerateReportSummaryPayload,
+  companyNameHint?: string | null,
+) => {
   if (payload.source_content) {
     const inlineImage = extractImageFromHtml(payload.source_content, payload.source_url ?? undefined);
     if (inlineImage) {
@@ -121,6 +181,16 @@ const resolveLogoFromSource = async (payload: GenerateReportSummaryPayload) => {
     } catch (error) {
       console.warn("Failed to fetch source URL for logo extraction", error);
     }
+
+    const domainLogo = buildGoogleFaviconUrl(payload.source_url);
+    if (domainLogo) {
+      return domainLogo;
+    }
+  }
+
+  const clearbitLogo = await fetchLogoFromClearbit(companyNameHint ?? payload.company_name ?? null);
+  if (clearbitLogo) {
+    return clearbitLogo;
   }
 
   return null;
@@ -243,19 +313,19 @@ const buildPrompt = (
   "",
   "1. Identifiera bolagsnamnet – exakt som det förekommer i dokumentet (använd inte tolkningar).",
   "2. Identifiera rapporttiteln – exakt enligt dokumentets rubrik eller formella titel.",
-  "3. Formulera en kondenserad och faktadriven sammanfattning (3–4 meningar) som beskriver rapportens kärnbudskap utan tolkningar eller spekulation.",
+  "3. Formulera en kondenserad och faktadriven sammanfattning (3–4 meningar) som beskriver rapportens kärnbudskap utan tolkningar eller spekulation. Skriv sammanfattningen på svenska även om källmaterialet är på engelska.",
   "4. Extrahera minst tre kvantitativa nyckelsiffror – etiketter och värden ska vara ordagranna från rapporten. Om rapporten anger förändringstal (t.ex. “+14% y/y”) ska detta placeras i fältet 'trend'.",
-  "5. Identifiera 3–6 objektiva datapunkter som framgår tydligt i rapportens text, exempelvis trender, segmentprestationer eller väsentliga händelser.",
-  "6. Sammanfatta VD-kommentaren i 1–2 meningar om en sådan sektion finns. Om ingen VD-kommentar förekommer ska värdet vara: \"Ingen VD-kommentar identifierad\".",
+  "5. Identifiera 3–6 objektiva datapunkter som framgår tydligt i rapportens text, exempelvis trender, segmentprestationer eller väsentliga händelser. Dessa datapunkter ska uttryckas på svenska.",
+  "6. Sammanfatta VD-kommentaren i 1–2 meningar om en sådan sektion finns. Om ingen VD-kommentar förekommer ska värdet vara: \"Ingen VD-kommentar identifierad\". Formulera texten på svenska.",
 ].join("\n");
 
    const importantNotes = [
   "VIKTIGA PRINCIPER:",
-  "- Hitta aldrig på siffror, etiketter eller trender. Alla nyckeltal måste förekomma ordagrant i rapporten.",
+  "- Hitta aldrig på siffror, etiketter eller trender. Alla nyckeltal måste förekomma ordagranna i rapporten.",
   "- Gissa aldrig bolagsnamn eller rapporttitel. Om osäkerhet föreligger, använd exakt det som står tydligast i dokumentets inledning.",
   "- Tolkningar, slutsatser, rekommendationer eller spekulativa utsagor är inte tillåtna.",
   "- Om rapporten innehåller flera segment (exempelvis Retail, Automotive, Software), inkludera endast segmentdata om det uttryckligen anges.",
-  "- Sammanfattningen ska vara kort, tydlig, neutral och lämpad för ett professionellt finansiellt gränssnitt.",
+  "- Sammanfattningen, nyckelpunkterna och VD-kommentaren ska vara på svenska även om källmaterialet är på engelska. Behåll siffror, valutasymboler och procenttal exakt som de står.",
   "- All output måste vara strikt giltig JSON utan text före eller efter JSON-strukturen.",
 ].join("\n");
 
@@ -477,7 +547,7 @@ serve(async (req) => {
       {
         role: "system",
         content:
-          "Du är en erfaren finansanalytiker som levererar koncisa, professionella rapportsammanfattningar på svenska. Du returnerar alltid strikt giltig JSON utan någon text utanför JSON-strukturen."
+          "Du är en erfaren finansanalytiker som levererar koncisa, professionella rapportsammanfattningar på svenska – även när underlaget är på engelska. Du returnerar alltid strikt giltig JSON utan någon text utanför JSON-strukturen." 
       },
       {
         role: "user",
@@ -535,7 +605,7 @@ const content =
       });
     }
 
-    const companyLogoUrl = await resolveLogoFromSource(payload);
+    const companyLogoUrl = await resolveLogoFromSource(payload, companyName);
     const normalizedLogoUrl = companyLogoUrl?.trim() || null;
 
     const supabase = createServiceRoleClient();
