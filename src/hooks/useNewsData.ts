@@ -223,13 +223,24 @@ export const useNewsData = (forceRefresh = false) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchNewsData = async (force = false) => {
+  const fetchNewsData = async (options: { force?: boolean; allowRepeats?: boolean } = {}) => {
     try {
       setLoading(true);
       setError(null);
 
+      const requestBody: Record<string, boolean> = {};
+      const shouldForceRefresh = options.force || forceRefresh;
+
+      if (shouldForceRefresh) {
+        requestBody.forceRefresh = true;
+      }
+
+      if (options.allowRepeats) {
+        requestBody.allowRepeats = true;
+      }
+
       const { data, error: functionError } = await supabase.functions.invoke('fetch-news-data', {
-        body: force || forceRefresh ? { forceRefresh: true } : {},
+        body: requestBody,
       });
 
       if (functionError) {
@@ -258,10 +269,10 @@ export const useNewsData = (forceRefresh = false) => {
   };
 
   useEffect(() => {
-    fetchNewsData(forceRefresh);
+    fetchNewsData({ force: forceRefresh });
 
     // Refresh data every 10 minutes
-    const interval = setInterval(() => fetchNewsData(false), 10 * 60 * 1000);
+    const interval = setInterval(() => fetchNewsData(), 10 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, [forceRefresh]);
@@ -271,7 +282,7 @@ export const useNewsData = (forceRefresh = false) => {
     morningBrief,
     loading,
     error,
-    refetch: () => fetchNewsData(true),
-    refetchForce: () => fetchNewsData(true),
+    refetch: () => fetchNewsData({ force: true, allowRepeats: true }),
+    refetchForce: () => fetchNewsData({ force: true, allowRepeats: true }),
   };
 };

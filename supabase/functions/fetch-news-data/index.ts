@@ -24,6 +24,7 @@ serve(async (req) => {
   try {
     const body = await readJsonBody(req);
     const type = typeof body?.type === "string" ? body.type : "news";
+    const allowRepeats = body?.allowRepeats === true;
 
     switch (type) {
       case "momentum": {
@@ -41,7 +42,7 @@ serve(async (req) => {
           return jsonResponse(latestStored);
         }
 
-        const generated = await generateMorningBrief();
+        const generated = await generateMorningBrief({ allowRepeats });
 
         if (shouldPersist) {
           await storeMorningBrief(generated);
@@ -245,7 +246,12 @@ async function fetchTavilyNews(query: string, maxResults = 15, days = 1): Promis
   }
 }
 
-async function fetchMultipleTavilySearches(queries: string[], maxResultsPerQuery = 20, days = 1): Promise<TavilyArticle[]> {
+async function fetchMultipleTavilySearches(
+  queries: string[],
+  maxResultsPerQuery = 20,
+  days = 1,
+  allowRepeats = false,
+): Promise<TavilyArticle[]> {
   console.log(`[fetchMultipleTavilySearches] Starting ${queries.length} searches`);
   
   const allArticles: TavilyArticle[] = [];
@@ -258,7 +264,7 @@ async function fetchMultipleTavilySearches(queries: string[], maxResultsPerQuery
   // Combine and deduplicate
   for (const articles of results) {
     for (const article of articles) {
-      if (!seenUrls.has(article.url)) {
+      if (allowRepeats || !seenUrls.has(article.url)) {
         seenUrls.add(article.url);
         allArticles.push(article);
       }
@@ -452,7 +458,11 @@ type GeneratedMorningBrief = {
   digestHash: string;
 };
 
-async function generateWeeklySummary(): Promise<GeneratedMorningBrief> {
+type GenerateOptions = {
+  allowRepeats?: boolean;
+};
+
+async function generateWeeklySummary(options: GenerateOptions = {}): Promise<GeneratedMorningBrief> {
   const today = new Date();
   const weekStart = getWeekStart(today);
   const weekEnd = getWeekEnd(today);
@@ -471,7 +481,7 @@ async function generateWeeklySummary(): Promise<GeneratedMorningBrief> {
     "financial news sweden global markets this week"
   ];
   
-  const tavilyArticles = await fetchMultipleTavilySearches(weeklyQueries, 15, 7);
+  const tavilyArticles = await fetchMultipleTavilySearches(weeklyQueries, 15, 7, options.allowRepeats === true);
   console.log(`[generateWeeklySummary] Fetched ${tavilyArticles.length} articles from the week`);
   
   // 3. Summarize top articles
@@ -606,13 +616,13 @@ Regler:
   return { morningBrief, news: summarizedNews, rawPayload: {}, digestHash };
 }
 
-async function generateMorningBrief(): Promise<GeneratedMorningBrief> {
+async function generateMorningBrief(options: GenerateOptions = {}): Promise<GeneratedMorningBrief> {
   const today = new Date();
-  
+
   // Check if it's weekend - if so, generate weekly summary
   if (isWeekend(today)) {
     console.log(`[generateMorningBrief] Weekend detected, generating weekly summary`);
-    return await generateWeeklySummary();
+    return await generateWeeklySummary(options);
   }
   
   const yesterday = getPreviousWeekday(today);
@@ -644,7 +654,7 @@ async function generateMorningBrief(): Promise<GeneratedMorningBrief> {
   const allQueries = [...baseQueries, ...followUpQueries];
   
   // 3. Fetch news from multiple Tavily searches
-  const tavilyArticles = await fetchMultipleTavilySearches(allQueries, 20, 1);
+  const tavilyArticles = await fetchMultipleTavilySearches(allQueries, 20, 1, options.allowRepeats === true);
   console.log(`[generateMorningBrief] Fetched ${tavilyArticles.length} articles from Tavily`);
   
   // 4. Summarize each article with AI (up to 20 articles)
