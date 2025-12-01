@@ -135,6 +135,16 @@ function extractSourceName(url: string): string {
       "breakit.se": "Breakit",
       "marketwatch.com": "MarketWatch",
       "investing.com": "Investing.com",
+      "finance.yahoo.com": "Yahoo Finance",
+      "marketscreener.com": "MarketScreener",
+      "seekingalpha.com": "Seeking Alpha",
+      "apnews.com": "AP News",
+      "axios.com": "Axios",
+      "forbes.com": "Forbes",
+      "fortune.com": "Fortune",
+      "techcrunch.com": "TechCrunch",
+      "theverge.com": "The Verge",
+      "wired.com": "WIRED",
       "ft.com": "Financial Times",
     };
     
@@ -171,19 +181,36 @@ async function fetchTavilyNews(query: string, maxResults = 15, days = 1): Promis
         query,
         search_depth: "basic",
         include_domains: [
-            "bloomberg.com", 
-            "reuters.com", 
-            "cnbc.com", 
-            "wsj.com", 
-            "di.se", 
-            "svd.se/naringsliv", 
-            "dn.se/ekonomi", 
+            // Global finance & markets
+            "bloomberg.com",
+            "reuters.com",
+            "marketwatch.com",
+            "investing.com",
+            "finance.yahoo.com",
+            "marketscreener.com",
+            "seekingalpha.com",
+            "cnbc.com",
+            "wsj.com",
+            "ft.com",
+
+            // Macro, economy, business
+            "apnews.com",
+            "axios.com",
+            "forbes.com",
+            "fortune.com",
+
+            // Tech & AI
+            "techcrunch.com",
+            "theverge.com",
+            "wired.com",
+
+            // Swedish open sources
+            "di.se",
+            "svd.se/naringsliv",
+            "dn.se/ekonomi",
             "affarsvarlden.se",
             "privataaffarer.se",
             "breakit.se",
-            "marketwatch.com",
-            "investing.com",
-            "ft.com"
         ],
         topic: "news",
         max_results: maxResults,

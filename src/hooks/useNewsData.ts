@@ -266,12 +266,12 @@ export const useNewsData = (forceRefresh = false) => {
     return () => clearInterval(interval);
   }, [forceRefresh]);
 
-  return { 
-    newsData, 
-    morningBrief, 
-    loading, 
-    error, 
-    refetch: () => fetchNewsData(false),
+  return {
+    newsData,
+    morningBrief,
+    loading,
+    error,
+    refetch: () => fetchNewsData(true),
     refetchForce: () => fetchNewsData(true),
   };
 };
