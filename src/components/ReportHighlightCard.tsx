@@ -22,25 +22,45 @@ const truncateText = (text: string, limit = 160) => {
 
 const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => {
   const highlightedMetrics = (report.keyMetrics ?? []).slice(0, 2);
+  const companyInitial = report.companyName?.charAt(0).toUpperCase() || '?';
+  const companyLogoUrl = report.companyLogoUrl ?? null;
 
   return (
     <Dialog>
       <DialogTrigger asChild>
         <Card className="group h-full cursor-pointer border-border/60 bg-card/80 shadow-sm transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
           <CardContent className="flex h-full flex-col gap-4 p-4">
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary">
-                  {report.companyName}
-                </Badge>
-                {report.sourceDocumentName && (
-                  <Badge variant="outline" className="rounded-full border-dashed text-[11px] text-muted-foreground">
-                    {report.sourceDocumentName}
-                  </Badge>
+            <div className="flex gap-3">
+              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-border/60 bg-gradient-to-br from-primary/10 via-primary/5 to-muted">
+                {companyLogoUrl ? (
+                  <img
+                    src={companyLogoUrl}
+                    alt={`${report.companyName} logotyp`}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-primary">
+                    {companyInitial}
+                  </div>
                 )}
+                <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-border/60" />
               </div>
-              <h3 className="text-lg font-semibold text-foreground">{report.reportTitle}</h3>
-              <p className="text-sm text-muted-foreground">{truncateText(report.summary)}</p>
+
+              <div className="flex-1 space-y-2">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary">
+                    {report.companyName}
+                  </Badge>
+                  {report.sourceDocumentName && (
+                    <Badge variant="outline" className="rounded-full border-dashed text-[11px] text-muted-foreground">
+                      {report.sourceDocumentName}
+                    </Badge>
+                  )}
+                </div>
+                <h3 className="text-lg font-semibold text-foreground">{report.reportTitle}</h3>
+                <p className="text-sm text-muted-foreground">{truncateText(report.summary)}</p>
+              </div>
             </div>
 
             {highlightedMetrics.length > 0 && (
