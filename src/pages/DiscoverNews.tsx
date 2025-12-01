@@ -180,18 +180,12 @@ const DiscoverNews = () => {
         <div className="mx-auto w-full max-w-[1800px] px-4 sm:px-6 lg:px-8 xl:px-12 py-8 md:py-12">
           
           <Tabs defaultValue="news" className="space-y-8">
-            
-            {/* Header Area */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-              <div className="space-y-2">
-                <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
-                  Nyheter & Rapporter
-                </h1>
-              </div>
 
+            {/* Header Area */}
+            <div className="flex flex-col md:flex-row md:items-end justify-end gap-6 pb-2">
               <TabsList className="bg-muted/60 p-1 rounded-full border border-border/50 self-start md:self-end">
-                <TabsTrigger 
-                  value="news" 
+                <TabsTrigger
+                  value="news"
                   className="rounded-full px-6 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
                 >
                   Nyheter
@@ -488,6 +482,7 @@ const DiscoverNews = () => {
                 <p className="text-sm text-muted-foreground">
                   Alla nyheter från externa källor. Sammanfattningar genererade av AI.
                 </p>
+                <p className="mt-2 text-xs text-muted-foreground">{todayDate}</p>
               </div>
               </>
               )}
@@ -495,6 +490,16 @@ const DiscoverNews = () => {
             </TabsContent>
 
             <TabsContent value="reports" className="space-y-8 animate-fade-in mt-0">
+              <div className="space-y-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold tracking-tight text-foreground mb-2">
+                      Rapporter
+                    </h1>
+                  </div>
+                </div>
+              </div>
+
               <div className="relative overflow-hidden rounded-[2.5rem] border border-border/60 bg-gradient-to-br from-primary/10 via-background to-background shadow-lg">
                 <div className="absolute right-12 top-12 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
                 <div className="absolute left-6 bottom-4 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
@@ -515,7 +520,7 @@ const DiscoverNews = () => {
                         <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground leading-tight">
                           Rapporter
                         </h2>
-                        <p className="text-base sm:text-lg text-muted-foreground max-w-2xl">måndag 1 december 2025</p>
+                        <p className="text-base sm:text-lg text-muted-foreground max-w-2xl">{todayDate}</p>
                       </div>
                       <p className="text-base sm:text-lg text-muted-foreground max-w-2xl">
                         Marknadens rapporter, analyserade och sammanfattade av AI på sekunder. Allt presenterat med samma visuella språk som nyheterna.
@@ -660,6 +665,7 @@ const DiscoverNews = () => {
                     Utforska alla rapporter <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
                 </div>
+                <p className="mt-4 text-xs text-muted-foreground">{todayDate}</p>
               </div>
             </TabsContent>
           </Tabs>
