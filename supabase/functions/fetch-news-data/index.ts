@@ -171,19 +171,29 @@ async function fetchTavilyNews(query: string, maxResults = 15, days = 1): Promis
         query,
         search_depth: "basic",
         include_domains: [
-            "bloomberg.com", 
-            "reuters.com", 
-            "cnbc.com", 
-            "wsj.com", 
-            "di.se", 
-            "svd.se/naringsliv", 
-            "dn.se/ekonomi", 
-            "affarsvarlden.se",
-            "privataaffarer.se",
-            "breakit.se",
-            "marketwatch.com",
-            "investing.com",
-            "ft.com"
+          // Global finance & markets
+          "reuters.com",
+          "marketwatch.com",
+          "investing.com",
+          "finance.yahoo.com",
+          "marketscreener.com",
+          "seekingalpha.com",
+
+          // Macro, economy, business
+          "apnews.com",
+          "axios.com",
+          "forbes.com",
+          "fortune.com",
+
+          // Tech & AI
+          "techcrunch.com",
+          "theverge.com",
+          "wired.com",
+
+          // Swedish open sources
+          "breakit.se",
+          "privataaffarer.se",
+          "affarsvarlden.se"
         ],
         topic: "news",
         max_results: maxResults,
