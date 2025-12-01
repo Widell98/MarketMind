@@ -405,7 +405,7 @@ const AIChat = ({
                         <Menu className="h-4 w-4" />
                       </Button>
                     </SheetTrigger>
-                    <SheetContent side="left" className="w-full max-w-xs p-0 sm:max-w-sm">
+                    <SheetContent side="left" className="w-full max-w-xs p-0 sm:max-w-sm" hideCloseButton>
                       {sidebarView === 'chat' ? (
                         <div className="flex flex-col h-full">
                           <div className="px-4 py-3 border-b border-ai-border/60 bg-ai-surface-muted/40 flex items-center justify-between">

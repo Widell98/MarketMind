@@ -138,9 +138,6 @@ const MobileNavigation = () => {
           <SheetHeader>
             <SheetTitle className="text-left text-lg font-semibold tracking-tight">Market Mind</SheetTitle>
           </SheetHeader>
-          <p className="text-sm text-muted-foreground mt-1">
-            {t('nav.openNavigation') ?? 'Utforska Market Mind'}
-          </p>
         </div>
 
         <nav className="mt-4 space-y-5 px-5 pb-6">
