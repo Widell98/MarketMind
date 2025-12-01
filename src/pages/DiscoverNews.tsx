@@ -71,6 +71,7 @@ const DiscoverNews = () => {
 
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'news' | 'reports'>('news');
   const [reportSort, setReportSort] = useState<'latest' | 'name'>('latest');
   const [reportSearch, setReportSearch] = useState('');
 
@@ -217,10 +218,25 @@ const DiscoverNews = () => {
       <div className="w-full pb-20 bg-background/50 min-h-screen">
         <div className="mx-auto w-full max-w-[1800px] px-4 sm:px-6 lg:px-8 xl:px-12 py-8 md:py-12">
           
-          <Tabs defaultValue="news" className="space-y-8">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => setActiveTab((value as 'news' | 'reports') || 'news')}
+            className="space-y-8"
+          >
 
             {/* Header Area */}
-            <div className="flex flex-col md:flex-row md:items-end justify-end gap-6 pb-2">
+            <div className="flex flex-col gap-4 pb-2 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold tracking-tight text-foreground mb-1">
+                  {activeTab === 'news'
+                    ? isWeeklySummary
+                      ? 'Veckosammanfattning'
+                      : 'Dagens Nyheter'
+                    : 'Rapporter'}
+                </h1>
+                <p className="text-sm text-muted-foreground">{todayDate}</p>
+              </div>
+
               <TabsList className="bg-muted/60 p-1 rounded-full border border-border/50 self-start md:self-end">
                 <TabsTrigger
                   value="news"
@@ -228,8 +244,8 @@ const DiscoverNews = () => {
                 >
                   Nyheter
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="reports" 
+                <TabsTrigger
+                  value="reports"
                   className="rounded-full px-6 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
                 >
                   Rapporter
@@ -257,15 +273,6 @@ const DiscoverNews = () => {
               {!newsLoading && !newsError && (
               <>
               <div className="space-y-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold tracking-tight text-foreground mb-2">
-                      {isWeeklySummary ? 'Veckosammanfattning' : 'Dagens Nyheter'}
-                    </h1>
-                    <p className="text-sm text-muted-foreground">{todayDate}</p>
-                  </div>
-                </div>
-
                 {/* Category Filters - Only show on weekdays */}
                 {!isWeeklySummary && (
                   <div className="flex flex-wrap items-center gap-2">
@@ -529,17 +536,6 @@ const DiscoverNews = () => {
             </TabsContent>
 
             <TabsContent value="reports" className="space-y-8 animate-fade-in mt-0">
-              <div className="space-y-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold tracking-tight text-foreground mb-2">
-                      Rapporter
-                    </h1>
-                    <p className="text-sm text-muted-foreground">{todayDate}</p>
-                  </div>
-                </div>
-              </div>
-
               <div className="relative overflow-hidden rounded-[2.5rem] border border-border/60 bg-gradient-to-br from-primary/10 via-background to-background shadow-lg">
                 <div className="absolute right-12 top-12 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
                 <div className="absolute left-6 bottom-4 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
