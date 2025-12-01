@@ -156,6 +156,68 @@ const normalizeNewsItem = (item: unknown): NewsItem | null => {
   };
 };
 
+const normalizeUrl = (url: string): string => {
+  try {
+    const urlObj = new URL(url);
+    // Remove query parameters and fragments, keep only protocol, hostname, and pathname
+    return `${urlObj.protocol}//${urlObj.hostname}${urlObj.pathname}`;
+  } catch {
+    // If URL parsing fails, return original URL
+    return url;
+  }
+};
+
+const areHeadlinesSimilar = (headline1: string, headline2: string): boolean => {
+  // Normalize headlines: lowercase, remove extra spaces, remove common punctuation
+  const normalize = (str: string) => str.toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
+  const norm1 = normalize(headline1);
+  const norm2 = normalize(headline2);
+  
+  // Check if headlines are identical after normalization
+  if (norm1 === norm2) return true;
+  
+  // Check if one headline contains the other (for cases like "Stock Market Rises" vs "Stock Market Rises Today")
+  if (norm1.length > 10 && norm2.length > 10) {
+    const shorter = norm1.length < norm2.length ? norm1 : norm2;
+    const longer = norm1.length < norm2.length ? norm2 : norm1;
+    // If shorter headline is at least 80% of longer and is contained in longer, consider similar
+    if (longer.includes(shorter) && shorter.length / longer.length >= 0.8) {
+      return true;
+    }
+  }
+  
+  return false;
+};
+
+const deduplicateNewsItems = (items: NewsItem[]): NewsItem[] => {
+  const seen = new Map<string, NewsItem>();
+  
+  for (const item of items) {
+    const normalizedUrl = normalizeUrl(item.url);
+    let isDuplicate = false;
+    
+    // Check if we've seen this normalized URL before
+    if (seen.has(normalizedUrl)) {
+      isDuplicate = true;
+    } else {
+      // Check if any existing item has a similar headline
+      for (const [url, existingItem] of seen.entries()) {
+        if (areHeadlinesSimilar(item.headline, existingItem.headline)) {
+          isDuplicate = true;
+          break;
+        }
+      }
+    }
+    
+    // Only add if not a duplicate
+    if (!isDuplicate) {
+      seen.set(normalizedUrl, item);
+    }
+  }
+  
+  return Array.from(seen.values());
+};
+
 const parseNewsResponse = (payload: unknown): { news: NewsItem[]; summary: AiMorningBrief | null } => {
   console.log('[parseNewsResponse] Input payload type:', typeof payload, Array.isArray(payload));
   
@@ -164,8 +226,9 @@ const parseNewsResponse = (payload: unknown): { news: NewsItem[]; summary: AiMor
     const news = payload
       .map(normalizeNewsItem)
       .filter((item): item is NewsItem => item !== null);
-    console.log('[parseNewsResponse] Normalized news from array:', news.length);
-    return { news, summary: null };
+    const deduplicatedNews = deduplicateNewsItems(news);
+    console.log('[parseNewsResponse] Normalized news from array:', news.length, 'deduplicated to:', deduplicatedNews.length);
+    return { news: deduplicatedNews, summary: null };
   }
 
   if (payload && typeof payload === 'object') {
@@ -195,6 +258,10 @@ const parseNewsResponse = (payload: unknown): { news: NewsItem[]; summary: AiMor
       console.warn('[parseNewsResponse] news is not an array:', typeof raw.news, raw.news);
     }
     
+    // Deduplicate news items before returning
+    const deduplicatedNews = deduplicateNewsItems(news);
+    console.log('[parseNewsResponse] Deduplicated news:', deduplicatedNews.length, '(removed', news.length - deduplicatedNews.length, 'duplicates)');
+    
     const morningBriefData = raw.morningBrief ?? raw.morning_brief ?? raw.summary ?? raw.brief ?? raw.newsletter;
     console.log('[parseNewsResponse] morningBriefData:', morningBriefData ? {
       hasHeadline: typeof (morningBriefData as any)?.headline === 'string',
@@ -209,8 +276,8 @@ const parseNewsResponse = (payload: unknown): { news: NewsItem[]; summary: AiMor
       sentiment: summary.sentiment,
     } : null);
     
-    console.log('[parseNewsResponse] Final result:', { newsCount: news.length, hasSummary: !!summary });
-    return { news, summary };
+    console.log('[parseNewsResponse] Final result:', { newsCount: deduplicatedNews.length, hasSummary: !!summary });
+    return { news: deduplicatedNews, summary };
   }
 
   console.log('[parseNewsResponse] Payload is not object or array, returning empty');
