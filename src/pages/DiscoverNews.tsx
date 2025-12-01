@@ -3,10 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
   ArrowUpRight,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  Calendar,
   Clock,
   ExternalLink,
   Filter,
@@ -178,30 +174,6 @@ const DiscoverNews = () => {
 
   const isWeeklySummary = isWeekend() || morningBrief?.headline?.toLowerCase().includes('veckosammanfattning');
 
-  const getSentimentIcon = (sentiment?: string) => {
-    switch (sentiment) {
-      case 'bullish': return <TrendingUp className="h-8 w-8 text-emerald-500" />;
-      case 'bearish': return <TrendingDown className="h-8 w-8 text-rose-500" />;
-      default: return <Minus className="h-8 w-8 text-muted-foreground" />;
-    }
-  };
-
-  const getSentimentLabel = (sentiment?: string) => {
-    switch (sentiment) {
-      case 'bullish': return 'Positivt';
-      case 'bearish': return 'Negativt';
-      default: return 'Neutralt';
-    }
-  };
-
-  const getSentimentColor = (sentiment?: string) => {
-    switch (sentiment) {
-      case 'bullish': return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900';
-      case 'bearish': return 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900';
-      default: return 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700';
-    }
-  };
-
   return (
     <Layout>
       <div className="w-full pb-20 bg-background/50 min-h-screen">
@@ -212,11 +184,8 @@ const DiscoverNews = () => {
             {/* Header Area */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                  <span className="w-2 h-2 rounded-full bg-primary/80" />
-                  {todayDate}
-                </div>
-                <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">                  
+                <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
+                  Nyheter & Rapporter
                 </h1>
               </div>
 
@@ -261,21 +230,6 @@ const DiscoverNews = () => {
                     <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold tracking-tight text-foreground mb-2">
                       {isWeeklySummary ? 'Veckosammanfattning' : 'Dagens Nyheter'}
                     </h1>
-                    <p className="text-muted-foreground flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      {todayDate}
-                      {isWeeklySummary && <span className="text-xs">• Veckans översikt</span>}
-                    </p>
-                  </div>
-                  <div className={cn(
-                    "flex items-center gap-3 px-4 py-2 rounded-full border shadow-sm",
-                    getSentimentColor(morningBrief?.sentiment)
-                  )}>
-                    {getSentimentIcon(morningBrief?.sentiment)}
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-wide opacity-70">Marknadsklimat</div>
-                      <div className="text-sm font-bold">{getSentimentLabel(morningBrief?.sentiment)}</div>
-                    </div>
                   </div>
                 </div>
 
@@ -557,9 +511,12 @@ const DiscoverNews = () => {
 
                     <div className="space-y-3">
                       <p className="text-xs font-semibold uppercase tracking-wide text-primary/80">Rapportsektionen</p>
-                      <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground leading-tight">
-                        AI-rapporter i samma ton som nyhetsflödet
-                      </h2>
+                      <div className="space-y-1">
+                        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground leading-tight">
+                          Rapporter
+                        </h2>
+                        <p className="text-base sm:text-lg text-muted-foreground max-w-2xl">måndag 1 december 2025</p>
+                      </div>
                       <p className="text-base sm:text-lg text-muted-foreground max-w-2xl">
                         Marknadens rapporter, analyserade och sammanfattade av AI på sekunder. Allt presenterat med samma visuella språk som nyheterna.
                       </p>
