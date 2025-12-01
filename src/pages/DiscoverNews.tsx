@@ -212,6 +212,7 @@ const DiscoverNews = () => {
   };
 
   const isWeeklySummary = isWeekend() || morningBrief?.headline?.toLowerCase().includes('veckosammanfattning');
+  const shouldShowNewsGrid = (newsData?.length ?? 0) > 0;
 
   return (
     <Layout>
@@ -273,8 +274,8 @@ const DiscoverNews = () => {
               {!newsLoading && !newsError && (
               <>
               <div className="space-y-6">
-                {/* Category Filters - Only show on weekdays */}
-                {!isWeeklySummary && (
+                {/* Category Filters - Only show when news exist */}
+                {shouldShowNewsGrid && (
                   <div className="flex flex-wrap items-center gap-2">
                     <Filter className="w-4 h-4 text-muted-foreground" />
                     <Button
@@ -416,15 +417,28 @@ const DiscoverNews = () => {
                 </Card>
               )}
 
-              {/* News Grid - Only show on weekdays */}
-              {!isWeeklySummary && (() => {
+              {/* News Grid - Always show when news exist */}
+              {(() => {
+                if (!shouldShowNewsGrid) {
+                  return (
+                    <div className="text-center py-12 space-y-4">
+                      <p className="text-muted-foreground">Inga nyheter tillgängliga just nu.</p>
+                      {!newsLoading && (
+                        <p className="text-sm text-muted-foreground">
+                          Backend returnerade 0 nyheter. Försök igen senare för att hämta nya nyheter.
+                        </p>
+                      )}
+                    </div>
+                  );
+                }
+
                 console.log('[DiscoverNews] News data state:', {
                   newsDataLength: newsData?.length || 0,
                   filteredNewsLength: filteredNews.length,
                   selectedCategory,
                   newsDataSample: newsData?.slice(0, 2),
                 });
-                
+
                 if (filteredNews.length > 0) {
                   return (
                     <div className="space-y-6">
@@ -436,7 +450,7 @@ const DiscoverNews = () => {
                           {filteredNews.length} {filteredNews.length === 1 ? 'artikel' : 'artiklar'}
                         </p>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 xl:gap-5">
                         {filteredNews.map((item) => (
                           <Card
@@ -460,15 +474,15 @@ const DiscoverNews = () => {
                                   <ExternalLink className="w-3 h-3" />
                                 </a>
                               </div>
-                              
+
                               <h4 className="font-bold text-base xl:text-lg leading-snug group-hover:text-primary transition-colors line-clamp-2">
                                 {item.headline}
                               </h4>
-                              
+
                               <p className="text-xs xl:text-sm text-muted-foreground line-clamp-3 leading-relaxed flex-1">
                                 {item.summary}
                               </p>
-                              
+
                               <div className="flex items-center justify-between pt-2 border-t border-border/50">
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                   <Clock className="w-3 h-3" />
@@ -485,19 +499,7 @@ const DiscoverNews = () => {
                     </div>
                   );
                 }
-                
-                // Show more helpful message
-                if (newsData && newsData.length === 0) {
-                      return (
-                        <div className="text-center py-12 space-y-4">
-                          <p className="text-muted-foreground">Inga nyheter tillgängliga just nu.</p>
-                          <p className="text-sm text-muted-foreground">
-                        Backend returnerade {newsData.length} nyheter. Försök igen senare för att hämta nya nyheter.
-                          </p>
-                        </div>
-                      );
-                }
-                
+
                 if (selectedCategory && filteredNews.length === 0) {
                   return (
                     <div className="text-center py-12">
@@ -515,7 +517,7 @@ const DiscoverNews = () => {
                     </div>
                   );
                 }
-                
+
                 return (
                   <div className="text-center py-12">
                     <p className="text-muted-foreground">Inga nyheter tillgängliga.</p>
