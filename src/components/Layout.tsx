@@ -46,8 +46,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <AppSidebar />
 
           <div className="flex-1 flex flex-col min-w-0 max-w-full">
-            {/* Header */}
-            <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border shadow-sm">
+            {/* Header - Hidden on mobile for chat routes */}
+            <header className={`sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border shadow-sm ${isChatRoute ? 'hidden md:block' : ''}`}>
               <div className="container-responsive py-2 sm:py-3 lg:py-4 flex justify-between items-center">
                 <div className="flex items-center space-x-2 sm:space-x-4 md:space-x-6 min-w-0">
                   {/* Sidebar trigger for desktop */}

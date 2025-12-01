@@ -2,12 +2,17 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight,
   ArrowUpRight,
+  ChevronDown,
+  ChevronUp,
   Clock,
   ExternalLink,
   Filter,
   LineChart,
   Search,
   Sparkles,
+  TrendingDown,
+  TrendingUp,
+  Minus,
 } from 'lucide-react';
 
 import Layout from '@/components/Layout';
@@ -70,10 +75,11 @@ const DiscoverNews = () => {
   const { newsData, morningBrief, loading: newsLoading, error: newsError } = useNewsData();
 
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'news' | 'reports'>('news');
   const [reportSort, setReportSort] = useState<'latest' | 'name'>('latest');
   const [reportSearch, setReportSearch] = useState('');
+  const [isBriefExpanded, setIsBriefExpanded] = useState(false);
+  const [isHeroExpanded, setIsHeroExpanded] = useState(false);
 
   const filteredReports = useMemo(() => {
     if (!reports || reports.length === 0) return [];
@@ -132,35 +138,12 @@ const DiscoverNews = () => {
   }, [reportPage, filteredReports]);
 
   const filteredNews = useMemo(() => {
-    console.log('[DiscoverNews] Filtering news:', {
-      newsDataLength: newsData?.length || 0,
-      selectedCategory,
-      newsDataSample: newsData?.slice(0, 2).map(n => ({ headline: n.headline, category: n.category })),
-    });
-    
     if (!newsData || newsData.length === 0) {
-      console.log('[DiscoverNews] No news data available');
       return [];
     }
     
-    if (!selectedCategory) {
-      console.log('[DiscoverNews] No category selected, returning all news');
-      return newsData;
-    }
-    
-    const filtered = newsData.filter(item => {
-      const itemCategory = (item.category || 'global').toLowerCase().trim();
-      const selected = selectedCategory.toLowerCase().trim();
-      const matches = itemCategory === selected;
-      if (!matches) {
-        console.log('[DiscoverNews] Item filtered out:', { itemCategory, selected, headline: item.headline });
-      }
-      return matches;
-    });
-    
-    console.log('[DiscoverNews] Filtered news count:', filtered.length);
-    return filtered;
-  }, [newsData, selectedCategory]);
+    return newsData;
+  }, [newsData]);
   
   const heroNews = useMemo(() => {
     if (!newsData || newsData.length === 0) {
@@ -171,25 +154,6 @@ const DiscoverNews = () => {
     return newsData[0];
   }, [newsData]);
 
-  const availableCategories = useMemo(() => {
-    if (!newsData || newsData.length === 0) {
-      console.log('[DiscoverNews] No categories - newsData is empty');
-      return [];
-    }
-    
-    const categories = new Set(
-      newsData
-        .map(item => {
-          const cat = (item.category || 'global').toLowerCase().trim();
-          return cat;
-        })
-        .filter(Boolean)
-    );
-    
-    const categoryArray = Array.from(categories).sort();
-    console.log('[DiscoverNews] Available categories:', categoryArray);
-    return categoryArray;
-  }, [newsData]);
 
   const formatPublishedLabel = (isoString?: string) => {
     if (!isoString) return '';
@@ -225,16 +189,16 @@ const DiscoverNews = () => {
           >
 
             {/* Header Area */}
-            <div className="flex flex-col gap-4 pb-2 md:flex-row md:items-end md:justify-between">
+            <div className="flex flex-col gap-4 pb-4 md:flex-row md:items-end md:justify-between">
               <div>
-                <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold tracking-tight text-foreground mb-1">
+                <h1 className="text-2xl md:text-3xl xl:text-4xl font-bold tracking-tight text-foreground mb-1">
                   {activeTab === 'news'
                     ? isWeeklySummary
                       ? 'Veckosammanfattning'
                       : 'Dagens Nyheter'
                     : 'Rapporter'}
                 </h1>
-                <p className="text-sm text-muted-foreground">{todayDate}</p>
+                <p className="text-xs md:text-sm text-muted-foreground">{todayDate}</p>
               </div>
 
               <TabsList className="bg-muted/60 p-1 rounded-full border border-border/50 self-start md:self-end">
@@ -272,210 +236,255 @@ const DiscoverNews = () => {
               {/* Header Section */}
               {!newsLoading && !newsError && (
               <>
-              <div className="space-y-6">
-                {/* Category Filters - Only show on weekdays */}
-                {!isWeeklySummary && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Filter className="w-4 h-4 text-muted-foreground" />
-                    <Button
-                      variant={selectedCategory === null ? "default" : "outline"}
-                      size="sm"
-                      className="rounded-full"
-                      onClick={() => {
-                        console.log('[DiscoverNews] Clearing category filter');
-                        setSelectedCategory(null);
-                      }}
-                    >
-                      Alla
-                    </Button>
-                    {availableCategories.length > 0 ? (
-                      availableCategories.map((cat) => (
-                        <Button
-                          key={cat}
-                          variant={selectedCategory === cat ? "default" : "outline"}
-                          size="sm"
-                          className="rounded-full"
-                          onClick={() => {
-                            console.log('[DiscoverNews] Setting category filter:', cat);
-                            setSelectedCategory(cat);
-                          }}
-                        >
-                          {formatCategoryLabel(cat)}
-                        </Button>
-                      ))
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Inga kategorier tillgängliga</span>
-                    )}
-                  </div>
-                )}
-              </div>
 
               {/* Morning Brief Hero Section */}
-              {morningBrief && (
-                <Card className="rounded-[2rem] border-border/50 shadow-lg overflow-hidden group hover:shadow-xl transition-all">
-                  <div className="relative bg-gradient-to-br from-primary/5 via-transparent to-transparent p-6 md:p-8 xl:p-10">
-                    <div className="flex items-start justify-between gap-4 mb-6">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold bg-primary/10 text-primary border-primary/20">
-                          {isWeeklySummary ? 'Veckosammanfattning' : 'Morgonrapport'}
-                        </Badge>
-                        <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">
-                          {todayDate.split(' ')[0]}
-                        </Badge>
-                      </div>
-                    </div>
-                    
-                    <h2 className="text-2xl md:text-3xl xl:text-4xl 2xl:text-5xl font-bold tracking-tight text-foreground leading-tight mb-4 group-hover:text-primary transition-colors">
-                      {morningBrief.headline}
-                    </h2>
-                    
-                    <div className={`${isWeeklySummary ? 'prose prose-slate dark:prose-invert max-w-none' : ''} mb-6`}>
-                      {isWeeklySummary ? (
-                        <div className="text-sm md:text-base xl:text-lg text-muted-foreground leading-relaxed space-y-4 max-w-5xl">
-                          {morningBrief.overview.split('\n\n').map((paragraph, idx) => (
-                            paragraph.trim() && (
-                              <p key={idx} className="mb-4">
-                                {paragraph.trim()}
-                              </p>
-                            )
-                          ))}
+              {morningBrief && (() => {
+                const overviewLines = morningBrief.overview.split('\n\n');
+                // Show more text by default - truncate only if very long (over 500 chars)
+                const shouldTruncate = !isWeeklySummary && morningBrief.overview.length > 500;
+                const displayOverview = shouldTruncate && !isBriefExpanded 
+                  ? morningBrief.overview.substring(0, 500) + '...'
+                  : morningBrief.overview;
+                
+                const getSentimentIcon = () => {
+                  const sentiment = morningBrief.sentiment?.toLowerCase();
+                  if (sentiment === 'bullish') return <TrendingUp className="w-4 h-4" />;
+                  if (sentiment === 'bearish') return <TrendingDown className="w-4 h-4" />;
+                  return <Minus className="w-4 h-4" />;
+                };
+                
+                const getSentimentColor = () => {
+                  const sentiment = morningBrief.sentiment?.toLowerCase();
+                  if (sentiment === 'bullish') return 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30';
+                  if (sentiment === 'bearish') return 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30';
+                  return 'text-muted-foreground bg-muted';
+                };
+
+                return (
+                  <Card className="rounded-[2rem] border-border/50 shadow-lg overflow-hidden group hover:shadow-xl transition-all">
+                    <div className="relative bg-gradient-to-br from-primary/5 via-transparent to-transparent p-5 md:p-6 xl:p-8">
+                      <div className="flex items-start justify-between gap-4 mb-4">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold bg-primary/10 text-primary border-primary/20">
+                            {isWeeklySummary ? 'Veckosammanfattning' : 'Morgonrapport'}
+                          </Badge>
+                          <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">
+                            {todayDate.split(' ')[0]}
+                          </Badge>
+                          {morningBrief.sentiment && (
+                            <Badge variant="outline" className={`rounded-full px-3 py-1 text-xs font-medium flex items-center gap-1.5 ${getSentimentColor()}`}>
+                              {getSentimentIcon()}
+                              <span className="capitalize">{morningBrief.sentiment}</span>
+                            </Badge>
+                          )}
                         </div>
-                      ) : (
-                        <p className="text-base md:text-lg xl:text-xl text-muted-foreground leading-relaxed max-w-4xl">
-                          {morningBrief.overview}
-                        </p>
+                      </div>
+                      
+                      <h2 className="text-xl md:text-2xl xl:text-3xl font-bold tracking-tight text-foreground leading-tight mb-3 group-hover:text-primary transition-colors">
+                        {morningBrief.headline}
+                      </h2>
+                      
+                      <div className={`${isWeeklySummary ? 'prose prose-slate dark:prose-invert max-w-none' : ''} mb-4`}>
+                        {isWeeklySummary ? (
+                          <div className="text-sm md:text-base text-muted-foreground leading-relaxed space-y-3 max-w-5xl">
+                            {morningBrief.overview.split('\n\n').map((paragraph, idx) => (
+                              paragraph.trim() && (
+                                <p key={idx} className="mb-3">
+                                  {paragraph.trim()}
+                                </p>
+                              )
+                            ))}
+                          </div>
+                        ) : (
+                          <div>
+                            <p className={`text-sm md:text-base text-muted-foreground leading-relaxed max-w-4xl ${shouldTruncate && !isBriefExpanded ? 'line-clamp-6' : ''}`}>
+                              {displayOverview}
+                            </p>
+                            {shouldTruncate && (
+                              <button
+                                onClick={() => setIsBriefExpanded(!isBriefExpanded)}
+                                className="mt-3 text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1 transition-colors"
+                              >
+                                {isBriefExpanded ? (
+                                  <>
+                                    Visa mindre
+                                    <ChevronUp className="w-4 h-4" />
+                                  </>
+                                ) : (
+                                  <>
+                                    Läs mer
+                                    <ChevronDown className="w-4 h-4" />
+                                  </>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {morningBrief.keyHighlights && morningBrief.keyHighlights.length > 0 && (
+                        <div className="mt-4">
+                          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                            {isWeeklySummary ? 'Veckans Höjdpunkter' : 'Snabbkollen'}
+                          </h3>
+                          <div className="flex flex-wrap gap-2">
+                            {morningBrief.keyHighlights.slice(0, isWeeklySummary ? 7 : 5).map((highlight, idx) => (
+                              <Badge
+                                key={idx}
+                                variant="secondary"
+                                className="rounded-full px-3 py-1 text-xs bg-muted/60 text-foreground/80 hover:bg-muted transition-colors"
+                              >
+                                {highlight}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
-                    
-                    {morningBrief.keyHighlights && morningBrief.keyHighlights.length > 0 && (
-                      <div className="mt-6 space-y-2">
-                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                          {isWeeklySummary ? 'Veckans Höjdpunkter' : 'Snabbkollen'}
-                        </h3>
-                        <ul className="space-y-2">
-                          {morningBrief.keyHighlights.slice(0, isWeeklySummary ? 7 : 3).map((highlight, idx) => (
-                            <li key={idx} className="flex items-start gap-2 text-sm text-foreground/90">
-                              <span className="text-primary mt-1">•</span>
-                              <span>{highlight}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </Card>
-              )}
+                  </Card>
+                );
+              })()}
 
               {/* Hero News Section - Only show on weekdays */}
-              {!isWeeklySummary && heroNews && (
-                <Card className="rounded-[2rem] border-border/50 shadow-lg overflow-hidden group hover:shadow-xl transition-all">
-                  <div className="relative bg-gradient-to-br from-primary/5 via-transparent to-transparent p-6 md:p-8 xl:p-10">
-                    <div className="flex items-start justify-between gap-4 mb-6">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold bg-primary/10 text-primary border-primary/20">
-                          Huvudnyhet
-                        </Badge>
-                        <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">
-                          {formatCategoryLabel(heroNews.category)}
-                        </Badge>
+              {!isWeeklySummary && heroNews && (() => {
+                const shouldTruncate = heroNews.summary.length > 150;
+                const displaySummary = shouldTruncate && !isHeroExpanded
+                  ? heroNews.summary.substring(0, 150) + '...'
+                  : heroNews.summary;
+
+                return (
+                  <Card className="rounded-[2rem] border-border/50 shadow-lg overflow-hidden group hover:shadow-xl transition-all">
+                    <div className="relative bg-gradient-to-br from-primary/5 via-transparent to-transparent p-5 md:p-6 xl:p-8">
+                      <div className="flex items-start justify-between gap-4 mb-4">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold bg-primary/10 text-primary border-primary/20">
+                            Huvudnyhet
+                          </Badge>
+                          <Badge variant="outline" className="rounded-full px-2.5 py-1 text-xs font-medium">
+                            {formatCategoryLabel(heroNews.category)}
+                          </Badge>
+                        </div>
+                        <a
+                          href={heroNews.url && heroNews.url !== '#' ? heroNews.url : '#'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {heroNews.source}
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
                       </div>
-                      <a
-                        href={heroNews.url && heroNews.url !== '#' ? heroNews.url : '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {heroNews.source}
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
-                    
-                    <h2 className="text-2xl md:text-3xl xl:text-4xl 2xl:text-5xl font-bold tracking-tight text-foreground leading-tight mb-4 group-hover:text-primary transition-colors">
-                      {heroNews.headline}
-                    </h2>
-                    
-                    <p className="text-base md:text-lg xl:text-xl text-muted-foreground leading-relaxed mb-6 max-w-4xl">
-                      {heroNews.summary}
-                    </p>
-                    
-                    <div className="flex flex-wrap items-center gap-4">
-                      <Button
-                        className="rounded-full"
-                        onClick={() => setSelectedNews(heroNews)}
-                      >
-                        Läs mer
-                        <ArrowRight className="ml-2 w-4 h-4" />
-                      </Button>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Clock className="w-4 h-4" />
-                        {formatPublishedLabel(heroNews.publishedAt)}
+                      
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="mt-1 flex-shrink-0">
+                          <div className="rounded-xl bg-primary/10 p-2">
+                            <Sparkles className="w-4 h-4 text-primary" />
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h2 className="text-xl md:text-2xl xl:text-3xl font-bold tracking-tight text-foreground leading-tight mb-2 group-hover:text-primary transition-colors">
+                            {heroNews.headline}
+                          </h2>
+                        </div>
+                      </div>
+                      
+                      <div className="mb-4">
+                        <p className="text-sm md:text-base text-muted-foreground leading-relaxed line-clamp-3 max-w-4xl">
+                          {displaySummary}
+                        </p>
+                        {shouldTruncate && (
+                          <button
+                            onClick={() => setIsHeroExpanded(!isHeroExpanded)}
+                            className="mt-2 text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1 transition-colors"
+                          >
+                            {isHeroExpanded ? (
+                              <>
+                                Visa mindre
+                                <ChevronUp className="w-4 h-4" />
+                              </>
+                            ) : (
+                              <>
+                                Läs mer
+                                <ChevronDown className="w-4 h-4" />
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                      
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Button
+                          className="rounded-full"
+                          size="sm"
+                          onClick={() => setSelectedNews(heroNews)}
+                        >
+                          Läs mer
+                          <ArrowRight className="ml-2 w-4 h-4" />
+                        </Button>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Clock className="w-3.5 h-3.5" />
+                          {formatPublishedLabel(heroNews.publishedAt)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Card>
-              )}
+                  </Card>
+                );
+              })()}
 
               {/* News Grid - Only show on weekdays */}
               {!isWeeklySummary && (() => {
-                console.log('[DiscoverNews] News data state:', {
-                  newsDataLength: newsData?.length || 0,
-                  filteredNewsLength: filteredNews.length,
-                  selectedCategory,
-                  newsDataSample: newsData?.slice(0, 2),
-                });
-                
                 if (filteredNews.length > 0) {
                   return (
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-xl xl:text-2xl font-bold tracking-tight">
-                          {selectedCategory ? formatCategoryLabel(selectedCategory) : 'Alla Nyheter'}
+                        <h3 className="text-lg xl:text-xl font-bold tracking-tight">
+                          Alla Nyheter
                         </h3>
-                        <p className="text-xs xl:text-sm text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {filteredNews.length} {filteredNews.length === 1 ? 'artikel' : 'artiklar'}
                         </p>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 xl:gap-5">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 xl:gap-4">
                         {filteredNews.map((item) => (
                           <Card
                             key={item.id}
-                            className="rounded-[1.5rem] border-border/50 bg-card hover:bg-muted/30 hover:border-border transition-all hover:shadow-md cursor-pointer group"
+                            className="rounded-[1.5rem] border-border/50 bg-card hover:bg-muted/30 hover:border-primary/30 transition-all hover:shadow-lg cursor-pointer group"
                             onClick={() => setSelectedNews(item)}
                           >
-                            <CardContent className="p-4 xl:p-5 flex flex-col h-full gap-3 xl:gap-4">
-                              <div className="flex items-center justify-between">
-                                <Badge variant="secondary" className="rounded-lg px-2 py-1 bg-muted font-medium text-xs">
+                            <CardContent className="p-4 xl:p-5 flex flex-col h-full gap-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <Badge variant="secondary" className="rounded-lg px-2 py-0.5 bg-muted/80 font-medium text-xs">
                                   {formatCategoryLabel(item.category)}
                                 </Badge>
                                 <a
                                   href={item.url && item.url !== '#' ? item.url : '#'}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+                                  className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 flex-shrink-0"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  {item.source}
-                                  <ExternalLink className="w-3 h-3" />
+                                  <span className="truncate max-w-[80px]">{item.source}</span>
+                                  <ExternalLink className="w-3 h-3 flex-shrink-0" />
                                 </a>
                               </div>
                               
-                              <h4 className="font-bold text-base xl:text-lg leading-snug group-hover:text-primary transition-colors line-clamp-2">
+                              <h4 className="font-bold text-sm xl:text-base leading-snug group-hover:text-primary transition-colors line-clamp-2 flex-1">
                                 {item.headline}
                               </h4>
                               
-                              <p className="text-xs xl:text-sm text-muted-foreground line-clamp-3 leading-relaxed flex-1">
+                              <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                                 {item.summary}
                               </p>
                               
-                              <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <div className="flex items-center justify-between pt-2 mt-auto border-t border-border/50">
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                   <Clock className="w-3 h-3" />
                                   {formatPublishedLabel(item.publishedAt)}
                                 </div>
                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <ArrowUpRight className="w-4 h-4 text-muted-foreground" />
+                                  <ArrowUpRight className="w-4 h-4 text-primary" />
                                 </div>
                               </div>
                             </CardContent>
@@ -498,24 +507,6 @@ const DiscoverNews = () => {
                       );
                 }
                 
-                if (selectedCategory && filteredNews.length === 0) {
-                  return (
-                    <div className="text-center py-12">
-                      <p className="text-muted-foreground">
-                        Inga nyheter tillgängliga för kategorin "{formatCategoryLabel(selectedCategory)}".
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-4 rounded-full"
-                        onClick={() => setSelectedCategory(null)}
-                      >
-                        Visa alla kategorier
-                      </Button>
-                    </div>
-                  );
-                }
-                
                 return (
                   <div className="text-center py-12">
                     <p className="text-muted-foreground">Inga nyheter tillgängliga.</p>
@@ -524,11 +515,11 @@ const DiscoverNews = () => {
               })()}
 
               {/* Footer Note */}
-              <div className="pt-8 border-t border-border/50 text-center">
-                <p className="text-sm text-muted-foreground">
+              <div className="pt-6 border-t border-border/50 text-center">
+                <p className="text-xs text-muted-foreground">
                   Alla nyheter från externa källor. Sammanfattningar genererade av AI.
                 </p>
-                <p className="mt-2 text-xs text-muted-foreground">{todayDate}</p>
+                <p className="mt-1.5 text-xs text-muted-foreground/70">{todayDate}</p>
               </div>
               </>
               )}
@@ -682,7 +673,7 @@ const DiscoverNews = () => {
                   </div>
                 </div>
 
-                <div className="grid gap-4 xl:gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid gap-4 xl:gap-5 md:grid-cols-2 lg:grid-cols-3">
                   {paginatedReports.map((report) => (
                     <ReportHighlightCard key={report.id} report={report} />
                   ))}

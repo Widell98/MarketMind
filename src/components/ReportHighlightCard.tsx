@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, FileText, LineChart } from 'lucide-react';
+import { Calendar, FileText, LineChart, ArrowRight, TrendingUp, TrendingDown } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 
@@ -36,77 +36,129 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Card className="group h-full cursor-pointer overflow-hidden border-border/70 bg-card/90 shadow-sm transition hover:-translate-y-1 hover:border-primary/50 hover:shadow-lg">
-          <CardContent className="flex h-full flex-col gap-4 p-4 sm:p-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-primary/10 via-primary/5 to-muted sm:h-14 sm:w-14 lg:h-16 lg:w-16">
+        <Card className="group h-full cursor-pointer overflow-hidden border-border/60 bg-card/90 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:border-primary/50 hover:shadow-xl">
+          <CardContent className="flex h-full flex-col gap-3 sm:gap-4 lg:gap-5 p-4 sm:p-5 lg:p-6">
+            {/* Logo and Header Section */}
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="relative h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16 shrink-0 overflow-hidden rounded-xl sm:rounded-2xl border border-border/60 bg-gradient-to-br from-primary/10 via-primary/5 to-muted shadow-sm ring-1 ring-inset ring-border/40">
                 {companyLogoUrl ? (
                   <img
                     src={companyLogoUrl}
                     alt={`${report.companyName} logotyp`}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
                     loading="lazy"
                     onError={() => setLogoFailed(true)}
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-base font-semibold text-primary">
+                  <div className="flex h-full w-full items-center justify-center text-sm sm:text-base lg:text-lg font-bold text-primary">
                     {companyInitial}
                   </div>
                 )}
-                <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-border/60" />
               </div>
 
-              <div className="flex-1 space-y-2">
-                <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  <Badge variant="secondary" className="rounded-full bg-primary/10 px-3 py-1 text-primary">
-                    {report.companyName}
-                  </Badge>
-                </div>
-                <h3 className="text-lg font-semibold text-foreground sm:text-xl line-clamp-2">{report.reportTitle}</h3>
-                <p className="text-sm leading-relaxed text-muted-foreground line-clamp-3 sm:line-clamp-none">{truncateText(report.summary, 180)}</p>
+              <div className="flex-1 min-w-0 space-y-1.5 sm:space-y-2">
+                <Badge variant="secondary" className="rounded-full bg-primary/10 px-2 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-xs font-semibold text-primary border-primary/20">
+                  {report.companyName}
+                </Badge>
+                <h3 className="text-base sm:text-lg lg:text-xl font-bold text-foreground leading-tight line-clamp-2 group-hover:text-primary transition-colors">{report.reportTitle}</h3>
               </div>
             </div>
 
-            <div className="space-y-3">
-              {highlightedMetrics.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-normal break-words leading-tight">
-                    <LineChart className="h-3.5 w-3.5" />
-                    Nyckeltal
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {highlightedMetrics.map((metric, index) => (
+            {/* Summary Section */}
+            <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground line-clamp-2 sm:line-clamp-3">{truncateText(report.summary, 180)}</p>
+
+            {/* Key Metrics Section */}
+            {highlightedMetrics.length > 0 && (
+              <div className="space-y-1.5 sm:space-y-2">
+                <div className="flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <LineChart className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-primary" />
+                  Nyckeltal
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+                  {highlightedMetrics.map((metric, index) => {
+                    const normalizeTrend = (trend: string | undefined): string => {
+                      if (!trend) return '';
+                      
+                      const lowerTrend = trend.toLowerCase();
+                      
+                      // Ersätt "ökade med" med "+"
+                      if (lowerTrend.includes('ökade med')) {
+                        const match = trend.match(/ökade med\s*([\d.,\s]+)/i);
+                        if (match) {
+                          return `+${match[1].trim()}`;
+                        }
+                        return trend.replace(/ökade med/gi, '+');
+                      }
+                      
+                      // Ersätt "minskade med" med "-"
+                      if (lowerTrend.includes('minskade med')) {
+                        const match = trend.match(/minskade med\s*([\d.,\s]+)/i);
+                        if (match) {
+                          return `-${match[1].trim()}`;
+                        }
+                        return trend.replace(/minskade med/gi, '-');
+                      }
+                      
+                      // Om det redan finns + eller - i början, behåll det
+                      if (trend.trim().startsWith('+') || trend.trim().startsWith('-')) {
+                        return trend;
+                      }
+                      
+                      return trend;
+                    };
+                    
+                    const normalizedTrend = normalizeTrend(metric.trend);
+                    const trendUp = normalizedTrend.toLowerCase().includes('upp') || normalizedTrend.startsWith('+') || normalizedTrend.match(/\+[\d.,\s]+/);
+                    const trendDown = normalizedTrend.toLowerCase().includes('ned') || normalizedTrend.startsWith('-') || normalizedTrend.match(/-[\d.,\s]+/);
+                    
+                    return (
                       <div
                         key={`${report.id}-highlight-metric-${index}`}
-                        className="rounded-2xl border border-border/60 bg-muted/20 p-3 transition group-hover:border-primary/40"
+                        className="rounded-lg border border-border/50 bg-gradient-to-br from-muted/40 to-muted/20 p-2 sm:p-2.5 transition-all duration-300 group-hover:border-primary/50 group-hover:shadow-sm overflow-hidden"
                       >
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-normal break-words leading-tight">{metric.label}</p>
-                        <p className="text-base font-semibold text-foreground">{metric.value}</p>
-                        {metric.trend && <p className="text-xs text-muted-foreground">{metric.trend}</p>}
+                        <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-0.5 sm:mb-1 truncate min-w-0">{metric.label}</p>
+                        <div className="flex items-baseline gap-1 sm:gap-1.5 min-w-0">
+                          <p className="text-base sm:text-lg font-bold text-foreground truncate min-w-0 flex-1">{metric.value}</p>
+                          {normalizedTrend && (
+                            <div className={`flex items-center gap-0.5 text-[9px] sm:text-[10px] font-medium shrink-0 min-w-0 ${
+                              trendUp ? 'text-emerald-600 dark:text-emerald-400' : 
+                              trendDown ? 'text-red-600 dark:text-red-400' : 
+                              'text-muted-foreground'
+                            }`}>
+                              {trendUp && <TrendingUp className="h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0" />}
+                              {trendDown && <TrendingDown className="h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0" />}
+                              <span className="truncate min-w-0">{normalizedTrend}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
+            )}
 
-              <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1 rounded-full bg-background/60 px-2.5 py-1 font-medium text-foreground">
-                  <FileText className="h-3.5 w-3.5" />
-                  {report.keyPoints.length} punkter
-                </div>
-                <div className="flex items-center gap-1 rounded-full bg-background/60 px-2.5 py-1 font-medium text-foreground">
-                  <LineChart className="h-3.5 w-3.5" />
-                  {report.keyMetrics.length} nyckeltal
-                </div>
-                <div className="flex items-center gap-1 rounded-full bg-background/60 px-2.5 py-1 font-medium">
-                  <Calendar className="h-3.5 w-3.5" />
-                  {createdAtLabel}
-                </div>
+            {/* Metadata Section */}
+            <div className="flex items-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border border-border/50 bg-muted/20 px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs">
+              <div className="flex items-center gap-1 sm:gap-1.5 rounded-md sm:rounded-lg bg-background/80 px-1.5 sm:px-2 py-0.5 sm:py-1 font-medium text-foreground">
+                <FileText className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground" />
+                <span>{report.keyPoints.length}</span>
+              </div>
+              <div className="flex items-center gap-1 sm:gap-1.5 rounded-md sm:rounded-lg bg-background/80 px-1.5 sm:px-2 py-0.5 sm:py-1 font-medium text-foreground">
+                <LineChart className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground" />
+                <span>{report.keyMetrics.length}</span>
+              </div>
+              <div className="flex items-center gap-1 sm:gap-1.5 rounded-md sm:rounded-lg bg-background/80 px-1.5 sm:px-2 py-0.5 sm:py-1 font-medium text-muted-foreground ml-auto">
+                <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                <span className="hidden sm:inline">{createdAtLabel}</span>
+                <span className="sm:hidden text-[9px]">Nyligen</span>
               </div>
             </div>
 
-            <div className="mt-auto rounded-xl border border-dashed border-border/70 bg-primary/5 px-3 py-2 text-xs font-semibold text-primary">
-              Klicka för att läsa hela analysen
+            {/* CTA Section */}
+            <div className="mt-auto flex items-center justify-between rounded-lg border border-dashed border-primary/30 bg-primary/5 px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-medium text-primary transition-colors group-hover:border-primary/50 group-hover:bg-primary/10">
+              <span className="truncate">Klicka för att läsa hela analysen</span>
+              <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-0 transition-opacity group-hover:opacity-100 shrink-0 ml-1" />
             </div>
           </CardContent>
         </Card>

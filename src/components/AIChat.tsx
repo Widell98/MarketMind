@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAIChat } from '@/hooks/useAIChat';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useLanguage } from '@/contexts/LanguageContext';
 import ChatMessages from './chat/ChatMessages';
 import ChatInput from './chat/ChatInput';
 import ProfileUpdateConfirmation from './ProfileUpdateConfirmation';
@@ -10,12 +11,15 @@ import ChatFolderSidebar from './chat/ChatFolderSidebar';
 import ChatDocumentManager from './chat/ChatDocumentManager';
 import { useChatDocuments } from '@/hooks/useChatDocuments';
 import { useToast } from '@/hooks/use-toast';
+import ThemeToggle from './ThemeToggle';
+import ProfileMenu from './ProfileMenu';
 
-import { LogIn, MessageSquare, Brain, Lock, Sparkles, Menu, PanelLeftClose, PanelLeft, Crown, Infinity } from 'lucide-react';
+import { LogIn, MessageSquare, Brain, Lock, Sparkles, Menu, PanelLeftClose, PanelLeft, Crown, Infinity, Home, BarChart3, User, Newspaper, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { cn } from '@/lib/utils';
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -80,6 +84,8 @@ const AIChat = ({
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [isGuideSession, setIsGuideSession] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
+  const [sidebarView, setSidebarView] = useState<'chat' | 'navigation'>('chat');
+  const { t } = useLanguage();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -378,8 +384,18 @@ const AIChat = ({
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
             <header className="grid grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-ai-border/60 px-4 py-3 sm:px-6">
               <div className="flex items-center gap-2">
+                {/* Logo on mobile */}
                 {isMobile && (
-                  <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                  <Link to="/" className="flex items-center min-w-0 flex-shrink-0 mr-1">
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center transform rotate-3 hover:rotate-0 transition-transform duration-300 flex-shrink-0">
+                      <Brain className="w-4 h-4 text-primary-foreground" />
+                    </div>
+                  </Link>
+                )}
+
+                {/* Combined menu for mobile */}
+                {isMobile && (
+                  <Sheet open={sidebarOpen} onOpenChange={(open) => { setSidebarOpen(open); if (!open) setSidebarView('chat'); }}>
                     <SheetTrigger asChild>
                       <Button
                         variant="ghost"
@@ -390,11 +406,134 @@ const AIChat = ({
                       </Button>
                     </SheetTrigger>
                     <SheetContent side="left" className="w-full max-w-xs p-0 sm:max-w-sm">
-                      <ChatFolderSidebar {...sidebarProps} />
+                      {sidebarView === 'chat' ? (
+                        <div className="flex flex-col h-full">
+                          <div className="px-4 py-3 border-b border-ai-border/60 bg-ai-surface-muted/40 flex items-center justify-between">
+                            <span className="text-sm font-semibold text-foreground">Chat-sessioner</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSidebarView('navigation')}
+                              className="h-8 text-xs"
+                            >
+                              <ChevronLeft className="h-4 w-4 mr-1" />
+                              Navigation
+                            </Button>
+                          </div>
+                          <div className="flex-1 overflow-auto">
+                            <ChatFolderSidebar {...sidebarProps} />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col h-full">
+                          <div className="px-4 py-3 border-b border-ai-border/60 bg-ai-surface-muted/40 flex items-center justify-between">
+                            <span className="text-sm font-semibold text-foreground">Navigation</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSidebarView('chat')}
+                              className="h-8 text-xs"
+                            >
+                              <ChevronLeft className="h-4 w-4 mr-1" />
+                              Chat
+                            </Button>
+                          </div>
+                          <nav className="flex-1 overflow-auto px-4 py-4 space-y-4">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary mb-3">
+                                <Home className="w-4 h-4" />
+                                <span>{t('nav.mainMenu')}</span>
+                              </div>
+                              <Link
+                                to="/"
+                                onClick={() => setSidebarOpen(false)}
+                                className={cn(
+                                  'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 w-full border shadow-sm',
+                                  location.pathname === '/' 
+                                    ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground border-primary/40'
+                                    : 'text-muted-foreground border-transparent bg-background/60 hover:text-foreground hover:bg-gradient-to-r hover:from-muted/70 hover:to-muted/40'
+                                )}
+                              >
+                                <Home className="w-5 h-5" />
+                                <span>{t('nav.home')}</span>
+                              </Link>
+                              <Link
+                                to="/discover"
+                                onClick={() => setSidebarOpen(false)}
+                                className={cn(
+                                  'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 w-full border shadow-sm',
+                                  location.pathname.startsWith('/discover')
+                                    ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground border-primary/40'
+                                    : 'text-muted-foreground border-transparent bg-background/60 hover:text-foreground hover:bg-gradient-to-r hover:from-muted/70 hover:to-muted/40'
+                                )}
+                              >
+                                <Sparkles className="w-5 h-5" />
+                                <span>{t('nav.discover')}</span>
+                              </Link>
+                              <Link
+                                to="/news"
+                                onClick={() => setSidebarOpen(false)}
+                                className={cn(
+                                  'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 w-full border shadow-sm',
+                                  location.pathname.startsWith('/news')
+                                    ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground border-primary/40'
+                                    : 'text-muted-foreground border-transparent bg-background/60 hover:text-foreground hover:bg-gradient-to-r hover:from-muted/70 hover:to-muted/40'
+                                )}
+                              >
+                                <Newspaper className="w-5 h-5" />
+                                <span>{t('nav.news')}</span>
+                              </Link>
+                            </div>
+                            {user && (
+                              <>
+                                <div className="space-y-2 pt-2">
+                                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary mb-3">
+                                    <BarChart3 className="w-4 h-4" />
+                                    <span>{t('nav.aiTools')}</span>
+                                  </div>
+                                  <Link
+                                    to="/portfolio-implementation"
+                                    onClick={() => setSidebarOpen(false)}
+                                    className={cn(
+                                      'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 w-full border shadow-sm',
+                                      location.pathname.startsWith('/portfolio-implementation')
+                                        ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground border-primary/40'
+                                        : 'text-muted-foreground border-transparent bg-background/60 hover:text-foreground hover:bg-gradient-to-r hover:from-muted/70 hover:to-muted/40'
+                                    )}
+                                  >
+                                    <BarChart3 className="w-5 h-5" />
+                                    <span>{t('nav.portfolio')}</span>
+                                  </Link>
+                                </div>
+                                <div className="space-y-2 pt-2">
+                                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary mb-3">
+                                    <User className="w-4 h-4" />
+                                    <span>{t('nav.account')}</span>
+                                  </div>
+                                  <Link
+                                    to="/profile"
+                                    onClick={() => setSidebarOpen(false)}
+                                    className={cn(
+                                      'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 w-full border shadow-sm',
+                                      location.pathname.startsWith('/profile')
+                                        ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground border-primary/40'
+                                        : 'text-muted-foreground border-transparent bg-background/60 hover:text-foreground hover:bg-gradient-to-r hover:from-muted/70 hover:to-muted/40'
+                                    )}
+                                  >
+                                    <User className="w-5 h-5" />
+                                    <span>{t('nav.profile')}</span>
+                                  </Link>
+                                </div>
+                              </>
+                            )}
+                          </nav>
+                        </div>
+                      )}
                     </SheetContent>
                   </Sheet>
                 )}
 
+                {/* Desktop sidebar toggle */}
                 {!isMobile && (
                   <Button
                     onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
@@ -407,14 +546,16 @@ const AIChat = ({
                 )}
               </div>
 
-              {/* <div className="flex items-center justify-center">
-                <div className="flex flex-col items-center gap-0.5">
-                  <span className="text-sm font-medium text-foreground sm:text-base">AI-assistent</span>
-                  <span className="hidden text-[12px] text-ai-text-muted sm:inline">Marknadsguiden i realtid</span>
-                </div>
-              </div> */}
-
               <div className="flex items-center justify-end gap-2">
+                {/* Theme toggle and profile menu on mobile */}
+                {isMobile && (
+                  <>
+                    <ThemeToggle />
+                    {user && <ProfileMenu />}
+                  </>
+                )}
+                
+                {/* Premium/Credits badge */}
                 {isPremium ? (
                   <TooltipProvider delayDuration={120}>
                     <Tooltip>

@@ -155,6 +155,68 @@ function extractDomain(url: string): string {
   }
 }
 
+function normalizeUrl(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    // Remove query parameters and fragments, keep only protocol, hostname, and pathname
+    return `${urlObj.protocol}//${urlObj.hostname}${urlObj.pathname}`;
+  } catch {
+    // If URL parsing fails, return original URL
+    return url;
+  }
+}
+
+function areHeadlinesSimilar(headline1: string, headline2: string): boolean {
+  // Normalize headlines: lowercase, remove extra spaces, remove common punctuation
+  const normalize = (str: string) => str.toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
+  const norm1 = normalize(headline1);
+  const norm2 = normalize(headline2);
+  
+  // Check if headlines are identical after normalization
+  if (norm1 === norm2) return true;
+  
+  // Check if one headline contains the other (for cases like "Stock Market Rises" vs "Stock Market Rises Today")
+  if (norm1.length > 10 && norm2.length > 10) {
+    const shorter = norm1.length < norm2.length ? norm1 : norm2;
+    const longer = norm1.length < norm2.length ? norm2 : norm1;
+    // If shorter headline is at least 80% of longer and is contained in longer, consider similar
+    if (longer.includes(shorter) && shorter.length / longer.length >= 0.8) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+function deduplicateNewsItems(items: NewsItem[]): NewsItem[] {
+  const seen = new Map<string, NewsItem>();
+  
+  for (const item of items) {
+    const normalizedUrl = normalizeUrl(item.url);
+    let isDuplicate = false;
+    
+    // Check if we've seen this normalized URL before
+    if (seen.has(normalizedUrl)) {
+      isDuplicate = true;
+    } else {
+      // Check if any existing item has a similar headline
+      for (const [url, existingItem] of seen.entries()) {
+        if (areHeadlinesSimilar(item.headline, existingItem.headline)) {
+          isDuplicate = true;
+          break;
+        }
+      }
+    }
+    
+    // Only add if not a duplicate
+    if (!isDuplicate) {
+      seen.set(normalizedUrl, item);
+    }
+  }
+  
+  return Array.from(seen.values());
+}
+
 async function fetchTavilyNews(query: string, maxResults = 15, days = 1): Promise<TavilyArticle[]> {
   if (!tavilyApiKey) {
     console.warn("TAVILY_API_KEY is not configured. Skipping Tavily search.");
@@ -261,8 +323,10 @@ async function fetchMultipleTavilySearches(
         continue;
       }
 
-      if (!seenUrls!.has(article.url)) {
-        seenUrls!.add(article.url);
+      // Use normalized URL for deduplication to catch URLs with different query parameters
+      const normalizedUrl = normalizeUrl(article.url);
+      if (!seenUrls!.has(normalizedUrl)) {
+        seenUrls!.add(normalizedUrl);
         allArticles.push(article);
       }
     }
@@ -493,7 +557,11 @@ async function generateWeeklySummary(): Promise<GeneratedMorningBrief> {
     }
   }
   
-  // 4. Create context from week briefs and articles
+  // 4. Deduplicate summarized news
+  const deduplicatedNews = deduplicateNewsItems(summarizedNews);
+  console.log(`[generateWeeklySummary] Deduplicated news: ${deduplicatedNews.length} (removed ${summarizedNews.length - deduplicatedNews.length} duplicates)`);
+  
+  // 5. Create context from week briefs and articles
   const weekBriefsContext = weekBriefs.length > 0
     ? weekBriefs.map((brief, idx) => 
         `Dag ${idx + 1} (${new Date(brief.morningBrief.generatedAt).toLocaleDateString("sv-SE")}):\n` +
@@ -612,9 +680,9 @@ Regler:
   const runGeneratedAt = new Date().toISOString();
   const normalizedBrief = { ...morningBrief, generatedAt: runGeneratedAt };
 
-  const digestHash = await computeDigestHash({ morningBrief: normalizedBrief, news: summarizedNews });
-  console.log(`[generateWeeklySummary] Returning: morningBrief=${!!morningBrief}, newsCount=${summarizedNews.length}`);
-  return { morningBrief: normalizedBrief, news: summarizedNews, rawPayload: {}, digestHash };
+  const digestHash = await computeDigestHash({ morningBrief: normalizedBrief, news: deduplicatedNews });
+  console.log(`[generateWeeklySummary] Returning: morningBrief=${!!morningBrief}, newsCount=${deduplicatedNews.length}`);
+  return { morningBrief: normalizedBrief, news: deduplicatedNews, rawPayload: {}, digestHash };
 }
 
 async function generateMorningBrief(options: GenerateOptions = {}): Promise<GeneratedMorningBrief> {
@@ -672,6 +740,10 @@ async function generateMorningBrief(options: GenerateOptions = {}): Promise<Gene
     }
   }
   console.log(`[generateMorningBrief] Total summarized news: ${summarizedNews.length}`);
+
+  // 5. Deduplicate summarized news based on normalized URL and headline similarity
+  const deduplicatedNews = deduplicateNewsItems(summarizedNews);
+  console.log(`[generateMorningBrief] Deduplicated news: ${deduplicatedNews.length} (removed ${summarizedNews.length - deduplicatedNews.length} duplicates)`);
 
   // 3. Create context string for morning brief generation
   const tavilyContext = tavilyArticles.length > 0
@@ -776,10 +848,10 @@ Regler:
   const runGeneratedAt = new Date().toISOString();
   const normalizedBrief = { ...morningBrief, generatedAt: runGeneratedAt };
 
-  const digestHash = await computeDigestHash({ morningBrief: normalizedBrief, news: summarizedNews });
-  console.log(`[generateMorningBrief] Returning: morningBrief=${!!morningBrief}, newsCount=${summarizedNews.length}`);
-  console.log(`[generateMorningBrief] News items sample:`, summarizedNews.slice(0, 2).map(n => ({ headline: n.headline, source: n.source })));
-  return { morningBrief: normalizedBrief, news: summarizedNews, rawPayload: {}, digestHash };
+  const digestHash = await computeDigestHash({ morningBrief: normalizedBrief, news: deduplicatedNews });
+  console.log(`[generateMorningBrief] Returning: morningBrief=${!!morningBrief}, newsCount=${deduplicatedNews.length}`);
+  console.log(`[generateMorningBrief] News items sample:`, deduplicatedNews.slice(0, 2).map(n => ({ headline: n.headline, source: n.source })));
+  return { morningBrief: normalizedBrief, news: deduplicatedNews, rawPayload: {}, digestHash };
 }
 
 async function generateMarketMomentum() {
