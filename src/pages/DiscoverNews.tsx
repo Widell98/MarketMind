@@ -561,31 +561,36 @@ const DiscoverNews = () => {
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Filter className="w-4 h-4 text-muted-foreground" />
-                    <Button
-                      variant={selectedReportFilter === null ? 'default' : 'outline'}
-                      size="sm"
-                      className="rounded-full"
-                      onClick={() => setSelectedReportFilter(null)}
-                    >
-                      Alla
-                    </Button>
-                    {availableReportFilters.length > 0 ? (
-                      availableReportFilters.map((filter) => (
-                        <Button
-                          key={filter}
-                          variant={selectedReportFilter === filter ? 'default' : 'outline'}
-                          size="sm"
-                          className="rounded-full"
-                          onClick={() => setSelectedReportFilter(filter)}
-                        >
-                          {filter}
-                        </Button>
-                      ))
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Inga filter tillgängliga</span>
-                    )}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Filter className="w-4 h-4" />
+                      <span>Filtrera rapporter</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant={selectedReportFilter === null ? 'default' : 'outline'}
+                        size="sm"
+                        className="rounded-full"
+                        onClick={() => setSelectedReportFilter(null)}
+                      >
+                        Alla
+                      </Button>
+                      {availableReportFilters.length > 0 ? (
+                        availableReportFilters.map((filter) => (
+                          <Button
+                            key={filter}
+                            variant={selectedReportFilter === filter ? 'default' : 'outline'}
+                            size="sm"
+                            className="rounded-full"
+                            onClick={() => setSelectedReportFilter(filter)}
+                          >
+                            {filter}
+                          </Button>
+                        ))
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Inga filter tillgängliga</span>
+                      )}
+                    </div>
                   </div>
 
                     <div className="grid gap-3 sm:grid-cols-3">
