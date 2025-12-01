@@ -37,9 +37,9 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
     <Dialog>
       <DialogTrigger asChild>
         <Card className="group h-full cursor-pointer overflow-hidden border-border/70 bg-card/90 shadow-sm transition hover:-translate-y-1 hover:border-primary/50 hover:shadow-lg">
-          <CardContent className="flex h-full flex-col gap-4 p-5">
-            <div className="flex gap-4">
-              <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-primary/10 via-primary/5 to-muted">
+          <CardContent className="flex h-full flex-col gap-4 p-4 sm:p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-primary/10 via-primary/5 to-muted sm:h-14 sm:w-14 lg:h-16 lg:w-16">
                 {companyLogoUrl ? (
                   <img
                     src={companyLogoUrl}
@@ -62,8 +62,8 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
                     {report.companyName}
                   </Badge>
                 </div>
-                <h3 className="text-xl font-semibold text-foreground">{report.reportTitle}</h3>
-                <p className="text-sm leading-relaxed text-muted-foreground">{truncateText(report.summary, 180)}</p>
+                <h3 className="text-lg font-semibold text-foreground sm:text-xl line-clamp-2">{report.reportTitle}</h3>
+                <p className="text-sm leading-relaxed text-muted-foreground line-clamp-3 sm:line-clamp-none">{truncateText(report.summary, 180)}</p>
               </div>
             </div>
 
