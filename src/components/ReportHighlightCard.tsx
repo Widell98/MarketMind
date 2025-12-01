@@ -61,11 +61,6 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
                   <Badge variant="secondary" className="rounded-full bg-primary/10 px-3 py-1 text-primary">
                     {report.companyName}
                   </Badge>
-                  {report.sourceDocumentName && (
-                    <Badge variant="outline" className="rounded-full border-dashed px-3 py-1 text-[11px] text-muted-foreground">
-                      {report.sourceDocumentName}
-                    </Badge>
-                  )}
                 </div>
                 <h3 className="text-xl font-semibold text-foreground">{report.reportTitle}</h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">{truncateText(report.summary, 180)}</p>
