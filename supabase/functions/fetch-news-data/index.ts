@@ -37,8 +37,15 @@ serve(async (req) => {
         const shouldPersist = body?.persist !== false;
         const latestStored = await getLatestStoredBrief();
         const now = new Date();
+        const cachedIsStale = latestStored ? isCachedBriefStale(latestStored) : false;
 
-        if (!forceRefresh && latestStored && isSameUtcDay(new Date(latestStored.morningBrief.generatedAt), now)) {
+        if (cachedIsStale) {
+          console.log(
+            `[fetch-news-data] Bypassing cached brief ${latestStored?.morningBrief.id ?? ""} because it is empty/incomplete (news length=${latestStored?.news.length ?? 0}).`,
+          );
+        }
+
+        if (!forceRefresh && latestStored && !cachedIsStale && isSameUtcDay(new Date(latestStored.morningBrief.generatedAt), now)) {
           return jsonResponse(latestStored);
         }
 
@@ -1212,6 +1219,14 @@ async function storeMorningBrief(generated: GeneratedMorningBrief): Promise<stri
   }
 
   return briefId;
+}
+
+function isCachedBriefStale(cached: { morningBrief: MorningBrief; news: NewsItem[] }): boolean {
+  const hasNoNews = !Array.isArray(cached.news) || cached.news.length === 0;
+  const overviewText = typeof cached.morningBrief.overview === "string" ? cached.morningBrief.overview.toLowerCase() : "";
+  const isFallbackOverview = overviewText.includes("inga nyheter");
+
+  return hasNoNews || isFallbackOverview;
 }
 
 function isSameUtcDay(a: Date, b: Date): boolean {
