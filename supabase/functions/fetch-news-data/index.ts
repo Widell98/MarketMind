@@ -58,7 +58,14 @@ serve(async (req) => {
           if (storedId) {
             const stored = await getBriefWithNews(storedId);
             if (stored) {
-              responsePayload = stored;
+              // If the stored brief is missing news (e.g., persistence failed), fall back to the in-memory generation
+              if (!stored.news || stored.news.length === 0) {
+                console.warn(
+                  `[fetch-news-data] Stored brief ${storedId} returned without news. Falling back to generated payload (newsCount=${generated.news.length}).`,
+                );
+              } else {
+                responsePayload = stored;
+              }
             }
           }
         }
@@ -1215,6 +1222,7 @@ async function storeMorningBrief(generated: GeneratedMorningBrief): Promise<stri
 
     if (insertError) {
       console.error("Failed to store generated news articles", insertError);
+      return null;
     }
   }
 
