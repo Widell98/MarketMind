@@ -10,7 +10,6 @@ import {
   Clock,
   ExternalLink,
   Filter,
-  RefreshCw
 } from 'lucide-react';
 
 import Layout from '@/components/Layout';
@@ -68,7 +67,7 @@ interface NewsItem {
 const DiscoverNews = () => {
   const navigate = useNavigate();
   const { reports } = useDiscoverReportSummaries(24);
-  const { newsData, morningBrief, loading: newsLoading, error: newsError, refetchForce } = useNewsData();
+  const { newsData, morningBrief, loading: newsLoading, error: newsError } = useNewsData();
   
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -246,26 +245,14 @@ const DiscoverNews = () => {
                       {isWeeklySummary && <span className="text-xs">• Veckans översikt</span>}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="rounded-full"
-                      onClick={() => refetchForce()}
-                      disabled={newsLoading}
-                    >
-                      <RefreshCw className={cn("w-4 h-4 mr-2", newsLoading && "animate-spin")} />
-                      Uppdatera
-                    </Button>
-                    <div className={cn(
-                      "flex items-center gap-3 px-4 py-2 rounded-full border shadow-sm",
-                      getSentimentColor(morningBrief?.sentiment)
-                    )}>
-                      {getSentimentIcon(morningBrief?.sentiment)}
-                      <div>
-                        <div className="text-xs font-semibold uppercase tracking-wide opacity-70">Marknadsklimat</div>
-                        <div className="text-sm font-bold">{getSentimentLabel(morningBrief?.sentiment)}</div>
-                      </div>
+                  <div className={cn(
+                    "flex items-center gap-3 px-4 py-2 rounded-full border shadow-sm",
+                    getSentimentColor(morningBrief?.sentiment)
+                  )}>
+                    {getSentimentIcon(morningBrief?.sentiment)}
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-wide opacity-70">Marknadsklimat</div>
+                      <div className="text-sm font-bold">{getSentimentLabel(morningBrief?.sentiment)}</div>
                     </div>
                   </div>
                 </div>
@@ -485,14 +472,14 @@ const DiscoverNews = () => {
                 
                 // Show more helpful message
                 if (newsData && newsData.length === 0) {
-                  return (
-                    <div className="text-center py-12 space-y-4">
-                      <p className="text-muted-foreground">Inga nyheter tillgängliga just nu.</p>
-                      <p className="text-sm text-muted-foreground">
-                        Backend returnerade {newsData.length} nyheter. Klicka på "Uppdatera" för att hämta nya nyheter.
-                      </p>
-                    </div>
-                  );
+                      return (
+                        <div className="text-center py-12 space-y-4">
+                          <p className="text-muted-foreground">Inga nyheter tillgängliga just nu.</p>
+                          <p className="text-sm text-muted-foreground">
+                        Backend returnerade {newsData.length} nyheter. Försök igen senare för att hämta nya nyheter.
+                          </p>
+                        </div>
+                      );
                 }
                 
                 if (selectedCategory && filteredNews.length === 0) {
