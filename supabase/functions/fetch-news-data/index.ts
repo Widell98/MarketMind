@@ -36,17 +36,44 @@ serve(async (req) => {
         const forceRefresh = body?.forceRefresh === true;
         const shouldPersist = body?.persist !== false;
         const latestStored = await getLatestStoredBrief();
-        const now = new Date();
         const cachedIsStale = latestStored ? isCachedBriefStale(latestStored) : false;
 
-        if (cachedIsStale) {
+        if (cachedIsStale && latestStored) {
           console.log(
-            `[fetch-news-data] Bypassing cached brief ${latestStored?.morningBrief.id ?? ""} because it is empty/incomplete (news length=${latestStored?.news.length ?? 0}).`,
+            `[fetch-news-data] Cached brief ${latestStored.morningBrief.id} is empty/incomplete (news length=${latestStored.news.length}).`,
           );
         }
 
-        if (!forceRefresh && latestStored && !cachedIsStale && isSameUtcDay(new Date(latestStored.morningBrief.generatedAt), now)) {
-          return jsonResponse(latestStored);
+        if (!forceRefresh) {
+          if (latestStored && !cachedIsStale) {
+            return jsonResponse(latestStored);
+          }
+
+          const fallback = await getPreviousDayBrief(new Date());
+          if (fallback) {
+            if (isCachedBriefStale(fallback)) {
+              console.log(
+                `[fetch-news-data] Ignoring fallback brief ${fallback.morningBrief.id} because it is stale/empty (news length=${
+                  fallback.news.length
+                }).`,
+              );
+            } else {
+              console.log(
+                `[fetch-news-data] Serving fallback brief ${fallback.morningBrief.id} because cached brief was ${
+                  latestStored ? "stale/empty" : "missing"
+                }.`,
+              );
+              return jsonResponse(fallback);
+            }
+          }
+        }
+
+        if (!latestStored && !cachedIsStale) {
+          console.log("[fetch-news-data] No cached brief found. Generating new morning brief.");
+        } else if (forceRefresh) {
+          console.log("[fetch-news-data] forceRefresh requested. Generating new morning brief.");
+        } else if (cachedIsStale) {
+          console.log("[fetch-news-data] Cached brief is stale and no fallback available. Generating new morning brief.");
         }
 
         const generated = await generateMorningBrief({ allowRepeats });

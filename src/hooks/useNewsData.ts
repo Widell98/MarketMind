@@ -270,11 +270,6 @@ export const useNewsData = (forceRefresh = false) => {
 
   useEffect(() => {
     fetchNewsData({ force: forceRefresh });
-
-    // Refresh data every 10 minutes
-    const interval = setInterval(() => fetchNewsData(), 10 * 60 * 1000);
-
-    return () => clearInterval(interval);
   }, [forceRefresh]);
 
   return {
