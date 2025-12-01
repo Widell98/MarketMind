@@ -382,6 +382,65 @@ export const usePortfolioPerformance = () => {
 
       setHoldingsPerformance(holdingsPerf);
 
+      // Save today's performance history for future day change calculations
+      // This ensures that tomorrow we can calculate day-over-day changes
+      const todayStr = new Date().toISOString().split('T')[0];
+      
+      // Check if today's history already exists to avoid unnecessary checks
+      const { data: todayHistoryCheck } = await supabase
+        .from('portfolio_performance_history')
+        .select('holding_id')
+        .eq('user_id', user.id)
+        .eq('date', todayStr)
+        .limit(1000); // Reasonable limit
+
+      const existingHoldingIds = new Set(todayHistoryCheck?.map(h => h.holding_id) || []);
+
+      // Save today's performance history for all securities
+      const todayHistoryPromises = securities.map(async (holding) => {
+        const {
+          valueInSEK: currentValue,
+          pricePerUnit,
+          priceCurrency,
+        } = resolveHoldingValue(holding);
+
+        // Only save if we have a valid value
+        if (currentValue > 0) {
+          const pricePerUnitValue = pricePerUnit ?? (currentValue / (parseNumeric(holding.quantity) ?? 1));
+          
+          // Skip if already saved today (optimization, but upsert will handle duplicates anyway)
+          if (existingHoldingIds.has(holding.id)) {
+            return;
+          }
+          
+          // Upsert today's performance data (update if exists, insert if not)
+          // This is critical for calculating day-over-day changes
+          const { error: historyError } = await supabase
+            .from('portfolio_performance_history')
+            .upsert({
+              user_id: user.id,
+              holding_id: holding.id,
+              date: todayStr,
+              price_per_unit: pricePerUnitValue,
+              total_value: currentValue,
+              currency: priceCurrency || holding.currency || 'SEK',
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'holding_id,date'
+            });
+
+          if (historyError) {
+            console.error(`Error saving performance history for holding ${holding.id}:`, historyError);
+          }
+        }
+      });
+
+      // Save all history entries in parallel
+      // We don't await this to avoid blocking the UI, but errors are logged
+      Promise.all(todayHistoryPromises).catch(error => {
+        console.error('Error saving portfolio performance history:', error);
+      });
+
     } catch (error) {
       console.error('Error calculating performance:', error);
     } finally {

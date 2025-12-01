@@ -12,14 +12,14 @@ const AppSidebar = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const aiNavigation = [{
+    name: t('nav.aiChat'),
+    href: '/ai-chatt',
+    icon: Brain
+  }, {
     name: t('nav.portfolio'),
     href: '/portfolio-implementation',
     icon: BarChart3,
     requiresAuth: true
-  }, {
-    name: t('nav.aiChat'),
-    href: '/ai-chatt',
-    icon: Brain
   }];
   const mainNavigation = [{
     name: t('nav.home'),

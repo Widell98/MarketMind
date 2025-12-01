@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePortfolio } from '@/hooks/usePortfolio';
@@ -36,9 +36,15 @@ import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAIInsights } from '@/hooks/useAIInsights';
-import { useFinancialProgress } from '@/hooks/useFinancialProgress';
+import { useLikedStockCases } from '@/hooks/useLikedStockCases';
+import { useNewsData } from '@/hooks/useNewsData';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import StockCaseCard from '@/components/StockCaseCard';
+import { ArrowRight, TrendingDown } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { convertToSEK, resolveHoldingValue } from '@/utils/currencyUtils';
+import { fetchSheetChangeData } from '@/utils/sheetChangeData';
 
 type QuickAction = {
   icon: React.ComponentType<{ className?: string }>;
@@ -70,6 +76,7 @@ const insightBadgeStyles: Record<'performance' | 'allocation' | 'risk' | 'opport
 };
 
 const Index = () => {
+  const navigate = useNavigate();
   const {
     user
   } = useAuth();
@@ -95,7 +102,9 @@ const Index = () => {
     lastUpdated: insightsLastUpdated,
     refreshInsights,
   } = useAIInsights();
-  const progressData = useFinancialProgress();
+  const { likedStockCases, loading: likedStockCasesLoading } = useLikedStockCases();
+  const { morningBrief, newsData } = useNewsData();
+  const { holdingsPerformance } = usePortfolioPerformance();
   // Show portfolio dashboard if user has portfolio OR has holdings (so they can see portfolio value after implementing strategy)
   const hasPortfolio = !loading && (!!activePortfolio || (actualHoldings && actualHoldings.length > 0));
   const totalPortfolioValue = performance.totalPortfolioValue;
@@ -103,30 +112,246 @@ const Index = () => {
   const holdingsCount = actualHoldings?.length ?? 0;
   const safeTotalPortfolioValue = typeof totalPortfolioValue === 'number' && Number.isFinite(totalPortfolioValue) ? totalPortfolioValue : 0;
   const safeTotalCash = typeof totalCash === 'number' && Number.isFinite(totalCash) ? totalCash : 0;
+  
+  // Get top 3 best and worst holdings
+  const topHoldings = React.useMemo(() => {
+    if (!holdingsPerformance || holdingsPerformance.length === 0) return { best: [], worst: [] };
+    const sorted = [...holdingsPerformance].sort((a, b) => {
+      const aChange = a.hasPurchasePrice ? a.profitPercentage : a.dayChangePercentage;
+      const bChange = b.hasPurchasePrice ? b.profitPercentage : b.dayChangePercentage;
+      return bChange - aChange;
+    });
+    return {
+      best: sorted.slice(0, 3),
+      worst: sorted.slice(-3).reverse(),
+    };
+  }, [holdingsPerformance]);
+  
+  // Calculate allocation percentages
+  const allocationData = React.useMemo(() => {
+    const invested = safeTotalPortfolioValue - safeTotalCash;
+    const total = safeTotalPortfolioValue;
+    if (total === 0) return { cash: 0, invested: 0 };
+    return {
+      cash: (safeTotalCash / total) * 100,
+      invested: (invested / total) * 100,
+    };
+  }, [safeTotalPortfolioValue, safeTotalCash]);
 
-  const summaryCards = React.useMemo<SummaryCard[]>(() => [
-    {
-      icon: Star,
-      label: t('dashboard.totalSavings'),
-      value: `${safeTotalPortfolioValue.toLocaleString('sv-SE')} kr`,
-      helper: t('dashboard.onTrack'),
-      helperClassName: 'text-emerald-600 dark:text-emerald-400 font-medium',
-    },
-    {
-      icon: BarChart3,
-      label: t('dashboard.holdings'),
-      value: holdingsCount.toString(),
-      helper: t('dashboard.balancedSpread'),
-      helperClassName: 'text-muted-foreground',
-    },
-    {
-      icon: Wallet,
-      label: 'Likvida medel',
-      value: `${safeTotalCash.toLocaleString('sv-SE')} kr`,
-      helper: 'Redo för nya möjligheter',
-      helperClassName: 'text-muted-foreground',
-    },
-  ], [t, safeTotalPortfolioValue, holdingsCount, safeTotalCash]);
+  // Cache for Google Sheets Change % data
+  const [sheetChangeDataCache, setSheetChangeDataCache] = React.useState<Map<string, number> | null>(null);
+  const [sheetChangeDataCacheTime, setSheetChangeDataCacheTime] = React.useState<number>(0);
+  const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+
+  // Calculate today's development based on Change % from Google Sheets
+  const [todayDevelopment, setTodayDevelopment] = React.useState<{ percent: number; value: number } | null>(null);
+  const [loadingTodayDevelopment, setLoadingTodayDevelopment] = React.useState(true);
+
+  React.useEffect(() => {
+    const calculateTodayDevelopment = async () => {
+      if (!user || !hasPortfolio || safeTotalPortfolioValue === 0 || !actualHoldings || actualHoldings.length === 0) {
+        setLoadingTodayDevelopment(false);
+        return;
+      }
+
+      try {
+        setLoadingTodayDevelopment(true);
+        
+        // Fetch Google Sheets Change % data (with caching)
+        let sheetChangeData = sheetChangeDataCache;
+        const now = Date.now();
+        
+        if (!sheetChangeData || (now - sheetChangeDataCacheTime) > CACHE_DURATION_MS) {
+          // Cache expired or doesn't exist, fetch fresh data
+          sheetChangeData = await fetchSheetChangeData();
+          setSheetChangeDataCache(sheetChangeData);
+          setSheetChangeDataCacheTime(now);
+          
+          if (import.meta.env.DEV) {
+            console.log(`Fetched fresh Change % data from Google Sheets: ${sheetChangeData.size} entries`);
+          }
+        } else {
+          if (import.meta.env.DEV) {
+            console.log(`Using cached Change % data (age: ${Math.round((now - sheetChangeDataCacheTime) / 1000)}s)`);
+          }
+        }
+        
+        // Calculate portfolio's today development based on Change % from Google Sheets
+        // Weighted by each holding's value in the portfolio
+        let totalWeightedChange = 0;
+        let totalSecuritiesValue = 0;
+        let holdingsWithData = 0;
+        let holdingsWithoutData = 0;
+
+        // Normalize ticker function for matching
+        const normalizeTickerForMatching = (ticker: string | null | undefined): string[] => {
+          if (!ticker) return [];
+          
+          const trimmed = ticker.trim().toUpperCase();
+          if (!trimmed) return [];
+          
+          const variants: string[] = [trimmed];
+          
+          // Remove prefixes like STO:, NASDAQ:, etc.
+          const parts = trimmed.split(':');
+          if (parts.length > 1) {
+            const symbol = parts[parts.length - 1]?.trim();
+            if (symbol) {
+              variants.push(symbol);
+              // Also add STO: prefix variant for Swedish stocks
+              if (!trimmed.startsWith('STO:')) {
+                variants.push(`STO:${symbol}`);
+              }
+            }
+          } else {
+            // Add STO: prefix variant if it doesn't have one
+            variants.push(`STO:${trimmed}`);
+          }
+          
+          return variants;
+        };
+
+        actualHoldings.forEach(holding => {
+          // Skip cash holdings and recommendations (they don't have Change %)
+          if (holding.holding_type === 'recommendation') {
+            return;
+          }
+
+          // Get holding's current value in SEK using proper currency conversion
+          const { valueInSEK: holdingValue } = resolveHoldingValue(holding);
+          
+          // Skip if no valid value
+          if (holdingValue <= 0) {
+            return;
+          }
+
+          // Try to find Change % from Google Sheets data
+          let changePercent: number | null = null;
+          
+          if (sheetChangeData && holding.symbol) {
+            const tickerVariants = normalizeTickerForMatching(holding.symbol);
+            
+            // Try each variant until we find a match
+            for (const variant of tickerVariants) {
+              if (sheetChangeData.has(variant)) {
+                changePercent = sheetChangeData.get(variant)!;
+                break;
+              }
+            }
+          }
+
+          // Debug logging
+          if (import.meta.env.DEV) {
+            console.log(`Holding: ${holding.name}, symbol: ${holding.symbol}, variants: ${normalizeTickerForMatching(holding.symbol)}, changePercent: ${changePercent}, value: ${holdingValue}`);
+          }
+
+          // Only include holdings with valid Change % data from Google Sheets
+          if (changePercent !== null && !isNaN(changePercent) && isFinite(changePercent)) {
+            // Weight the change by the holding's proportion of the portfolio
+            const weight = holdingValue / safeTotalPortfolioValue;
+            totalWeightedChange += weight * changePercent;
+            totalSecuritiesValue += holdingValue;
+            holdingsWithData++;
+          } else {
+            holdingsWithoutData++;
+          }
+        });
+
+        // Debug logging
+        if (import.meta.env.DEV) {
+          console.log(`Portfolio development calculation (Google Sheets):`, {
+            totalWeightedChange,
+            totalSecuritiesValue,
+            holdingsWithData,
+            holdingsWithoutData,
+            safeTotalPortfolioValue,
+            totalHoldings: actualHoldings.length
+          });
+        }
+
+        // Calculate the change value in SEK
+        const finalChangePercent = totalWeightedChange;
+        const changeValue = (totalSecuritiesValue * finalChangePercent) / 100;
+
+        setTodayDevelopment({
+          percent: Math.round(finalChangePercent * 100) / 100,
+          value: Math.round(changeValue * 100) / 100,
+        });
+      } catch (error) {
+        console.error('Error calculating today development:', error);
+        // Set to 0% on error
+        setTodayDevelopment({
+          percent: 0,
+          value: 0,
+        });
+      } finally {
+        setLoadingTodayDevelopment(false);
+      }
+    };
+
+    calculateTodayDevelopment();
+  }, [user, hasPortfolio, safeTotalPortfolioValue, actualHoldings, sheetChangeDataCache, sheetChangeDataCacheTime]);
+
+  const dayChangePercent = todayDevelopment?.percent ?? performance.dayChangePercentage ?? 0;
+  const isPositiveDayChange = dayChangePercent >= 0;
+  
+  const summaryCards = React.useMemo<SummaryCard[]>(() => {
+    const changeValue = todayDevelopment?.value ?? 0;
+    const changeValueFormatted = changeValue !== 0
+      ? (changeValue >= 0 
+        ? `+${changeValue.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr`
+        : `${changeValue.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr`)
+      : '0,00 kr';
+
+    return [
+      {
+        icon: Star,
+        label: 'Utveckling idag',
+        value: loadingTodayDevelopment 
+          ? '—'
+          : (dayChangePercent !== 0
+            ? (isPositiveDayChange 
+              ? `+${dayChangePercent.toFixed(2)}%` 
+              : `${dayChangePercent.toFixed(2)}%`)
+            : '0.00%'),
+        helper: loadingTodayDevelopment
+          ? 'Laddar...'
+          : (changeValue !== 0
+            ? changeValueFormatted
+            : safeTotalPortfolioValue > 0 
+              ? `${safeTotalPortfolioValue.toLocaleString('sv-SE')} kr`
+              : t('dashboard.onTrack')),
+        helperClassName: loadingTodayDevelopment
+          ? 'text-muted-foreground'
+          : (dayChangePercent !== 0
+            ? (isPositiveDayChange 
+              ? 'text-emerald-600 dark:text-emerald-400 font-medium' 
+              : 'text-red-600 dark:text-red-400 font-medium')
+            : 'text-muted-foreground'),
+      },
+      {
+        icon: BarChart3,
+        label: t('dashboard.holdings'),
+        value: holdingsCount.toString(),
+        helper: t('dashboard.balancedSpread'),
+        helperClassName: 'text-muted-foreground',
+      },
+      {
+        icon: Heart,
+        label: 'Gillade aktier',
+        value: likedStockCases.length.toString(),
+        helper: 'Dina favoriter',
+        helperClassName: 'text-muted-foreground',
+      },
+      {
+        icon: Wallet,
+        label: 'Likvida medel',
+        value: `${safeTotalCash.toLocaleString('sv-SE')} kr`,
+        helper: 'Redo för nya möjligheter',
+        helperClassName: 'text-muted-foreground',
+      },
+    ];
+  }, [t, safeTotalPortfolioValue, holdingsCount, safeTotalCash, dayChangePercent, isPositiveDayChange, likedStockCases.length, loadingTodayDevelopment, todayDevelopment]);
 
   const quickActions = React.useMemo<QuickAction[]>(() => [
     {
@@ -322,22 +547,23 @@ const Index = () => {
           {user && hasPortfolio && <div className="min-h-0 bg-background">
               <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-3 sm:py-6">
                 <div className="space-y-6 sm:space-y-8">
-                  <div className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex items-center gap-3 sm:gap-4">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground sm:h-14 sm:w-14">
-                          <TrendingUp className="h-6 w-6 sm:h-7 sm:w-7" />
-                        </div>
-                        <div>
-                          <h1 className="text-xl font-semibold text-foreground sm:text-2xl">
-                            {t('dashboard.greeting')}, {greetingName}!
+                  {/* Portfolio Value Hero Section */}
+                  <div className="rounded-3xl border border-border/60 bg-gradient-to-br from-card/90 to-card/70 p-6 shadow-lg sm:p-8">
+                    <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-muted-foreground mb-2">Portföljvärde</p>
+                        <div className="flex items-baseline gap-3 flex-wrap">
+                          <h1 className="text-4xl font-bold text-foreground sm:text-5xl lg:text-6xl">
+                            {safeTotalPortfolioValue.toLocaleString('sv-SE')} kr
                           </h1>
-                          <p className="text-sm text-muted-foreground sm:text-base">
-                            {t('dashboard.subtitle')}
-                          </p>
                         </div>
+                        {performance.totalReturn !== 0 && (
+                          <p className={`mt-2 text-sm ${performance.totalReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                            Total avkastning: {performance.totalReturn >= 0 ? '+' : ''}{performance.totalReturn.toLocaleString('sv-SE')} kr ({performance.totalReturnPercentage >= 0 ? '+' : ''}{performance.totalReturnPercentage.toFixed(2)}%)
+                          </p>
+                        )}
                       </div>
-                      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+                      <div className="flex flex-col gap-2 sm:flex-row">
                         <Button asChild variant="outline" size="sm" className="w-full justify-center hover:bg-muted/50 sm:w-auto">
                           <Link to="/ai-chatt">
                             <MessageSquare className="mr-2 h-4 w-4" />
@@ -354,28 +580,9 @@ const Index = () => {
                     </div>
                   </div>
 
-                  <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary sm:h-12 sm:w-12">
-                        <Target className="h-5 w-5 sm:h-6 sm:w-6" />
-                      </div>
-                      <div className="flex-1 space-y-3">
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <h3 className="text-base font-semibold text-foreground sm:text-lg">{progressData.title}</h3>
-                            <p className="text-sm text-muted-foreground sm:text-base">{progressData.description}</p>
-                          </div>
-                          <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">{progressData.percentage}%</span>
-                        </div>
-                        <Progress value={progressData.percentage} className="h-2 w-full bg-muted" />
-                        <p className="text-xs text-muted-foreground sm:text-sm">{progressData.nextStep}</p>
-                      </div>
-                    </div>
-                  </section>
-
                   <section>
                     <h2 className="mb-3 text-base font-semibold text-foreground sm:text-lg">Din överblick</h2>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
                       {summaryCards.map(({ icon: Icon, label, value, helper, helperClassName }) => (
                         <div
                           key={label}
@@ -393,6 +600,178 @@ const Index = () => {
                       ))}
                     </div>
                   </section>
+
+                  {/* Top Holdings and Allocation */}
+                  {(topHoldings.best.length > 0 || topHoldings.worst.length > 0 || allocationData.cash > 0 || allocationData.invested > 0) && (
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-4">
+                      {/* Top 3 Best Holdings */}
+                      {topHoldings.best.length > 0 && (
+                        <div className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
+                          <div className="flex items-center gap-2 mb-4">
+                            <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                            <h3 className="text-base font-semibold text-foreground sm:text-lg">Bästa innehav</h3>
+                          </div>
+                          <div className="space-y-3">
+                            {topHoldings.best.map((holding) => {
+                              const change = holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
+                              const changeValue = holding.hasPurchasePrice ? holding.profit : holding.dayChange;
+                              return (
+                                <div key={holding.id} className="flex items-center justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-foreground truncate">{holding.name}</p>
+                                    {holding.symbol && (
+                                      <p className="text-xs text-muted-foreground">{holding.symbol}</p>
+                                    )}
+                                  </div>
+                                  <div className="text-right">
+                                    <p className={`text-sm font-semibold ${change >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                                      {change >= 0 ? '+' : ''}{change.toFixed(2)}%
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {changeValue >= 0 ? '+' : ''}{changeValue.toLocaleString('sv-SE')} kr
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Top 3 Worst Holdings */}
+                      {topHoldings.worst.length > 0 && (
+                        <div className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
+                          <div className="flex items-center gap-2 mb-4">
+                            <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+                            <h3 className="text-base font-semibold text-foreground sm:text-lg">Sämsta innehav</h3>
+                          </div>
+                          <div className="space-y-3">
+                            {topHoldings.worst.map((holding) => {
+                              const change = holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
+                              const changeValue = holding.hasPurchasePrice ? holding.profit : holding.dayChange;
+                              return (
+                                <div key={holding.id} className="flex items-center justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-foreground truncate">{holding.name}</p>
+                                    {holding.symbol && (
+                                      <p className="text-xs text-muted-foreground">{holding.symbol}</p>
+                                    )}
+                                  </div>
+                                  <div className="text-right">
+                                    <p className={`text-sm font-semibold ${change >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                                      {change >= 0 ? '+' : ''}{change.toFixed(2)}%
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {changeValue >= 0 ? '+' : ''}{changeValue.toLocaleString('sv-SE')} kr
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Portfolio Allocation */}
+                      {(allocationData.cash > 0 || allocationData.invested > 0) && (
+                        <div className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
+                          <div className="flex items-center gap-2 mb-4">
+                            <BarChart3 className="h-5 w-5 text-primary" />
+                            <h3 className="text-base font-semibold text-foreground sm:text-lg">Allokering</h3>
+                          </div>
+                          <div className="space-y-4">
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm text-muted-foreground">Investerat</span>
+                                <span className="text-sm font-semibold text-foreground">{allocationData.invested.toFixed(1)}%</span>
+                              </div>
+                              <Progress value={allocationData.invested} className="h-2" />
+                            </div>
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm text-muted-foreground">Kontant</span>
+                                <span className="text-sm font-semibold text-foreground">{allocationData.cash.toFixed(1)}%</span>
+                              </div>
+                              <Progress value={allocationData.cash} className="h-2" />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* News/Morning Brief Section - Moved up */}
+                  {morningBrief && (
+                    <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Sparkles className="h-5 w-5 text-primary" />
+                        <h2 className="text-base font-semibold text-foreground sm:text-lg">Morgonrapport</h2>
+                        <Badge variant="secondary" className="ml-2">Idag</Badge>
+                      </div>
+                      <div className="space-y-3">
+                        <h3 className="text-lg font-semibold text-foreground">{morningBrief.headline}</h3>
+                        <p className="text-sm text-muted-foreground line-clamp-3">{morningBrief.overview}</p>
+                        {morningBrief.keyHighlights && morningBrief.keyHighlights.length > 0 && (
+                          <div className="mt-4 space-y-2">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Höjdpunkter</p>
+                            <ul className="space-y-1">
+                              {morningBrief.keyHighlights.slice(0, 3).map((highlight, idx) => (
+                                <li key={idx} className="flex items-start gap-2 text-sm text-foreground">
+                                  <span className="text-primary mt-1">•</span>
+                                  <span>{highlight}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        <Button asChild variant="outline" size="sm" className="mt-4">
+                          <Link to="/news">
+                            Läs mer
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Liked Stocks Section */}
+                  {likedStockCases.length > 0 && (
+                    <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Heart className="h-5 w-5 text-primary" />
+                          <h2 className="text-base font-semibold text-foreground sm:text-lg">Dina gillade aktier</h2>
+                        </div>
+                        <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+                          <Link to="/discover?tab=liked">
+                            Se alla
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
+                      {likedStockCasesLoading ? (
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
+                          {Array.from({ length: 3 }).map((_, index) => (
+                            <div key={index} className="rounded-2xl border border-border/60 bg-muted/20 p-4 animate-pulse">
+                              <div className="h-4 w-3/4 rounded bg-muted mb-2" />
+                              <div className="h-3 w-1/2 rounded bg-muted" />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
+                          {likedStockCases.slice(0, 3).map((stockCase) => (
+                            <StockCaseCard
+                              key={stockCase.id}
+                              stockCase={stockCase}
+                              onViewDetails={(id) => navigate(`/stock-cases/${id}`)}
+                              showMetaBadges={false}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </section>
+                  )}
 
                   {/* <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -451,94 +830,138 @@ const Index = () => {
                       )}
                     </div>
                   </section> */}
-
-                  <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <h2 className="text-base font-semibold text-foreground sm:text-lg">Snabbgenvägar</h2>
-                    </div>
-                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-                      {quickActions.map(({ icon: Icon, title, description, to }) => (
-                        <Button
-                          key={title}
-                          asChild
-                          variant="outline"
-                          className="group h-full w-full justify-center rounded-2xl border-border/60 bg-card/60 p-4 text-center transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 hover:shadow-md sm:p-5 whitespace-normal"
-                        >
-                          <Link
-                            to={to}
-                            className="flex h-full w-full flex-col items-center gap-3 text-center !whitespace-normal"
-                          >
-                            <div className="flex items-center justify-center rounded-xl bg-primary/10 p-3 text-primary transition-all group-hover:bg-primary group-hover:text-primary-foreground">
-                              <Icon className="h-5 w-5" />
-                            </div>
-                            <div className="w-full space-y-1 text-center">
-                              <p className="break-words text-sm font-semibold text-foreground sm:text-base">
-                                {title}
-                              </p>
-                              <p className="break-words text-xs leading-relaxed text-muted-foreground sm:text-sm">
-                                {description}
-                              </p>
-                            </div>
-                          </Link>
-                        </Button>
-                      ))}
-                    </div>
-                  </section>
                 </div>
               </div>
             </div>}
 
           {/* Enhanced personal welcome for users without portfolio */}
           {user && !hasPortfolio && !loading && <div className="mb-12 sm:mb-16">
-              <Card className="rounded-3xl border-slate-200 bg-gradient-to-r from-slate-50 to-indigo-50 shadow-lg dark:border-slate-700 dark:from-slate-800 dark:to-indigo-900/20">
-                <div className="rounded-3xl border bg-card/60 p-6 text-center shadow-lg backdrop-blur-sm sm:p-12">
-                  <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 sm:mb-8 sm:h-20 sm:w-20">
-                    <HandHeart className="h-8 w-8 text-primary sm:h-10 sm:w-10" />
-                  </div>
-                  <h3 className="mb-4 text-2xl font-semibold text-foreground sm:mb-6 sm:text-3xl">Välkommen hem!</h3>
-                  <p className="mx-auto mb-8 max-w-2xl text-base leading-relaxed text-muted-foreground sm:mb-12 sm:text-lg">
-                    Nu ska vi lära känna varandra ordentligt. Tänk på MarketMind som din personliga AI-guide som hjälper dig bygga
-                    den ekonomiska trygghet du drömmer om. Vi tar det i din takt, steg för steg.
-                  </p>
+              <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-3 sm:py-6">
+                <div className="space-y-6 sm:space-y-8">
+                  <Card className="rounded-3xl border-slate-200 bg-gradient-to-r from-slate-50 to-indigo-50 shadow-lg dark:border-slate-700 dark:from-slate-800 dark:to-indigo-900/20">
+                    <div className="rounded-3xl border bg-card/60 p-6 text-center shadow-lg backdrop-blur-sm sm:p-12">
+                      <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 sm:mb-8 sm:h-20 sm:w-20">
+                        <HandHeart className="h-8 w-8 text-primary sm:h-10 sm:w-10" />
+                      </div>
+                      <h3 className="mb-4 text-2xl font-semibold text-foreground sm:mb-6 sm:text-3xl">Välkommen hem!</h3>
+                      <p className="mx-auto mb-8 max-w-2xl text-base leading-relaxed text-muted-foreground sm:mb-12 sm:text-lg">
+                        Nu ska vi lära känna varandra ordentligt. Tänk på MarketMind som din personliga AI-guide som hjälper dig bygga
+                        den ekonomiska trygghet du drömmer om. Vi tar det i din takt, steg för steg.
+                      </p>
 
-                  {/* Personal journey section */}
-                  <div className="mb-8 rounded-2xl border bg-card p-6 shadow-sm sm:mb-12 sm:p-8">
-                    <h4 className="mb-6 flex items-center justify-center gap-3 text-lg font-semibold text-foreground">
-                      <MapPin className="h-5 w-5 text-primary" />
-                      Din personliga resa börjar här
-                    </h4>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
-                      <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/10 bg-primary/5 p-5 sm:p-6">
-                        <Coffee className="h-6 w-6 text-primary" />
-                        <span className="font-medium text-foreground">Berätta om dig</span>
+                      {/* Personal journey section */}
+                      <div className="mb-8 rounded-2xl border bg-card p-6 shadow-sm sm:mb-12 sm:p-8">
+                        <h4 className="mb-6 flex items-center justify-center gap-3 text-lg font-semibold text-foreground">
+                          <MapPin className="h-5 w-5 text-primary" />
+                          Din personliga resa börjar här
+                        </h4>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
+                          <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/10 bg-primary/5 p-5 sm:p-6">
+                            <Coffee className="h-6 w-6 text-primary" />
+                            <span className="font-medium text-foreground">Berätta om dig</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/10 bg-primary/5 p-5 sm:p-6">
+                            <HandHeart className="h-6 w-6 text-primary" />
+                            <span className="font-medium text-foreground">Vi skapar trygghet</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/10 bg-primary/5 p-5 sm:p-6">
+                            <Clock className="h-6 w-6 text-primary" />
+                            <span className="font-medium text-foreground">Vi följs åt framåt</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/10 bg-primary/5 p-5 sm:p-6">
-                        <HandHeart className="h-6 w-6 text-primary" />
-                        <span className="font-medium text-foreground">Vi skapar trygghet</span>
-                      </div>
-                      <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/10 bg-primary/5 p-5 sm:p-6">
-                        <Clock className="h-6 w-6 text-primary" />
-                        <span className="font-medium text-foreground">Vi följs åt framåt</span>
+
+                      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:justify-center sm:gap-4">
+                        <Button asChild size="lg" className="w-full rounded-xl bg-primary px-6 py-4 text-lg font-medium text-primary-foreground shadow-lg transition-all duration-300 hover:bg-primary/90 hover:shadow-xl sm:w-auto sm:px-8">
+                          <Link to="/portfolio-advisor?direct=true">
+                            <Coffee className="mr-2 h-5 w-5" />
+                            Låt oss lära känna varandra
+                          </Link>
+                        </Button>
+                        <Button asChild variant="outline" size="lg" className="w-full rounded-xl px-6 py-4 text-lg font-medium transition-all duration-300 hover:bg-muted/50 sm:w-auto sm:px-8">
+                          <Link to="/discover">
+                            <HandHeart className="mr-2 h-5 w-5" />
+                            Utforska mer
+                          </Link>
+                        </Button>
                       </div>
                     </div>
-                  </div>
+                  </Card>
 
-                  <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:justify-center sm:gap-4">
-                    <Button asChild size="lg" className="w-full rounded-xl bg-primary px-6 py-4 text-lg font-medium text-primary-foreground shadow-lg transition-all duration-300 hover:bg-primary/90 hover:shadow-xl sm:w-auto sm:px-8">
-                      <Link to="/portfolio-advisor?direct=true">
-                        <Coffee className="mr-2 h-5 w-5" />
-                        Låt oss lära känna varandra
-                      </Link>
-                    </Button>
-                    <Button asChild variant="outline" size="lg" className="w-full rounded-xl px-6 py-4 text-lg font-medium transition-all duration-300 hover:bg-muted/50 sm:w-auto sm:px-8">
-                      <Link to="/discover">
-                        <HandHeart className="mr-2 h-5 w-5" />
-                        Utforska mer
-                      </Link>
-                    </Button>
-                  </div>
+                  {/* Liked Stocks Section for users without portfolio */}
+                  {likedStockCases.length > 0 && (
+                    <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Heart className="h-5 w-5 text-primary" />
+                          <h2 className="text-base font-semibold text-foreground sm:text-lg">Dina gillade aktier</h2>
+                        </div>
+                        <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+                          <Link to="/discover?tab=liked">
+                            Se alla
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
+                      {likedStockCasesLoading ? (
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
+                          {Array.from({ length: 3 }).map((_, index) => (
+                            <div key={index} className="rounded-2xl border border-border/60 bg-muted/20 p-4 animate-pulse">
+                              <div className="h-4 w-3/4 rounded bg-muted mb-2" />
+                              <div className="h-3 w-1/2 rounded bg-muted" />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
+                          {likedStockCases.slice(0, 3).map((stockCase) => (
+                            <StockCaseCard
+                              key={stockCase.id}
+                              stockCase={stockCase}
+                              onViewDetails={(id) => navigate(`/stock-cases/${id}`)}
+                              showMetaBadges={false}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </section>
+                  )}
+
+                  {/* News/Morning Brief Section for users without portfolio */}
+                  {morningBrief && (
+                    <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Sparkles className="h-5 w-5 text-primary" />
+                        <h2 className="text-base font-semibold text-foreground sm:text-lg">Morgonrapport</h2>
+                        <Badge variant="secondary" className="ml-2">Idag</Badge>
+                      </div>
+                      <div className="space-y-3">
+                        <h3 className="text-lg font-semibold text-foreground">{morningBrief.headline}</h3>
+                        <p className="text-sm text-muted-foreground line-clamp-3">{morningBrief.overview}</p>
+                        {morningBrief.keyHighlights && morningBrief.keyHighlights.length > 0 && (
+                          <div className="mt-4 space-y-2">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Höjdpunkter</p>
+                            <ul className="space-y-1">
+                              {morningBrief.keyHighlights.slice(0, 3).map((highlight, idx) => (
+                                <li key={idx} className="flex items-start gap-2 text-sm text-foreground">
+                                  <span className="text-primary mt-1">•</span>
+                                  <span>{highlight}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        <Button asChild variant="outline" size="sm" className="mt-4">
+                          <Link to="/news">
+                            Läs mer
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </section>
+                  )}
                 </div>
-              </Card>
+              </div>
             </div>}
 
         </div>
