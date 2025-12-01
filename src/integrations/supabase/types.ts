@@ -761,6 +761,7 @@ export type Database = {
         Row: {
           ceo_commentary: string | null
           company_name: string
+          company_logo_url: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -776,6 +777,7 @@ export type Database = {
         Insert: {
           ceo_commentary?: string | null
           company_name: string
+          company_logo_url?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -791,6 +793,7 @@ export type Database = {
         Update: {
           ceo_commentary?: string | null
           company_name?: string
+          company_logo_url?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
