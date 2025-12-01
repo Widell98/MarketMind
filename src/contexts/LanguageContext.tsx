@@ -18,7 +18,7 @@ const translations = {
     'nav.news': 'Nyheter',
     'nav.profile': 'Profil',
     'nav.portfolio': 'Smart Portfölj',
-    'nav.aiChat': 'AI-Assistent',
+    'nav.aiChat': 'AI-chatt',
     'nav.mainMenu': 'Huvudmeny',
     'nav.aiTools': 'AI-Verktyg',
     'nav.account': 'Konto',
