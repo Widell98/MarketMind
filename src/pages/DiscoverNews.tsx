@@ -25,6 +25,8 @@ import { useDiscoverReportSummaries } from '@/hooks/useDiscoverReportSummaries';
 import { useNewsData } from '@/hooks/useNewsData';
 import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
+import ReportDetailDialogContent from '@/components/ReportDetailDialogContent';
+import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 
 const formatCategoryLabel = (category?: string) => {
   if (!category) return 'Marknad';
@@ -540,7 +542,7 @@ const DiscoverNews = () => {
                     <div className="space-y-3">
                       <p className="text-xs font-semibold uppercase tracking-wide text-primary/80">Rapportsektionen</p>
                       <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground leading-tight">
-                        AI-rapporter i samma ton som nyhetsflödet
+                        AI-rapporter i linje med nyhetsflödet
                       </h2>
                       <p className="text-base sm:text-lg text-muted-foreground max-w-2xl">
                         Marknadens rapporter, analyserade och sammanfattade av AI på sekunder. Allt presenterat med samma visuella språk som nyheterna.
@@ -590,17 +592,22 @@ const DiscoverNews = () => {
                     <div className="space-y-3">
                       {reportHighlights.length > 0 ? (
                         reportHighlights.map((report) => (
-                          <div
-                            key={report.id}
-                            className="group flex items-start gap-3 rounded-2xl border border-border/60 bg-muted/20 p-4 transition hover:border-primary/40 hover:bg-primary/5"
-                          >
-                            <div className="flex-1 space-y-1">
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">{report.companyName}</p>
-                              <p className="text-sm font-semibold leading-snug text-foreground line-clamp-2">{report.reportTitle}</p>
-                              <p className="text-xs text-muted-foreground line-clamp-2">{report.summary}</p>
-                            </div>
-                            <ArrowUpRight className="mt-1 h-4 w-4 text-muted-foreground transition group-hover:text-primary" />
-                          </div>
+                          <Dialog key={report.id}>
+                            <DialogTrigger asChild>
+                              <button
+                                type="button"
+                                className="group flex w-full items-start gap-3 rounded-2xl border border-border/60 bg-muted/20 p-4 text-left transition hover:border-primary/40 hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                              >
+                                <div className="flex-1 space-y-1">
+                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">{report.companyName}</p>
+                                  <p className="text-sm font-semibold leading-snug text-foreground line-clamp-2">{report.reportTitle}</p>
+                                  <p className="text-xs text-muted-foreground line-clamp-2">{report.summary}</p>
+                                </div>
+                                <ArrowUpRight className="mt-1 h-4 w-4 text-muted-foreground transition group-hover:text-primary" />
+                              </button>
+                            </DialogTrigger>
+                            <ReportDetailDialogContent report={report} />
+                          </Dialog>
                         ))
                       ) : (
                         <div className="rounded-2xl border border-dashed border-border/60 bg-muted/10 p-4 text-sm text-muted-foreground">
