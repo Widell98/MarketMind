@@ -751,11 +751,19 @@ Regler:
     };
   }
 
-  const digestHash = await computeDigestHash({ morningBrief, news: summarizedNews });
-  console.log(`[generateMorningBrief] Returning: morningBrief=${!!morningBrief}, newsCount=${summarizedNews.length}`);
-  console.log(`[generateMorningBrief] News items sample:`, summarizedNews.slice(0, 2).map(n => ({ headline: n.headline, source: n.source })));
-  return { morningBrief, news: summarizedNews, rawPayload: {}, digestHash };
+  const payloadToHash = { morningBrief, news: summarizedNews };
+
+if (allowRepeats) {
+    // Lägger till ett slumpmässigt ID i hashen vid tvingad uppdatering 
+    // för att undvika unika konflikter i databasen (digest_hash).
+    (payloadToHash as any).refresh_id = crypto.randomUUID(); 
+    console.log(`[generateMorningBrief] Forced unique digest hash enabled.`);
 }
+
+const digestHash = await computeDigestHash(payloadToHash);
+console.log(`[generateMorningBrief] Returning: morningBrief=${!!morningBrief}, newsCount=${summarizedNews.length}`);
+console.log(`[generateMorningBrief] News items sample:`, summarizedNews.slice(0, 2).map(n => ({ headline: n.headline, source: n.source })));
+return { morningBrief, news: summarizedNews, rawPayload: {}, digestHash };
 
 async function generateMarketMomentum() {
   const systemPrompt =
