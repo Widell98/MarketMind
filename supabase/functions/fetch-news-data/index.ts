@@ -44,11 +44,19 @@ serve(async (req) => {
 
         const generated = await generateMorningBrief({ allowRepeats });
 
+        let responsePayload = { morningBrief: generated.morningBrief, news: generated.news };
+
         if (shouldPersist) {
-          await storeMorningBrief(generated);
+          const storedId = await storeMorningBrief(generated);
+          if (storedId) {
+            const stored = await getBriefWithNews(storedId);
+            if (stored) {
+              responsePayload = stored;
+            }
+          }
         }
 
-        return jsonResponse({ morningBrief: generated.morningBrief, news: generated.news });
+        return jsonResponse(responsePayload);
       }
     }
   } catch (error) {
@@ -451,6 +459,17 @@ type NewsItem = {
   url: string;
 };
 
+type NewsArticleRow = {
+  id: string;
+  headline: string;
+  summary: string;
+  category: string;
+  source: string;
+  url: string;
+  published_at: string | null;
+  created_at?: string | null;
+};
+
 type GeneratedMorningBrief = {
   morningBrief: MorningBrief;
   news: NewsItem[];
@@ -816,6 +835,62 @@ async function computeDigestHash(payload: unknown): Promise<string> {
     .join("");
 }
 
+async function getBriefWithNews(briefId: string): Promise<{ morningBrief: MorningBrief; news: NewsItem[] } | null> {
+  if (!supabaseClient) {
+    console.warn("Supabase client is not configured; cannot fetch brief with news.");
+    return null;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("morning_briefs")
+    .select(
+      "id, generated_at, headline, overview, key_highlights, focus_today, sentiment, sections, news_articles(id, headline, summary, category, source, url, published_at, created_at)"
+    )
+    .eq("id", briefId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to read brief", error);
+    return null;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const sectionsArray = Array.isArray(data.sections)
+    ? (data.sections as unknown[])
+        .map((section) => {
+          const record = section as Record<string, unknown>;
+          const title = typeof record.title === "string" ? record.title.trim() : "";
+          const body = typeof record.body === "string" ? record.body.trim() : "";
+          if (!title && !body) {
+            return null;
+          }
+          return { title, body };
+        })
+        .filter((section): section is MorningSection => !!section)
+    : [];
+
+  const morningBrief: MorningBrief = {
+    id: data.id,
+    headline: data.headline,
+    overview: data.overview,
+    keyHighlights: Array.isArray(data.key_highlights) ? data.key_highlights : [],
+    focusToday: Array.isArray(data.focus_today) ? data.focus_today : [],
+    sentiment:
+      data.sentiment === "bullish" || data.sentiment === "bearish" || data.sentiment === "neutral"
+        ? data.sentiment
+        : "neutral",
+    generatedAt: data.generated_at,
+    sections: sectionsArray,
+  };
+
+  const newsRows = (data as typeof data & { news_articles?: NewsArticleRow[] }).news_articles;
+
+  return { morningBrief, news: mapNewsRowsToItems(newsRows) };
+}
+
 async function getLatestStoredBrief(): Promise<{ morningBrief: MorningBrief; news: NewsItem[] } | null> {
   if (!supabaseClient) {
     console.warn("Supabase client is not configured; cannot fetch cached morning brief.");
@@ -825,7 +900,7 @@ async function getLatestStoredBrief(): Promise<{ morningBrief: MorningBrief; new
   const { data, error } = await supabaseClient
     .from("morning_briefs")
     .select(
-      "id, generated_at, headline, overview, key_highlights, focus_today, sentiment, sections, news_items"
+      "id, generated_at, headline, overview, key_highlights, focus_today, sentiment, sections, news_articles(id, headline, summary, category, source, url, published_at, created_at)"
     )
     .order("generated_at", { ascending: false })
     .limit(1)
@@ -868,9 +943,18 @@ async function getLatestStoredBrief(): Promise<{ morningBrief: MorningBrief; new
     sections: sectionsArray,
   };
 
-  const newsItems = Array.isArray(data.news_items) ? (data.news_items as NewsItem[]) : [];
+  const { data: newsRows, error: newsError } = await supabaseClient
+    .from("news_articles")
+    .select("id, headline, summary, category, source, url, published_at, created_at")
+    .eq("brief_id", data.id)
+    .order("published_at", { ascending: false })
+    .order("created_at", { ascending: false });
 
-  return { morningBrief, news: newsItems };
+  if (newsError) {
+    console.error("Failed to read cached news articles", newsError);
+  }
+
+  return { morningBrief, news: mapNewsRowsToItems(newsRows) };
 }
 
 async function getPreviousDayBrief(targetDate: Date): Promise<{ morningBrief: MorningBrief; news: NewsItem[] } | null> {
@@ -887,7 +971,7 @@ async function getPreviousDayBrief(targetDate: Date): Promise<{ morningBrief: Mo
   const { data, error } = await supabaseClient
     .from("morning_briefs")
     .select(
-      "id, generated_at, headline, overview, key_highlights, focus_today, sentiment, sections, news_items"
+      "id, generated_at, headline, overview, key_highlights, focus_today, sentiment, sections"
     )
     .gte("generated_at", startOfDay.toISOString())
     .lte("generated_at", endOfDay.toISOString())
@@ -932,9 +1016,18 @@ async function getPreviousDayBrief(targetDate: Date): Promise<{ morningBrief: Mo
     sections: sectionsArray,
   };
 
-  const newsItems = Array.isArray(data.news_items) ? (data.news_items as NewsItem[]) : [];
+  const { data: newsRows, error: newsError } = await supabaseClient
+    .from("news_articles")
+    .select("id, headline, summary, category, source, url, published_at, created_at")
+    .eq("brief_id", data.id)
+    .order("published_at", { ascending: false })
+    .order("created_at", { ascending: false });
 
-  return { morningBrief, news: newsItems };
+  if (newsError) {
+    console.error("Failed to read previous day news articles", newsError);
+  }
+
+  return { morningBrief, news: mapNewsRowsToItems(newsRows) };
 }
 
 async function getWeekBriefs(weekStart: Date, weekEnd: Date): Promise<{ morningBrief: MorningBrief; news: NewsItem[] }[]> {
@@ -945,7 +1038,7 @@ async function getWeekBriefs(weekStart: Date, weekEnd: Date): Promise<{ morningB
   const { data, error } = await supabaseClient
     .from("morning_briefs")
     .select(
-      "id, generated_at, headline, overview, key_highlights, focus_today, sentiment, sections, news_items"
+      "id, generated_at, headline, overview, key_highlights, focus_today, sentiment, sections"
     )
     .gte("generated_at", weekStart.toISOString())
     .lte("generated_at", weekEnd.toISOString())
@@ -989,9 +1082,9 @@ async function getWeekBriefs(weekStart: Date, weekEnd: Date): Promise<{ morningB
       sections: sectionsArray,
     };
 
-    const newsItems = Array.isArray(item.news_items) ? (item.news_items as NewsItem[]) : [];
+    const newsRows = (item as typeof item & { news_articles?: NewsArticleRow[] }).news_articles;
 
-    return { morningBrief, news: newsItems };
+    return { morningBrief, news: mapNewsRowsToItems(newsRows) };
   });
 }
 
@@ -1025,19 +1118,37 @@ function extractKeywordsFromBrief(brief: MorningBrief): string[] {
   const uniqueKeywords = Array.from(new Set(keywords))
     .filter(w => !commonWords.has(w))
     .slice(0, 10); // Take top 10 keywords
-  
+
   return uniqueKeywords;
 }
 
-async function storeMorningBrief(generated: GeneratedMorningBrief) {
+function mapNewsRowsToItems(rows: NewsArticleRow[] | null | undefined): NewsItem[] {
+  if (!rows || rows.length === 0) return [];
+
+  return rows.map((row) => ({
+    id: row.id,
+    headline: row.headline,
+    summary: row.summary,
+    category: row.category || "global",
+    source: row.source || "Okänd källa",
+    url: row.url,
+    publishedAt: row.published_at
+      ? new Date(row.published_at).toISOString()
+      : row.created_at
+        ? new Date(row.created_at).toISOString()
+        : new Date().toISOString(),
+  }));
+}
+
+async function storeMorningBrief(generated: GeneratedMorningBrief): Promise<string | null> {
   if (!supabaseClient) {
     console.warn("Supabase client is not configured; cannot store morning brief.");
-    return;
+    return null;
   }
 
   const { morningBrief, news, rawPayload, digestHash } = generated;
 
-  const { error } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from("morning_briefs")
     .upsert(
       {
@@ -1054,11 +1165,53 @@ async function storeMorningBrief(generated: GeneratedMorningBrief) {
         status: "ready",
       },
       { onConflict: "digest_hash" }
-    );
+    )
+    .select("id")
+    .single();
 
   if (error) {
     console.error("Failed to store morning brief", error);
+    return null;
   }
+
+  const briefId = data?.id;
+  if (!briefId) {
+    console.error("Stored morning brief but did not receive an id back");
+    return null;
+  }
+
+  // Replace previous news articles for this brief with the freshly generated set
+  const { error: deleteError } = await supabaseClient
+    .from("news_articles")
+    .delete()
+    .eq("brief_id", briefId);
+
+  if (deleteError) {
+    console.error("Failed to clear previous news articles", deleteError);
+  }
+
+  if (news.length > 0) {
+    const insertPayload = news.map((item) => ({
+      id: crypto.randomUUID(),
+      brief_id: briefId,
+      headline: item.headline,
+      summary: item.summary,
+      category: item.category,
+      source: item.source,
+      url: item.url,
+      published_at: item.publishedAt,
+    }));
+
+    const { error: insertError } = await supabaseClient
+      .from("news_articles")
+      .insert(insertPayload);
+
+    if (insertError) {
+      console.error("Failed to store generated news articles", insertError);
+    }
+  }
+
+  return briefId;
 }
 
 function isSameUtcDay(a: Date, b: Date): boolean {
