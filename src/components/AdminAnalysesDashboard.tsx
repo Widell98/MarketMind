@@ -1,8 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
-import { BarChart3, Calendar, FileText, Pencil, Plus, RefreshCw, Trash2, User } from 'lucide-react';
+import {
+  BarChart3,
+  Calendar,
+  FileText,
+  ImageOff,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Upload,
+  User,
+} from 'lucide-react';
 
 import AIGenerationAdminControls from '@/components/AIGenerationAdminControls';
 import {
@@ -33,6 +44,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { useAdminAnalyses, useDeleteAnalysis } from '@/hooks/useAnalysisOperations';
 import {
   DISCOVER_REPORT_SUMMARIES_QUERY_KEY,
@@ -81,6 +93,7 @@ interface UpdateReportPayload {
   key_metrics: GeneratedReportKeyMetric[];
   ceo_commentary: string | null;
   source_url: string | null;
+  company_logo_url: string | null;
 }
 
 const PUBLIC_REPORT_LIMIT = 12;
@@ -92,6 +105,8 @@ const AdminAnalysesDashboard: React.FC = () => {
   const [editingReport, setEditingReport] = useState<GeneratedReport | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isRefreshingNews, setIsRefreshingNews] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoPreviewFailed, setLogoPreviewFailed] = useState(false);
   const [editForm, setEditForm] = useState({
     reportTitle: '',
     companyName: '',
@@ -99,10 +114,13 @@ const AdminAnalysesDashboard: React.FC = () => {
     keyPointsText: '',
     ceoCommentary: '',
     sourceUrl: '',
+    companyLogoUrl: '',
   });
   const [editMetrics, setEditMetrics] = useState<EditableMetric[]>([]);
 
   const queryClient = useQueryClient();
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const { user } = useAuth();
   const { toast } = useToast();
   const deleteAnalysis = useDeleteAnalysis();
   const { fetchAllAnalyses } = useAdminAnalyses();
@@ -114,6 +132,10 @@ const AdminAnalysesDashboard: React.FC = () => {
     setAnalyses(data);
     setLoadingAnalyses(false);
   };
+
+  useEffect(() => {
+    setLogoPreviewFailed(false);
+  }, [editForm.companyLogoUrl]);
 
   useEffect(() => {
     loadAnalyses();
@@ -194,6 +216,7 @@ const AdminAnalysesDashboard: React.FC = () => {
       keyPointsText: '',
       ceoCommentary: '',
       sourceUrl: '',
+      companyLogoUrl: '',
     });
     setEditMetrics([]);
   };
@@ -308,6 +331,7 @@ const AdminAnalysesDashboard: React.FC = () => {
       keyPointsText: report.keyPoints.join('\n'),
       ceoCommentary: report.ceoCommentary ?? '',
       sourceUrl: report.sourceUrl ?? '',
+      companyLogoUrl: report.companyLogoUrl ?? '',
     });
     setEditMetrics(
       report.keyMetrics.map((metric) => ({
@@ -393,6 +417,7 @@ const AdminAnalysesDashboard: React.FC = () => {
       key_metrics: keyMetrics,
       ceo_commentary: ceoCommentary ? ceoCommentary : null,
       source_url: sourceUrl ? sourceUrl : null,
+      company_logo_url: editForm.companyLogoUrl.trim() ? editForm.companyLogoUrl.trim() : null,
     };
 
     updateReportMutation.mutate(payload);
@@ -400,6 +425,88 @@ const AdminAnalysesDashboard: React.FC = () => {
 
   const handleDeleteReport = (reportId: string) => {
     deleteReportMutation.mutate(reportId);
+  };
+
+  const handleLogoUploadClick = () => {
+    logoInputRef.current?.click();
+  };
+
+  const handleLogoFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: 'Ogiltig bildtyp',
+        description: 'Ladda upp en JPG-, PNG- eller WebP-fil.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: 'Filen är för stor',
+        description: 'Maximal filstorlek är 5 MB.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: 'Inloggning krävs',
+        description: 'Logga in igen för att kunna ladda upp bilder.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLogoUploading(true);
+
+    try {
+      const extension = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const filePath = `report-logos/${user.id}-${Date.now()}.${extension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('company-logos')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('company-logos').getPublicUrl(filePath);
+
+      setEditForm((previous) => ({ ...previous, companyLogoUrl: publicUrl }));
+      toast({
+        title: 'Logotyp sparad',
+        description: 'Bolagsbilden har laddats upp och kopplats till rapporten.',
+      });
+    } catch (error) {
+      console.error('Logo upload failed', error);
+      toast({
+        title: 'Kunde inte ladda upp bilden',
+        description: 'Försök igen om en stund.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setEditForm((previous) => ({ ...previous, companyLogoUrl: '' }));
   };
 
   return (
@@ -714,6 +821,73 @@ const AdminAnalysesDashboard: React.FC = () => {
                     setEditForm((previous) => ({ ...previous, companyName: event.target.value }))
                   }
                   placeholder="Exempel AB"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="companyLogoUrl">Bolagsbild</Label>
+                <div className="flex items-start gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-md border bg-muted">
+                    {editForm.companyLogoUrl && !logoPreviewFailed ? (
+                      <img
+                        src={editForm.companyLogoUrl}
+                        alt={`${editForm.companyName || 'Bolag'} logotyp`}
+                        className="h-full w-full object-cover"
+                        onError={() => setLogoPreviewFailed(true)}
+                      />
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <ImageOff className="h-4 w-4" />
+                        Ingen bild
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-1 flex-col gap-2">
+                    <Input
+                      id="companyLogoUrl"
+                      value={editForm.companyLogoUrl}
+                      onChange={(event) =>
+                        setEditForm((previous) => ({
+                          ...previous,
+                          companyLogoUrl: event.target.value,
+                        }))
+                      }
+                      placeholder="https://bild-url"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleLogoUploadClick}
+                        disabled={logoUploading}
+                        className="gap-2"
+                      >
+                        <Upload className="h-4 w-4" />
+                        {logoUploading ? 'Laddar upp...' : 'Ladda upp bild'}
+                      </Button>
+                      {editForm.companyLogoUrl && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleRemoveLogo}
+                          disabled={logoUploading}
+                        >
+                          Ta bort bild
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Visas på rapportkortet i nyhetsflödet. Ladda upp en logotyp eller klistra in en bildlänk.
+                    </p>
+                  </div>
+                </div>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleLogoFileChange}
                 />
               </div>
               <div className="grid gap-2">

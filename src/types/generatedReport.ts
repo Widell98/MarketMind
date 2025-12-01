@@ -8,6 +8,7 @@ export interface GeneratedReport {
   id: string;
   reportTitle: string;
   companyName: string;
+  companyLogoUrl?: string | null;
   summary: string;
   keyPoints: string[];
   keyMetrics: GeneratedReportKeyMetric[];
