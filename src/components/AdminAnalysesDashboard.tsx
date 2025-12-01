@@ -106,6 +106,7 @@ const AdminAnalysesDashboard: React.FC = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isRefreshingNews, setIsRefreshingNews] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
+  const [logoPreviewFailed, setLogoPreviewFailed] = useState(false);
   const [editForm, setEditForm] = useState({
     reportTitle: '',
     companyName: '',
@@ -131,6 +132,10 @@ const AdminAnalysesDashboard: React.FC = () => {
     setAnalyses(data);
     setLoadingAnalyses(false);
   };
+
+  useEffect(() => {
+    setLogoPreviewFailed(false);
+  }, [editForm.companyLogoUrl]);
 
   useEffect(() => {
     loadAnalyses();
@@ -822,11 +827,12 @@ const AdminAnalysesDashboard: React.FC = () => {
                 <Label htmlFor="companyLogoUrl">Bolagsbild</Label>
                 <div className="flex items-start gap-3">
                   <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-md border bg-muted">
-                    {editForm.companyLogoUrl ? (
+                    {editForm.companyLogoUrl && !logoPreviewFailed ? (
                       <img
                         src={editForm.companyLogoUrl}
                         alt={`${editForm.companyName || 'Bolag'} logotyp`}
                         className="h-full w-full object-cover"
+                        onError={() => setLogoPreviewFailed(true)}
                       />
                     ) : (
                       <span className="flex items-center gap-1 text-xs text-muted-foreground">

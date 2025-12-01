@@ -29,6 +29,7 @@ type DiscoverReportSummaryRow = {
   report_title: string;
   summary: string;
   company_logo_url: string | null;
+  company_image_url?: string | null;
   key_points: unknown;
   key_metrics: unknown;
   ceo_commentary: string | null;
@@ -156,7 +157,7 @@ const mapRowToGeneratedReport = (row: DiscoverReportSummaryRow): GeneratedReport
   id: row.id,
   companyName: row.company_name,
   reportTitle: row.report_title,
-  companyLogoUrl: row.company_logo_url ?? undefined,
+  companyLogoUrl: row.company_logo_url ?? row.company_image_url ?? undefined,
   summary: row.summary,
   keyPoints: normalizeKeyPointsFromRow(row.key_points),
   keyMetrics: normalizeKeyMetricsFromRow(row.key_metrics),
@@ -258,7 +259,7 @@ serve(async (req) => {
       .update(updates)
       .eq("id", payload.id)
       .select(
-        "id, company_name, report_title, summary, key_points, key_metrics, ceo_commentary, created_at, source_type, source_url, source_document_name, source_document_id, company_logo_url",
+        "id, company_name, report_title, summary, key_points, key_metrics, ceo_commentary, created_at, source_type, source_url, source_document_name, source_document_id, company_logo_url, company_image_url",
       )
       .single();
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Calendar, FileText, LineChart } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -25,7 +25,9 @@ const truncateText = (text: string, limit = 160) => {
 const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => {
   const highlightedMetrics = (report.keyMetrics ?? []).slice(0, 2);
   const companyInitial = report.companyName?.charAt(0).toUpperCase() || '?';
-  const companyLogoUrl = report.companyLogoUrl ?? null;
+  const [logoFailed, setLogoFailed] = useState(false);
+  useEffect(() => setLogoFailed(false), [report.companyLogoUrl]);
+  const companyLogoUrl = logoFailed ? null : report.companyLogoUrl ?? null;
   const createdAtLabel = formatDistanceToNow(new Date(report.createdAt), {
     addSuffix: true,
     locale: sv,
@@ -44,6 +46,7 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
                     alt={`${report.companyName} logotyp`}
                     className="h-full w-full object-cover"
                     loading="lazy"
+                    onError={() => setLogoFailed(true)}
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-base font-semibold text-primary">
