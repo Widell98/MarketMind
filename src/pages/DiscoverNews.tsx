@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -7,6 +6,7 @@ import {
   ExternalLink,
   Filter,
   LineChart,
+  Search,
   Sparkles,
 } from 'lucide-react';
 
@@ -16,6 +16,7 @@ import NewsModal from '@/components/ui/NewsModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDiscoverReportSummaries } from '@/hooks/useDiscoverReportSummaries';
 import { useNewsData } from '@/hooks/useNewsData';
@@ -65,24 +66,45 @@ interface NewsItem {
 }
 
 const DiscoverNews = () => {
-  const navigate = useNavigate();
   const { reports } = useDiscoverReportSummaries(24);
   const { newsData, morningBrief, loading: newsLoading, error: newsError } = useNewsData();
-  
+
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedReportFilter, setSelectedReportFilter] = useState<string | null>(null);
+  const [reportSort, setReportSort] = useState<'latest' | 'name'>('latest');
+  const [reportSearch, setReportSearch] = useState('');
 
   const filteredReports = useMemo(() => {
     if (!reports || reports.length === 0) return [];
-    if (!selectedReportFilter) return reports;
 
-    const normalizedSelected = selectedReportFilter.toLowerCase().trim();
-    return reports.filter((report) =>
-      report.companyName?.toLowerCase().trim() === normalizedSelected ||
-      report.sourceDocumentName?.toLowerCase().trim() === normalizedSelected
-    );
-  }, [reports, selectedReportFilter]);
+    let nextReports = [...reports];
+
+    if (reportSearch.trim()) {
+      const query = reportSearch.toLowerCase().trim();
+      nextReports = nextReports.filter((report) => {
+        const companyMatch = report.companyName?.toLowerCase().includes(query);
+        const titleMatch = report.reportTitle?.toLowerCase().includes(query);
+        const summaryMatch = report.summary?.toLowerCase().includes(query);
+        const sourceMatch = report.sourceDocumentName?.toLowerCase().includes(query);
+
+        return companyMatch || titleMatch || summaryMatch || sourceMatch;
+      });
+    }
+
+    nextReports.sort((a, b) => {
+      if (reportSort === 'name') {
+        return (a.companyName || '').localeCompare(b.companyName || '', 'sv', { sensitivity: 'base' });
+      }
+
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+
+      if (Number.isNaN(dateA) || Number.isNaN(dateB)) return 0;
+      return dateB - dateA;
+    });
+
+    return nextReports;
+  }, [reports, reportSort, reportSearch]);
 
   const reportHighlights = useMemo(() => filteredReports.slice(0, 3), [filteredReports]);
   const latestReport = reportHighlights[0];
@@ -101,7 +123,7 @@ const DiscoverNews = () => {
 
   useEffect(() => {
     setReportPage(1);
-  }, [selectedReportFilter]);
+  }, [reportSort, reportSearch]);
 
   const paginatedReports = useMemo(() => {
     const start = (reportPage - 1) * REPORTS_PER_PAGE;
@@ -181,22 +203,6 @@ const DiscoverNews = () => {
     month: 'long',
     day: 'numeric',
   });
-
-  const availableReportFilters = useMemo(() => {
-    if (!reports || reports.length === 0) return [];
-
-    const uniqueLabels = new Set<string>();
-    reports.forEach((report) => {
-      if (report.companyName) {
-        uniqueLabels.add(report.companyName.trim());
-      }
-      if (report.sourceDocumentName) {
-        uniqueLabels.add(report.sourceDocumentName.trim());
-      }
-    });
-
-    return Array.from(uniqueLabels).filter(Boolean).sort();
-  }, [reports]);
 
   const isWeekend = () => {
     const today = new Date();
@@ -628,12 +634,7 @@ const DiscoverNews = () => {
                       )}
                     </div>
 
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="text-xs text-muted-foreground">AI-summerade rapporter med samma visuella språk som nyhetsflödet.</p>
-                      <Button variant="outline" className="rounded-full" onClick={() => navigate('/discover')}>
-                        Utforska fler <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    </div>
+                    <p className="text-xs text-muted-foreground">AI-summerade rapporter med samma visuella språk som nyhetsflödet.</p>
                   </div>
                 </div>
               </div>
@@ -644,40 +645,44 @@ const DiscoverNews = () => {
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Senaste rapporterna</p>
                     <h3 className="text-xl sm:text-2xl font-bold text-foreground">Djupdyk i AI-sammanfattningarna</h3>
                   </div>
-                  <Button variant="ghost" className="rounded-full" onClick={() => navigate('/discover')}>
-                    Gå till rapportbiblioteket <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
                 </div>
 
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Filter className="w-4 h-4" />
-                    <span>Filtrera rapporter</span>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Filter className="w-4 h-4" />
+                      <span>Sortera rapporter</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant={reportSort === 'latest' ? 'default' : 'outline'}
+                        size="sm"
+                        className="rounded-full"
+                        onClick={() => setReportSort('latest')}
+                      >
+                        Senaste
+                      </Button>
+                      <Button
+                        variant={reportSort === 'name' ? 'default' : 'outline'}
+                        size="sm"
+                        className="rounded-full"
+                        onClick={() => setReportSort('name')}
+                      >
+                        Namn
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      variant={selectedReportFilter === null ? 'default' : 'outline'}
-                      size="sm"
-                      className="rounded-full"
-                      onClick={() => setSelectedReportFilter(null)}
-                    >
-                      Alla
-                    </Button>
-                    {availableReportFilters.length > 0 ? (
-                      availableReportFilters.map((filter) => (
-                        <Button
-                          key={filter}
-                          variant={selectedReportFilter === filter ? 'default' : 'outline'}
-                          size="sm"
-                          className="rounded-full"
-                          onClick={() => setSelectedReportFilter(filter)}
-                        >
-                          {filter}
-                        </Button>
-                      ))
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Inga filter tillgängliga</span>
-                    )}
+
+                  <div className="w-full lg:w-80">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        value={reportSearch}
+                        onChange={(event) => setReportSearch(event.target.value)}
+                        placeholder="Sök efter bolag eller titel"
+                        className="w-full rounded-full pl-9"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -723,14 +728,6 @@ const DiscoverNews = () => {
                 <p className="text-sm text-muted-foreground">
                   Marknadens rapporter, analyserade och sammanfattade av AI på sekunder.
                 </p>
-                <div className="mt-4 flex justify-center">
-                  <Button
-                    className="rounded-full px-7 py-5 text-base font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all hover:scale-105"
-                    onClick={() => navigate('/discover')}
-                  >
-                    Utforska alla rapporter <ArrowRight className="ml-2 w-5 h-5" />
-                  </Button>
-                </div>
                 <p className="mt-4 text-xs text-muted-foreground">{todayDate}</p>
               </div>
             </TabsContent>
