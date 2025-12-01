@@ -25,6 +25,9 @@ import {
   Building2,
   RefreshCw,
   Sparkles,
+  Search,
+  Newspaper,
+  ExternalLink,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,6 +44,7 @@ import { useNewsData } from '@/hooks/useNewsData';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import StockCaseCard from '@/components/StockCaseCard';
+import PortfolioOverviewCard, { type SummaryCard } from '@/components/PortfolioOverviewCard';
 import { ArrowRight, TrendingDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { convertToSEK, resolveHoldingValue } from '@/utils/currencyUtils';
@@ -53,13 +57,6 @@ type QuickAction = {
   to: string;
 };
 
-type SummaryCard = {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-  helper: string;
-  helperClassName: string;
-};
 
 const insightTypeLabels: Record<'performance' | 'allocation' | 'risk' | 'opportunity', string> = {
   performance: 'Prestation',
@@ -73,6 +70,35 @@ const insightBadgeStyles: Record<'performance' | 'allocation' | 'risk' | 'opport
   allocation: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-transparent',
   risk: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-transparent',
   opportunity: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-transparent',
+};
+
+const formatCategoryLabel = (category: string): string => {
+  const categoryMap: Record<string, string> = {
+    macro: 'Makro',
+    tech: 'Teknik',
+    commodities: 'Råvaror',
+    earnings: 'Resultat',
+    global: 'Globalt',
+  };
+  return categoryMap[category] || category.charAt(0).toUpperCase() + category.slice(1);
+};
+
+const formatTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  
+  if (diffHours < 1) {
+    return 'Nu';
+  } else if (diffHours < 24) {
+    return `${diffHours}h sedan`;
+  } else {
+    return new Intl.DateTimeFormat('sv-SE', {
+      month: 'short',
+      day: 'numeric',
+    }).format(date);
+  }
 };
 
 const Index = () => {
@@ -293,10 +319,11 @@ const Index = () => {
   }, [user, hasPortfolio, safeTotalPortfolioValue, actualHoldings, sheetChangeDataCache, sheetChangeDataCacheTime]);
 
   const dayChangePercent = todayDevelopment?.percent ?? performance.dayChangePercentage ?? 0;
+  const dayChangeValue = todayDevelopment?.value ?? 0;
   const isPositiveDayChange = dayChangePercent >= 0;
   
   const summaryCards = React.useMemo<SummaryCard[]>(() => {
-    const changeValue = todayDevelopment?.value ?? 0;
+    const changeValue = dayChangeValue;
     const changeValueFormatted = changeValue !== 0
       ? (changeValue >= 0 
         ? `+${changeValue.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr`
@@ -357,26 +384,26 @@ const Index = () => {
     {
       icon: MessageSquare,
       title: 'AI Chat',
-      description: 'Utforska AI-drivna investeringsinsikter',
-      to: '/ai-chatt',
-    },
-    {
-      icon: TrendingUp,
-      title: 'Marknadsanalyser',
-      description: 'Djupa marknadsinsikter',
-      to: '/market-analyses',
+      description: 'Analysera min portfölj',
+      to: `/ai-chatt?message=${encodeURIComponent('Analysera min portfölj och ge mig råd')}`,
     },
     {
       icon: Building2,
-      title: 'Stock Cases',
-      description: 'Utforska företag visuellt',
+      title: 'Upptäck',
+      description: 'Hitta nya aktier',
       to: '/discover',
     },
     {
-      icon: Settings,
-      title: 'Portföljguide',
-      description: 'Se hur en balanserad portfölj kan se ut',
-      to: '/portfolio-advisor',
+      icon: Sparkles,
+      title: 'Nyheter',
+      description: 'Marknadsnyheter',
+      to: '/news',
+    },
+    {
+      icon: BarChart3,
+      title: 'Min Portfölj',
+      description: 'Hantera portföljen',
+      to: '/portfolio-implementation',
     },
   ], []);
 
@@ -547,59 +574,17 @@ const Index = () => {
           {user && hasPortfolio && <div className="min-h-0 bg-background">
               <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-3 sm:py-6">
                 <div className="space-y-6 sm:space-y-8">
-                  {/* Portfolio Value Hero Section */}
-                  <div className="rounded-3xl border border-border/60 bg-gradient-to-br from-card/90 to-card/70 p-6 shadow-lg sm:p-8">
-                    <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-muted-foreground mb-2">Portföljvärde</p>
-                        <div className="flex items-baseline gap-3 flex-wrap">
-                          <h1 className="text-4xl font-bold text-foreground sm:text-5xl lg:text-6xl">
-                            {safeTotalPortfolioValue.toLocaleString('sv-SE')} kr
-                          </h1>
-                        </div>
-                        {performance.totalReturn !== 0 && (
-                          <p className={`mt-2 text-sm ${performance.totalReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                            Total avkastning: {performance.totalReturn >= 0 ? '+' : ''}{performance.totalReturn.toLocaleString('sv-SE')} kr ({performance.totalReturnPercentage >= 0 ? '+' : ''}{performance.totalReturnPercentage.toFixed(2)}%)
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <Button asChild variant="outline" size="sm" className="w-full justify-center hover:bg-muted/50 sm:w-auto">
-                          <Link to="/ai-chatt">
-                            <MessageSquare className="mr-2 h-4 w-4" />
-                            AI Chat
-                          </Link>
-                        </Button>
-                        <Button asChild size="sm" className="w-full justify-center bg-primary hover:bg-primary/90 sm:w-auto">
-                          <Link to="/portfolio-implementation">
-                            <BarChart3 className="mr-2 h-4 w-4" />
-                            Min Portfölj
-                          </Link>
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <section>
-                    <h2 className="mb-3 text-base font-semibold text-foreground sm:text-lg">Din överblick</h2>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
-                      {summaryCards.map(({ icon: Icon, label, value, helper, helperClassName }) => (
-                        <div
-                          key={label}
-                          className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm transition-shadow hover:shadow-md sm:p-6"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                              <Icon className="h-5 w-5" />
-                            </div>
-                            <span className="text-sm font-medium text-muted-foreground">{label}</span>
-                          </div>
-                          <p className="mt-3 text-2xl font-semibold text-foreground sm:text-3xl">{value}</p>
-                          <p className={`mt-2 text-sm ${helperClassName}`}>{helper}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
+                  {/* Portfolio Value & Overview Combined */}
+                  <PortfolioOverviewCard
+                    portfolioValue={safeTotalPortfolioValue}
+                    totalReturn={performance.totalReturn}
+                    totalReturnPercentage={performance.totalReturnPercentage}
+                    summaryCards={summaryCards}
+                    loading={loadingTodayDevelopment && summaryCards.length === 0}
+                    dayChangePercent={dayChangePercent}
+                    dayChangeValue={dayChangeValue}
+                    isPositiveDayChange={isPositiveDayChange}
+                  />
 
                   {/* Top Holdings and Allocation */}
                   {(topHoldings.best.length > 0 || topHoldings.worst.length > 0 || allocationData.cash > 0 || allocationData.invested > 0) && (
@@ -735,41 +720,107 @@ const Index = () => {
                   )}
 
                   {/* Liked Stocks Section */}
-                  {likedStockCases.length > 0 && (
-                    <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          <Heart className="h-5 w-5 text-primary" />
-                          <h2 className="text-base font-semibold text-foreground sm:text-lg">Dina gillade aktier</h2>
-                        </div>
+                  <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <Heart className="h-5 w-5 text-primary" />
+                        <h2 className="text-base font-semibold text-foreground sm:text-lg">Dina gillade aktier</h2>
+                      </div>
+                      {likedStockCases.length > 0 && (
                         <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
                           <Link to="/discover?tab=liked">
                             Se alla
                             <ArrowRight className="ml-2 h-4 w-4" />
                           </Link>
                         </Button>
-                      </div>
-                      {likedStockCasesLoading ? (
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
-                          {Array.from({ length: 3 }).map((_, index) => (
-                            <div key={index} className="rounded-2xl border border-border/60 bg-muted/20 p-4 animate-pulse">
-                              <div className="h-4 w-3/4 rounded bg-muted mb-2" />
-                              <div className="h-3 w-1/2 rounded bg-muted" />
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
-                          {likedStockCases.slice(0, 3).map((stockCase) => (
-                            <StockCaseCard
-                              key={stockCase.id}
-                              stockCase={stockCase}
-                              onViewDetails={(id) => navigate(`/stock-cases/${id}`)}
-                              showMetaBadges={false}
-                            />
-                          ))}
-                        </div>
                       )}
+                    </div>
+                    {likedStockCasesLoading ? (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
+                        {Array.from({ length: 3 }).map((_, index) => (
+                          <div key={index} className="rounded-2xl border border-border/60 bg-muted/20 p-4 animate-pulse">
+                            <div className="h-4 w-3/4 rounded bg-muted mb-2" />
+                            <div className="h-3 w-1/2 rounded bg-muted" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : likedStockCases.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
+                        {likedStockCases.slice(0, 3).map((stockCase) => (
+                          <StockCaseCard
+                            key={stockCase.id}
+                            stockCase={stockCase}
+                            onViewDetails={(id) => navigate(`/stock-cases/${id}`)}
+                            showMetaBadges={false}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-8 text-center">
+                        <Heart className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">Inga gillade aktier ännu</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Utforska aktier och lägg till dem i dina favoriter
+                        </p>
+                        <Button asChild>
+                          <Link to="/discover">
+                            <Search className="mr-2 h-4 w-4" />
+                            Upptäck aktier
+                          </Link>
+                        </Button>
+                      </div>
+                    )}
+                  </section>
+
+                  {/* Latest News Section */}
+                  {newsData && newsData.length > 0 && (
+                    <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Newspaper className="h-5 w-5 text-primary" />
+                          <h2 className="text-base font-semibold text-foreground sm:text-lg">Senaste nyheter</h2>
+                        </div>
+                        <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+                          <Link to="/news">
+                            Se alla
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+                        {newsData.slice(0, 3).map((newsItem) => (
+                          <Card
+                            key={newsItem.id}
+                            className="rounded-2xl border border-border/60 bg-background/80 p-4 hover:shadow-md transition-all cursor-pointer group"
+                            onClick={() => {
+                              if (newsItem.url && newsItem.url !== '#') {
+                                window.open(newsItem.url, '_blank', 'noopener,noreferrer');
+                              }
+                            }}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <Badge variant="secondary" className="text-xs">
+                                {formatCategoryLabel(newsItem.category)}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {formatTime(newsItem.publishedAt)}
+                              </span>
+                            </div>
+                            <h3 className="font-semibold text-sm mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                              {newsItem.headline}
+                            </h3>
+                            <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                              {newsItem.summary}
+                            </p>
+                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/60">
+                              <span className="text-xs text-muted-foreground">{newsItem.source}</span>
+                              {newsItem.url && newsItem.url !== '#' && (
+                                <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
+                              )}
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
                     </section>
                   )}
 
@@ -889,43 +940,57 @@ const Index = () => {
                   </Card>
 
                   {/* Liked Stocks Section for users without portfolio */}
-                  {likedStockCases.length > 0 && (
-                    <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          <Heart className="h-5 w-5 text-primary" />
-                          <h2 className="text-base font-semibold text-foreground sm:text-lg">Dina gillade aktier</h2>
-                        </div>
+                  <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <Heart className="h-5 w-5 text-primary" />
+                        <h2 className="text-base font-semibold text-foreground sm:text-lg">Dina gillade aktier</h2>
+                      </div>
+                      {likedStockCases.length > 0 && (
                         <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
                           <Link to="/discover?tab=liked">
                             Se alla
                             <ArrowRight className="ml-2 h-4 w-4" />
                           </Link>
                         </Button>
-                      </div>
-                      {likedStockCasesLoading ? (
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
-                          {Array.from({ length: 3 }).map((_, index) => (
-                            <div key={index} className="rounded-2xl border border-border/60 bg-muted/20 p-4 animate-pulse">
-                              <div className="h-4 w-3/4 rounded bg-muted mb-2" />
-                              <div className="h-3 w-1/2 rounded bg-muted" />
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
-                          {likedStockCases.slice(0, 3).map((stockCase) => (
-                            <StockCaseCard
-                              key={stockCase.id}
-                              stockCase={stockCase}
-                              onViewDetails={(id) => navigate(`/stock-cases/${id}`)}
-                              showMetaBadges={false}
-                            />
-                          ))}
-                        </div>
                       )}
-                    </section>
-                  )}
+                    </div>
+                    {likedStockCasesLoading ? (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
+                        {Array.from({ length: 3 }).map((_, index) => (
+                          <div key={index} className="rounded-2xl border border-border/60 bg-muted/20 p-4 animate-pulse">
+                            <div className="h-4 w-3/4 rounded bg-muted mb-2" />
+                            <div className="h-3 w-1/2 rounded bg-muted" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : likedStockCases.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
+                        {likedStockCases.slice(0, 3).map((stockCase) => (
+                          <StockCaseCard
+                            key={stockCase.id}
+                            stockCase={stockCase}
+                            onViewDetails={(id) => navigate(`/stock-cases/${id}`)}
+                            showMetaBadges={false}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-8 text-center">
+                        <Heart className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">Inga gillade aktier ännu</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Utforska aktier och lägg till dem i dina favoriter
+                        </p>
+                        <Button asChild>
+                          <Link to="/discover">
+                            <Search className="mr-2 h-4 w-4" />
+                            Upptäck aktier
+                          </Link>
+                        </Button>
+                      </div>
+                    )}
+                  </section>
 
                   {/* News/Morning Brief Section for users without portfolio */}
                   {morningBrief && (
@@ -957,6 +1022,58 @@ const Index = () => {
                             <ArrowRight className="ml-2 h-4 w-4" />
                           </Link>
                         </Button>
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Latest News Section */}
+                  {newsData && newsData.length > 0 && (
+                    <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Newspaper className="h-5 w-5 text-primary" />
+                          <h2 className="text-base font-semibold text-foreground sm:text-lg">Senaste nyheter</h2>
+                        </div>
+                        <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+                          <Link to="/news">
+                            Se alla
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+                        {newsData.slice(0, 3).map((newsItem) => (
+                          <Card
+                            key={newsItem.id}
+                            className="rounded-2xl border border-border/60 bg-background/80 p-4 hover:shadow-md transition-all cursor-pointer group"
+                            onClick={() => {
+                              if (newsItem.url && newsItem.url !== '#') {
+                                window.open(newsItem.url, '_blank', 'noopener,noreferrer');
+                              }
+                            }}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <Badge variant="secondary" className="text-xs">
+                                {formatCategoryLabel(newsItem.category)}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {formatTime(newsItem.publishedAt)}
+                              </span>
+                            </div>
+                            <h3 className="font-semibold text-sm mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                              {newsItem.headline}
+                            </h3>
+                            <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                              {newsItem.summary}
+                            </p>
+                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/60">
+                              <span className="text-xs text-muted-foreground">{newsItem.source}</span>
+                              {newsItem.url && newsItem.url !== '#' && (
+                                <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
+                              )}
+                            </div>
+                          </Card>
+                        ))}
                       </div>
                     </section>
                   )}
