@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
@@ -79,6 +79,22 @@ const DiscoverNews = () => {
   const reportHighlights = useMemo(() => reports.slice(0, 3), [reports]);
   const latestReport = reportHighlights[0];
   const totalReports = reports.length;
+
+  const [reportPage, setReportPage] = useState(1);
+  const REPORTS_PER_PAGE = 12;
+
+  const totalReportPages = Math.max(1, Math.ceil(totalReports / REPORTS_PER_PAGE));
+
+  useEffect(() => {
+    if (reportPage > totalReportPages) {
+      setReportPage(totalReportPages);
+    }
+  }, [reportPage, totalReportPages]);
+
+  const paginatedReports = useMemo(() => {
+    const start = (reportPage - 1) * REPORTS_PER_PAGE;
+    return reports.slice(start, start + REPORTS_PER_PAGE);
+  }, [reportPage, reports]);
 
   const filteredNews = useMemo(() => {
     console.log('[DiscoverNews] Filtering news:', {
@@ -542,7 +558,7 @@ const DiscoverNews = () => {
                     <div className="space-y-3">
                       <p className="text-xs font-semibold uppercase tracking-wide text-primary/80">Rapportsektionen</p>
                       <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground leading-tight">
-                        AI-rapporter i linje med nyhetsflödet
+                        AI-rapporter i samma ton som nyhetsflödet
                       </h2>
                       <p className="text-base sm:text-lg text-muted-foreground max-w-2xl">
                         Marknadens rapporter, analyserade och sammanfattade av AI på sekunder. Allt presenterat med samma visuella språk som nyheterna.
@@ -638,10 +654,41 @@ const DiscoverNews = () => {
                 </div>
 
                 <div className="grid gap-4 xl:gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {reportHighlights.map((report) => (
+                  {paginatedReports.map((report) => (
                     <ReportHighlightCard key={report.id} report={report} />
                   ))}
                 </div>
+
+                {totalReportPages > 1 && (
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      Visar {paginatedReports.length} av {totalReports} rapporter
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full"
+                        disabled={reportPage === 1}
+                        onClick={() => setReportPage((page) => Math.max(1, page - 1))}
+                      >
+                        Föregående
+                      </Button>
+                      <div className="text-sm font-medium text-muted-foreground">
+                        Sida {reportPage} av {totalReportPages}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full"
+                        disabled={reportPage === totalReportPages}
+                        onClick={() => setReportPage((page) => Math.min(totalReportPages, page + 1))}
+                      >
+                        Nästa
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="rounded-3xl border border-dashed border-border/60 bg-card/60 p-6 text-center shadow-inner">
