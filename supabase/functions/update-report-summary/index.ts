@@ -20,6 +20,7 @@ type UpdateReportSummaryPayload = {
   }>;
   ceo_commentary?: string | null;
   source_url?: string | null;
+  company_logo_url?: string | null;
 };
 
 type DiscoverReportSummaryRow = {
@@ -27,6 +28,7 @@ type DiscoverReportSummaryRow = {
   company_name: string;
   report_title: string;
   summary: string;
+  company_logo_url: string | null;
   key_points: unknown;
   key_metrics: unknown;
   ceo_commentary: string | null;
@@ -41,6 +43,7 @@ type GeneratedReportResponse = {
   id: string;
   companyName: string;
   reportTitle: string;
+  companyLogoUrl?: string | null;
   summary: string;
   keyPoints: string[];
   keyMetrics: Array<{
@@ -153,6 +156,7 @@ const mapRowToGeneratedReport = (row: DiscoverReportSummaryRow): GeneratedReport
   id: row.id,
   companyName: row.company_name,
   reportTitle: row.report_title,
+  companyLogoUrl: row.company_logo_url ?? undefined,
   summary: row.summary,
   keyPoints: normalizeKeyPointsFromRow(row.key_points),
   keyMetrics: normalizeKeyMetricsFromRow(row.key_metrics),
@@ -237,6 +241,11 @@ serve(async (req) => {
       updates.source_url = sourceUrl && sourceUrl.length > 0 ? sourceUrl : null;
     }
 
+    if (payload.company_logo_url !== undefined) {
+      const logoUrl = payload.company_logo_url?.toString().trim();
+      updates.company_logo_url = logoUrl && logoUrl.length > 0 ? logoUrl : null;
+    }
+
     if (Object.keys(updates).length === 0) {
       return new Response(
         JSON.stringify({ success: false, error: "Inga fält angavs för uppdatering." }),
@@ -249,7 +258,7 @@ serve(async (req) => {
       .update(updates)
       .eq("id", payload.id)
       .select(
-        "id, company_name, report_title, summary, key_points, key_metrics, ceo_commentary, created_at, source_type, source_url, source_document_name, source_document_id",
+        "id, company_name, report_title, summary, key_points, key_metrics, ceo_commentary, created_at, source_type, source_url, source_document_name, source_document_id, company_logo_url",
       )
       .single();
 
