@@ -41,13 +41,14 @@ serve(async (req) => {
           return jsonResponse(latestStored);
         }
 
-        const generated = await generateMorningBrief();
+        const generated = await generateMorningBrief({ allowRepeats: forceRefresh });
 
-        if (shouldPersist) {
-          await storeMorningBrief(generated);
-        }
+        const persisted = shouldPersist
+          ? await storeMorningBrief(generated)
+          : null;
 
-        return jsonResponse({ morningBrief: generated.morningBrief, news: generated.news });
+        const responsePayload = persisted ?? { morningBrief: generated.morningBrief, news: generated.news };
+        return jsonResponse(responsePayload);
       }
     }
   } catch (error) {
@@ -218,27 +219,39 @@ async function fetchTavilyNews(query: string, maxResults = 15, days = 1): Promis
   }
 }
 
-async function fetchMultipleTavilySearches(queries: string[], maxResultsPerQuery = 20, days = 1): Promise<TavilyArticle[]> {
+async function fetchMultipleTavilySearches(
+  queries: string[],
+  maxResultsPerQuery = 20,
+  days = 1,
+  options: GenerateOptions = {},
+): Promise<TavilyArticle[]> {
   console.log(`[fetchMultipleTavilySearches] Starting ${queries.length} searches`);
-  
+
   const allArticles: TavilyArticle[] = [];
-  const seenUrls = new Set<string>();
+  const { allowRepeats = false } = options;
+  const seenUrls = allowRepeats ? null : new Set<string>();
   
   // Run all searches in parallel
   const searchPromises = queries.map(query => fetchTavilyNews(query, maxResultsPerQuery, days));
   const results = await Promise.all(searchPromises);
   
-  // Combine and deduplicate
+  // Combine and deduplicate when requested
   for (const articles of results) {
     for (const article of articles) {
-      if (!seenUrls.has(article.url)) {
-        seenUrls.add(article.url);
+      if (allowRepeats) {
+        allArticles.push(article);
+        continue;
+      }
+
+      if (!seenUrls!.has(article.url)) {
+        seenUrls!.add(article.url);
         allArticles.push(article);
       }
     }
   }
-  
-  console.log(`[fetchMultipleTavilySearches] Combined ${allArticles.length} unique articles from ${queries.length} searches`);
+
+  const dedupeLabel = allowRepeats ? "(dedupe disabled)" : "unique";
+  console.log(`[fetchMultipleTavilySearches] Combined ${allArticles.length} ${dedupeLabel} articles from ${queries.length} searches`);
   
   // Sort by published_date (newest first) if available
   allArticles.sort((a, b) => {
@@ -425,6 +438,10 @@ type GeneratedMorningBrief = {
   digestHash: string;
 };
 
+type GenerateOptions = {
+  allowRepeats?: boolean;
+};
+
 async function generateWeeklySummary(): Promise<GeneratedMorningBrief> {
   const today = new Date();
   const weekStart = getWeekStart(today);
@@ -574,13 +591,17 @@ Regler:
     };
   }
 
-  const digestHash = await computeDigestHash({ morningBrief, news: summarizedNews });
+  const runGeneratedAt = new Date().toISOString();
+  const normalizedBrief = { ...morningBrief, generatedAt: runGeneratedAt };
+
+  const digestHash = await computeDigestHash({ morningBrief: normalizedBrief, news: summarizedNews });
   console.log(`[generateWeeklySummary] Returning: morningBrief=${!!morningBrief}, newsCount=${summarizedNews.length}`);
-  return { morningBrief, news: summarizedNews, rawPayload: {}, digestHash };
+  return { morningBrief: normalizedBrief, news: summarizedNews, rawPayload: {}, digestHash };
 }
 
-async function generateMorningBrief(): Promise<GeneratedMorningBrief> {
+async function generateMorningBrief(options: GenerateOptions = {}): Promise<GeneratedMorningBrief> {
   const today = new Date();
+  const { allowRepeats = false } = options;
   
   // Check if it's weekend - if so, generate weekly summary
   if (isWeekend(today)) {
@@ -617,7 +638,7 @@ async function generateMorningBrief(): Promise<GeneratedMorningBrief> {
   const allQueries = [...baseQueries, ...followUpQueries];
   
   // 3. Fetch news from multiple Tavily searches
-  const tavilyArticles = await fetchMultipleTavilySearches(allQueries, 20, 1);
+  const tavilyArticles = await fetchMultipleTavilySearches(allQueries, 20, 1, { allowRepeats });
   console.log(`[generateMorningBrief] Fetched ${tavilyArticles.length} articles from Tavily`);
   
   // 4. Summarize each article with AI (up to 20 articles)
@@ -734,10 +755,13 @@ Regler:
     };
   }
 
-  const digestHash = await computeDigestHash({ morningBrief, news: summarizedNews });
+  const runGeneratedAt = new Date().toISOString();
+  const normalizedBrief = { ...morningBrief, generatedAt: runGeneratedAt };
+
+  const digestHash = await computeDigestHash({ morningBrief: normalizedBrief, news: summarizedNews });
   console.log(`[generateMorningBrief] Returning: morningBrief=${!!morningBrief}, newsCount=${summarizedNews.length}`);
   console.log(`[generateMorningBrief] News items sample:`, summarizedNews.slice(0, 2).map(n => ({ headline: n.headline, source: n.source })));
-  return { morningBrief, news: summarizedNews, rawPayload: {}, digestHash };
+  return { morningBrief: normalizedBrief, news: summarizedNews, rawPayload: {}, digestHash };
 }
 
 async function generateMarketMomentum() {
@@ -992,15 +1016,15 @@ function extractKeywordsFromBrief(brief: MorningBrief): string[] {
   return uniqueKeywords;
 }
 
-async function storeMorningBrief(generated: GeneratedMorningBrief) {
+async function storeMorningBrief(generated: GeneratedMorningBrief): Promise<{ morningBrief: MorningBrief; news: NewsItem[] } | null> {
   if (!supabaseClient) {
     console.warn("Supabase client is not configured; cannot store morning brief.");
-    return;
+    return null;
   }
 
   const { morningBrief, news, rawPayload, digestHash } = generated;
 
-  const { error } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from("morning_briefs")
     .upsert(
       {
@@ -1017,11 +1041,52 @@ async function storeMorningBrief(generated: GeneratedMorningBrief) {
         status: "ready",
       },
       { onConflict: "digest_hash" }
-    );
+    )
+    .select(
+      "id, generated_at, headline, overview, key_highlights, focus_today, sentiment, sections, news_items"
+    )
+    .single();
 
   if (error) {
     console.error("Failed to store morning brief", error);
+    return null;
   }
+
+  if (!data) {
+    return null;
+  }
+
+  const sectionsArray = Array.isArray(data.sections)
+    ? (data.sections as unknown[])
+        .map((section) => {
+          const record = section as Record<string, unknown>;
+          const title = typeof record.title === "string" ? record.title.trim() : "";
+          const body = typeof record.body === "string" ? record.body.trim() : "";
+          if (!title && !body) {
+            return null;
+          }
+          return { title, body };
+        })
+        .filter((section): section is MorningSection => !!section)
+    : [];
+
+  const storedBrief: MorningBrief = {
+    id: data.id,
+    headline: data.headline,
+    overview: data.overview,
+    keyHighlights: Array.isArray(data.key_highlights) ? data.key_highlights : morningBrief.keyHighlights,
+    focusToday: Array.isArray(data.focus_today) ? data.focus_today : morningBrief.focusToday,
+    sentiment:
+      data.sentiment === "bullish" || data.sentiment === "bearish" || data.sentiment === "neutral"
+        ? data.sentiment
+        : morningBrief.sentiment,
+    generatedAt: data.generated_at,
+    sections: sectionsArray,
+  };
+
+  const storedNews = Array.isArray(data.news_items) ? (data.news_items as NewsItem[]) : news;
+
+  return { morningBrief: storedBrief, news: storedNews };
 }
 
 function isSameUtcDay(a: Date, b: Date): boolean {
