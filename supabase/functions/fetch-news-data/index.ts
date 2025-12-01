@@ -154,6 +154,45 @@ function extractDomain(url: string): string {
   }
 }
 
+const allowedNewsDomains = [
+  // Global finance & markets
+  "reuters.com",
+  "marketwatch.com",
+  "investing.com",
+  "finance.yahoo.com",
+  "marketscreener.com",
+  "seekingalpha.com",
+
+  // Macro, economy, business
+  "apnews.com",
+  "axios.com",
+  "forbes.com",
+  "fortune.com",
+
+  // Tech & AI
+  "techcrunch.com",
+  "theverge.com",
+  "wired.com",
+
+  // Swedish open sources
+  "breakit.se",
+  "privataaffarer.se",
+  "affarsvarlden.se",
+];
+
+function isAllowedDomain(domain?: string): boolean {
+  if (!domain) return false;
+  const normalized = domain.toLowerCase().replace(/^www\./, "");
+  return allowedNewsDomains.includes(normalized);
+}
+
+function filterAllowedNewsItems(items: NewsItem[]): NewsItem[] {
+  return items.filter((item) => {
+    const domain = extractDomain(item.url || "");
+    return isAllowedDomain(domain);
+  });
+}
+
 async function fetchTavilyNews(query: string, maxResults = 15, days = 1): Promise<TavilyArticle[]> {
   if (!tavilyApiKey) {
     console.warn("TAVILY_API_KEY is not configured. Skipping Tavily search.");
@@ -170,31 +209,7 @@ async function fetchTavilyNews(query: string, maxResults = 15, days = 1): Promis
         api_key: tavilyApiKey,
         query,
         search_depth: "basic",
-        include_domains: [
-          // Global finance & markets
-          "reuters.com",
-          "marketwatch.com",
-          "investing.com",
-          "finance.yahoo.com",
-          "marketscreener.com",
-          "seekingalpha.com",
-
-          // Macro, economy, business
-          "apnews.com",
-          "axios.com",
-          "forbes.com",
-          "fortune.com",
-
-          // Tech & AI
-          "techcrunch.com",
-          "theverge.com",
-          "wired.com",
-
-          // Swedish open sources
-          "breakit.se",
-          "privataaffarer.se",
-          "affarsvarlden.se"
-        ],
+        include_domains: allowedNewsDomains,
         topic: "news",
         max_results: maxResults,
         days: days
@@ -219,7 +234,7 @@ async function fetchTavilyNews(query: string, maxResults = 15, days = 1): Promis
           published_date: typeof r.published_date === "string" ? r.published_date : undefined,
           domain: extractDomain(r.url || ""),
         }))
-        .filter((article: TavilyArticle) => article.title && article.url && article.content);
+        .filter((article: TavilyArticle) => article.title && article.url && article.content && isAllowedDomain(article.domain));
     }
     return [];
   } catch (error) {
@@ -639,6 +654,11 @@ async function generateMorningBrief(): Promise<GeneratedMorningBrief> {
     const urlKey = article.url.toLowerCase();
     const headlineKey = article.title.toLowerCase();
 
+    // Enforce allowed domain list to avoid stale/blocked sources
+    if (!isAllowedDomain(article.domain)) {
+      return false;
+    }
+
     // Skip articles we've already used in recent briefs
     if (seenNewsUrls.has(urlKey) || seenHeadlines.has(headlineKey)) {
       return false;
@@ -870,8 +890,9 @@ async function getLatestStoredBrief(): Promise<{ morningBrief: MorningBrief; new
   };
 
   const newsItems = Array.isArray(data.news_items) ? (data.news_items as NewsItem[]) : [];
+  const allowedNews = filterAllowedNewsItems(newsItems);
 
-  return { morningBrief, news: newsItems };
+  return { morningBrief, news: allowedNews };
 }
 
 async function getPreviousDayBrief(targetDate: Date): Promise<{ morningBrief: MorningBrief; news: NewsItem[] } | null> {
@@ -934,8 +955,9 @@ async function getPreviousDayBrief(targetDate: Date): Promise<{ morningBrief: Mo
   };
 
   const newsItems = Array.isArray(data.news_items) ? (data.news_items as NewsItem[]) : [];
+  const allowedNews = filterAllowedNewsItems(newsItems);
 
-  return { morningBrief, news: newsItems };
+  return { morningBrief, news: allowedNews };
 }
 
 async function getWeekBriefs(weekStart: Date, weekEnd: Date): Promise<{ morningBrief: MorningBrief; news: NewsItem[] }[]> {
@@ -1026,7 +1048,8 @@ async function getRecentNewsItems(lookbackDays = 3): Promise<NewsItem[]> {
       ...item,
       url: typeof item.url === "string" ? item.url : "",
       headline: typeof item.headline === "string" ? item.headline : "",
-    }));
+    }))
+    .filter((item) => isAllowedDomain(extractDomain(item.url)));
 }
 
 function extractKeywordsFromBrief(brief: MorningBrief): string[] {
