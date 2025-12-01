@@ -1,15 +1,13 @@
-import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowRight, 
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowRight,
   ArrowUpRight,
-  TrendingUp, 
-  TrendingDown, 
-  Minus,
-  Calendar,
   Clock,
   ExternalLink,
   Filter,
+  LineChart,
+  Search,
+  Sparkles,
 } from 'lucide-react';
 
 import Layout from '@/components/Layout';
@@ -18,11 +16,14 @@ import NewsModal from '@/components/ui/NewsModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDiscoverReportSummaries } from '@/hooks/useDiscoverReportSummaries';
 import { useNewsData } from '@/hooks/useNewsData';
 import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
+import ReportDetailDialogContent from '@/components/ReportDetailDialogContent';
+import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 
 const formatCategoryLabel = (category?: string) => {
   if (!category) return 'Marknad';
@@ -65,14 +66,70 @@ interface NewsItem {
 }
 
 const DiscoverNews = () => {
-  const navigate = useNavigate();
   const { reports } = useDiscoverReportSummaries(24);
   const { newsData, morningBrief, loading: newsLoading, error: newsError } = useNewsData();
-  
+
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'news' | 'reports'>('news');
+  const [reportSort, setReportSort] = useState<'latest' | 'name'>('latest');
+  const [reportSearch, setReportSearch] = useState('');
 
-  const reportHighlights = useMemo(() => reports.slice(0, 3), [reports]);
+  const filteredReports = useMemo(() => {
+    if (!reports || reports.length === 0) return [];
+
+    let nextReports = [...reports];
+
+    if (reportSearch.trim()) {
+      const query = reportSearch.toLowerCase().trim();
+      nextReports = nextReports.filter((report) => {
+        const companyMatch = report.companyName?.toLowerCase().includes(query);
+        const titleMatch = report.reportTitle?.toLowerCase().includes(query);
+        const summaryMatch = report.summary?.toLowerCase().includes(query);
+        const sourceMatch = report.sourceDocumentName?.toLowerCase().includes(query);
+
+        return companyMatch || titleMatch || summaryMatch || sourceMatch;
+      });
+    }
+
+    nextReports.sort((a, b) => {
+      if (reportSort === 'name') {
+        return (a.companyName || '').localeCompare(b.companyName || '', 'sv', { sensitivity: 'base' });
+      }
+
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+
+      if (Number.isNaN(dateA) || Number.isNaN(dateB)) return 0;
+      return dateB - dateA;
+    });
+
+    return nextReports;
+  }, [reports, reportSort, reportSearch]);
+
+  const reportHighlights = useMemo(() => filteredReports.slice(0, 3), [filteredReports]);
+  const latestReport = reportHighlights[0];
+  const totalReports = filteredReports.length;
+
+  const [reportPage, setReportPage] = useState(1);
+  const REPORTS_PER_PAGE = 12;
+
+  const totalReportPages = Math.max(1, Math.ceil(totalReports / REPORTS_PER_PAGE));
+
+  useEffect(() => {
+    if (reportPage > totalReportPages) {
+      setReportPage(totalReportPages);
+    }
+  }, [reportPage, totalReportPages]);
+
+  useEffect(() => {
+    setReportPage(1);
+  }, [reportSort, reportSearch]);
+
+  const paginatedReports = useMemo(() => {
+    const start = (reportPage - 1) * REPORTS_PER_PAGE;
+    return filteredReports.slice(start, start + REPORTS_PER_PAGE);
+  }, [reportPage, filteredReports]);
 
   const filteredNews = useMemo(() => {
     console.log('[DiscoverNews] Filtering news:', {
@@ -156,57 +213,39 @@ const DiscoverNews = () => {
 
   const isWeeklySummary = isWeekend() || morningBrief?.headline?.toLowerCase().includes('veckosammanfattning');
 
-  const getSentimentIcon = (sentiment?: string) => {
-    switch (sentiment) {
-      case 'bullish': return <TrendingUp className="h-8 w-8 text-emerald-500" />;
-      case 'bearish': return <TrendingDown className="h-8 w-8 text-rose-500" />;
-      default: return <Minus className="h-8 w-8 text-muted-foreground" />;
-    }
-  };
-
-  const getSentimentLabel = (sentiment?: string) => {
-    switch (sentiment) {
-      case 'bullish': return 'Positivt';
-      case 'bearish': return 'Negativt';
-      default: return 'Neutralt';
-    }
-  };
-
-  const getSentimentColor = (sentiment?: string) => {
-    switch (sentiment) {
-      case 'bullish': return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900';
-      case 'bearish': return 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900';
-      default: return 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700';
-    }
-  };
-
   return (
     <Layout>
       <div className="w-full pb-20 bg-background/50 min-h-screen">
         <div className="mx-auto w-full max-w-[1800px] px-4 sm:px-6 lg:px-8 xl:px-12 py-8 md:py-12">
           
-          <Tabs defaultValue="news" className="space-y-8">
-            
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => setActiveTab((value as 'news' | 'reports') || 'news')}
+            className="space-y-8"
+          >
+
             {/* Header Area */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                  <span className="w-2 h-2 rounded-full bg-primary/80" />
-                  {todayDate}
-                </div>
-                <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">                  
+            <div className="flex flex-col gap-4 pb-2 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold tracking-tight text-foreground mb-1">
+                  {activeTab === 'news'
+                    ? isWeeklySummary
+                      ? 'Veckosammanfattning'
+                      : 'Dagens Nyheter'
+                    : 'Rapporter'}
                 </h1>
+                <p className="text-sm text-muted-foreground">{todayDate}</p>
               </div>
 
               <TabsList className="bg-muted/60 p-1 rounded-full border border-border/50 self-start md:self-end">
-                <TabsTrigger 
-                  value="news" 
+                <TabsTrigger
+                  value="news"
                   className="rounded-full px-6 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
                 >
                   Nyheter
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="reports" 
+                <TabsTrigger
+                  value="reports"
                   className="rounded-full px-6 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
                 >
                   Rapporter
@@ -234,29 +273,6 @@ const DiscoverNews = () => {
               {!newsLoading && !newsError && (
               <>
               <div className="space-y-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold tracking-tight text-foreground mb-2">
-                      {isWeeklySummary ? 'Veckosammanfattning' : 'Dagens Nyheter'}
-                    </h1>
-                    <p className="text-muted-foreground flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      {todayDate}
-                      {isWeeklySummary && <span className="text-xs">• Veckans översikt</span>}
-                    </p>
-                  </div>
-                  <div className={cn(
-                    "flex items-center gap-3 px-4 py-2 rounded-full border shadow-sm",
-                    getSentimentColor(morningBrief?.sentiment)
-                  )}>
-                    {getSentimentIcon(morningBrief?.sentiment)}
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-wide opacity-70">Marknadsklimat</div>
-                      <div className="text-sm font-bold">{getSentimentLabel(morningBrief?.sentiment)}</div>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Category Filters - Only show on weekdays */}
                 {!isWeeklySummary && (
                   <div className="flex flex-wrap items-center gap-2">
@@ -512,6 +528,7 @@ const DiscoverNews = () => {
                 <p className="text-sm text-muted-foreground">
                   Alla nyheter från externa källor. Sammanfattningar genererade av AI.
                 </p>
+                <p className="mt-2 text-xs text-muted-foreground">{todayDate}</p>
               </div>
               </>
               )}
@@ -519,27 +536,196 @@ const DiscoverNews = () => {
             </TabsContent>
 
             <TabsContent value="reports" className="space-y-8 animate-fade-in mt-0">
-               <div className="rounded-[2.5rem] bg-gradient-to-br from-primary/5 via-transparent to-transparent border border-border/50 p-6 sm:p-8 xl:p-10 text-center space-y-4">
-                 <h2 className="text-2xl sm:text-3xl xl:text-4xl font-bold tracking-tight">AI-Rapporter</h2>
-                 <p className="text-base xl:text-lg text-muted-foreground max-w-2xl mx-auto">
-                    Marknadens rapporter, analyserade och sammanfattade av AI på sekunder.
-                 </p>
-               </div>
+              <div className="relative overflow-hidden rounded-[2.5rem] border border-border/60 bg-gradient-to-br from-primary/10 via-background to-background shadow-lg">
+                <div className="absolute right-12 top-12 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
+                <div className="absolute left-6 bottom-4 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
 
-               <div className="grid gap-4 xl:gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                 {reportHighlights.map((report) => (
-                   <ReportHighlightCard key={report.id} report={report} />
-                 ))}
-               </div>
+                <div className="relative grid items-center gap-8 p-6 sm:p-8 xl:p-10 lg:grid-cols-[1.05fr,0.95fr]">
+                  <div className="space-y-5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary">AI-rapporter</Badge>
+                      <Badge variant="outline" className="rounded-full border-dashed">Daglig översikt</Badge>
+                      <Badge variant="outline" className="rounded-full border-border/70 text-muted-foreground">
+                        {totalReports ? `${totalReports} rapporter` : 'Samlar rapporter...'}
+                      </Badge>
+                    </div>
 
-               <div className="flex justify-center pt-8">
-                 <Button 
-                    className="rounded-full px-8 py-6 text-base font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all hover:scale-105"
-                    onClick={() => navigate('/discover')}
-                  >
-                   Utforska alla rapporter <ArrowRight className="ml-2 w-5 h-5" />
-                 </Button>
-               </div>
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-primary/80">Rapportsektionen</p>
+                    <div className="space-y-1">
+                      <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground leading-tight">
+                        Rapporter
+                      </h2>
+                        <p className="text-base sm:text-lg text-muted-foreground max-w-2xl">{todayDate}</p>
+                    </div>
+                    <p className="text-base sm:text-lg text-muted-foreground max-w-2xl">
+                      Marknadens rapporter, analyserade och sammanfattade av AI på sekunder. Allt presenterat med samma visuella språk som nyheterna.
+                    </p>
+                  </div>
+
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-2xl border border-border/60 bg-card/70 p-4 shadow-sm">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Aktuella rapporter</p>
+                        <p className="text-2xl font-bold text-foreground">{totalReports || '—'}</p>
+                        <p className="text-xs text-muted-foreground">Uppdateras automatiskt</p>
+                      </div>
+                      <div className="rounded-2xl border border-border/60 bg-card/70 p-4 shadow-sm">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Senaste insikt</p>
+                        <p className="text-lg font-semibold text-foreground leading-tight line-clamp-1">
+                          {latestReport?.companyName || 'Ingen data ännu'}
+                        </p>
+                        <p className="text-xs text-muted-foreground line-clamp-2">
+                          {latestReport?.reportTitle || 'Fånga marknadsrörelser i realtid.'}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-border/60 bg-card/70 p-4 shadow-sm">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">AI-sammanfattningar</p>
+                        <div className="mt-1 flex items-center gap-2 text-emerald-500">
+                          <Sparkles className="h-4 w-4" />
+                          <span className="text-sm font-semibold">Sekunder</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Automatiska highlights för teamet.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 rounded-3xl border border-border/60 bg-card/80 p-5 shadow-lg sm:p-6">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                          <LineChart className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Rapportöversikt</p>
+                          <p className="text-sm text-foreground">Senaste AI-sammanfattningar</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="rounded-full">Live</Badge>
+                    </div>
+
+                    <div className="space-y-3">
+                      {reportHighlights.length > 0 ? (
+                        reportHighlights.map((report) => (
+                          <Dialog key={report.id}>
+                            <DialogTrigger asChild>
+                              <button
+                                type="button"
+                                className="group flex w-full items-start gap-3 rounded-2xl border border-border/60 bg-muted/20 p-4 text-left transition hover:border-primary/40 hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                              >
+                                <div className="flex-1 space-y-1">
+                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">{report.companyName}</p>
+                                  <p className="text-sm font-semibold leading-snug text-foreground line-clamp-2">{report.reportTitle}</p>
+                                  <p className="text-xs text-muted-foreground line-clamp-2">{report.summary}</p>
+                                </div>
+                                <ArrowUpRight className="mt-1 h-4 w-4 text-muted-foreground transition group-hover:text-primary" />
+                              </button>
+                            </DialogTrigger>
+                            <ReportDetailDialogContent report={report} />
+                          </Dialog>
+                        ))
+                      ) : (
+                        <div className="rounded-2xl border border-dashed border-border/60 bg-muted/10 p-4 text-sm text-muted-foreground">
+                          Samlar in rapporter...
+                        </div>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">AI-summerade rapporter med samma visuella språk som nyhetsflödet.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Senaste rapporterna</p>
+                    <h3 className="text-xl sm:text-2xl font-bold text-foreground">Djupdyk i AI-sammanfattningarna</h3>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Filter className="w-4 h-4" />
+                      <span>Sortera rapporter</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant={reportSort === 'latest' ? 'default' : 'outline'}
+                        size="sm"
+                        className="rounded-full"
+                        onClick={() => setReportSort('latest')}
+                      >
+                        Senaste
+                      </Button>
+                      <Button
+                        variant={reportSort === 'name' ? 'default' : 'outline'}
+                        size="sm"
+                        className="rounded-full"
+                        onClick={() => setReportSort('name')}
+                      >
+                        Namn
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="w-full lg:w-80">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        value={reportSearch}
+                        onChange={(event) => setReportSearch(event.target.value)}
+                        placeholder="Sök efter bolag eller titel"
+                        className="w-full rounded-full pl-9"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 xl:gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {paginatedReports.map((report) => (
+                    <ReportHighlightCard key={report.id} report={report} />
+                  ))}
+                </div>
+
+                {totalReportPages > 1 && (
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      Visar {paginatedReports.length} av {totalReports} rapporter
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full"
+                        disabled={reportPage === 1}
+                        onClick={() => setReportPage((page) => Math.max(1, page - 1))}
+                      >
+                        Föregående
+                      </Button>
+                      <div className="text-sm font-medium text-muted-foreground">
+                        Sida {reportPage} av {totalReportPages}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full"
+                        disabled={reportPage === totalReportPages}
+                        onClick={() => setReportPage((page) => Math.min(totalReportPages, page + 1))}
+                      >
+                        Nästa
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-3xl border border-dashed border-border/60 bg-card/60 p-6 text-center shadow-inner">
+                <p className="text-sm text-muted-foreground">
+                  Marknadens rapporter, analyserade och sammanfattade av AI på sekunder.
+                </p>
+                <p className="mt-4 text-xs text-muted-foreground">{todayDate}</p>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
