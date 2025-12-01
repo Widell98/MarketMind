@@ -9,7 +9,6 @@ export const DISCOVER_REPORT_SUMMARIES_QUERY_KEY = 'discover-report-summaries';
 
 type DiscoverReportSummaryRow = Database['public']['Tables']['discover_report_summaries']['Row'] & {
   company_logo_url?: string | null;
-  company_image_url?: string | null;
 };
 
 const parseKeyPoints = (value: DiscoverReportSummaryRow['key_points']): string[] => {
@@ -69,7 +68,7 @@ const parseKeyMetrics = (value: DiscoverReportSummaryRow['key_metrics']): Genera
 const mapRowToGeneratedReport = (row: DiscoverReportSummaryRow): GeneratedReport => ({
   id: row.id,
   companyName: row.company_name,
-  companyLogoUrl: row.company_logo_url ?? row.company_image_url ?? null,
+  companyLogoUrl: row.company_logo_url ?? null,
   reportTitle: row.report_title,
   summary: row.summary,
   keyPoints: parseKeyPoints(row.key_points),
