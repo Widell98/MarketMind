@@ -42,6 +42,90 @@ type ParsedMetric = {
   trend?: string;
 };
 
+const isValidHttpUrl = (value?: string | null) => {
+  if (!value || typeof value !== "string") return false;
+
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch (_error) {
+    return false;
+  }
+};
+
+const extractImageFromHtml = (html: string, baseUrl?: string) => {
+  const resolveCandidate = (value?: string | null) => {
+    if (!value) return null;
+
+    const trimmed = value.trim();
+
+    if (isValidHttpUrl(trimmed)) {
+      return trimmed;
+    }
+
+    if (baseUrl) {
+      try {
+        const absoluteUrl = new URL(trimmed, baseUrl);
+        return isValidHttpUrl(absoluteUrl.toString()) ? absoluteUrl.toString() : null;
+      } catch (_error) {
+        return null;
+      }
+    }
+
+    return null;
+  };
+
+  const headMatch = html.split("</head>")[0] ?? html;
+  const metaRegex = /<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]*content=["']([^"']+)["'][^>]*>/i;
+  const metaMatch = headMatch.match(metaRegex);
+  const metaUrl = resolveCandidate(metaMatch?.[1]);
+  if (metaUrl) {
+    return metaUrl;
+  }
+
+  const logoImgRegex = /<img[^>]+src=["']([^"']+logo[^"']*)["'][^>]*>/i;
+  const logoMatch = resolveCandidate(html.match(logoImgRegex)?.[1]);
+  if (logoMatch) {
+    return logoMatch;
+  }
+
+  const firstImgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/i;
+  const firstImgMatch = resolveCandidate(html.match(firstImgRegex)?.[1]);
+  if (firstImgMatch) {
+    return firstImgMatch;
+  }
+
+  return null;
+};
+
+const resolveLogoFromSource = async (payload: GenerateReportSummaryPayload) => {
+  if (payload.source_content) {
+    const inlineImage = extractImageFromHtml(payload.source_content, payload.source_url ?? undefined);
+    if (inlineImage) {
+      return inlineImage;
+    }
+  }
+
+  if (payload.source_url && isValidHttpUrl(payload.source_url)) {
+    try {
+      const response = await fetch(payload.source_url, { method: "GET" });
+      const contentType = response.headers.get("content-type") ?? "";
+
+      if (response.ok && contentType.includes("text/html")) {
+        const html = await response.text();
+        const imageFromPage = extractImageFromHtml(html, payload.source_url);
+        if (imageFromPage) {
+          return imageFromPage;
+        }
+      }
+    } catch (error) {
+      console.warn("Failed to fetch source URL for logo extraction", error);
+    }
+  }
+
+  return null;
+};
+
 const normalizeKeyPoints = (value: unknown): string[] => {
   if (Array.isArray(value)) {
     return value
@@ -451,6 +535,9 @@ const content =
       });
     }
 
+    const companyLogoUrl = await resolveLogoFromSource(payload);
+    const normalizedLogoUrl = companyLogoUrl?.trim() || null;
+
     const supabase = createServiceRoleClient();
 
     if (!supabase) {
@@ -474,6 +561,7 @@ const content =
         key_points: keyPoints,
         key_metrics: keyMetrics,
         ceo_commentary: ceoCommentary || null,
+        company_logo_url: normalizedLogoUrl,
         source_url: sourceUrl,
         source_type: sourceType,
         source_document_name: resolvedDocumentName,
@@ -495,6 +583,7 @@ const content =
       id: insertedReport.id,
       companyName: insertedReport.company_name,
       reportTitle: insertedReport.report_title,
+      companyLogoUrl: insertedReport.company_logo_url ?? normalizedLogoUrl,
       summary: insertedReport.summary,
       keyPoints: normalizeKeyPoints(insertedReport.key_points ?? keyPoints),
       keyMetrics: normalizeKeyMetrics(insertedReport.key_metrics ?? keyMetrics),
