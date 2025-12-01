@@ -71,10 +71,22 @@ const DiscoverNews = () => {
   
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedReportFilter, setSelectedReportFilter] = useState<string | null>(null);
 
-  const reportHighlights = useMemo(() => reports.slice(0, 3), [reports]);
+  const filteredReports = useMemo(() => {
+    if (!reports || reports.length === 0) return [];
+    if (!selectedReportFilter) return reports;
+
+    const normalizedSelected = selectedReportFilter.toLowerCase().trim();
+    return reports.filter((report) =>
+      report.companyName?.toLowerCase().trim() === normalizedSelected ||
+      report.sourceDocumentName?.toLowerCase().trim() === normalizedSelected
+    );
+  }, [reports, selectedReportFilter]);
+
+  const reportHighlights = useMemo(() => filteredReports.slice(0, 3), [filteredReports]);
   const latestReport = reportHighlights[0];
-  const totalReports = reports.length;
+  const totalReports = filteredReports.length;
 
   const [reportPage, setReportPage] = useState(1);
   const REPORTS_PER_PAGE = 12;
@@ -87,10 +99,14 @@ const DiscoverNews = () => {
     }
   }, [reportPage, totalReportPages]);
 
+  useEffect(() => {
+    setReportPage(1);
+  }, [selectedReportFilter]);
+
   const paginatedReports = useMemo(() => {
     const start = (reportPage - 1) * REPORTS_PER_PAGE;
-    return reports.slice(start, start + REPORTS_PER_PAGE);
-  }, [reportPage, reports]);
+    return filteredReports.slice(start, start + REPORTS_PER_PAGE);
+  }, [reportPage, filteredReports]);
 
   const filteredNews = useMemo(() => {
     console.log('[DiscoverNews] Filtering news:', {
@@ -166,6 +182,22 @@ const DiscoverNews = () => {
     day: 'numeric',
   });
 
+  const availableReportFilters = useMemo(() => {
+    if (!reports || reports.length === 0) return [];
+
+    const uniqueLabels = new Set<string>();
+    reports.forEach((report) => {
+      if (report.companyName) {
+        uniqueLabels.add(report.companyName.trim());
+      }
+      if (report.sourceDocumentName) {
+        uniqueLabels.add(report.sourceDocumentName.trim());
+      }
+    });
+
+    return Array.from(uniqueLabels).filter(Boolean).sort();
+  }, [reports]);
+
   const isWeekend = () => {
     const today = new Date();
     const day = today.getDay();
@@ -224,6 +256,7 @@ const DiscoverNews = () => {
                     <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold tracking-tight text-foreground mb-2">
                       {isWeeklySummary ? 'Veckosammanfattning' : 'Dagens Nyheter'}
                     </h1>
+                    <p className="text-sm text-muted-foreground">{todayDate}</p>
                   </div>
                 </div>
 
@@ -496,6 +529,7 @@ const DiscoverNews = () => {
                     <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold tracking-tight text-foreground mb-2">
                       Rapporter
                     </h1>
+                    <p className="text-sm text-muted-foreground">{todayDate}</p>
                   </div>
                 </div>
               </div>
@@ -514,18 +548,45 @@ const DiscoverNews = () => {
                       </Badge>
                     </div>
 
-                    <div className="space-y-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-primary/80">Rapportsektionen</p>
-                      <div className="space-y-1">
-                        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground leading-tight">
-                          Rapporter
-                        </h2>
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-primary/80">Rapportsektionen</p>
+                    <div className="space-y-1">
+                      <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground leading-tight">
+                        Rapporter
+                      </h2>
                         <p className="text-base sm:text-lg text-muted-foreground max-w-2xl">{todayDate}</p>
-                      </div>
-                      <p className="text-base sm:text-lg text-muted-foreground max-w-2xl">
-                        Marknadens rapporter, analyserade och sammanfattade av AI på sekunder. Allt presenterat med samma visuella språk som nyheterna.
-                      </p>
                     </div>
+                    <p className="text-base sm:text-lg text-muted-foreground max-w-2xl">
+                      Marknadens rapporter, analyserade och sammanfattade av AI på sekunder. Allt presenterat med samma visuella språk som nyheterna.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Filter className="w-4 h-4 text-muted-foreground" />
+                    <Button
+                      variant={selectedReportFilter === null ? 'default' : 'outline'}
+                      size="sm"
+                      className="rounded-full"
+                      onClick={() => setSelectedReportFilter(null)}
+                    >
+                      Alla
+                    </Button>
+                    {availableReportFilters.length > 0 ? (
+                      availableReportFilters.map((filter) => (
+                        <Button
+                          key={filter}
+                          variant={selectedReportFilter === filter ? 'default' : 'outline'}
+                          size="sm"
+                          className="rounded-full"
+                          onClick={() => setSelectedReportFilter(filter)}
+                        >
+                          {filter}
+                        </Button>
+                      ))
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Inga filter tillgängliga</span>
+                    )}
+                  </div>
 
                     <div className="grid gap-3 sm:grid-cols-3">
                       <div className="rounded-2xl border border-border/60 bg-card/70 p-4 shadow-sm">
