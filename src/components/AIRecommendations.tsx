@@ -46,6 +46,8 @@ const AIRecommendations = () => {
     open: openAddHoldingDialog,
     close: closeAddHoldingDialog,
   } = usePersistentDialogOpenState(ADD_HOLDING_DIALOG_STORAGE_KEY, 'ai-recommendations');
+  const viewToggleButtonClass =
+    'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-10 w-10 text-primary';
   const [selectedRecommendation, setSelectedRecommendation] = useState<UserHolding | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [isAllRecommendationsOpen, setIsAllRecommendationsOpen] = useState(false);
@@ -348,7 +350,7 @@ const AIRecommendations = () => {
                   variant="ghost"
                   size="icon"
                   onClick={() => setViewMode('list')}
-                  className={viewMode === 'list' ? 'text-primary' : 'text-muted-foreground'}
+                  className={`${viewToggleButtonClass} ${viewMode === 'list' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'}`}
                 >
                   <ListIcon className="h-4 w-4" />
                 </Button>
@@ -356,7 +358,7 @@ const AIRecommendations = () => {
                   variant="ghost"
                   size="icon"
                   onClick={() => setViewMode('grid')}
-                  className={viewMode === 'grid' ? 'text-primary' : 'text-muted-foreground'}
+                  className={`${viewToggleButtonClass} ${viewMode === 'grid' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'}`}
                 >
                   <LayoutGrid className="h-4 w-4" />
                 </Button>
@@ -459,7 +461,7 @@ const AIRecommendations = () => {
                 variant="ghost"
                 size="icon"
                 onClick={() => setViewMode('list')}
-                className={viewMode === 'list' ? 'text-primary' : 'text-muted-foreground'}
+                className={`${viewToggleButtonClass} ${viewMode === 'list' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'}`}
               >
                 <ListIcon className="h-4 w-4" />
               </Button>
@@ -467,7 +469,7 @@ const AIRecommendations = () => {
                 variant="ghost"
                 size="icon"
                 onClick={() => setViewMode('grid')}
-                className={viewMode === 'grid' ? 'text-primary' : 'text-muted-foreground'}
+                className={`${viewToggleButtonClass} ${viewMode === 'grid' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'}`}
               >
                 <LayoutGrid className="h-4 w-4" />
               </Button>

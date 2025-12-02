@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +12,6 @@ import {
   Search,
   LayoutGrid,
   Table as TableIcon,
-  PieChart as PieChartIcon,
   RefreshCw
 } from 'lucide-react';
 import {
@@ -27,7 +26,6 @@ import HoldingsGroupSection from '@/components/HoldingsGroupSection';
 import HoldingsTable from '@/components/HoldingsTable';
 import AddHoldingDialog from '@/components/AddHoldingDialog';
 import EditHoldingDialog from '@/components/EditHoldingDialog';
-import SectorAllocationChart from '@/components/SectorAllocationChart';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import type { HoldingPerformance } from '@/hooks/usePortfolioPerformance';
@@ -47,6 +45,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TransformedHolding {
   id: string;
@@ -66,11 +65,10 @@ interface TransformedHolding {
 }
 
 interface UserHoldingsManagerProps {
-  sectorData?: { name: string; value: number; percentage: number }[];
   importControls?: React.ReactNode;
 }
 
-const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = [], importControls }) => {
+const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControls }) => {
   const {
     actualHoldings,
     loading,
@@ -108,10 +106,93 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
   const [showEditHoldingDialog, setShowEditHoldingDialog] = useState(false);
   const [editingHolding, setEditingHolding] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
-  const [isChartOpen, setIsChartOpen] = useState(false);
   const [refreshingTicker, setRefreshingTicker] = useState<string | null>(null);
   const [holdingToDelete, setHoldingToDelete] = useState<{ id: string; name: string; type: 'cash' | 'holding' } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const renderHoldingsActions = () => (
+    <TooltipProvider delayDuration={120}>
+      <div className="flex flex-col gap-1.5 sm:gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={openAddHoldingDialog}>
+                <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="sr-only">Lägg till innehav</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Lägg till innehav</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button size="icon" variant="outline" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => setShowAddCashDialog(true)}>
+                <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="sr-only">Lägg till kassa</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Lägg till kassa</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 sm:h-9 sm:w-9 border border-dashed border-border text-muted-foreground"
+              >
+                <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="sr-only">Uppdatera prisinformation</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              Klicka på en ticker i listan för att uppdatera priset.
+            </TooltipContent>
+          </Tooltip>
+        </div>
+
+        <div className="flex gap-1.5 sm:gap-2 flex-1 max-w-full sm:max-w-md items-center">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+            <Input
+              placeholder="Sök innehav..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8 sm:pl-10 text-xs sm:text-sm"
+            />
+          </div>
+          <div className="flex gap-1 sm:gap-1.5 flex-shrink-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant={viewMode === 'cards' ? 'default' : 'outline'}
+                  onClick={() => setViewMode('cards')}
+                  className="h-8 w-8 sm:h-9 sm:w-9"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="sr-only">Kortvy</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Kortvy</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant={viewMode === 'table' ? 'default' : 'outline'}
+                  onClick={() => setViewMode('table')}
+                  className="h-8 w-8 sm:h-9 sm:w-9"
+                >
+                  <TableIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="sr-only">Tabellvy</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Tabellvy</TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+      </div>
+    </TooltipProvider>
+  );
 
   const holdingPerformanceMap = useMemo<Record<string, HoldingPerformance>>(() => {
     const map: Record<string, HoldingPerformance> = {};
@@ -383,32 +464,10 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
   return (
     <>
       <Card className="h-fit rounded-lg sm:rounded-xl">
-        <CardHeader className="p-3 sm:p-4 md:p-6">
-          <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
-            <span className="flex items-center gap-2">
-              <Package className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
-              <span className="text-base sm:text-lg md:text-xl break-words">Dina Innehav</span>
-            </span>
-            <PieChartIcon
-              className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 cursor-pointer flex-shrink-0"
-              onClick={() => setIsChartOpen(true)}
-            />
-          </CardTitle>
-          <CardDescription className="text-xs sm:text-sm">
-            {loading || cashLoading
-              ? "Laddar dina innehav..."
-              : allHoldings.length > 0
-                ? `Analysera dina investeringar och kassapositioner (${allHoldings.length} st)`
-                : "Lägg till dina befintliga aktier, fonder och kassapositioner för bättre portföljanalys"
-            }
-          </CardDescription>
-          {importControls && (
-            <div className="mt-3 sm:mt-4 flex flex-wrap gap-2">
-              {importControls}
-            </div>
-          )}
+        <CardHeader className="p-3 sm:p-3 md:p-4 pb-2">
+          <CardTitle className="text-base sm:text-lg md:text-xl">Dina innehav</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 sm:space-y-4 p-3 sm:p-4 md:p-6 pt-0">
+        <CardContent className="space-y-2.5 sm:space-y-3 p-3 sm:p-4 md:p-6 pt-0">
           {loading || cashLoading ? (
             <div className="text-center py-8 text-muted-foreground">
               <div className="flex items-center justify-center gap-2">
@@ -435,56 +494,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
               </div>
             </div>
           ) : (
-            <div className="space-y-3 sm:space-y-4">
-              {/* Action Bar */}
-              <div className="flex flex-col gap-3 sm:gap-4 pb-3 sm:pb-4 border-b border-border">
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm" onClick={openAddHoldingDialog}>
-                    <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    Lägg till innehav
-                  </Button>
-                  <Button size="sm" variant="outline" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm" onClick={() => setShowAddCashDialog(true)}>
-                    <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    Lägg till kassa
-                  </Button>
-                  <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] xs:text-xs text-muted-foreground border border-dashed border-border rounded-md px-2 py-1.5 sm:py-1">
-                    <RefreshCw className="w-3 h-3 flex-shrink-0" />
-                    <span className="hidden xs:inline">Klicka på en ticker för att uppdatera priset.</span>
-                    <span className="xs:hidden">Klicka på ticker</span>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 flex-1 max-w-full sm:max-w-md items-center">
-                  <div className="relative flex-1 min-w-0">
-                    <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Sök innehav..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-8 sm:pl-10 text-xs sm:text-sm"
-                    />
-                  </div>
-                  <div className="flex gap-1.5 sm:gap-2 flex-shrink-0">
-                    <Button
-                      size="icon"
-                      variant={viewMode === 'cards' ? 'default' : 'outline'}
-                      onClick={() => setViewMode('cards')}
-                      className="h-8 w-8 sm:h-9 sm:w-9"
-                    >
-                      <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant={viewMode === 'table' ? 'default' : 'outline'}
-                      onClick={() => setViewMode('table')}
-                      className="h-8 w-8 sm:h-9 sm:w-9"
-                    >
-                      <TableIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
+            <div className="space-y-2.5 sm:space-y-3">
               {viewMode === 'cards' ? (
                 <div className="space-y-4">
                   {filteredGroups.map((group) => (
@@ -508,17 +518,27 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                       onRefreshPrice={group.key === 'cash' ? undefined : handleUpdateHoldingPrice}
                       isUpdatingPrice={updating}
                       refreshingTicker={refreshingTicker}
+                      actions={group.key === 'stocks' ? renderHoldingsActions() : undefined}
                     />
                   ))}
                 </div>
               ) : (
-                <HoldingsTable
-                  holdings={filteredHoldings}
-                  onRefreshPrice={handleUpdateHoldingPrice}
-                  isUpdatingPrice={updating}
-                  refreshingTicker={refreshingTicker}
-                  holdingPerformanceMap={holdingPerformanceMap}
-                />
+                <div className="space-y-2.5 sm:space-y-3">
+                  <div className="flex items-center justify-between gap-2 pb-1 sm:pb-1.5 border-b border-border/80">
+                    <div>
+                      <h3 className="text-sm sm:text-base font-semibold text-foreground">Aktier</h3>
+                      <p className="text-xs text-muted-foreground">Sök, lägg till eller hantera aktieinnehav.</p>
+                    </div>
+                  </div>
+                  {renderHoldingsActions()}
+                  <HoldingsTable
+                    holdings={filteredHoldings}
+                    onRefreshPrice={handleUpdateHoldingPrice}
+                    isUpdatingPrice={updating}
+                    refreshingTicker={refreshingTicker}
+                    holdingPerformanceMap={holdingPerformanceMap}
+                  />
+                </div>
               )}
 
               {allHoldings.length > 0 && (
@@ -561,17 +581,6 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Sector Allocation Dialog */}
-      <Dialog open={isChartOpen} onOpenChange={setIsChartOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Sektorexponering</DialogTitle>
-            <DialogDescription>Fördelning över olika industrisektorer</DialogDescription>
-          </DialogHeader>
-          <SectorAllocationChart data={sectorData} />
-        </DialogContent>
-      </Dialog>
 
       {/* Add Cash Dialog */}
       <Dialog open={showAddCashDialog} onOpenChange={setShowAddCashDialog}>

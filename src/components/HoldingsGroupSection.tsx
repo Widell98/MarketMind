@@ -36,6 +36,7 @@ interface HoldingsGroupSectionProps {
   onRefreshPrice?: (symbol: string) => void;
   isUpdatingPrice?: boolean;
   refreshingTicker?: string | null;
+  actions?: React.ReactNode;
 }
 
 const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
@@ -51,7 +52,8 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
   onDelete,
   onRefreshPrice,
   isUpdatingPrice,
-  refreshingTicker
+  refreshingTicker,
+  actions
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [currentPage, setCurrentPage] = useState(1);
@@ -126,6 +128,11 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
 
       {isExpanded && (
         <CardContent className="pt-0 p-3 sm:p-4 md:p-6">
+        {actions && (
+          <div className="mb-3 sm:mb-4">
+            {actions}
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
             {currentHoldings.map((holding) => {
               const { valueInSEK: computedValue } = resolveHoldingValue(holding);
