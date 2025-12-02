@@ -46,6 +46,7 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 interface TransformedHolding {
   id: string;
@@ -199,7 +200,12 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
               key={option.key}
               size="sm"
               variant={filterMode === option.key ? 'secondary' : 'ghost'}
-              className="text-xs sm:text-sm"
+              className={cn(
+                'text-xs sm:text-sm rounded-full px-3 sm:px-4 font-medium border transition-colors',
+                filterMode === option.key
+                  ? 'bg-slate-900 text-slate-50 border-slate-900 hover:bg-slate-800'
+                  : 'bg-muted text-muted-foreground border-transparent hover:bg-muted/80'
+              )}
               onClick={() => setFilterMode(option.key)}
             >
               {option.label}
@@ -538,6 +544,8 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
 
   const filteredHoldings = filteredGroups.flatMap(group => group.holdings);
 
+  const holdingsActions = renderHoldingsActions();
+
   return (
     <>
       <Card className="h-fit rounded-lg sm:rounded-xl">
@@ -545,6 +553,10 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
           <CardTitle className="text-base sm:text-lg md:text-xl">Dina innehav</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2.5 sm:space-y-3 p-3 sm:p-4 md:p-6 pt-0">
+          <div className="space-y-2">
+            {holdingsActions}
+          </div>
+
           {loading || cashLoading ? (
             <div className="text-center py-8 text-muted-foreground">
               <div className="flex items-center justify-center gap-2">
@@ -595,7 +607,6 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
                       onRefreshPrice={group.key === 'cash' ? undefined : handleUpdateHoldingPrice}
                       isUpdatingPrice={updating}
                       refreshingTicker={refreshingTicker}
-                      actions={group.key === 'stocks' ? renderHoldingsActions() : undefined}
                     />
                   ))}
                 </div>
@@ -607,7 +618,6 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
                       <p className="text-xs text-muted-foreground">Sök, lägg till eller hantera aktieinnehav.</p>
                     </div>
                   </div>
-                  {renderHoldingsActions()}
                   <HoldingsTable
                     holdings={filteredHoldings}
                     onRefreshPrice={handleUpdateHoldingPrice}

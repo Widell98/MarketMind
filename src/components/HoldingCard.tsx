@@ -5,15 +5,24 @@ import { Badge, badgeVariants } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   MessageSquare,
-  Edit2,
-  Trash2,
   Wallet,
   Building2,
   TrendingUp,
   RefreshCw,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  MoreVertical,
+  Edit2,
+  Trash2
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 import SmartHoldingSuggestions from './SmartHoldingSuggestions';
 import { cn } from '@/lib/utils';
 import { formatCurrency, resolveHoldingValue } from '@/utils/currencyUtils';
@@ -153,108 +162,108 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                 )}
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <Badge variant="secondary" className="text-[11px]">
-                  {holding.holding_type === 'cash' ? 'Kassa' : holding.holding_type}
-                </Badge>
-                {holding.sector && <span className="text-[11px]">{holding.sector}</span>}
+              {holding.sector && <p className="text-xs text-muted-foreground line-clamp-1">{holding.sector}</p>}
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2 sm:gap-3 flex-shrink-0">
+            <div className="text-right">
+              <div className="text-lg sm:text-xl font-bold text-foreground leading-tight">
+                {portfolioPercentage.toFixed(1)}%
               </div>
+              <div className="text-xs text-muted-foreground">av portfölj</div>
             </div>
-          </div>
 
-          <div className="text-right flex-shrink-0">
-            <div className="text-lg sm:text-xl font-bold text-foreground leading-tight">
-              {portfolioPercentage.toFixed(1)}%
-            </div>
-            <div className="text-xs text-muted-foreground">av portfölj</div>
-          </div>
-        </div>
-
-        {/* Value & quantity */}
-        <div className="space-y-1">
-          <div className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">
-            {formatCurrency(displayValue, 'SEK')}
-          </div>
-          {!isCash && quantity > 0 && (
-            <div className="text-sm text-muted-foreground">{quantity} st</div>
-          )}
-        </div>
-
-        {/* Performance */}
-        {!isCash && (
-          <div
-            className={cn(
-              'inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium',
-              hasPurchasePrice
-                ? profit > 0
-                  ? 'bg-green-50 text-green-700'
-                  : profit < 0
-                    ? 'bg-red-50 text-red-700'
-                    : 'bg-muted text-foreground'
-                : 'bg-muted text-muted-foreground'
-            )}
-          >
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">Utveckling</span>
-            {hasPerformanceData && hasPurchasePrice ? (
-              <>
-                <span>{`${profit > 0 ? '+' : ''}${formatCurrency(profit, 'SEK')}`}</span>
-                <span className="text-xs">{`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}</span>
-              </>
-            ) : (
-              <span className="text-xs">{hasPerformanceData ? 'Köpkurs saknas' : 'Beräknar...'}</span>
-            )}
-          </div>
-        )}
-
-        {/* Quick actions */}
-        <div className="flex gap-2 flex-wrap">
-          {!isCash && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex-1 min-w-0 justify-start text-blue-700 hover:text-blue-800 hover:bg-blue-50"
-                onClick={() => onDiscuss(holding.name, holding.symbol)}
-              >
-                <MessageSquare className="w-4 h-4 mr-2" />
-                <span className="truncate text-sm">Diskutera</span>
-              </Button>
-              {onEdit && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  size="sm"
-                  className="flex-shrink-0 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50"
-                  onClick={() => onEdit(holding.id)}
-                  aria-label="Redigera innehav"
+                  size="icon"
+                  className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground hover:text-foreground"
+                  aria-label="Kortmeny"
                 >
-                  <Edit2 className="w-4 h-4" />
+                  <MoreVertical className="w-4 h-4" />
                 </Button>
-              )}
-            </>
-          )}
-
-          {isCash && onEdit && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex-1 min-w-0 justify-start text-blue-700 hover:text-blue-800 hover:bg-blue-50"
-              onClick={() => onEdit(holding.id)}
-            >
-              <Edit2 className="w-4 h-4 mr-2" />
-              <span className="truncate text-sm">Redigera</span>
-            </Button>
-          )}
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex-shrink-0 text-red-700 hover:text-red-800 hover:bg-red-50"
-            onClick={() => onDelete(holding.id, holding.name)}
-            aria-label="Ta bort innehav"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Snabbåtgärder</DropdownMenuLabel>
+                {onEdit && (
+                  <DropdownMenuItem onClick={() => onEdit(holding.id)} className="gap-2">
+                    <Edit2 className="w-4 h-4" />
+                    Redigera
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => onDelete(holding.id, holding.name)} className="gap-2 text-red-600 focus:text-red-700">
+                  <Trash2 className="w-4 h-4" />
+                  Ta bort
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {!isCash && (
+                  <DropdownMenuItem onClick={() => onDiscuss(holding.name, holding.symbol)} className="gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    Diskutera
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
+
+        {/* Value & performance */}
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="text-3xl sm:text-4xl font-bold text-foreground leading-tight">
+              {formatCurrency(displayValue, 'SEK')}
+            </div>
+
+            {!isCash && (
+              <div
+                className={cn(
+                  'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold',
+                  hasPerformanceData && hasPurchasePrice
+                    ? profit > 0
+                      ? 'bg-green-100 text-green-700'
+                      : profit < 0
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-muted text-foreground'
+                    : 'bg-muted text-muted-foreground'
+                )}
+              >
+                {hasPerformanceData && hasPurchasePrice ? (
+                  <span>
+                    {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}% (${profit > 0 ? '+' : ''}${formatCurrency(profit, 'SEK')})`}
+                  </span>
+                ) : (
+                  <span className="text-xs font-medium">Prisdata saknas</span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {!isCash && (quantity > 0 || (typeof effectivePrice === 'number' && effectivePrice > 0)) && (
+            <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-2">
+              {quantity > 0 && <span>{quantity} st</span>}
+              {quantity > 0 && typeof effectivePrice === 'number' && effectivePrice > 0 && <span>•</span>}
+              {typeof effectivePrice === 'number' && effectivePrice > 0 && (
+                <span>
+                  {formatCurrency(effectivePrice, effectiveCurrency)}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {!isCash && (
+          <div className="flex justify-end pt-1">
+            <button
+              type="button"
+              className="text-sm font-medium text-blue-700 hover:text-blue-800"
+              onClick={() => onDiscuss(holding.name, holding.symbol)}
+            >
+              Diskutera
+            </button>
+          </div>
+        )}
 
         {/* Details toggle */}
         <div className="pt-1 border-t border-border/80">
