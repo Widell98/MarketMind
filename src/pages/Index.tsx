@@ -574,7 +574,7 @@ const Index = () => {
                             <Card className="rounded-3xl border border-border/60 bg-card/80 p-4 sm:p-6 shadow-sm">
                               <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-2">
-                                  <TrendingUp className="h-5 w-5 text-muted-foreground" />
+                                  <TrendingUp className="h-5 w-5 text-emerald-600" />
                                   <h4 className="text-base font-semibold leading-tight tracking-tight text-foreground sm:text-lg">Bästa innehav idag</h4>
                                 </div>
                               </div>
@@ -631,7 +631,7 @@ const Index = () => {
                             <Card className="rounded-3xl border border-border/60 bg-card/80 p-4 sm:p-6 shadow-sm">
                               <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-2">
-                                  <TrendingDown className="h-5 w-5 text-muted-foreground" />
+                                  <TrendingDown className="h-5 w-5 text-red-600" />
                                   <h4 className="text-base font-semibold leading-tight tracking-tight text-foreground sm:text-lg">Sämsta innehav idag</h4>
                                 </div>
                               </div>
