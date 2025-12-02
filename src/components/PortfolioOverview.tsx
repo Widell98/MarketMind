@@ -13,6 +13,7 @@ import EditHoldingDialog from './EditHoldingDialog';
 import UserHoldingsManager from './UserHoldingsManager';
 import AIRecommendations from './AIRecommendations';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
+import HoldingsHighlightCard from './HoldingsHighlightCard';
  
 interface PortfolioOverviewProps {
   portfolio: any;
@@ -217,35 +218,45 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     }
   };
 
-  const holdingsById = React.useMemo(() => {
-    return new Map(actualHoldings.map((holding) => [holding.id, holding]));
-  }, [actualHoldings]);
-
-  const formatHoldingPrice = (holdingId: string) => {
-    const holding = holdingsById.get(holdingId);
-    if (!holding) return '—';
-
-    const pricePerUnit = holding.current_price_per_unit;
-    const currencyCode = holding.price_currency || holding.currency || 'SEK';
-
-    if (pricePerUnit !== null && pricePerUnit !== undefined) {
-      return `${pricePerUnit.toLocaleString('sv-SE', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })} ${currencyCode}`;
-    }
-
-    return '—';
+  const formatChangeLabel = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return '–';
+    const prefix = value > 0 ? '+' : '';
+    return `${prefix}${(value).toFixed(2)}%`;
   };
 
-  const renderHoldingAvatar = (holdingId: string) => {
-    const holding = holdingsById.get(holdingId);
-    const initial = (holding?.name || holding?.symbol || '?').charAt(0).toUpperCase();
-    const baseClasses = 'flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold';
-    const colorClasses = 'bg-muted/40 text-foreground';
-
-    return <div className={`${baseClasses} ${colorClasses}`}>{initial}</div>;
+  const formatChangeValue = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return '–';
+    const prefix = value > 0 ? '+' : '';
+    return `${prefix}${value.toLocaleString('sv-SE')} kr`;
   };
+
+  const bestHoldingsItems = topHoldings.best.map((holding) => {
+    const change = holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
+    const changeValue = holding.hasPurchasePrice ? holding.profit : holding.dayChange;
+
+    return {
+      id: holding.id,
+      name: holding.name || holding.symbol || 'Innehav',
+      symbol: holding.symbol,
+      percentLabel: formatChangeLabel(change),
+      valueLabel: formatChangeValue(changeValue),
+      isPositive: (change ?? 0) >= 0,
+    };
+  });
+
+  const worstHoldingsItems = topHoldings.worst.map((holding) => {
+    const change = holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
+    const changeValue = holding.hasPurchasePrice ? holding.profit : holding.dayChange;
+
+    return {
+      id: holding.id,
+      name: holding.name || holding.symbol || 'Innehav',
+      symbol: holding.symbol,
+      percentLabel: formatChangeLabel(change),
+      valueLabel: formatChangeValue(changeValue),
+      isPositive: (change ?? 0) > 0,
+    };
+  });
   const handleEditHolding = (holding: any) => {
     setSelectedHolding(holding);
     setEditHoldingDialogOpen(true);
@@ -386,143 +397,23 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       {(topHoldings.best.length > 0 || topHoldings.worst.length > 0) && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {topHoldings.best.length > 0 && (
-            <Card className="rounded-3xl border border-border/60 bg-card/80 p-4 sm:p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-emerald-600" />
-                  <h3 className="text-base font-semibold leading-tight tracking-tight text-foreground sm:text-lg">Bästa innehav</h3>
-                </div>
-              </div>
-              <div className="divide-y divide-border/60">
-                {topHoldings.best.map((holding) => {
-                  const change = holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
-                  const changeValue = holding.hasPurchasePrice ? holding.profit : holding.dayChange;
-
-                  return (
-                    <div
-                      key={holding.id}
-                      className="grid grid-cols-1 items-center gap-3 py-2 sm:grid-cols-[1fr_auto]"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        {renderHoldingAvatar(holding.id)}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <p className="truncate text-sm font-semibold leading-tight tracking-tight text-foreground">{holding.name || holding.symbol || 'Innehav'}</p>
-                            {holding.symbol && (
-                              <span className="inline-flex items-center rounded-full bg-muted/40 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                {holding.symbol}
-                              </span>
-                            )}
-                          </div>
-                          <div className="mt-1 inline-flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="inline-flex items-center rounded-full bg-muted/30 px-2 py-0.5 text-[11px] font-semibold tracking-tight text-foreground">
-                              {formatHoldingPrice(holding.id)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="space-y-1 sm:text-right">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                            (change ?? 0) >= 0
-                              ? 'text-emerald-700 dark:text-emerald-300'
-                              : 'text-red-700 dark:text-red-300'
-                          }`}
-                        >
-                          <TrendingUp className="h-3 w-3" />
-                          <span>
-                            {change !== null && change !== undefined
-                              ? `${change > 0 ? '+' : ''}${change.toFixed(2)}%`
-                              : 'Ingen data'}
-                          </span>
-                        </span>
-                        <p
-                          className={`truncate text-xs font-medium tracking-tight ${
-                            (changeValue ?? 0) >= 0
-                              ? 'text-emerald-700 dark:text-emerald-200'
-                              : 'text-red-700 dark:text-red-200'
-                          }`}
-                        >
-                          {changeValue !== null && changeValue !== undefined
-                            ? `${changeValue >= 0 ? '+' : ''}${changeValue.toLocaleString('sv-SE')} kr`
-                            : '–'}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
+            <HoldingsHighlightCard
+              title="Bästa innehav"
+              icon={<TrendingUp className="h-5 w-5" />}
+              iconColorClass="text-emerald-600"
+              items={bestHoldingsItems}
+              emptyText="Ingen data"
+            />
           )}
 
           {topHoldings.worst.length > 0 && (
-            <Card className="rounded-3xl border border-border/60 bg-card/80 p-4 sm:p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <TrendingDown className="h-5 w-5 text-red-600" />
-                  <h3 className="text-base font-semibold leading-tight tracking-tight text-foreground sm:text-lg">Sämsta innehav</h3>
-                </div>
-              </div>
-              <div className="divide-y divide-border/60">
-                {topHoldings.worst.map((holding) => {
-                  const change = holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
-                  const changeValue = holding.hasPurchasePrice ? holding.profit : holding.dayChange;
-
-                  return (
-                    <div
-                      key={holding.id}
-                      className="grid grid-cols-1 items-center gap-3 py-2 sm:grid-cols-[1fr_auto]"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        {renderHoldingAvatar(holding.id)}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <p className="truncate text-sm font-semibold leading-tight tracking-tight text-foreground">{holding.name || holding.symbol || 'Innehav'}</p>
-                            {holding.symbol && (
-                              <span className="inline-flex items-center rounded-full bg-muted/40 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                {holding.symbol}
-                              </span>
-                            )}
-                          </div>
-                          <div className="mt-1 inline-flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="inline-flex items-center rounded-full bg-muted/30 px-2 py-0.5 text-[11px] font-semibold tracking-tight text-foreground">
-                              {formatHoldingPrice(holding.id)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="space-y-1 sm:text-right">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                            (change ?? 0) <= 0
-                              ? 'text-red-700 dark:text-red-300'
-                              : 'text-emerald-700 dark:text-emerald-300'
-                          }`}
-                        >
-                          <TrendingDown className="h-3 w-3" />
-                          <span>
-                            {change !== null && change !== undefined
-                              ? `${change > 0 ? '+' : ''}${change.toFixed(2)}%`
-                              : 'Ingen data'}
-                          </span>
-                        </span>
-                        <p
-                          className={`truncate text-xs font-medium tracking-tight ${
-                            (changeValue ?? 0) <= 0
-                              ? 'text-red-700 dark:text-red-200'
-                              : 'text-emerald-700 dark:text-emerald-200'
-                          }`}
-                        >
-                          {changeValue !== null && changeValue !== undefined
-                            ? `${changeValue >= 0 ? '+' : ''}${changeValue.toLocaleString('sv-SE')} kr`
-                            : '–'}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
+            <HoldingsHighlightCard
+              title="Sämsta innehav"
+              icon={<TrendingDown className="h-5 w-5" />}
+              iconColorClass="text-red-600"
+              items={worstHoldingsItems}
+              emptyText="Ingen data"
+            />
           )}
         </div>
       )}

@@ -47,8 +47,10 @@ import StockCaseCard from '@/components/StockCaseCard';
 import PortfolioOverviewCard, { type SummaryCard } from '@/components/PortfolioOverviewCard';
 import { ArrowRight, TrendingDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { formatCurrency, resolveHoldingValue } from '@/utils/currencyUtils';
+import { resolveHoldingValue } from '@/utils/currencyUtils';
 import { useDailyChangeData } from '@/hooks/useDailyChangeData';
+import HoldingsHighlightCard from '@/components/HoldingsHighlightCard';
+import AllocationCard from '@/components/AllocationCard';
 
 type QuickAction = {
   icon: React.ComponentType<{ className?: string }>;
@@ -144,24 +146,6 @@ const Index = () => {
     return `${prefix}${value.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr`;
   };
 
-  const formatCurrentPrice = (holding: UserHolding) => {
-    const { pricePerUnit, priceCurrency, pricePerUnitInSEK } = resolveHoldingValue(holding);
-
-    if (pricePerUnit !== null) {
-      const currencyCode = priceCurrency || 'SEK';
-      return formatCurrency(pricePerUnit, currencyCode);
-    }
-
-    if (pricePerUnitInSEK !== null) {
-      return `${pricePerUnitInSEK.toLocaleString('sv-SE', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })} kr`;
-    }
-
-    return '—';
-  };
-
   const formatPercent = (value: number) => `${value.toFixed(2)}%`;
 
   const renderHoldingAvatar = (holding: UserHolding) => {
@@ -187,6 +171,30 @@ const Index = () => {
 
     return { best, worst };
   }, [actualHoldings]);
+
+  const formatChangeLabel = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return '–';
+    const prefix = value > 0 ? '+' : '';
+    return `${prefix}${formatPercent(value)}`;
+  };
+
+  const bestHighlightItems = dailyHighlights.best.map((holding) => ({
+    id: holding.id,
+    name: holding.name || holding.symbol || 'Innehav',
+    symbol: holding.symbol,
+    percentLabel: formatChangeLabel(holding.dailyChangePercent),
+    valueLabel: formatDailyChangeValue(holding.dailyChangeValueSEK),
+    isPositive: (holding.dailyChangePercent ?? 0) >= 0,
+  }));
+
+  const worstHighlightItems = dailyHighlights.worst.map((holding) => ({
+    id: holding.id,
+    name: holding.name || holding.symbol || 'Innehav',
+    symbol: holding.symbol,
+    percentLabel: formatChangeLabel(holding.dailyChangePercent),
+    valueLabel: formatDailyChangeValue(holding.dailyChangeValueSEK),
+    isPositive: (holding.dailyChangePercent ?? 0) > 0 ? true : false,
+  }));
   
   const {
     data: sheetChangeData,
@@ -567,121 +575,34 @@ const Index = () => {
                   />
 
                     {/* Dagens förändring och allokering */}
-                    {(dailyHighlights.best.length > 0 || dailyHighlights.worst.length > 0) && (
+                    {(dailyHighlights.best.length > 0 || dailyHighlights.worst.length > 0 || performance.totalPortfolioValue > 0 || safeTotalCash > 0) && (
                       <div className="space-y-3 sm:space-y-4">
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                           {dailyHighlights.best.length > 0 && (
-                            <Card className="rounded-3xl border border-border/60 bg-card/80 p-4 sm:p-6 shadow-sm">
-                              <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                  <TrendingUp className="h-5 w-5 text-emerald-600" />
-                                  <h4 className="text-base font-semibold leading-tight tracking-tight text-foreground sm:text-lg">Bästa innehav idag</h4>
-                                </div>
-                              </div>
-                              <div className="divide-y divide-border/60">
-                                {dailyHighlights.best.map((holding) => (
-                                  <div
-                                    key={holding.id}
-                                    className="grid grid-cols-1 items-center gap-3 py-2 sm:grid-cols-[1fr_auto]"
-                                  >
-                                    <div className="flex items-center gap-3 min-w-0">
-                                      {renderHoldingAvatar(holding)}
-                                      <div className="min-w-0">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <p className="truncate text-sm font-semibold leading-tight tracking-tight text-foreground">{holding.name || holding.symbol || 'Innehav'}</p>
-                            {holding.symbol && (
-                              <span className="inline-flex items-center rounded-full bg-muted/40 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                {holding.symbol}
-                              </span>
-                            )}
-                          </div>
-                          <div className="mt-1 inline-flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="inline-flex items-center rounded-full bg-muted/30 px-2 py-0.5 text-[11px] font-semibold tracking-tight text-foreground">
-                              {formatCurrentPrice(holding)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="space-y-1 sm:text-right">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                                          (holding.dailyChangePercent ?? 0) >= 0
-                                            ? 'text-emerald-700 dark:text-emerald-300'
-                                            : 'text-red-700 dark:text-red-300'
-                                        }`}
-                                      >
-                          <TrendingUp className="h-3 w-3" />
-                          <span>
-                            {holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined
-                              ? `${holding.dailyChangePercent > 0 ? '+' : ''}${formatPercent(holding.dailyChangePercent)}`
-                              : 'Ingen dagsdata'}
-                          </span>
-                        </span>
-                        <p className="truncate text-xs font-medium tracking-tight text-emerald-700 dark:text-emerald-200">
-                          {formatDailyChangeValue(holding.dailyChangeValueSEK)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                              </div>
-                            </Card>
+                            <HoldingsHighlightCard
+                              title="Bästa innehav idag"
+                              icon={<TrendingUp className="h-5 w-5" />}
+                              iconColorClass="text-emerald-600"
+                              items={bestHighlightItems}
+                              emptyText="Ingen dagsdata ännu"
+                            />
                           )}
 
                           {dailyHighlights.worst.length > 0 && (
-                            <Card className="rounded-3xl border border-border/60 bg-card/80 p-4 sm:p-6 shadow-sm">
-                              <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                  <TrendingDown className="h-5 w-5 text-red-600" />
-                                  <h4 className="text-base font-semibold leading-tight tracking-tight text-foreground sm:text-lg">Sämsta innehav idag</h4>
-                                </div>
-                              </div>
-                              <div className="divide-y divide-border/60">
-                                {dailyHighlights.worst.map((holding) => (
-                                  <div
-                                    key={holding.id}
-                                    className="grid grid-cols-1 items-center gap-3 py-2 sm:grid-cols-[1fr_auto]"
-                                  >
-                                    <div className="flex items-center gap-3 min-w-0">
-                                      {renderHoldingAvatar(holding)}
-                                      <div className="min-w-0">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <p className="truncate text-sm font-semibold leading-tight tracking-tight text-foreground">{holding.name || holding.symbol || 'Innehav'}</p>
-                            {holding.symbol && (
-                              <span className="inline-flex items-center rounded-full bg-muted/40 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                {holding.symbol}
-                              </span>
-                            )}
-                          </div>
-                          <div className="mt-1 inline-flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="inline-flex items-center rounded-full bg-muted/30 px-2 py-0.5 text-[11px] font-semibold tracking-tight text-foreground">
-                              {formatCurrentPrice(holding)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="space-y-1 sm:text-right">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                                          (holding.dailyChangePercent ?? 0) <= 0
-                                            ? 'text-red-700 dark:text-red-300'
-                                            : 'text-emerald-700 dark:text-emerald-300'
-                                        }`}
-                                      >
-                          <TrendingDown className="h-3 w-3" />
-                          <span>
-                            {holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined
-                              ? `${holding.dailyChangePercent > 0 ? '+' : ''}${formatPercent(holding.dailyChangePercent)}`
-                              : 'Ingen dagsdata'}
-                          </span>
-                        </span>
-                        <p className="truncate text-xs font-medium tracking-tight text-red-700 dark:text-red-200">
-                          {formatDailyChangeValue(holding.dailyChangeValueSEK)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                              </div>
-                            </Card>
+                            <HoldingsHighlightCard
+                              title="Sämsta innehav idag"
+                              icon={<TrendingDown className="h-5 w-5" />}
+                              iconColorClass="text-red-600"
+                              items={worstHighlightItems}
+                              emptyText="Ingen dagsdata ännu"
+                            />
+                          )}
+
+                          {(performance.totalPortfolioValue > 0 || safeTotalCash > 0) && (
+                            <AllocationCard
+                              investedPercentage={performance.investedPercentage ?? 0}
+                              cashPercentage={performance.cashPercentage ?? 0}
+                            />
                           )}
                         </div>
                       </div>
