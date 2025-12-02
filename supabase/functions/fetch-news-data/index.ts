@@ -245,9 +245,9 @@ async function fetchTavilyNews(query: string, maxResults = 15, days = 1, domains
         "breakit.se",
           "privataaffarer.se",
           "affarsvarlden.se",
-          "di.se",
-          "dn.se",
-          "svd.se",
+          "svd.se/bors/news.php",
+          "placera.se"
+          
   ];
 
   // Använd de specifika domänerna om de finns, annars default
@@ -703,20 +703,21 @@ async function generateMorningBrief(options: GenerateOptions = {}): Promise<Gene
 
   // A. Definiera specifika domäner för att garantera svenska nyheter
   const swedishDomains = [
-    "di.se", "svd.se", "dn.se", "affarsvarlden.se", "privataaffarer.se", "breakit.se", "omni.se"
+   "svd.se", "dn.se/ekonomi/", "privataaffarer.se", "breakit.se", "omni.se", "placera.se"
   ];
   
   const globalDomains = [
     "cnbc.com", "reuters.com", "bloomberg.com", "ft.com", "marketwatch.com", 
-    "techcrunch.com", "wsj.com", "investing.com"
+    "techcrunch.com", "wsj.com", "investing.com", "yahoo.com"
   ];
 
   // B. Dela upp sökningarna
-  const swedishQueries = [
-    "börsen stockholm storbolag vinnare förlorare",
-    "svenska ekonomin inflation ränta riksbanken",
-    "svenska techbolag nyheter rapport",
-    "fastighetsbolag sverige kris analys"
+ const swedishQueries = [
+    "börsen idag stockholm vinnare förlorare placera",
+    "svensk ekonomi nyheter svt ränta",
+    "marknadskollen omni ekonomi",
+    "aktier analys aktiespararna",
+    "svenska storbolag rapport"
   ];
   
   const globalQueries = [
