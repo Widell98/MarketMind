@@ -395,11 +395,11 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
       {(topHoldings.best.length > 0 || topHoldings.worst.length > 0) && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
           {topHoldings.best.length > 0 && (
             <HoldingsHighlightCard
               title="Bästa innehav"
-              icon={<TrendingUp className="h-5 w-5" />}
+              icon={<TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />}
               iconColorClass="text-emerald-600"
               items={bestHoldingsItems}
               emptyText="Ingen data"
@@ -409,7 +409,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
           {topHoldings.worst.length > 0 && (
             <HoldingsHighlightCard
               title="Sämsta innehav"
-              icon={<TrendingDown className="h-5 w-5" />}
+              icon={<TrendingDown className="h-4 w-4 sm:h-5 sm:w-5" />}
               iconColorClass="text-red-600"
               items={worstHoldingsItems}
               emptyText="Ingen data"

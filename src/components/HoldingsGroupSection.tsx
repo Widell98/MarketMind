@@ -127,13 +127,14 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
         </div>
       </CardHeader>
 
+      {actions && (
+        <div className="px-3 sm:px-4 md:px-6 pt-0 pb-2 sm:pb-3">
+          {actions}
+        </div>
+      )}
+
       {isExpanded && (
         <CardContent className="pt-0 p-3 sm:p-4 md:p-6">
-        {actions && (
-          <div className="mb-3 sm:mb-4">
-            {actions}
-          </div>
-        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 xl:gap-6">
             {currentHoldings.map((holding) => {
               const { valueInSEK: computedValue } = resolveHoldingValue(holding);

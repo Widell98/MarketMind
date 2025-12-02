@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { AlertCircle, Brain, Info, Sparkles, Upload, User } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
 import { useToast } from '@/hooks/use-toast';
+import AllocationCard from '@/components/AllocationCard';
 import { normalizeShareClassTicker, parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
 import { supabase } from '@/integrations/supabase/client';
 const PortfolioImplementation = () => {
@@ -313,26 +314,26 @@ const PortfolioImplementation = () => {
       <div className="min-h-0 bg-gradient-to-br from-background to-secondary/5">
          <div className="mx-auto w-full max-w-7xl space-y-4 sm:space-y-6 md:space-y-8 lg:space-y-12 px-3 sm:px-4 md:px-6 pb-6 sm:pb-8 md:pb-12 lg:px-8 lg:pb-16">
           {/* Page Header */}
-          <section className="rounded-2xl sm:rounded-3xl border border-border/60 bg-card/70 px-4 sm:px-6 md:px-10 py-6 sm:py-8 md:py-12 shadow-sm supports-[backdrop-filter]:backdrop-blur-sm">
-            <div className="flex flex-col gap-6">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-primary/10">
-                      <Brain className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+          <section className="rounded-xl sm:rounded-2xl md:rounded-3xl border border-border/60 bg-card/70 px-3 sm:px-4 md:px-6 lg:px-10 py-4 sm:py-6 md:py-8 lg:py-12 shadow-sm supports-[backdrop-filter]:backdrop-blur-sm">
+            <div className="flex flex-col gap-4 sm:gap-5 md:gap-6">
+              <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="flex h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-primary/10">
+                      <Brain className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-primary" />
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Portfölj</p>
-                      <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-foreground">
+                    <div className="space-y-0.5 sm:space-y-1">
+                      <p className="text-[10px] xs:text-xs uppercase tracking-[0.18em] text-muted-foreground">Portfölj</p>
+                      <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-semibold tracking-tight text-foreground">
                         {t('portfolio.title')}
                       </h1>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm text-muted-foreground">
-                    <Badge variant="secondary" className="rounded-full bg-muted/70 px-3 py-1 text-xs font-medium">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 md:gap-3 text-xs sm:text-sm text-muted-foreground">
+                    <Badge variant="secondary" className="rounded-full bg-muted/70 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] xs:text-xs font-medium">
                       {lastUpdatedLabel}
                     </Badge>
-                    <span className="rounded-full bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
+                    <span className="rounded-full bg-primary/5 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] xs:text-xs font-medium text-primary">
                       {hasPortfolioData ? `${actualHoldings?.length || 0} aktiva innehav` : 'Importera eller lägg till innehav'}
                     </span>
                   </div>
@@ -340,48 +341,51 @@ const PortfolioImplementation = () => {
                 <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2 sm:gap-3">
                   <Button
                     onClick={() => handleQuickChat('NEW_SESSION:Portfölj AI:Kan du granska min portfölj och föreslå nästa steg?')}
-                    className="rounded-xl sm:rounded-2xl px-4 sm:px-6 py-2.5 sm:py-3 shadow-lg hover:shadow-xl bg-foreground text-background"
+                    className="rounded-xl sm:rounded-2xl px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 shadow-lg hover:shadow-xl bg-foreground text-background text-xs sm:text-sm"
                   >
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Starta AI-chatt
+                    <Sparkles className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden xs:inline">Starta AI-chatt</span>
+                    <span className="xs:hidden">AI-chatt</span>
                   </Button>
                   <Button
                     onClick={handleImportClick}
                     disabled={isImportingHoldings}
-                    className="rounded-xl sm:rounded-2xl px-4 sm:px-5 py-2.5 sm:py-3 shadow-md hover:shadow-lg text-xs sm:text-sm"
+                    className="rounded-xl sm:rounded-2xl px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 shadow-md hover:shadow-lg text-xs sm:text-sm"
                     variant="outline"
                   >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {isImportingHoldings ? 'Importerar...' : 'Importera CSV'}
+                    <Upload className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">{isImportingHoldings ? 'Importerar...' : 'Importera CSV'}</span>
+                    <span className="sm:hidden">{isImportingHoldings ? '...' : 'CSV'}</span>
                   </Button>
                   <Button
                     onClick={handleUpdateProfile}
-                    className="rounded-xl sm:rounded-2xl px-4 sm:px-5 py-2.5 sm:py-3 shadow-none"
+                    className="rounded-xl sm:rounded-2xl px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 shadow-none text-xs sm:text-sm"
                     variant="ghost"
                   >
-                    <User className="mr-2 h-4 w-4" />
-                    Uppdatera profil
+                    <User className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden md:inline">Uppdatera profil</span>
+                    <span className="md:hidden">Profil</span>
                   </Button>
                 </div>
               </div>
 
               <TooltipProvider>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5">
+                <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5">
                   {healthCards.map(card => (
                     <div
                       key={card.label}
-                      className="group rounded-2xl border border-border/60 bg-gradient-to-br from-card to-card/70 px-4 sm:px-5 py-4 sm:py-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+                      className="group rounded-xl sm:rounded-2xl border border-border/60 bg-gradient-to-br from-card to-card/70 px-3 sm:px-4 md:px-5 py-3 sm:py-4 md:py-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-[0.14em]">{card.label}</span>
+                        <span className="text-[10px] xs:text-xs font-medium text-muted-foreground uppercase tracking-[0.14em] break-words">{card.label}</span>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button
                               type="button"
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:text-primary"
+                              className="inline-flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full text-muted-foreground transition hover:text-primary flex-shrink-0"
                               aria-label={`Mer info om ${card.label}`}
                             >
-                              <Info className="h-3.5 w-3.5" />
+                              <Info className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                             </button>
                           </TooltipTrigger>
                           <TooltipContent side="bottom" align="end" className="text-xs sm:text-sm max-w-xs">
@@ -389,36 +393,46 @@ const PortfolioImplementation = () => {
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      <div className="mt-3 flex items-baseline gap-2">
-                        <p className="text-2xl sm:text-3xl font-semibold text-foreground">{card.value}</p>
+                      <div className="mt-2 sm:mt-3 flex items-baseline gap-2">
+                        <p className="text-xl sm:text-2xl md:text-3xl font-semibold text-foreground break-words">{card.value}</p>
                       </div>
-                      <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                      <p className="mt-2 text-[10px] xs:text-xs sm:text-sm text-muted-foreground leading-relaxed line-clamp-2">
                         {card.description}
                       </p>
                     </div>
                   ))}
                 </div>
               </TooltipProvider>
+
+              {/* Allocation Card */}
+              {hasPortfolioData && (performance.investedPercentage !== undefined || performance.cashPercentage !== undefined) && (
+                <div className="mt-4 sm:mt-5 md:mt-6">
+                  <AllocationCard
+                    investedPercentage={performance.investedPercentage ?? 0}
+                    cashPercentage={performance.cashPercentage ?? 0}
+                  />
+                </div>
+              )}
             </div>
           </section>
 
           {/* Risk Profile Required Alert */}
-          {user && !riskProfile && <div className="bg-amber-50/70 dark:bg-amber-950/20 backdrop-blur-xl border border-amber-200/50 dark:border-amber-800/50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-xl">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
-                  <div className="flex items-start sm:items-center gap-3 sm:gap-4">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center flex-shrink-0">
-                      <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 dark:text-amber-400" />
+          {user && !riskProfile && <div className="bg-amber-50/70 dark:bg-amber-950/20 backdrop-blur-xl border border-amber-200/50 dark:border-amber-800/50 rounded-xl sm:rounded-2xl md:rounded-3xl p-3 sm:p-4 md:p-6 lg:p-8 shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 md:gap-6">
+                  <div className="flex items-start sm:items-center gap-2 sm:gap-3 md:gap-4">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg sm:rounded-xl md:rounded-2xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center flex-shrink-0">
+                      <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-amber-600 dark:text-amber-400" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-sm sm:text-base font-semibold text-amber-800 dark:text-amber-200 mb-1 break-words">
+                      <h3 className="text-xs sm:text-sm md:text-base font-semibold text-amber-800 dark:text-amber-200 mb-1 break-words">
                         {t('portfolio.riskProfileRequired')}
                       </h3>
-                      <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-300 break-words">
+                      <p className="text-[10px] xs:text-xs sm:text-sm text-amber-700 dark:text-amber-300 break-words">
                         {t('portfolio.riskProfileRequiredDesc')}
                       </p>
                     </div>
                   </div>
-                  <Button onClick={() => navigate('/portfolio-advisor')} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl sm:rounded-2xl px-4 sm:px-6 py-2 sm:py-3 shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm w-full sm:w-auto">
+                  <Button onClick={() => navigate('/portfolio-advisor')} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg sm:rounded-xl md:rounded-2xl px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm w-full sm:w-auto">
                     <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                     {t('portfolio.createProfile.button')}
                   </Button>
