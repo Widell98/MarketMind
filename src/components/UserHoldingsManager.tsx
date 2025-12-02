@@ -5,6 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   Package,
   Plus,
@@ -13,7 +15,9 @@ import {
   LayoutGrid,
   Table as TableIcon,
   PieChart as PieChartIcon,
-  RefreshCw
+  Info,
+  MoreHorizontal,
+  Upload
 } from 'lucide-react';
 import {
   Dialog,
@@ -68,9 +72,10 @@ interface TransformedHolding {
 interface UserHoldingsManagerProps {
   sectorData?: { name: string; value: number; percentage: number }[];
   importControls?: React.ReactNode;
+  onImportHoldings?: () => void;
 }
 
-const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = [], importControls }) => {
+const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = [], importControls, onImportHoldings }) => {
   const {
     actualHoldings,
     loading,
@@ -433,57 +438,112 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                   Lägg till kassa
                 </Button>
               </div>
+              {onImportHoldings && (
+                <div className="mt-3 sm:mt-4 flex justify-center">
+                  <Button
+                    variant="ghost"
+                    className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm"
+                    onClick={onImportHoldings}
+                  >
+                    <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    Importera från CSV
+                  </Button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-3 sm:space-y-4">
               {/* Action Bar */}
-              <div className="flex flex-col gap-3 sm:gap-4 pb-3 sm:pb-4 border-b border-border">
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm" onClick={openAddHoldingDialog}>
-                    <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    Lägg till innehav
-                  </Button>
-                  <Button size="sm" variant="outline" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm" onClick={() => setShowAddCashDialog(true)}>
-                    <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    Lägg till kassa
-                  </Button>
-                  <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] xs:text-xs text-muted-foreground border border-dashed border-border rounded-md px-2 py-1.5 sm:py-1">
-                    <RefreshCw className="w-3 h-3 flex-shrink-0" />
-                    <span className="hidden xs:inline">Klicka på en ticker för att uppdatera priset.</span>
-                    <span className="xs:hidden">Klicka på ticker</span>
+              <TooltipProvider>
+                <div className="flex flex-col gap-3 sm:gap-4 pb-3 sm:pb-4 border-b border-border">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button size="sm" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm" onClick={openAddHoldingDialog}>
+                        <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        Lägg till innehav
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            aria-label="Fler åtgärder"
+                            className="h-9 w-9 sm:h-10 sm:w-10"
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-48">
+                          <DropdownMenuItem onSelect={() => setShowAddCashDialog(true)} className="flex items-center gap-2 text-xs sm:text-sm">
+                            <Banknote className="w-4 h-4" />
+                            Lägg till kassa
+                          </DropdownMenuItem>
+                          {onImportHoldings && (
+                            <DropdownMenuItem onSelect={onImportHoldings} className="flex items-center gap-2 text-xs sm:text-sm">
+                              <Upload className="w-4 h-4" />
+                              Importera från CSV
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-muted-foreground px-2 py-1 rounded-md border border-dashed border-border cursor-help">
+                          <Info className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Klicka på en ticker för att uppdatera priset.</span>
+                          <span className="sm:hidden">Uppdatera via ticker</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="text-xs max-w-xs">
+                        Tryck på en ticker i listan för att trigga en prisuppdatering och se den senaste kursen.
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
-                </div>
 
-                <div className="flex gap-2 flex-1 max-w-full sm:max-w-md items-center">
-                  <div className="relative flex-1 min-w-0">
-                    <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Sök innehav..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-8 sm:pl-10 text-xs sm:text-sm"
-                    />
-                  </div>
-                  <div className="flex gap-1.5 sm:gap-2 flex-shrink-0">
-                    <Button
-                      size="icon"
-                      variant={viewMode === 'cards' ? 'default' : 'outline'}
-                      onClick={() => setViewMode('cards')}
-                      className="h-8 w-8 sm:h-9 sm:w-9"
-                    >
-                      <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant={viewMode === 'table' ? 'default' : 'outline'}
-                      onClick={() => setViewMode('table')}
-                      className="h-8 w-8 sm:h-9 sm:w-9"
-                    >
-                      <TableIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    </Button>
+                  <div className="flex gap-2 flex-1 max-w-full sm:max-w-md items-center">
+                    <div className="relative flex-1 min-w-0">
+                      <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Sök innehav..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-8 sm:pl-10 text-xs sm:text-sm"
+                      />
+                    </div>
+                    <div className="flex gap-1.5 sm:gap-2 flex-shrink-0">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant={viewMode === 'cards' ? 'default' : 'outline'}
+                            onClick={() => setViewMode('cards')}
+                            className="h-8 w-8 sm:h-9 sm:w-9"
+                            aria-label="Visa kortvy"
+                          >
+                            <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs">Kortvy</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant={viewMode === 'table' ? 'default' : 'outline'}
+                            onClick={() => setViewMode('table')}
+                            className="h-8 w-8 sm:h-9 sm:w-9"
+                            aria-label="Visa tabellvy"
+                          >
+                            <TableIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs">Tabellvy</TooltipContent>
+                      </Tooltip>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </TooltipProvider>
 
               {viewMode === 'cards' ? (
                 <div className="space-y-4">
