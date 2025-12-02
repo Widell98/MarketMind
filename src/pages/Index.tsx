@@ -570,31 +570,41 @@ const Index = () => {
                                   <h4 className="text-base font-semibold text-foreground sm:text-lg">Bästa innehav idag</h4>
                                 </div>
                               </div>
-                              <div className="space-y-3">
+                              <div className="space-y-2">
                                 {dailyHighlights.best.map((holding) => (
-                                  <div key={holding.id} className="flex items-center justify-between">
-                                    <div className="flex-1 min-w-0 space-y-0.5">
-                                      <div className="flex items-center gap-2">
-                                        <p className="text-sm font-medium text-foreground truncate">{holding.name || holding.symbol || 'Innehav'}</p>
+                                  <div
+                                    key={holding.id}
+                                    className="grid grid-cols-1 items-center gap-3 border-b border-border/60 py-2 last:border-none sm:grid-cols-[1fr_auto]"
+                                  >
+                                    <div className="min-w-0 space-y-1">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <p className="truncate text-sm font-semibold text-foreground">{holding.name || holding.symbol || 'Innehav'}</p>
+                                        {holding.symbol && (
+                                          <span className="inline-flex items-center rounded-full bg-muted/70 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-foreground/90">
+                                            {holding.symbol}
+                                          </span>
+                                        )}
                                         <span className="inline-flex items-center rounded-full bg-muted/60 px-2 py-0.5 text-[11px] font-semibold text-foreground/90 whitespace-nowrap">
                                           {formatCurrentPrice(holding)}
                                         </span>
                                       </div>
-                                      {holding.symbol && <p className="text-xs text-muted-foreground uppercase tracking-wide">{holding.symbol}</p>}
                                     </div>
-                                    <div className="text-right">
-                                      <p
-                                        className={`text-sm font-semibold ${
+                                    <div className="space-y-1 sm:text-right">
+                                      <span
+                                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
                                           (holding.dailyChangePercent ?? 0) >= 0
-                                            ? 'text-emerald-600 dark:text-emerald-400'
-                                            : 'text-red-600 dark:text-red-400'
+                                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+                                            : 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300'
                                         }`}
                                       >
-                                        {holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined
-                                          ? `${holding.dailyChangePercent > 0 ? '+' : ''}${formatPercent(holding.dailyChangePercent)}`
-                                          : 'Ingen dagsdata'}
-                                      </p>
-                                      <p className="text-xs text-muted-foreground">
+                                        <TrendingUp className="h-3 w-3" />
+                                        <span>
+                                          {holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined
+                                            ? `${holding.dailyChangePercent > 0 ? '+' : ''}${formatPercent(holding.dailyChangePercent)}`
+                                            : 'Ingen dagsdata'}
+                                        </span>
+                                      </span>
+                                      <p className="truncate text-xs text-muted-foreground">
                                         {formatDailyChangeValue(holding.dailyChangeValueSEK)}
                                       </p>
                                     </div>
@@ -612,31 +622,41 @@ const Index = () => {
                                   <h4 className="text-base font-semibold text-foreground sm:text-lg">Sämsta innehav idag</h4>
                                 </div>
                               </div>
-                              <div className="space-y-3">
+                              <div className="space-y-2">
                                 {dailyHighlights.worst.map((holding) => (
-                                  <div key={holding.id} className="flex items-center justify-between">
-                                    <div className="flex-1 min-w-0 space-y-0.5">
-                                      <div className="flex items-center gap-2">
-                                        <p className="text-sm font-medium text-foreground truncate">{holding.name || holding.symbol || 'Innehav'}</p>
+                                  <div
+                                    key={holding.id}
+                                    className="grid grid-cols-1 items-center gap-3 border-b border-border/60 py-2 last:border-none sm:grid-cols-[1fr_auto]"
+                                  >
+                                    <div className="min-w-0 space-y-1">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <p className="truncate text-sm font-semibold text-foreground">{holding.name || holding.symbol || 'Innehav'}</p>
+                                        {holding.symbol && (
+                                          <span className="inline-flex items-center rounded-full bg-muted/70 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-foreground/90">
+                                            {holding.symbol}
+                                          </span>
+                                        )}
                                         <span className="inline-flex items-center rounded-full bg-muted/60 px-2 py-0.5 text-[11px] font-semibold text-foreground/90 whitespace-nowrap">
                                           {formatCurrentPrice(holding)}
                                         </span>
                                       </div>
-                                      {holding.symbol && <p className="text-xs text-muted-foreground uppercase tracking-wide">{holding.symbol}</p>}
                                     </div>
-                                    <div className="text-right">
-                                      <p
-                                        className={`text-sm font-semibold ${
+                                    <div className="space-y-1 sm:text-right">
+                                      <span
+                                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
                                           (holding.dailyChangePercent ?? 0) <= 0
-                                            ? 'text-red-600 dark:text-red-400'
-                                            : 'text-emerald-600 dark:text-emerald-400'
+                                            ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300'
+                                            : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
                                         }`}
                                       >
-                                        {holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined
-                                          ? `${holding.dailyChangePercent > 0 ? '+' : ''}${formatPercent(holding.dailyChangePercent)}`
-                                          : 'Ingen dagsdata'}
-                                      </p>
-                                      <p className="text-xs text-muted-foreground">
+                                        <TrendingDown className="h-3 w-3" />
+                                        <span>
+                                          {holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined
+                                            ? `${holding.dailyChangePercent > 0 ? '+' : ''}${formatPercent(holding.dailyChangePercent)}`
+                                            : 'Ingen dagsdata'}
+                                        </span>
+                                      </span>
+                                      <p className="truncate text-xs text-muted-foreground">
                                         {formatDailyChangeValue(holding.dailyChangeValueSEK)}
                                       </p>
                                     </div>
