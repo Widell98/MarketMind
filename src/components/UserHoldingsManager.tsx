@@ -46,6 +46,7 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 interface TransformedHolding {
   id: string;
@@ -62,11 +63,15 @@ interface TransformedHolding {
   base_currency?: string;
   original_value?: number;
   original_currency?: string;
+  dailyChangePercent?: number | null;
+  dailyChangeValueSEK?: number | null;
 }
 
 interface UserHoldingsManagerProps {
   importControls?: React.ReactNode;
 }
+
+type FilterMode = 'all' | 'se' | 'us' | 'winners' | 'losers';
 
 const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControls }) => {
   const {
@@ -109,89 +114,85 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
   const [refreshingTicker, setRefreshingTicker] = useState<string | null>(null);
   const [holdingToDelete, setHoldingToDelete] = useState<{ id: string; name: string; type: 'cash' | 'holding' } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [filterMode, setFilterMode] = useState<FilterMode>('all');
+
+  const filterOptions: Array<{ key: FilterMode; label: string }> = [
+    { key: 'all', label: 'Alla' },
+    { key: 'se', label: 'Sverige' },
+    { key: 'us', label: 'USA' },
+    { key: 'winners', label: 'Vinnare' },
+    { key: 'losers', label: 'Förlorare' },
+  ];
 
   const renderHoldingsActions = () => (
-    <TooltipProvider delayDuration={120}>
-      <div className="flex flex-col gap-1.5 sm:gap-2">
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={openAddHoldingDialog}>
-                <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="sr-only">Lägg till innehav</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Lägg till innehav</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button size="icon" variant="outline" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => setShowAddCashDialog(true)}>
-                <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="sr-only">Lägg till kassa</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Lägg till kassa</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 sm:h-9 sm:w-9 border border-dashed border-border text-muted-foreground"
-              >
-                <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="sr-only">Uppdatera prisinformation</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-xs">
-              Klicka på en ticker i listan för att uppdatera priset.
-            </TooltipContent>
-          </Tooltip>
-        </div>
+    <div className="flex flex-col gap-1.5 sm:gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={openAddHoldingDialog}>
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="sr-only">Lägg till innehav</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Lägg till innehav</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="icon" variant="outline" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => setShowAddCashDialog(true)}>
+              <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="sr-only">Lägg till kassa</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Lägg till kassa</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 sm:h-9 sm:w-9 border border-dashed border-border text-muted-foreground"
+            >
+              <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="sr-only">Uppdatera prisinformation</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">
+            Klicka på en ticker i listan för att uppdatera priset.
+          </TooltipContent>
+        </Tooltip>
+      </div>
 
-        <div className="flex gap-1.5 sm:gap-2 flex-1 max-w-full sm:max-w-md items-center">
-          <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
-            <Input
-              placeholder="Sök innehav..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 sm:pl-10 text-xs sm:text-sm"
-            />
-          </div>
-          <div className="flex gap-1 sm:gap-1.5 flex-shrink-0">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="icon"
-                  variant={viewMode === 'cards' ? 'default' : 'outline'}
-                  onClick={() => setViewMode('cards')}
-                  className="h-8 w-8 sm:h-9 sm:w-9"
-                >
-                  <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span className="sr-only">Kortvy</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Kortvy</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="icon"
-                  variant={viewMode === 'table' ? 'default' : 'outline'}
-                  onClick={() => setViewMode('table')}
-                  className="h-8 w-8 sm:h-9 sm:w-9"
-                >
-                  <TableIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span className="sr-only">Tabellvy</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Tabellvy</TooltipContent>
-            </Tooltip>
-          </div>
+      <div className="flex flex-wrap gap-1 sm:gap-1.5">
+        {filterOptions.map((option) => (
+          <Button
+            key={option.key}
+            size="sm"
+            variant={filterMode === option.key ? 'secondary' : 'ghost'}
+            className={cn(
+              'text-xs sm:text-sm rounded-full px-3 sm:px-4 font-medium border transition-colors',
+              filterMode === option.key
+                ? 'bg-slate-900 text-slate-50 border-slate-900 hover:bg-slate-800'
+                : 'bg-muted text-muted-foreground border-transparent hover:bg-muted/80'
+            )}
+            onClick={() => setFilterMode(option.key)}
+          >
+            {option.label}
+          </Button>
+        ))}
+      </div>
+
+      <div className="flex gap-1.5 sm:gap-2 flex-1 max-w-full sm:max-w-md items-center">
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+          <Input
+            placeholder="Sök innehav..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8 sm:pl-10 text-xs sm:text-sm"
+          />
         </div>
       </div>
-    </TooltipProvider>
+    </div>
   );
 
   const holdingPerformanceMap = useMemo<Record<string, HoldingPerformance>>(() => {
@@ -389,6 +390,8 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
       base_currency: holding.currency || priceCurrency,
       original_value: valueInOriginalCurrency,
       original_currency: valueCurrency,
+      dailyChangePercent: holding.dailyChangePercent ?? holding.daily_change_pct ?? null,
+      dailyChangeValueSEK: holding.dailyChangeValueSEK ?? null,
     };
   });
 
@@ -407,12 +410,18 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
     base_currency: 'SEK',
     original_value: cash.current_value,
     original_currency: 'SEK',
+    dailyChangePercent: null,
+    dailyChangeValueSEK: null,
   }));
 
   const allHoldings = [
     ...transformedActualHoldings,
     ...transformedCashHoldings
   ];
+
+  const totalPortfolioValue = performance?.totalPortfolioValue ?? allHoldings.reduce((sum, holding) => {
+    return sum + resolveHoldingValue(holding).valueInSEK;
+  }, 0);
 
   // Group holdings by type
   const groupHoldings = () => {
@@ -431,7 +440,6 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
           return sum + resolveHoldingValue(holding).valueInSEK;
         }, 0);
 
-        const totalPortfolioValue = performance?.totalPortfolioValue || 0;
         const percentage = totalPortfolioValue > 0 ? (totalValue / totalPortfolioValue) * 100 : 0;
 
         const typeNames = {
@@ -451,23 +459,111 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
       });
   };
 
-  const filteredGroups = groupHoldings().map(group => ({
-    ...group,
-    holdings: group.holdings.filter(holding =>
-      holding.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (holding.symbol && holding.symbol.toLowerCase().includes(searchTerm.toLowerCase()))
-    )
-  })).filter(group => group.holdings.length > 0);
+  const matchesSearch = (holding: TransformedHolding) => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return true;
+
+    return (
+      holding.name.toLowerCase().includes(term) ||
+      (holding.symbol && holding.symbol.toLowerCase().includes(term))
+    );
+  };
+
+  const getHoldingRegion = (holding: TransformedHolding): 'se' | 'us' | null => {
+    const currency = (holding.base_currency || holding.price_currency || holding.currency || '').toUpperCase();
+    const symbol = holding.symbol?.toUpperCase();
+
+    if (currency === 'SEK' || symbol?.endsWith('.ST')) {
+      return 'se';
+    }
+
+    if (currency === 'USD') {
+      return 'us';
+    }
+
+    return null;
+  };
+
+  const matchesFilter = (holding: TransformedHolding) => {
+    if (filterMode === 'all') return true;
+
+    if (filterMode === 'se') return getHoldingRegion(holding) === 'se';
+    if (filterMode === 'us') return getHoldingRegion(holding) === 'us';
+
+    const performance = holdingPerformanceMap[holding.id];
+    if (!performance || holding.holding_type === 'cash') {
+      return false;
+    }
+
+    if (filterMode === 'winners') {
+      return performance.profit > 0;
+    }
+
+    if (filterMode === 'losers') {
+      return performance.profit < 0;
+    }
+
+    return true;
+  };
+
+  const filteredGroups = groupHoldings()
+    .map(group => ({
+      ...group,
+      holdings: group.holdings.filter(holding => matchesSearch(holding) && matchesFilter(holding))
+    }))
+    .filter(group => group.holdings.length > 0);
 
   const filteredHoldings = filteredGroups.flatMap(group => group.holdings);
 
+  const holdingsActions = renderHoldingsActions();
+
   return (
-    <>
-      <Card className="h-fit rounded-lg sm:rounded-xl">
+    <TooltipProvider delayDuration={120}>
+      <>
+        <Card className="h-fit rounded-lg sm:rounded-xl">
         <CardHeader className="p-3 sm:p-3 md:p-4 pb-2">
-          <CardTitle className="text-base sm:text-lg md:text-xl">Dina innehav</CardTitle>
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-0.5">
+              <CardTitle className="text-base sm:text-lg md:text-xl">Aktierna</CardTitle>
+              <p className="text-xs text-muted-foreground">Sök, lägg till eller hantera aktieinnehav.</p>
+            </div>
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant={viewMode === 'cards' ? 'default' : 'outline'}
+                    onClick={() => setViewMode('cards')}
+                    className="h-8 w-8 sm:h-9 sm:w-9"
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="sr-only">Kortvy</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Kortvy</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant={viewMode === 'table' ? 'default' : 'outline'}
+                    onClick={() => setViewMode('table')}
+                    className="h-8 w-8 sm:h-9 sm:w-9"
+                  >
+                    <TableIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="sr-only">Tabellvy</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Tabellvy</TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-2.5 sm:space-y-3 p-3 sm:p-4 md:p-6 pt-0">
+          <div className="space-y-2">
+            {holdingsActions}
+          </div>
+
           {loading || cashLoading ? (
             <div className="text-center py-8 text-muted-foreground">
               <div className="flex items-center justify-center gap-2">
@@ -518,25 +614,18 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
                       onRefreshPrice={group.key === 'cash' ? undefined : handleUpdateHoldingPrice}
                       isUpdatingPrice={updating}
                       refreshingTicker={refreshingTicker}
-                      actions={group.key === 'stocks' ? renderHoldingsActions() : undefined}
                     />
                   ))}
                 </div>
               ) : (
                 <div className="space-y-2.5 sm:space-y-3">
-                  <div className="flex items-center justify-between gap-2 pb-1 sm:pb-1.5 border-b border-border/80">
-                    <div>
-                      <h3 className="text-sm sm:text-base font-semibold text-foreground">Aktier</h3>
-                      <p className="text-xs text-muted-foreground">Sök, lägg till eller hantera aktieinnehav.</p>
-                    </div>
-                  </div>
-                  {renderHoldingsActions()}
                   <HoldingsTable
                     holdings={filteredHoldings}
                     onRefreshPrice={handleUpdateHoldingPrice}
                     isUpdatingPrice={updating}
                     refreshingTicker={refreshingTicker}
                     holdingPerformanceMap={holdingPerformanceMap}
+                    totalPortfolioValue={totalPortfolioValue}
                   />
                 </div>
               )}
@@ -671,7 +760,8 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
         onSave={handleUpdateHolding}
         holding={editingHolding}
       />
-    </>
+      </>
+    </TooltipProvider>
   );
 };
 

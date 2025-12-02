@@ -28,7 +28,7 @@ const HoldingsHighlightCard: React.FC<HoldingsHighlightCardProps> = ({
   return (
     <Card className="rounded-3xl border border-border/60 bg-white/90 p-3 shadow-sm dark:bg-slate-950/60 sm:p-4">
       <div className="flex items-center gap-2 mb-3">
-        <div className={`flex h-8 w-8 items-center justify-center rounded-xl bg-muted/50 ${iconColorClass}`}>
+        <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${iconColorClass}`}>
           {icon}
         </div>
         <h3 className="text-base font-semibold text-foreground sm:text-lg">
@@ -46,7 +46,7 @@ const HoldingsHighlightCard: React.FC<HoldingsHighlightCardProps> = ({
                   <p className="truncate text-sm font-medium text-foreground">{item.name}</p>
                   <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                     {item.symbol && (
-                      <span className="rounded-full bg-muted/60 px-2 py-0.5 font-semibold uppercase tracking-wide text-[11px] text-muted-foreground">
+                      <span className="rounded-full px-2 py-0.5 font-semibold uppercase tracking-wide text-[11px] text-muted-foreground">
                         {item.symbol}
                       </span>
                     )}

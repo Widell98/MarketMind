@@ -378,7 +378,7 @@ const PortfolioImplementation = () => {
                           <TooltipTrigger asChild>
                             <button
                               type="button"
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition group-hover:bg-primary/10 group-hover:text-primary"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:text-primary"
                               aria-label={`Mer info om ${card.label}`}
                             >
                               <Info className="h-3.5 w-3.5" />
