@@ -6,7 +6,7 @@ const Breadcrumb = () => {
   const location = useLocation();
   const pathSegments = location.pathname.split('/').filter(Boolean);
   const breadcrumbMap: Record<string, string> = {
-    'portfolio-implementation': 'Portfölj & Analys',
+    'portfolio-implementation': 'Din portfölj',
     'stock-cases': 'Aktiefall',
     'ai-chat': 'AI-Assistent',
     'portfolio-advisor': 'Portföljrådgivare',
