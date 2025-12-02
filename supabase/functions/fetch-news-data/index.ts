@@ -721,24 +721,37 @@ async function generateMorningBrief(options: GenerateOptions = {}): Promise<Gene
     }
   }
   
-  const allQueries = [...baseQueries, ...followUpQueries];
-  
+const allQueries = [...baseQueries, ...followUpQueries];
+
   // 3. Fetch news from multiple Tavily searches
   const tavilyArticles = await fetchMultipleTavilySearches(allQueries, 20, 1, { allowRepeats });
   console.log(`[generateMorningBrief] Fetched ${tavilyArticles.length} articles from Tavily`);
+
+  // 4. Summarize articles in PARALLEL (Optimering)
+  // Vi tar de 15 första för att spara tid och resurser
+  const articlesToProcess = tavilyArticles.slice(0, 15);
   
-  // 4. Summarize each article with AI (up to 20 articles)
-  const summarizedNews: NewsItem[] = [];
-  for (const article of tavilyArticles.slice(0, 20)) {
+  console.log(`[generateMorningBrief] Starting parallel summarization of ${articlesToProcess.length} articles...`);
+
+  // Skapa en lista med "uppdrag" (Promises) som körs samtidigt
+  const summaryPromises = articlesToProcess.map(async (article) => {
     try {
       const summarized = await summarizeArticle(article);
-      summarizedNews.push(summarized);
-      console.log(`[generateMorningBrief] Successfully summarized article: ${summarized.headline.substring(0, 50)}...`);
+      // Logga kortare för att inte fylla loggen
+      console.log(`[generateMorningBrief] Summarized: ${summarized.headline.substring(0, 30)}...`);
+      return summarized;
     } catch (error) {
-      console.error("Failed to summarize article:", error);
-      // Skip this article if summarization fails
+      console.error(`Failed to summarize article: ${article.title}`, error);
+      return null; // Returnera null om det misslyckas så vi kan filtrera bort den sen
     }
-  }
+  });
+
+  // Vänta tills alla är klara (detta tar bara så lång tid som den LÅNGSAMMASTE artikeln)
+  const results = await Promise.all(summaryPromises);
+
+  // Filtrera bort eventuella misslyckade (null) resultat
+  const summarizedNews = results.filter((item): item is NewsItem => item !== null);
+  
   console.log(`[generateMorningBrief] Total summarized news: ${summarizedNews.length}`);
 
   // 5. Deduplicate summarized news based on normalized URL and headline similarity
