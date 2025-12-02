@@ -104,14 +104,22 @@ const MinimalPortfolioHero: React.FC<MinimalPortfolioHeroProps> = ({
         </div>
 
         {/* Quick Actions */}
-        <div className="flex flex-col gap-2 sm:flex-shrink-0">
-          <Button asChild variant="outline" size="sm" className="w-full justify-center hover:bg-muted/50 sm:w-auto">
+        <div className="flex flex-col gap-3 sm:flex-shrink-0">
+          <Button 
+            asChild 
+            size="sm" 
+            className="w-full rounded-full border-2 border-border/80 dark:border-border/60 bg-card/80 px-5 py-2.5 font-medium text-sm text-foreground shadow-sm transition-all hover:bg-card hover:border-primary/60 dark:hover:border-primary/40 hover:shadow-md sm:w-auto"
+          >
             <Link to="/ai-chatt">
               <MessageSquare className="mr-2 h-4 w-4" />
               AI Chat
             </Link>
           </Button>
-          <Button asChild size="sm" className="w-full justify-center bg-primary hover:bg-primary/90 sm:w-auto">
+          <Button 
+            asChild 
+            size="sm" 
+            className="w-full rounded-full bg-primary px-5 py-2.5 font-medium text-sm text-primary-foreground shadow-sm transition-all hover:bg-primary/90 hover:shadow-md sm:w-auto"
+          >
             <Link to="/portfolio-implementation">
               <BarChart3 className="mr-2 h-4 w-4" />
               Min Portfölj
