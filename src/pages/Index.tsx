@@ -7,11 +7,9 @@ import {
   Users,
   ArrowUpRight,
   TrendingUp,
-  Wallet,
   Shield,
   MessageCircle,
   CheckCircle,
-  Star,
   Heart,
   Target,
   Coffee,
@@ -44,7 +42,7 @@ import { useLikedStockCases } from '@/hooks/useLikedStockCases';
 import { useNewsData } from '@/hooks/useNewsData';
 import { Badge } from '@/components/ui/badge';
 import StockCaseCard from '@/components/StockCaseCard';
-import PortfolioOverviewCard, { type SummaryCard } from '@/components/PortfolioOverviewCard';
+import MinimalPortfolioHero from '@/components/MinimalPortfolioHero';
 import { ArrowRight, TrendingDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveHoldingValue } from '@/utils/currencyUtils';
@@ -309,64 +307,6 @@ const Index = () => {
   const dayChangePercent = todayDevelopment?.percent ?? performance.dayChangePercentage ?? 0;
   const dayChangeValue = todayDevelopment?.value ?? 0;
   const isPositiveDayChange = dayChangePercent >= 0;
-  
-  const summaryCards = React.useMemo<SummaryCard[]>(() => {
-    const changeValue = dayChangeValue;
-    const changeValueFormatted = changeValue !== 0
-      ? (changeValue >= 0 
-        ? `+${changeValue.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr`
-        : `${changeValue.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr`)
-      : '0,00 kr';
-
-    return [
-      {
-        icon: Star,
-        label: 'Utveckling idag',
-        value: loadingTodayDevelopment 
-          ? '—'
-          : (dayChangePercent !== 0
-            ? (isPositiveDayChange 
-              ? `+${dayChangePercent.toFixed(2)}%` 
-              : `${dayChangePercent.toFixed(2)}%`)
-            : '0.00%'),
-        helper: loadingTodayDevelopment
-          ? 'Laddar...'
-          : (changeValue !== 0
-            ? changeValueFormatted
-            : safeTotalPortfolioValue > 0 
-              ? `${safeTotalPortfolioValue.toLocaleString('sv-SE')} kr`
-              : t('dashboard.onTrack')),
-        helperClassName: loadingTodayDevelopment
-          ? 'text-muted-foreground'
-          : (dayChangePercent !== 0
-            ? (isPositiveDayChange 
-              ? 'text-emerald-600 dark:text-emerald-400 font-medium' 
-              : 'text-red-600 dark:text-red-400 font-medium')
-            : 'text-muted-foreground'),
-      },
-      {
-        icon: BarChart3,
-        label: t('dashboard.holdings'),
-        value: holdingsCount.toString(),
-        helper: t('dashboard.balancedSpread'),
-        helperClassName: 'text-muted-foreground',
-      },
-      {
-        icon: Heart,
-        label: 'Gillade aktier',
-        value: likedStockCases.length.toString(),
-        helper: 'Dina favoriter',
-        helperClassName: 'text-muted-foreground',
-      },
-      {
-        icon: Wallet,
-        label: 'Likvida medel',
-        value: `${safeTotalCash.toLocaleString('sv-SE')} kr`,
-        helper: 'Redo för nya möjligheter',
-        helperClassName: 'text-muted-foreground',
-      },
-    ];
-  }, [t, safeTotalPortfolioValue, holdingsCount, safeTotalCash, dayChangePercent, isPositiveDayChange, likedStockCases.length, loadingTodayDevelopment, todayDevelopment]);
 
   const quickActions = React.useMemo<QuickAction[]>(() => [
     {
@@ -562,16 +502,15 @@ const Index = () => {
           {user && hasPortfolio && <div className="min-h-0 bg-background">
               <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
                 <div className="space-y-5 sm:space-y-6">
-                  {/* Portfolio Value & Overview Combined */}
-                  <PortfolioOverviewCard
+                  {/* Portfolio Hero - Minimal */}
+                  <MinimalPortfolioHero
                     portfolioValue={safeTotalPortfolioValue}
                     totalReturn={performance.totalReturn}
                     totalReturnPercentage={performance.totalReturnPercentage}
-                    summaryCards={summaryCards}
-                    loading={loadingTodayDevelopment && summaryCards.length === 0}
                     dayChangePercent={dayChangePercent}
                     dayChangeValue={dayChangeValue}
                     isPositiveDayChange={isPositiveDayChange}
+                    loading={loadingTodayDevelopment}
                   />
 
                     {/* Dagens förändring och allokering */}
