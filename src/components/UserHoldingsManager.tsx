@@ -383,7 +383,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
   return (
     <>
       <Card className="h-fit rounded-lg sm:rounded-xl">
-        <CardHeader className="p-3 sm:p-4 md:p-6">
+        <CardHeader className="p-3 sm:p-4 md:p-6 space-y-1">
           <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
             <span className="flex items-center gap-2">
               <Package className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
@@ -398,17 +398,12 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
             {loading || cashLoading
               ? "Laddar dina innehav..."
               : allHoldings.length > 0
-                ? `Analysera dina investeringar och kassapositioner (${allHoldings.length} st)`
-                : "Lägg till dina befintliga aktier, fonder och kassapositioner för bättre portföljanalys"
+                ? `Snabböversikt över ${allHoldings.length} innehav och kassa`
+                : "Lägg till dina aktier, fonder och kassapositioner för en samlad vy"
             }
           </CardDescription>
-          {importControls && (
-            <div className="mt-3 sm:mt-4 flex flex-wrap gap-2">
-              {importControls}
-            </div>
-          )}
         </CardHeader>
-        <CardContent className="space-y-3 sm:space-y-4 p-3 sm:p-4 md:p-6 pt-0">
+        <CardContent className="space-y-2.5 sm:space-y-3 p-3 sm:p-4 md:p-6 pt-0">
           {loading || cashLoading ? (
             <div className="text-center py-8 text-muted-foreground">
               <div className="flex items-center justify-center gap-2">
@@ -435,9 +430,9 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
               </div>
             </div>
           ) : (
-            <div className="space-y-3 sm:space-y-4">
+            <div className="space-y-2.5 sm:space-y-3">
               {/* Action Bar */}
-              <div className="flex flex-col gap-3 sm:gap-4 pb-3 sm:pb-4 border-b border-border">
+              <div className="flex flex-col gap-2 sm:gap-3 pb-2 sm:pb-3 border-b border-border">
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm" onClick={openAddHoldingDialog}>
                     <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
