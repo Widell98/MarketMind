@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useDailyChangeData } from '@/hooks/useDailyChangeData';
+import { resolveHoldingValue } from '@/utils/currencyUtils';
 
 export interface UserHolding {
   id: string;
@@ -22,15 +24,42 @@ export interface UserHolding {
   created_at: string;
   updated_at: string;
   allocation?: number;
+  dailyChangePercent?: number | null;
+  dailyChangeValueSEK?: number | null;
 }
 
 export const useUserHoldings = () => {
   const [holdings, setHoldings] = useState<UserHolding[]>([]);
   const [actualHoldings, setActualHoldings] = useState<UserHolding[]>([]);
   const [recommendations, setRecommendations] = useState<UserHolding[]>([]);
+  const [baseActualHoldings, setBaseActualHoldings] = useState<UserHolding[]>([]);
+  const [baseRecommendations, setBaseRecommendations] = useState<UserHolding[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { getChangeForTicker } = useDailyChangeData();
+
+  const enrichHoldingsWithChangeData = useCallback((items: UserHolding[]): UserHolding[] => {
+    return items.map((holding) => {
+      if (holding.holding_type === 'recommendation') {
+        return {
+          ...holding,
+          dailyChangePercent: null,
+          dailyChangeValueSEK: null,
+        };
+      }
+
+      const changePercent = getChangeForTicker(holding.symbol ?? undefined) ?? holding.daily_change_pct ?? null;
+      const { valueInSEK } = resolveHoldingValue(holding);
+      const dailyChangeValueSEK = changePercent !== null ? (valueInSEK * changePercent) / 100 : null;
+
+      return {
+        ...holding,
+        dailyChangePercent: changePercent,
+        dailyChangeValueSEK,
+      };
+    });
+  }, [getChangeForTicker]);
 
   useEffect(() => {
     if (user) {
@@ -180,9 +209,14 @@ export const useUserHoldings = () => {
       // Separate actual holdings (no duplicates needed here since they're user-entered)
       const actualHoldingsData = typedData.filter(h => h.holding_type !== 'recommendation');
 
-      setHoldings([...actualHoldingsData, ...recommendationsWithAllocation]);
-      setActualHoldings(actualHoldingsData);
-      setRecommendations(recommendationsWithAllocation);
+      const enrichedActualHoldings = enrichHoldingsWithChangeData(actualHoldingsData);
+      const enrichedRecommendations = enrichHoldingsWithChangeData(recommendationsWithAllocation);
+
+      setBaseActualHoldings(actualHoldingsData);
+      setBaseRecommendations(recommendationsWithAllocation);
+      setHoldings([...enrichedActualHoldings, ...enrichedRecommendations]);
+      setActualHoldings(enrichedActualHoldings);
+      setRecommendations(enrichedRecommendations);
     } catch (error) {
       console.error('Error fetching holdings:', error);
     } finally {
@@ -191,6 +225,19 @@ export const useUserHoldings = () => {
       }
     }
   };
+
+  useEffect(() => {
+    if (baseActualHoldings.length === 0 && baseRecommendations.length === 0) {
+      return;
+    }
+
+    const enrichedActual = enrichHoldingsWithChangeData(baseActualHoldings);
+    const enrichedRecommendations = enrichHoldingsWithChangeData(baseRecommendations);
+
+    setActualHoldings(enrichedActual);
+    setRecommendations(enrichedRecommendations);
+    setHoldings([...enrichedActual, ...enrichedRecommendations]);
+  }, [baseActualHoldings, baseRecommendations, enrichHoldingsWithChangeData]);
 
   const addHolding = async (holdingData: Omit<UserHolding, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
     if (!user) return false;
@@ -221,7 +268,9 @@ export const useUserHoldings = () => {
           holding_type: data.holding_type as UserHolding['holding_type'],
           allocation: data.allocation ? Number(data.allocation) : undefined
         };
-        
+
+        const enrichedHolding = enrichHoldingsWithChangeData([typedData])[0];
+
         // Record initial performance entry for actual holdings
         if (typedData.holding_type !== 'recommendation' && typedData.current_value && typedData.purchase_price && typedData.quantity) {
           try {
@@ -239,15 +288,17 @@ export const useUserHoldings = () => {
             console.error('Error recording initial performance:', error);
           }
         }
-        
-        setHoldings(prev => [typedData, ...prev]);
-        
+
         if (typedData.holding_type === 'recommendation') {
-          setRecommendations(prev => [typedData, ...prev]);
+          setBaseRecommendations(prev => [typedData, ...prev]);
+          setRecommendations(prev => [enrichedHolding, ...prev]);
         } else {
-          setActualHoldings(prev => [typedData, ...prev]);
+          setBaseActualHoldings(prev => [typedData, ...prev]);
+          setActualHoldings(prev => [enrichedHolding, ...prev]);
         }
-        
+
+        setHoldings(prev => [enrichedHolding, ...prev]);
+
         toast({
           title: "Success",
           description: "Holding added successfully",
@@ -291,13 +342,16 @@ export const useUserHoldings = () => {
           holding_type: data.holding_type as UserHolding['holding_type'],
           allocation: data.allocation ? Number(data.allocation) : undefined
         };
-        
-        setHoldings(prev => prev.map(h => h.id === id ? typedData : h));
-        
+        const enrichedHolding = enrichHoldingsWithChangeData([typedData])[0];
+
+        setHoldings(prev => prev.map(h => h.id === id ? enrichedHolding : h));
+
         if (typedData.holding_type === 'recommendation') {
-          setRecommendations(prev => prev.map(h => h.id === id ? typedData : h));
+          setBaseRecommendations(prev => prev.map(h => h.id === id ? typedData : h));
+          setRecommendations(prev => prev.map(h => h.id === id ? enrichedHolding : h));
         } else {
-          setActualHoldings(prev => prev.map(h => h.id === id ? typedData : h));
+          setBaseActualHoldings(prev => prev.map(h => h.id === id ? typedData : h));
+          setActualHoldings(prev => prev.map(h => h.id === id ? enrichedHolding : h));
         }
         
         toast({
@@ -332,6 +386,8 @@ export const useUserHoldings = () => {
         return false;
       }
 
+      setBaseActualHoldings(prev => prev.filter(h => h.id !== id));
+      setBaseRecommendations(prev => prev.filter(h => h.id !== id));
       setHoldings(prev => prev.filter(h => h.id !== id));
       setActualHoldings(prev => prev.filter(h => h.id !== id));
       setRecommendations(prev => prev.filter(h => h.id !== id));
@@ -368,6 +424,7 @@ export const useUserHoldings = () => {
       }
 
       setHoldings(prev => prev.filter(h => h.holding_type !== 'recommendation'));
+      setBaseRecommendations([]);
       setRecommendations([]);
 
       toast({

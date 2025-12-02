@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown, BarChart3, Activity, Target, Zap, Brain, AlertTriangle, Shield, Info, User, Globe, Building2, LogIn } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, Zap, Brain, AlertTriangle, Shield, Info, User, Globe, Building2, LogIn } from 'lucide-react';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioInsights } from '@/hooks/usePortfolioInsights';
 import { useToast } from '@/hooks/use-toast';
@@ -12,6 +12,8 @@ import { useNavigate } from 'react-router-dom';
 import EditHoldingDialog from './EditHoldingDialog';
 import UserHoldingsManager from './UserHoldingsManager';
 import AIRecommendations from './AIRecommendations';
+import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
+ 
 interface PortfolioOverviewProps {
   portfolio: any;
   onQuickChat?: (message: string) => void;
@@ -40,6 +42,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   const {
     toast
   } = useToast();
+  const { holdingsPerformance } = usePortfolioPerformance();
   const navigate = useNavigate();
   const [isResetting, setIsResetting] = useState(false);
   const [editHoldingDialogOpen, setEditHoldingDialogOpen] = useState(false);
@@ -102,6 +105,18 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     };
     return labels[type as keyof typeof labels] || 'Övrigt';
   };
+  const topHoldings = React.useMemo(() => {
+    if (!holdingsPerformance || holdingsPerformance.length === 0) return { best: [], worst: [] };
+    const sorted = [...holdingsPerformance].sort((a, b) => {
+      const aChange = a.hasPurchasePrice ? a.profitPercentage : a.dayChangePercentage;
+      const bChange = b.hasPurchasePrice ? b.profitPercentage : b.dayChangePercentage;
+      return bChange - aChange;
+    });
+    return {
+      best: sorted.slice(0, 3),
+      worst: sorted.slice(-3).reverse(),
+    };
+  }, [holdingsPerformance]);
   const handleExamplePrompt = (prompt: string) => {
     const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
     if (chatTab) {
@@ -200,6 +215,36 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     } finally {
       setIsResetting(false);
     }
+  };
+
+  const holdingsById = React.useMemo(() => {
+    return new Map(actualHoldings.map((holding) => [holding.id, holding]));
+  }, [actualHoldings]);
+
+  const formatHoldingPrice = (holdingId: string) => {
+    const holding = holdingsById.get(holdingId);
+    if (!holding) return '—';
+
+    const pricePerUnit = holding.current_price_per_unit;
+    const currencyCode = holding.price_currency || holding.currency || 'SEK';
+
+    if (pricePerUnit !== null && pricePerUnit !== undefined) {
+      return `${pricePerUnit.toLocaleString('sv-SE', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })} ${currencyCode}`;
+    }
+
+    return '—';
+  };
+
+  const renderHoldingAvatar = (holdingId: string) => {
+    const holding = holdingsById.get(holdingId);
+    const initial = (holding?.name || holding?.symbol || '?').charAt(0).toUpperCase();
+    const baseClasses = 'flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold';
+    const colorClasses = 'bg-muted/40 text-foreground';
+
+    return <div className={`${baseClasses} ${colorClasses}`}>{initial}</div>;
   };
   const handleEditHolding = (holding: any) => {
     setSelectedHolding(holding);
@@ -336,9 +381,153 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </Card>
       </div>;
   }
-    return (
-      <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
-        <UserHoldingsManager importControls={importControls} />
+  return (
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
+      {(topHoldings.best.length > 0 || topHoldings.worst.length > 0) && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {topHoldings.best.length > 0 && (
+            <Card className="rounded-3xl border border-border/60 bg-card/80 p-4 sm:p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-muted-foreground" />
+                  <h3 className="text-base font-semibold leading-tight tracking-tight text-foreground sm:text-lg">Bästa innehav</h3>
+                </div>
+              </div>
+              <div className="divide-y divide-border/60">
+                {topHoldings.best.map((holding) => {
+                  const change = holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
+                  const changeValue = holding.hasPurchasePrice ? holding.profit : holding.dayChange;
+
+                  return (
+                    <div
+                      key={holding.id}
+                      className="grid grid-cols-1 items-center gap-3 py-2 sm:grid-cols-[1fr_auto]"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {renderHoldingAvatar(holding.id)}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <p className="truncate text-sm font-semibold leading-tight tracking-tight text-foreground">{holding.name || holding.symbol || 'Innehav'}</p>
+                            {holding.symbol && (
+                              <span className="inline-flex items-center rounded-full bg-muted/40 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                {holding.symbol}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1 inline-flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="inline-flex items-center rounded-full bg-muted/30 px-2 py-0.5 text-[11px] font-semibold tracking-tight text-foreground">
+                              {formatHoldingPrice(holding.id)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-1 sm:text-right">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            (change ?? 0) >= 0
+                              ? 'text-emerald-700 dark:text-emerald-300'
+                              : 'text-red-700 dark:text-red-300'
+                          }`}
+                        >
+                          <TrendingUp className="h-3 w-3" />
+                          <span>
+                            {change !== null && change !== undefined
+                              ? `${change > 0 ? '+' : ''}${change.toFixed(2)}%`
+                              : 'Ingen data'}
+                          </span>
+                        </span>
+                        <p
+                          className={`truncate text-xs font-medium tracking-tight ${
+                            (changeValue ?? 0) >= 0
+                              ? 'text-emerald-700 dark:text-emerald-200'
+                              : 'text-red-700 dark:text-red-200'
+                          }`}
+                        >
+                          {changeValue !== null && changeValue !== undefined
+                            ? `${changeValue >= 0 ? '+' : ''}${changeValue.toLocaleString('sv-SE')} kr`
+                            : '–'}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+
+          {topHoldings.worst.length > 0 && (
+            <Card className="rounded-3xl border border-border/60 bg-card/80 p-4 sm:p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <TrendingDown className="h-5 w-5 text-muted-foreground" />
+                  <h3 className="text-base font-semibold leading-tight tracking-tight text-foreground sm:text-lg">Sämsta innehav</h3>
+                </div>
+              </div>
+              <div className="divide-y divide-border/60">
+                {topHoldings.worst.map((holding) => {
+                  const change = holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
+                  const changeValue = holding.hasPurchasePrice ? holding.profit : holding.dayChange;
+
+                  return (
+                    <div
+                      key={holding.id}
+                      className="grid grid-cols-1 items-center gap-3 py-2 sm:grid-cols-[1fr_auto]"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {renderHoldingAvatar(holding.id)}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <p className="truncate text-sm font-semibold leading-tight tracking-tight text-foreground">{holding.name || holding.symbol || 'Innehav'}</p>
+                            {holding.symbol && (
+                              <span className="inline-flex items-center rounded-full bg-muted/40 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                {holding.symbol}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1 inline-flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="inline-flex items-center rounded-full bg-muted/30 px-2 py-0.5 text-[11px] font-semibold tracking-tight text-foreground">
+                              {formatHoldingPrice(holding.id)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-1 sm:text-right">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            (change ?? 0) <= 0
+                              ? 'text-red-700 dark:text-red-300'
+                              : 'text-emerald-700 dark:text-emerald-300'
+                          }`}
+                        >
+                          <TrendingDown className="h-3 w-3" />
+                          <span>
+                            {change !== null && change !== undefined
+                              ? `${change > 0 ? '+' : ''}${change.toFixed(2)}%`
+                              : 'Ingen data'}
+                          </span>
+                        </span>
+                        <p
+                          className={`truncate text-xs font-medium tracking-tight ${
+                            (changeValue ?? 0) <= 0
+                              ? 'text-red-700 dark:text-red-200'
+                              : 'text-emerald-700 dark:text-emerald-200'
+                          }`}
+                        >
+                          {changeValue !== null && changeValue !== undefined
+                            ? `${changeValue >= 0 ? '+' : ''}${changeValue.toLocaleString('sv-SE')} kr`
+                            : '–'}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
+
+      <UserHoldingsManager importControls={importControls} />
 
       <AIRecommendations />
 

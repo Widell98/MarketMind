@@ -274,22 +274,8 @@ const PortfolioImplementation = () => {
     </>
   );
 
-  // Calculate portfolio health metrics - fix the actualHoldings check
-  const calculateHealthMetrics = () => {
-    const totalHoldings = actualHoldings ? actualHoldings.length : 0;
-    const uniqueSectors = actualHoldings && actualHoldings.length > 0 ? new Set(actualHoldings.filter(h => h.sector).map(h => h.sector)).size : 0;
-    return {
-      diversificationScore: Math.min(100, uniqueSectors / Math.max(1, totalHoldings) * 100 + 20),
-      riskScore: Math.max(20, 100 - totalCash / Math.max(1, totalPortfolioValue) * 200),
-      performanceScore: 75,
-      // Mock performance score
-      cashPercentage: totalPortfolioValue > 0 ? totalCash / totalPortfolioValue * 100 : 0
-    };
-  };
-  const healthMetrics = calculateHealthMetrics();
   const hasPortfolioData = (actualHoldings?.length || 0) > 0 && totalPortfolioValue > 0;
   const lastUpdatedLabel = lastUpdated ? `Senast uppdaterad ${lastUpdated}` : 'Ingen uppdatering ännu';
-  const formatScore = (value: number) => `${Math.round(value)}%`;
   const formatCurrency = (value: number) => value.toLocaleString('sv-SE', {
     style: 'currency',
     currency: 'SEK',
@@ -317,20 +303,6 @@ const PortfolioImplementation = () => {
       description: hasPortfolioData
         ? 'Likvida medel redo för ombalansering eller nya köp.'
         : 'Importera eller lägg till kassa för att se din tillgängliga likviditet.',
-    },
-    {
-      label: 'Diversifiering',
-      value: hasPortfolioData ? formatScore(healthMetrics.diversificationScore) : '—',
-      description: hasPortfolioData
-        ? 'Breddad exponering över flera sektorer ger ett lugnare läge.'
-        : 'Lägg till dina innehav för att se hur spridningen ser ut.',
-    },
-    {
-      label: 'Riskbalans',
-      value: hasPortfolioData ? formatScore(healthMetrics.riskScore) : '—',
-      description: hasPortfolioData
-        ? 'Mät hur kassareserven och fördelningen påverkar din totala risk.'
-        : 'Skapa en profil och importera data för att mäta din risknivå.',
     },
   ];
 
