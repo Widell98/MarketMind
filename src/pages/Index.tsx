@@ -575,7 +575,7 @@ const Index = () => {
                               <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-2">
                                   <TrendingUp className="h-5 w-5 text-muted-foreground" />
-                                  <h4 className="text-base font-semibold text-foreground sm:text-lg">Bästa innehav idag</h4>
+                                  <h4 className="text-base font-semibold leading-tight tracking-tight text-foreground sm:text-lg">Bästa innehav idag</h4>
                                 </div>
                               </div>
                               <div className="divide-y divide-border/60">
@@ -587,42 +587,42 @@ const Index = () => {
                                     <div className="flex items-center gap-3 min-w-0">
                                       {renderHoldingAvatar(holding)}
                                       <div className="min-w-0">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                          <p className="truncate text-sm font-semibold text-foreground">{holding.name || holding.symbol || 'Innehav'}</p>
-                                          {holding.symbol && (
-                                            <span className="inline-flex items-center rounded-full bg-muted/40 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                              {holding.symbol}
-                                            </span>
-                                          )}
-                                        </div>
-                                        <div className="mt-1 inline-flex items-center gap-2 text-xs text-muted-foreground">
-                                          <span className="inline-flex items-center rounded-full bg-muted/30 px-2 py-0.5 font-semibold text-foreground">
-                                            {formatCurrentPrice(holding)}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <div className="space-y-1 sm:text-right">
-                                      <span
-                                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          <div className="flex items-center gap-2 min-w-0">
+                            <p className="truncate text-sm font-semibold leading-tight tracking-tight text-foreground">{holding.name || holding.symbol || 'Innehav'}</p>
+                            {holding.symbol && (
+                              <span className="inline-flex items-center rounded-full bg-muted/40 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                {holding.symbol}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1 inline-flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="inline-flex items-center rounded-full bg-muted/30 px-2 py-0.5 text-[11px] font-semibold tracking-tight text-foreground">
+                              {formatCurrentPrice(holding)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-1 sm:text-right">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
                                           (holding.dailyChangePercent ?? 0) >= 0
                                             ? 'text-emerald-700 dark:text-emerald-300'
                                             : 'text-red-700 dark:text-red-300'
                                         }`}
                                       >
-                                        <TrendingUp className="h-3 w-3" />
-                                        <span>
-                                          {holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined
-                                            ? `${holding.dailyChangePercent > 0 ? '+' : ''}${formatPercent(holding.dailyChangePercent)}`
-                                            : 'Ingen dagsdata'}
-                                        </span>
-                                      </span>
-                                      <p className="truncate text-xs font-medium text-emerald-700 dark:text-emerald-200">
-                                        {formatDailyChangeValue(holding.dailyChangeValueSEK)}
-                                      </p>
-                                    </div>
-                                  </div>
-                                ))}
+                          <TrendingUp className="h-3 w-3" />
+                          <span>
+                            {holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined
+                              ? `${holding.dailyChangePercent > 0 ? '+' : ''}${formatPercent(holding.dailyChangePercent)}`
+                              : 'Ingen dagsdata'}
+                          </span>
+                        </span>
+                        <p className="truncate text-xs font-medium tracking-tight text-emerald-700 dark:text-emerald-200">
+                          {formatDailyChangeValue(holding.dailyChangeValueSEK)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                               </div>
                             </Card>
                           )}
@@ -632,7 +632,7 @@ const Index = () => {
                               <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-2">
                                   <TrendingDown className="h-5 w-5 text-muted-foreground" />
-                                  <h4 className="text-base font-semibold text-foreground sm:text-lg">Sämsta innehav idag</h4>
+                                  <h4 className="text-base font-semibold leading-tight tracking-tight text-foreground sm:text-lg">Sämsta innehav idag</h4>
                                 </div>
                               </div>
                               <div className="divide-y divide-border/60">
@@ -644,42 +644,42 @@ const Index = () => {
                                     <div className="flex items-center gap-3 min-w-0">
                                       {renderHoldingAvatar(holding)}
                                       <div className="min-w-0">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                          <p className="truncate text-sm font-semibold text-foreground">{holding.name || holding.symbol || 'Innehav'}</p>
-                                          {holding.symbol && (
-                                            <span className="inline-flex items-center rounded-full bg-muted/40 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                              {holding.symbol}
-                                            </span>
-                                          )}
-                                        </div>
-                                        <div className="mt-1 inline-flex items-center gap-2 text-xs text-muted-foreground">
-                                          <span className="inline-flex items-center rounded-full bg-muted/30 px-2 py-0.5 font-semibold text-foreground">
-                                            {formatCurrentPrice(holding)}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <div className="space-y-1 sm:text-right">
-                                      <span
-                                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          <div className="flex items-center gap-2 min-w-0">
+                            <p className="truncate text-sm font-semibold leading-tight tracking-tight text-foreground">{holding.name || holding.symbol || 'Innehav'}</p>
+                            {holding.symbol && (
+                              <span className="inline-flex items-center rounded-full bg-muted/40 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                {holding.symbol}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1 inline-flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="inline-flex items-center rounded-full bg-muted/30 px-2 py-0.5 text-[11px] font-semibold tracking-tight text-foreground">
+                              {formatCurrentPrice(holding)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-1 sm:text-right">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
                                           (holding.dailyChangePercent ?? 0) <= 0
                                             ? 'text-red-700 dark:text-red-300'
                                             : 'text-emerald-700 dark:text-emerald-300'
                                         }`}
                                       >
-                                        <TrendingDown className="h-3 w-3" />
-                                        <span>
-                                          {holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined
-                                            ? `${holding.dailyChangePercent > 0 ? '+' : ''}${formatPercent(holding.dailyChangePercent)}`
-                                            : 'Ingen dagsdata'}
-                                        </span>
-                                      </span>
-                                      <p className="truncate text-xs font-medium text-red-700 dark:text-red-200">
-                                        {formatDailyChangeValue(holding.dailyChangeValueSEK)}
-                                      </p>
-                                    </div>
-                                  </div>
-                                ))}
+                          <TrendingDown className="h-3 w-3" />
+                          <span>
+                            {holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined
+                              ? `${holding.dailyChangePercent > 0 ? '+' : ''}${formatPercent(holding.dailyChangePercent)}`
+                              : 'Ingen dagsdata'}
+                          </span>
+                        </span>
+                        <p className="truncate text-xs font-medium tracking-tight text-red-700 dark:text-red-200">
+                          {formatDailyChangeValue(holding.dailyChangeValueSEK)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                               </div>
                             </Card>
                           )}
