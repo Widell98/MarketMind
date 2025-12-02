@@ -4,7 +4,6 @@ import Layout from '@/components/Layout';
 import PortfolioOverview from '@/components/PortfolioOverview';
 import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolioAdvisor';
 import LoginPromptModal from '@/components/LoginPromptModal';
-import PortfolioValueCards from '@/components/PortfolioValueCards';
 import CommunityRecommendations from '@/components/CommunityRecommendations';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
@@ -291,7 +290,27 @@ const PortfolioImplementation = () => {
   const hasPortfolioData = (actualHoldings?.length || 0) > 0 && totalPortfolioValue > 0;
   const lastUpdatedLabel = lastUpdated ? `Senast uppdaterad ${lastUpdated}` : 'Ingen uppdatering ännu';
   const formatScore = (value: number) => `${Math.round(value)}%`;
+  const formatCurrency = (value: number) => value.toLocaleString('sv-SE', {
+    style: 'currency',
+    currency: 'SEK',
+    maximumFractionDigits: 0,
+  });
+
   const healthCards = [
+    {
+      label: 'Total portfölj',
+      value: hasPortfolioData ? formatCurrency(totalPortfolioValue) : '—',
+      description: hasPortfolioData
+        ? 'Summerad portföljstorlek inklusive kassa för en snabb överblick.'
+        : 'Importera eller lägg till innehav för att se din totala portfölj.',
+    },
+    {
+      label: 'Investerat värde',
+      value: hasPortfolioData ? formatCurrency(investedValue) : '—',
+      description: hasPortfolioData
+        ? 'Aktuellt marknadsvärde för dina investeringar exklusive kassa.'
+        : 'När du lägger till innehav visas värdet av dina placeringar här.',
+    },
     {
       label: 'Diversifiering',
       value: hasPortfolioData ? formatScore(healthMetrics.diversificationScore) : '—',
@@ -305,13 +324,6 @@ const PortfolioImplementation = () => {
       description: hasPortfolioData
         ? 'Mät hur kassareserven och fördelningen påverkar din totala risk.'
         : 'Skapa en profil och importera data för att mäta din risknivå.',
-    },
-    {
-      label: 'Kassa',
-      value: hasPortfolioData ? formatScore(healthMetrics.cashPercentage) : '—',
-      description: hasPortfolioData
-        ? 'Balans mellan likviditet och investeringar för smidiga omallokeringar.'
-        : 'Visa din kassaposition för att planera nästa steg.',
     },
   ];
 
@@ -372,15 +384,6 @@ const PortfolioImplementation = () => {
                     Uppdatera profil
                   </Button>
                 </div>
-              </div>
-
-              <div className="pt-2 sm:pt-3">
-                <PortfolioValueCards
-                  totalPortfolioValue={totalPortfolioValue}
-                  totalInvestedValue={investedValue}
-                  totalCashValue={totalCash}
-                  loading={loading}
-                />
               </div>
 
               <TooltipProvider>
