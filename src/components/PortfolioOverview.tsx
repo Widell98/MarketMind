@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown, BarChart3, Activity, Target, Zap, Brain, AlertTriangle, Shield, Info, User, Globe, Building2, LogIn } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, Zap, Brain, AlertTriangle, Shield, Info, User, Globe, Building2, LogIn } from 'lucide-react';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioInsights } from '@/hooks/usePortfolioInsights';
 import { useToast } from '@/hooks/use-toast';
@@ -12,6 +12,8 @@ import { useNavigate } from 'react-router-dom';
 import EditHoldingDialog from './EditHoldingDialog';
 import UserHoldingsManager from './UserHoldingsManager';
 import AIRecommendations from './AIRecommendations';
+import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
+ 
 interface PortfolioOverviewProps {
   portfolio: any;
   onQuickChat?: (message: string) => void;
@@ -40,6 +42,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   const {
     toast
   } = useToast();
+  const { holdingsPerformance } = usePortfolioPerformance();
   const navigate = useNavigate();
   const [isResetting, setIsResetting] = useState(false);
   const [editHoldingDialogOpen, setEditHoldingDialogOpen] = useState(false);
@@ -102,6 +105,18 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     };
     return labels[type as keyof typeof labels] || 'Övrigt';
   };
+  const topHoldings = React.useMemo(() => {
+    if (!holdingsPerformance || holdingsPerformance.length === 0) return { best: [], worst: [] };
+    const sorted = [...holdingsPerformance].sort((a, b) => {
+      const aChange = a.hasPurchasePrice ? a.profitPercentage : a.dayChangePercentage;
+      const bChange = b.hasPurchasePrice ? b.profitPercentage : b.dayChangePercentage;
+      return bChange - aChange;
+    });
+    return {
+      best: sorted.slice(0, 3),
+      worst: sorted.slice(-3).reverse(),
+    };
+  }, [holdingsPerformance]);
   const handleExamplePrompt = (prompt: string) => {
     const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
     if (chatTab) {
@@ -336,9 +351,79 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </Card>
       </div>;
   }
-    return (
-      <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
-        <UserHoldingsManager importControls={importControls} />
+  return (
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
+      {(topHoldings.best.length > 0 || topHoldings.worst.length > 0) && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {topHoldings.best.length > 0 && (
+            <Card className="rounded-3xl border border-border/60 bg-card/80 p-4 sm:p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                <h3 className="text-base font-semibold text-foreground sm:text-lg">Bästa innehav</h3>
+              </div>
+              <div className="space-y-3">
+                {topHoldings.best.map((holding) => {
+                  const change = holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
+                  const changeValue = holding.hasPurchasePrice ? holding.profit : holding.dayChange;
+                  return (
+                    <div key={holding.id} className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{holding.name}</p>
+                        {holding.symbol && (
+                          <p className="text-xs text-muted-foreground">{holding.symbol}</p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-sm font-semibold ${change >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {change >= 0 ? '+' : ''}{change.toFixed(2)}%
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {changeValue >= 0 ? '+' : ''}{changeValue.toLocaleString('sv-SE')} kr
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+
+          {topHoldings.worst.length > 0 && (
+            <Card className="rounded-3xl border border-border/60 bg-card/80 p-4 sm:p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+                <h3 className="text-base font-semibold text-foreground sm:text-lg">Sämsta innehav</h3>
+              </div>
+              <div className="space-y-3">
+                {topHoldings.worst.map((holding) => {
+                  const change = holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
+                  const changeValue = holding.hasPurchasePrice ? holding.profit : holding.dayChange;
+                  return (
+                    <div key={holding.id} className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{holding.name}</p>
+                        {holding.symbol && (
+                          <p className="text-xs text-muted-foreground">{holding.symbol}</p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-sm font-semibold ${change >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {change >= 0 ? '+' : ''}{change.toFixed(2)}%
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {changeValue >= 0 ? '+' : ''}{changeValue.toLocaleString('sv-SE')} kr
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
+
+      <UserHoldingsManager importControls={importControls} />
 
       <AIRecommendations />
 
