@@ -254,6 +254,13 @@ const PortfolioImplementation = () => {
   const totalPortfolioValue = performance.totalPortfolioValue;
   const investedValue = performance.totalValue;
 
+  // Fallback demo values for the portfolio cards when no data is present
+  const fallbackPortfolio = {
+    totalPortfolioValue: 50607,
+    investedValue: 44607,
+    totalCash: 6000,
+  };
+
   const portfolioImportControls = (
     <>
       <input
@@ -289,6 +296,13 @@ const PortfolioImplementation = () => {
   };
   const healthMetrics = calculateHealthMetrics();
   const hasPortfolioData = (actualHoldings?.length || 0) > 0 && totalPortfolioValue > 0;
+  const displayTotals = hasPortfolioData
+    ? {
+      totalPortfolioValue,
+      investedValue,
+      totalCash,
+    }
+    : fallbackPortfolio;
   const lastUpdatedLabel = lastUpdated ? `Senast uppdaterad ${lastUpdated}` : 'Ingen uppdatering ännu';
   const formatScore = (value: number) => `${Math.round(value)}%`;
   const healthCards = [
@@ -413,7 +427,12 @@ const PortfolioImplementation = () => {
           </section>
 
           {/* Portfolio Value Cards */}
-          <PortfolioValueCards totalPortfolioValue={totalPortfolioValue} totalInvestedValue={investedValue} totalCashValue={totalCash} loading={loading} />
+          <PortfolioValueCards
+            totalPortfolioValue={displayTotals.totalPortfolioValue}
+            totalInvestedValue={displayTotals.investedValue}
+            totalCashValue={displayTotals.totalCash}
+            loading={loading}
+          />
 
           {/* Risk Profile Required Alert */}
           {user && !riskProfile && <div className="bg-amber-50/70 dark:bg-amber-950/20 backdrop-blur-xl border border-amber-200/50 dark:border-amber-800/50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-xl">
