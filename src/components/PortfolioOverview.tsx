@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import EditHoldingDialog from './EditHoldingDialog';
 import UserHoldingsManager from './UserHoldingsManager';
 import AIRecommendations from './AIRecommendations';
+import { formatCurrency } from '@/utils/currencyUtils';
 interface PortfolioOverviewProps {
   portfolio: any;
   onQuickChat?: (message: string) => void;
@@ -338,6 +339,12 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   }
   const formatPercent = (value: number) => `${value.toFixed(2)}%`;
 
+  const formatDailyChangeValue = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return '–';
+    const prefix = value > 0 ? '+' : '';
+    return `${prefix}${formatCurrency(value, 'SEK')}`;
+  };
+
   const sortableHoldings = actualHoldings.filter(holding =>
     holding.holding_type !== 'recommendation' && holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined
   );
@@ -352,65 +359,86 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
 
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
-      <Card className="border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg sm:rounded-xl">
-        <CardHeader className="pb-3 sm:pb-4 p-4 sm:p-6">
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg font-semibold">
+      <Card className="border border-gray-200/80 dark:border-gray-800 bg-white/70 dark:bg-gray-900/70 shadow-sm rounded-lg sm:rounded-xl">
+        <CardHeader className="pb-3 sm:pb-4 p-4 sm:p-6 border-b border-border/60">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg font-semibold text-foreground">
             <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
             <span className="break-words">Dagens toppar och bottnar</span>
           </CardTitle>
           <CardDescription className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Bästa och sämsta innehaven idag baserat på daglig förändring
+            Tre bästa och sämsta innehaven idag baserat på daglig förändring
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-4 sm:p-6 pt-0">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            <div className="rounded-lg border border-green-100 dark:border-green-900/40 bg-green-50/60 dark:bg-green-900/10 p-4 sm:p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <TrendingUp className="w-4 h-4 text-green-700 dark:text-green-300" />
-                <p className="text-sm font-semibold text-foreground">Bästa innehav idag</p>
-              </div>
-              {bestHoldings.length > 0 ? (
-                <div className="space-y-2.5">
-                  {bestHoldings.map((holding) => (
-                    <div key={holding.id} className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{holding.name || holding.symbol || 'Innehav'}</p>
-                        {holding.symbol && <p className="text-xs text-muted-foreground uppercase tracking-wide">{holding.symbol}</p>}
-                      </div>
-                      <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/60 dark:text-green-200">
-                        {formatPercent(holding.dailyChangePercent || 0)}
-                      </Badge>
-                    </div>
-                  ))}
+        <CardContent className="p-4 sm:p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            {[{
+              title: 'Bästa innehav idag',
+              icon: <TrendingUp className="w-4 h-4" />,
+              items: bestHoldings,
+              wrapperClasses: 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-100/80 dark:border-emerald-900/50',
+              iconClasses: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-200'
+            }, {
+              title: 'Sämsta innehav idag',
+              icon: <TrendingDown className="w-4 h-4" />,
+              items: worstHoldings,
+              wrapperClasses: 'bg-rose-50/80 dark:bg-rose-950/40 border-rose-100/80 dark:border-rose-900/50',
+              iconClasses: 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-200'
+            }].map((section) => (
+              <div
+                key={section.title}
+                className={`rounded-xl border shadow-sm p-4 sm:p-5 flex flex-col gap-3 bg-gradient-to-br from-white/60 via-white to-white dark:from-gray-950/60 dark:via-gray-950 dark:to-gray-950 ${section.wrapperClasses}`}
+              >
+                <div className="flex items-center gap-2">
+                  <div className={`rounded-full p-2 ${section.iconClasses}`}>
+                    {section.icon}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{section.title}</p>
+                    <p className="text-xs text-muted-foreground">Sorterade på dagens procentuella utveckling</p>
+                  </div>
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Ingen dagsdata att visa ännu.</p>
-              )}
-            </div>
-
-            <div className="rounded-lg border border-red-100 dark:border-red-900/40 bg-red-50/60 dark:bg-red-900/10 p-4 sm:p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <TrendingDown className="w-4 h-4 text-red-700 dark:text-red-300" />
-                <p className="text-sm font-semibold text-foreground">Sämsta innehav idag</p>
-              </div>
-              {worstHoldings.length > 0 ? (
-                <div className="space-y-2.5">
-                  {worstHoldings.map((holding) => (
-                    <div key={holding.id} className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{holding.name || holding.symbol || 'Innehav'}</p>
-                        {holding.symbol && <p className="text-xs text-muted-foreground uppercase tracking-wide">{holding.symbol}</p>}
+                {section.items.length > 0 ? (
+                  <div className="space-y-2.5">
+                    {section.items.map((holding) => (
+                      <div
+                        key={holding.id}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/40 dark:bg-gray-900/60 px-3 py-2.5"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{holding.name || holding.symbol || 'Innehav'}</p>
+                          {holding.symbol && <p className="text-xs text-muted-foreground uppercase tracking-wide">{holding.symbol}</p>}
+                        </div>
+                        <div className="text-right">
+                          <div
+                            className={`text-sm font-semibold ${
+                              (holding.dailyChangePercent ?? 0) > 0
+                                ? 'text-emerald-600'
+                                : (holding.dailyChangePercent ?? 0) < 0
+                                  ? 'text-rose-600'
+                                  : 'text-muted-foreground'
+                            }`}
+                          >
+                            {holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined ? (
+                              <>
+                                {holding.dailyChangePercent > 0 ? '+' : ''}
+                                {formatPercent(holding.dailyChangePercent)}
+                              </>
+                            ) : (
+                              'Ingen dagsdata'
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDailyChangeValue(holding.dailyChangeValueSEK)}
+                          </p>
+                        </div>
                       </div>
-                      <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-200">
-                        {formatPercent(holding.dailyChangePercent || 0)}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Ingen dagsdata att visa ännu.</p>
-              )}
-            </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Ingen dagsdata att visa ännu.</p>
+                )}
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
