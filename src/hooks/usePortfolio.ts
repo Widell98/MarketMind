@@ -207,12 +207,27 @@ export const usePortfolio = () => {
     }
   };
 
+  const setActivePortfolioFromResult = (portfolio: Portfolio | null) => {
+    if (!portfolio) {
+      setActivePortfolio(null);
+      return;
+    }
+
+    const normalizedPortfolio: Portfolio = {
+      ...portfolio,
+      recommended_stocks: Array.isArray(portfolio.recommended_stocks) ? portfolio.recommended_stocks : []
+    };
+
+    setActivePortfolio(normalizedPortfolio);
+  };
+
   return {
     activePortfolio,
     latestAnalysis,
     recommendations,
     loading,
     generatePortfolio,
-    refetch
+    refetch,
+    setActivePortfolioFromResult
   };
 };
