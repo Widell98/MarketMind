@@ -304,6 +304,19 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         return;
       }
 
+      if (/^(-{3,}|\*{3,}|_{3,})$/.test(trimmedLine)) {
+        flushPendingAsParagraph();
+        flushList();
+        elements.push(
+          <div
+            key={getKey()}
+            className="my-2 h-px w-full bg-border/80 dark:bg-ai-border/60"
+            aria-hidden="true"
+          />,
+        );
+        return;
+      }
+
       if (trimmedLine.startsWith('###')) {
         flushPendingAsParagraph();
         flushList();

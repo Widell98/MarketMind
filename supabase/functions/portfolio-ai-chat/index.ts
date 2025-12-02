@@ -3586,7 +3586,7 @@ serve(async (req) => {
 
 
     // Enhanced user context with current holdings and performance
-    if (shouldIncludePersonalContext && riskProfile) {
+    if (shouldIncludePersonalContext && riskProfile && userExplicitRiskFocus) {
       contextInfo += `\n\nANVÄNDARPROFIL (använd denna info, fråga ALDRIG efter den igen):
 - Ålder: ${riskProfile.age || 'Ej angiven'}
 - Risktolerans: ${riskProfile.risk_tolerance === 'conservative' ? 'Konservativ' : riskProfile.risk_tolerance === 'moderate' ? 'Måttlig' : 'Aggressiv'}
