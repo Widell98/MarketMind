@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown, BarChart3, Activity, Target, Zap, Brain, AlertTriangle, Shield, Info, User, Globe, Building2, LogIn } from 'lucide-react';
+import { Target, Zap, Brain, AlertTriangle, Shield, Info, User, Globe, Building2, LogIn } from 'lucide-react';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioInsights } from '@/hooks/usePortfolioInsights';
 import { useToast } from '@/hooks/use-toast';
@@ -11,8 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import EditHoldingDialog from './EditHoldingDialog';
 import UserHoldingsManager from './UserHoldingsManager';
-import AIRecommendations from './AIRecommendations';
-import { resolveHoldingValue } from '@/utils/currencyUtils';
+ 
 interface PortfolioOverviewProps {
   portfolio: any;
   onQuickChat?: (message: string) => void;
@@ -46,44 +45,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   const [editHoldingDialogOpen, setEditHoldingDialogOpen] = useState(false);
   const [selectedHolding, setSelectedHolding] = useState<any>(null);
 
-  // Calculate portfolio exposure data
-  const calculateExposureData = () => {
-    const allHoldings = [...actualHoldings];
-
-    const sectorExposure: { [key: string]: number } = {};
-    const marketExposure: { [key: string]: number } = {};
-    allHoldings.forEach(holding => {
-      const { valueInSEK } = resolveHoldingValue(holding);
-      const value = valueInSEK || (holding.purchase_price && holding.quantity
-        ? holding.purchase_price * holding.quantity
-        : 0);
-
-      const sector = holding.sector || 'Övrigt';
-      sectorExposure[sector] = (sectorExposure[sector] || 0) + value;
-
-      let market = 'Sverige';
-      if (holding.currency === 'USD') market = 'USA';
-      else if (holding.currency === 'EUR') market = 'Europa';
-      else if (holding.market) market = holding.market;
-      marketExposure[market] = (marketExposure[market] || 0) + value;
-    });
-
-    const totalValue = Object.values(sectorExposure).reduce((sum, val) => sum + val, 0);
-    const sectorData = Object.entries(sectorExposure).map(([sector, value]) => ({
-      name: sector,
-      value,
-      percentage: totalValue > 0 ? Math.round((value / totalValue) * 100) : 0
-    })).sort((a, b) => b.value - a.value);
-    const marketData = Object.entries(marketExposure).map(([market, value]) => ({
-      name: market,
-      value,
-      percentage: totalValue > 0 ? Math.round((value / totalValue) * 100) : 0
-    })).sort((a, b) => b.value - a.value);
-    return { sectorData, marketData, totalValue };
-  };
-  const exposureData = calculateExposureData();
-
-  // Color palettes for charts
+    // Color palettes for charts
 
   // Helper function to get insight icon based on type
   const getInsightIcon = (type: string) => {
@@ -239,6 +201,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       setIsResetting(false);
     }
   };
+
   const handleEditHolding = (holding: any) => {
     setSelectedHolding(holding);
     setEditHoldingDialogOpen(true);
@@ -376,9 +339,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   }
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
-      <UserHoldingsManager sectorData={exposureData.sectorData} importControls={importControls} />
-
-      <AIRecommendations />
+      <UserHoldingsManager importControls={importControls} />
 
       {/* Quick Actions - NOW THIRD */}
 

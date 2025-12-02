@@ -7,11 +7,9 @@ import {
   Users,
   ArrowUpRight,
   TrendingUp,
-  Wallet,
   Shield,
   MessageCircle,
   CheckCircle,
-  Star,
   Heart,
   Target,
   Coffee,
@@ -28,8 +26,11 @@ import {
   Search,
   Newspaper,
   ExternalLink,
+  Activity,
+  Star,
+  Wallet,
 } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,18 +38,19 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
-import { useUserHoldings } from '@/hooks/useUserHoldings';
+import { useUserHoldings, type UserHolding } from '@/hooks/useUserHoldings';
 import { useAIInsights } from '@/hooks/useAIInsights';
 import { useLikedStockCases } from '@/hooks/useLikedStockCases';
 import { useNewsData } from '@/hooks/useNewsData';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import StockCaseCard from '@/components/StockCaseCard';
 import PortfolioOverviewCard, { type SummaryCard } from '@/components/PortfolioOverviewCard';
 import { ArrowRight, TrendingDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { convertToSEK, resolveHoldingValue } from '@/utils/currencyUtils';
-import { fetchSheetChangeData } from '@/utils/sheetChangeData';
+import { resolveHoldingValue } from '@/utils/currencyUtils';
+import { useDailyChangeData } from '@/hooks/useDailyChangeData';
+import HoldingsHighlightCard from '@/components/HoldingsHighlightCard';
+import AllocationCard from '@/components/AllocationCard';
 
 type QuickAction = {
   icon: React.ComponentType<{ className?: string }>;
@@ -130,7 +132,6 @@ const Index = () => {
   } = useAIInsights();
   const { likedStockCases, loading: likedStockCasesLoading } = useLikedStockCases();
   const { morningBrief, newsData } = useNewsData();
-  const { holdingsPerformance } = usePortfolioPerformance();
   // Show portfolio dashboard if user has portfolio OR has holdings (so they can see portfolio value after implementing strategy)
   const hasPortfolio = !loading && (!!activePortfolio || (actualHoldings && actualHoldings.length > 0));
   const totalPortfolioValue = performance.totalPortfolioValue;
@@ -139,35 +140,67 @@ const Index = () => {
   const safeTotalPortfolioValue = typeof totalPortfolioValue === 'number' && Number.isFinite(totalPortfolioValue) ? totalPortfolioValue : 0;
   const safeTotalCash = typeof totalCash === 'number' && Number.isFinite(totalCash) ? totalCash : 0;
   
-  // Get top 3 best and worst holdings
-  const topHoldings = React.useMemo(() => {
-    if (!holdingsPerformance || holdingsPerformance.length === 0) return { best: [], worst: [] };
-    const sorted = [...holdingsPerformance].sort((a, b) => {
-      const aChange = a.hasPurchasePrice ? a.profitPercentage : a.dayChangePercentage;
-      const bChange = b.hasPurchasePrice ? b.profitPercentage : b.dayChangePercentage;
-      return bChange - aChange;
-    });
-    return {
-      best: sorted.slice(0, 3),
-      worst: sorted.slice(-3).reverse(),
-    };
-  }, [holdingsPerformance]);
-  
-  // Calculate allocation percentages
-  const allocationData = React.useMemo(() => {
-    const invested = safeTotalPortfolioValue - safeTotalCash;
-    const total = safeTotalPortfolioValue;
-    if (total === 0) return { cash: 0, invested: 0 };
-    return {
-      cash: (safeTotalCash / total) * 100,
-      invested: (invested / total) * 100,
-    };
-  }, [safeTotalPortfolioValue, safeTotalCash]);
+  const formatDailyChangeValue = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return '–';
+    const prefix = value > 0 ? '+' : '';
+    return `${prefix}${value.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr`;
+  };
 
-  // Cache for Google Sheets Change % data
-  const [sheetChangeDataCache, setSheetChangeDataCache] = React.useState<Map<string, number> | null>(null);
-  const [sheetChangeDataCacheTime, setSheetChangeDataCacheTime] = React.useState<number>(0);
-  const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+  const formatPercent = (value: number) => `${value.toFixed(2)}%`;
+
+  const renderHoldingAvatar = (holding: UserHolding) => {
+    const initial = (holding.name || holding.symbol || '?').charAt(0).toUpperCase();
+    const baseClasses = 'flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold';
+    const colorClasses = 'bg-muted/40 text-foreground';
+
+    return <div className={`${baseClasses} ${colorClasses}`}>{initial}</div>;
+  };
+
+  const dailyHighlights = React.useMemo(() => {
+    const sortableHoldings = actualHoldings.filter(holding =>
+      holding.holding_type !== 'recommendation' && holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined
+    );
+
+    const best = [...sortableHoldings]
+      .sort((a, b) => (b.dailyChangePercent ?? 0) - (a.dailyChangePercent ?? 0))
+      .slice(0, 3);
+
+    const worst = [...sortableHoldings]
+      .sort((a, b) => (a.dailyChangePercent ?? 0) - (b.dailyChangePercent ?? 0))
+      .slice(0, 3);
+
+    return { best, worst };
+  }, [actualHoldings]);
+
+  const formatChangeLabel = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return '–';
+    const prefix = value > 0 ? '+' : '';
+    return `${prefix}${formatPercent(value)}`;
+  };
+
+  const bestHighlightItems = dailyHighlights.best.map((holding) => ({
+    id: holding.id,
+    name: holding.name || holding.symbol || 'Innehav',
+    symbol: holding.symbol,
+    percentLabel: formatChangeLabel(holding.dailyChangePercent),
+    valueLabel: formatDailyChangeValue(holding.dailyChangeValueSEK),
+    isPositive: (holding.dailyChangePercent ?? 0) >= 0,
+  }));
+
+  const worstHighlightItems = dailyHighlights.worst.map((holding) => ({
+    id: holding.id,
+    name: holding.name || holding.symbol || 'Innehav',
+    symbol: holding.symbol,
+    percentLabel: formatChangeLabel(holding.dailyChangePercent),
+    valueLabel: formatDailyChangeValue(holding.dailyChangeValueSEK),
+    isPositive: (holding.dailyChangePercent ?? 0) > 0 ? true : false,
+  }));
+  
+  const {
+    data: sheetChangeData,
+    loading: sheetChangeDataLoading,
+    getChangeForTicker,
+  } = useDailyChangeData();
 
   // Calculate today's development based on Change % from Google Sheets
   const [todayDevelopment, setTodayDevelopment] = React.useState<{ percent: number; value: number } | null>(null);
@@ -180,26 +213,21 @@ const Index = () => {
         return;
       }
 
+      if (sheetChangeDataLoading) {
+        setLoadingTodayDevelopment(true);
+        return;
+      }
+
       try {
         setLoadingTodayDevelopment(true);
-        
-        // Fetch Google Sheets Change % data (with caching)
-        let sheetChangeData = sheetChangeDataCache;
-        const now = Date.now();
-        
-        if (!sheetChangeData || (now - sheetChangeDataCacheTime) > CACHE_DURATION_MS) {
-          // Cache expired or doesn't exist, fetch fresh data
-          sheetChangeData = await fetchSheetChangeData();
-          setSheetChangeDataCache(sheetChangeData);
-          setSheetChangeDataCacheTime(now);
-          
-          if (import.meta.env.DEV) {
-            console.log(`Fetched fresh Change % data from Google Sheets: ${sheetChangeData.size} entries`);
-          }
-        } else {
-          if (import.meta.env.DEV) {
-            console.log(`Using cached Change % data (age: ${Math.round((now - sheetChangeDataCacheTime) / 1000)}s)`);
-          }
+
+        if (!sheetChangeData || sheetChangeData.size === 0) {
+          setTodayDevelopment({
+            percent: 0,
+            value: 0,
+          });
+          setLoadingTodayDevelopment(false);
+          return;
         }
         
         // Calculate portfolio's today development based on Change % from Google Sheets
@@ -208,34 +236,6 @@ const Index = () => {
         let totalSecuritiesValue = 0;
         let holdingsWithData = 0;
         let holdingsWithoutData = 0;
-
-        // Normalize ticker function for matching
-        const normalizeTickerForMatching = (ticker: string | null | undefined): string[] => {
-          if (!ticker) return [];
-          
-          const trimmed = ticker.trim().toUpperCase();
-          if (!trimmed) return [];
-          
-          const variants: string[] = [trimmed];
-          
-          // Remove prefixes like STO:, NASDAQ:, etc.
-          const parts = trimmed.split(':');
-          if (parts.length > 1) {
-            const symbol = parts[parts.length - 1]?.trim();
-            if (symbol) {
-              variants.push(symbol);
-              // Also add STO: prefix variant for Swedish stocks
-              if (!trimmed.startsWith('STO:')) {
-                variants.push(`STO:${symbol}`);
-              }
-            }
-          } else {
-            // Add STO: prefix variant if it doesn't have one
-            variants.push(`STO:${trimmed}`);
-          }
-          
-          return variants;
-        };
 
         actualHoldings.forEach(holding => {
           // Skip cash holdings and recommendations (they don't have Change %)
@@ -252,23 +252,11 @@ const Index = () => {
           }
 
           // Try to find Change % from Google Sheets data
-          let changePercent: number | null = null;
-          
-          if (sheetChangeData && holding.symbol) {
-            const tickerVariants = normalizeTickerForMatching(holding.symbol);
-            
-            // Try each variant until we find a match
-            for (const variant of tickerVariants) {
-              if (sheetChangeData.has(variant)) {
-                changePercent = sheetChangeData.get(variant)!;
-                break;
-              }
-            }
-          }
+          const changePercent = getChangeForTicker(holding.symbol);
 
           // Debug logging
           if (import.meta.env.DEV) {
-            console.log(`Holding: ${holding.name}, symbol: ${holding.symbol}, variants: ${normalizeTickerForMatching(holding.symbol)}, changePercent: ${changePercent}, value: ${holdingValue}`);
+            console.log(`Holding: ${holding.name}, symbol: ${holding.symbol}, changePercent: ${changePercent}, value: ${holdingValue}`);
           }
 
           // Only include holdings with valid Change % data from Google Sheets
@@ -316,12 +304,12 @@ const Index = () => {
     };
 
     calculateTodayDevelopment();
-  }, [user, hasPortfolio, safeTotalPortfolioValue, actualHoldings, sheetChangeDataCache, sheetChangeDataCacheTime]);
+  }, [user, hasPortfolio, safeTotalPortfolioValue, actualHoldings, sheetChangeData, sheetChangeDataLoading, getChangeForTicker]);
 
   const dayChangePercent = todayDevelopment?.percent ?? performance.dayChangePercentage ?? 0;
   const dayChangeValue = todayDevelopment?.value ?? 0;
   const isPositiveDayChange = dayChangePercent >= 0;
-  
+
   const summaryCards = React.useMemo<SummaryCard[]>(() => {
     const changeValue = dayChangeValue;
     const changeValueFormatted = changeValue !== 0
@@ -329,7 +317,6 @@ const Index = () => {
         ? `+${changeValue.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr`
         : `${changeValue.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr`)
       : '0,00 kr';
-
     return [
       {
         icon: Star,
@@ -378,7 +365,7 @@ const Index = () => {
         helperClassName: 'text-muted-foreground',
       },
     ];
-  }, [t, safeTotalPortfolioValue, holdingsCount, safeTotalCash, dayChangePercent, isPositiveDayChange, likedStockCases.length, loadingTodayDevelopment, todayDevelopment]);
+  }, [t, safeTotalPortfolioValue, holdingsCount, safeTotalCash, dayChangePercent, isPositiveDayChange, likedStockCases.length, loadingTodayDevelopment, dayChangeValue]);
 
   const quickActions = React.useMemo<QuickAction[]>(() => [
     {
@@ -572,8 +559,8 @@ const Index = () => {
 
           {/* Clean Dashboard for logged-in users */}
           {user && hasPortfolio && <div className="min-h-0 bg-background">
-              <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-3 sm:py-6">
-                <div className="space-y-6 sm:space-y-8">
+              <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
+                <div className="space-y-5 sm:space-y-6">
                   {/* Portfolio Value & Overview Combined */}
                   <PortfolioOverviewCard
                     portfolioValue={safeTotalPortfolioValue}
@@ -586,104 +573,39 @@ const Index = () => {
                     isPositiveDayChange={isPositiveDayChange}
                   />
 
-                  {/* Top Holdings and Allocation */}
-                  {(topHoldings.best.length > 0 || topHoldings.worst.length > 0 || allocationData.cash > 0 || allocationData.invested > 0) && (
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-4">
-                      {/* Top 3 Best Holdings */}
-                      {topHoldings.best.length > 0 && (
-                        <div className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                          <div className="flex items-center gap-2 mb-4">
-                            <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                            <h3 className="text-base font-semibold text-foreground sm:text-lg">Bästa innehav</h3>
-                          </div>
-                          <div className="space-y-3">
-                            {topHoldings.best.map((holding) => {
-                              const change = holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
-                              const changeValue = holding.hasPurchasePrice ? holding.profit : holding.dayChange;
-                              return (
-                                <div key={holding.id} className="flex items-center justify-between">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-foreground truncate">{holding.name}</p>
-                                    {holding.symbol && (
-                                      <p className="text-xs text-muted-foreground">{holding.symbol}</p>
-                                    )}
-                                  </div>
-                                  <div className="text-right">
-                                    <p className={`text-sm font-semibold ${change >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                                      {change >= 0 ? '+' : ''}{change.toFixed(2)}%
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {changeValue >= 0 ? '+' : ''}{changeValue.toLocaleString('sv-SE')} kr
-                                    </p>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
+                    {/* Dagens förändring och allokering */}
+                    {(dailyHighlights.best.length > 0 || dailyHighlights.worst.length > 0 || performance.totalPortfolioValue > 0 || safeTotalCash > 0) && (
+                      <div className="space-y-3 sm:space-y-4">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 sm:gap-4">
+                          {dailyHighlights.best.length > 0 && (
+                            <HoldingsHighlightCard
+                              title="Bästa innehav idag"
+                              icon={<TrendingUp className="h-5 w-5" />}
+                              iconColorClass="text-emerald-600"
+                              items={bestHighlightItems}
+                              emptyText="Ingen dagsdata ännu"
+                            />
+                          )}
 
-                      {/* Top 3 Worst Holdings */}
-                      {topHoldings.worst.length > 0 && (
-                        <div className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                          <div className="flex items-center gap-2 mb-4">
-                            <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
-                            <h3 className="text-base font-semibold text-foreground sm:text-lg">Sämsta innehav</h3>
-                          </div>
-                          <div className="space-y-3">
-                            {topHoldings.worst.map((holding) => {
-                              const change = holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
-                              const changeValue = holding.hasPurchasePrice ? holding.profit : holding.dayChange;
-                              return (
-                                <div key={holding.id} className="flex items-center justify-between">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-foreground truncate">{holding.name}</p>
-                                    {holding.symbol && (
-                                      <p className="text-xs text-muted-foreground">{holding.symbol}</p>
-                                    )}
-                                  </div>
-                                  <div className="text-right">
-                                    <p className={`text-sm font-semibold ${change >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                                      {change >= 0 ? '+' : ''}{change.toFixed(2)}%
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {changeValue >= 0 ? '+' : ''}{changeValue.toLocaleString('sv-SE')} kr
-                                    </p>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
+                          {dailyHighlights.worst.length > 0 && (
+                            <HoldingsHighlightCard
+                              title="Sämsta innehav idag"
+                              icon={<TrendingDown className="h-5 w-5" />}
+                              iconColorClass="text-red-600"
+                              items={worstHighlightItems}
+                              emptyText="Ingen dagsdata ännu"
+                            />
+                          )}
 
-                      {/* Portfolio Allocation */}
-                      {(allocationData.cash > 0 || allocationData.invested > 0) && (
-                        <div className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                          <div className="flex items-center gap-2 mb-4">
-                            <BarChart3 className="h-5 w-5 text-primary" />
-                            <h3 className="text-base font-semibold text-foreground sm:text-lg">Allokering</h3>
-                          </div>
-                          <div className="space-y-4">
-                            <div>
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm text-muted-foreground">Investerat</span>
-                                <span className="text-sm font-semibold text-foreground">{allocationData.invested.toFixed(1)}%</span>
-                              </div>
-                              <Progress value={allocationData.invested} className="h-2" />
-                            </div>
-                            <div>
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm text-muted-foreground">Kontant</span>
-                                <span className="text-sm font-semibold text-foreground">{allocationData.cash.toFixed(1)}%</span>
-                              </div>
-                              <Progress value={allocationData.cash} className="h-2" />
-                            </div>
-                          </div>
+                          {(performance.totalPortfolioValue > 0 || safeTotalCash > 0) && (
+                            <AllocationCard
+                              investedPercentage={performance.investedPercentage ?? 0}
+                              cashPercentage={performance.cashPercentage ?? 0}
+                            />
+                          )}
                         </div>
-                      )}
-                    </div>
-                  )}
+                      </div>
+                    )}
 
                   {/* News/Morning Brief Section - Moved up */}
                   {morningBrief && (

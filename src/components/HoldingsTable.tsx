@@ -33,6 +33,7 @@ interface HoldingsTableProps {
   isUpdatingPrice?: boolean;
   refreshingTicker?: string | null;
   holdingPerformanceMap?: Record<string, HoldingPerformance>;
+  totalPortfolioValue?: number;
 }
 
 const HoldingsTable: React.FC<HoldingsTableProps> = ({
@@ -40,18 +41,18 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
   onRefreshPrice,
   isUpdatingPrice,
   refreshingTicker,
-  holdingPerformanceMap
+  holdingPerformanceMap,
+  totalPortfolioValue
 }) => {
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Namn</TableHead>
-          <TableHead>Symbol</TableHead>
-          <TableHead>Typ</TableHead>
-          <TableHead>Värde</TableHead>
-          <TableHead>Antal</TableHead>
-          <TableHead>Vinst/Förlust</TableHead>
+          <TableHead className="w-[110px]">Typ</TableHead>
+          <TableHead className="min-w-[180px]">Namn</TableHead>
+          <TableHead className="text-right">Marknadsvärde</TableHead>
+          <TableHead className="text-right">Utveckling</TableHead>
+          <TableHead className="text-right">Andel</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -85,77 +86,108 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
               : 'text-red-600'
             : 'text-foreground';
 
+          const shareOfPortfolio = totalPortfolioValue && totalPortfolioValue > 0
+            ? (valueInSEK / totalPortfolioValue) * 100
+            : 0;
+
           const trimmedSymbol = holding.symbol?.trim();
           const normalizedSymbol = trimmedSymbol ? trimmedSymbol.toUpperCase() : undefined;
           const isRefreshing = Boolean(
             isUpdatingPrice && refreshingTicker && normalizedSymbol && refreshingTicker === normalizedSymbol
           );
 
+          const typeLabel = {
+            stock: 'Aktie',
+            fund: 'Fond',
+            crypto: 'Krypto',
+            real_estate: 'Fastighet',
+            bonds: 'Ränta',
+            cash: 'Kassa',
+            other: 'Övrigt',
+            recommendation: 'Rek.'
+          }[holding.holding_type as keyof typeof typeLabel] || 'Övrigt';
+
           return (
             <TableRow key={holding.id}>
-              <TableCell className="font-medium">{holding.name}</TableCell>
-              <TableCell>
-                {onRefreshPrice && normalizedSymbol ? (
-                  <button
-                    type="button"
-                    onClick={() => onRefreshPrice(normalizedSymbol)}
-                    disabled={isUpdatingPrice}
-                    className={cn(
-                      badgeVariants({ variant: 'outline' }),
-                      'text-xs font-mono inline-flex items-center gap-1 px-2 py-0.5 cursor-pointer transition-colors group hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed'
+              <TableCell className="py-3 sm:py-3.5">
+                <span
+                  className={cn(
+                    badgeVariants({ variant: 'outline' }),
+                    'text-xs font-medium capitalize'
+                  )}
+                >
+                  {typeLabel}
+                </span>
+              </TableCell>
+              <TableCell className="py-3 sm:py-3.5">
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-medium leading-tight text-foreground break-words">{holding.name}</span>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground flex-wrap">
+                    {onRefreshPrice && normalizedSymbol ? (
+                      <button
+                        type="button"
+                        onClick={() => onRefreshPrice(normalizedSymbol)}
+                        disabled={isUpdatingPrice}
+                        className={cn(
+                          badgeVariants({ variant: 'outline' }),
+                          'text-[11px] font-mono inline-flex items-center gap-1 px-2 py-0.5 cursor-pointer transition-colors group hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed'
+                        )}
+                        title="Uppdatera livepris"
+                      >
+                        {normalizedSymbol}
+                        <RefreshCw
+                          className={cn(
+                            'w-3 h-3 text-muted-foreground transition-opacity duration-200',
+                            isRefreshing ? 'opacity-100 animate-spin' : 'opacity-0 group-hover:opacity-100'
+                          )}
+                        />
+                      </button>
+                    ) : (
+                      <span className="font-mono tracking-tight">{normalizedSymbol ?? '—'}</span>
                     )}
-                    title="Uppdatera livepris"
-                  >
-                    {normalizedSymbol}
-                    <RefreshCw
-                      className={cn(
-                        'w-3 h-3 text-muted-foreground transition-opacity duration-200',
-                        isRefreshing ? 'opacity-100 animate-spin' : 'opacity-0 group-hover:opacity-100'
-                      )}
-                    />
-                  </button>
+                    {isRefreshing && (
+                      <span className="sr-only">Hämtar live-pris...</span>
+                    )}
+                    {quantity > 0 && (
+                      <span className="text-muted-foreground">• {quantity} st</span>
+                    )}
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell className="py-3 sm:py-3.5 text-right align-middle">
+                <div className="flex flex-col items-end gap-0.5">
+                  <span className="font-semibold leading-tight">{formatCurrency(valueInSEK, 'SEK')}</span>
+                  {holding.original_value && holding.original_currency && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {formatCurrency(holding.original_value, holding.original_currency)}
+                    </span>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell className="py-3 sm:py-3.5 text-right align-middle">
+                {hasPerformanceData || profitLoss !== undefined ? (
+                  <div className="inline-flex items-center justify-end gap-2 text-right">
+                    <span className={cn('text-sm font-semibold', profitClass)}>
+                      {profitLoss !== undefined
+                        ? `${profitLoss > 0 ? '+' : ''}${formatCurrency(profitLoss, 'SEK')}`
+                        : '—'}
+                    </span>
+                    <span className={cn('text-xs font-medium', profitClass)}>
+                      {profitPercentage !== undefined
+                        ? `${profitLoss !== undefined && profitLoss > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`
+                        : '—'}
+                    </span>
+                  </div>
                 ) : (
-                  holding.symbol || '-'
-                )}
-                {isRefreshing && (
-                  <span className="sr-only">Hämtar live-pris...</span>
+                  <span className="text-sm text-muted-foreground">—</span>
                 )}
               </TableCell>
-              <TableCell className="capitalize">{holding.holding_type}</TableCell>
-              <TableCell>{formatCurrency(valueInSEK, 'SEK')}</TableCell>
-              <TableCell>{quantity > 0 ? quantity : '-'}</TableCell>
-              <TableCell>
-                {hasPerformanceData ? (
-                  <div className="flex flex-col">
-                    <span className={cn('font-medium', hasPurchasePrice ? profitClass : 'text-foreground')}>
-                      {hasPurchasePrice
-                        ? `${profitLoss !== undefined && profitLoss > 0 ? '+' : ''}${formatCurrency(profitLoss ?? 0, 'SEK')}`
-                        : formatCurrency(0, 'SEK')}
-                    </span>
-                    {hasPurchasePrice ? (
-                      <span className={cn('text-xs', profitLoss !== undefined && profitLoss !== 0 ? profitClass : 'text-muted-foreground')}>
-                        {profitPercentage !== undefined
-                          ? `${profitLoss !== undefined && profitLoss > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`
-                          : '—'}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Köpkurs saknas</span>
-                    )}
-                  </div>
-                ) : profitLoss !== undefined ? (
-                  <div className="flex flex-col">
-                    <span className={cn('font-medium', profitClass)}>
-                      {`${profitLoss > 0 ? '+' : ''}${formatCurrency(profitLoss, 'SEK')}`}
-                    </span>
-                    {profitPercentage !== undefined && (
-                      <span className={cn('text-xs', profitClass)}>
-                        {`${profitLoss > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}
-                      </span>
-                    )}
-                  </div>
-                ) : (
-                  '-'
-                )}
+              <TableCell className="py-3 sm:py-3.5 text-right align-middle">
+                <span className="font-medium text-sm">
+                  {totalPortfolioValue && totalPortfolioValue > 0
+                    ? `${shareOfPortfolio.toFixed(1)}%`
+                    : '—'}
+                </span>
               </TableCell>
             </TableRow>
           );

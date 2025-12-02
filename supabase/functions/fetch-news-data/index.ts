@@ -217,25 +217,16 @@ function deduplicateNewsItems(items: NewsItem[]): NewsItem[] {
   return Array.from(seen.values());
 }
 
-async function fetchTavilyNews(query: string, maxResults = 15, days = 1): Promise<TavilyArticle[]> {
+// Lägg till parametern 'domains' (string array)
+async function fetchTavilyNews(query: string, maxResults = 15, days = 1, domains: string[] = []): Promise<TavilyArticle[]> {
   if (!tavilyApiKey) {
     console.warn("TAVILY_API_KEY is not configured. Skipping Tavily search.");
     return [];
   }
 
-  try {
-    const response = await fetch("https://api.tavily.com/search", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        api_key: tavilyApiKey,
-        query,
-        search_depth: "basic",
-        include_domains: [
-          // Globala finansnyheter
-          "reuters.com",
+  // Standardlista om ingen specifik lista skickas med
+  const defaultDomains = [
+    "reuters.com",
           "marketwatch.com",
           "investing.com",
           "cnbc.com",
@@ -244,34 +235,38 @@ async function fetchTavilyNews(query: string, maxResults = 15, days = 1): Promis
           "marketscreener.com",
           "finance.yahoo.com",
           "seekingalpha.com",
-
-          // Makro & ekonomi
           "apnews.com",
           "axios.com",
           "forbes.com",
           "fortune.com",
-
-          // Tech & innovation
           "techcrunch.com",
           "theverge.com",
           "wired.com",
-
-          // Svenska (delvis öppna)
-          "breakit.se",
+        "breakit.se",
           "privataaffarer.se",
           "affarsvarlden.se",
+          "svd.se/bors/news.php",
+          "placera.se"
+          
+  ];
 
-          // Kan ha paywall – håll sist
-          "di.se",
-          "dn.se",
-          "svd.se",
-        ],
+  // Använd de specifika domänerna om de finns, annars default
+  const targetDomains = domains.length > 0 ? domains : defaultDomains;
+
+  try {
+    const response = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: tavilyApiKey,
+        query,
+        search_depth: "basic",
+        include_domains: targetDomains, // <--- HÄR ÄR ÄNDRINGEN
         topic: "news",
         max_results: maxResults,
         days: days
       }),
     });
-
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Tavily API error:", errorText);
@@ -304,6 +299,7 @@ async function fetchMultipleTavilySearches(
   maxResultsPerQuery = 20,
   days = 1,
   options: GenerateOptions = {},
+  domains: string[] = [] // <--- NY PARAMETER
 ): Promise<TavilyArticle[]> {
   console.log(`[fetchMultipleTavilySearches] Starting ${queries.length} searches`);
 
@@ -311,8 +307,10 @@ async function fetchMultipleTavilySearches(
   const { allowRepeats = false } = options;
   const seenUrls = allowRepeats ? null : new Set<string>();
   
-  // Run all searches in parallel
-  const searchPromises = queries.map(query => fetchTavilyNews(query, maxResultsPerQuery, days));
+  // Skicka med 'domains' till fetchTavilyNews
+  const searchPromises = queries.map(query => fetchTavilyNews(query, maxResultsPerQuery, days, domains));
+  
+  // ... resten av logiken är samma ...
   const results = await Promise.all(searchPromises);
   
   // Combine and deduplicate when requested
@@ -699,53 +697,82 @@ async function generateMorningBrief(options: GenerateOptions = {}): Promise<Gene
   
   // 1. Get previous day's brief for context
   const previousBrief = await getPreviousDayBrief(today);
-  const previousKeywords = previousBrief ? extractKeywordsFromBrief(previousBrief.morningBrief) : [];
-  console.log(`[generateMorningBrief] Previous day brief found: ${!!previousBrief}, keywords: ${previousKeywords.slice(0, 5).join(", ")}`);
+  console.log(`[generateMorningBrief] Previous day brief found: ${!!previousBrief}`);
   
-  // 2. Build search queries based on categories and previous day's context
-  const baseQueries = [
-    "central bank interest rates inflation GDP economic data",
-    "stock market earnings reports company results",
-    "technology stocks AI tech companies innovation",
-    "sweden stock market swedish economy",
-    "oil prices commodities gold metals",
-    "global markets international trade geopolitics"
+  // --- HÄR ÄR DEN NYA LOGIKEN (SVERIGE VS GLOBALT) ---
+
+  // A. Definiera specifika domäner för att garantera svenska nyheter
+  const swedishDomains = [
+   "svd.se", "dn.se", "privataaffarer.se", "breakit.se", "omni.se", "placera.se"
   ];
   
-  // Add follow-up queries based on previous day if available
-  const followUpQueries: string[] = [];
+  const globalDomains = [
+    "cnbc.com", "reuters.com", "bloomberg.com", "ft.com", "marketwatch.com", 
+    "techcrunch.com", "wsj.com", "investing.com", "finance.yahoo.com"
+  ];
+
+  // B. Dela upp sökningarna
+ const swedishQueries = [
+    "börsen idag stockholm vinnare förlorare placera",
+    "svensk ekonomi nyheter svt ränta",
+    "marknadskollen omni ekonomi",
+    "aktier analys aktiespararna",
+    "svenska storbolag rapport"
+  ];
+  
+  const globalQueries = [
+    "us stock market close summary key events",
+    "federal reserve interest rates inflation",
+    "big tech earnings ai nvidia apple microsoft",
+    "oil prices gold commodities market",
+    "european markets ecb rates economy"
+  ];
+
+  // Lägg till uppföljning från gårdagen i den globala sökningen
   if (previousBrief && previousBrief.morningBrief.headline) {
-    followUpQueries.push(`follow-up ${previousBrief.morningBrief.headline}`);
-    if (previousKeywords.length > 0) {
-      followUpQueries.push(previousKeywords.slice(0, 3).join(" "));
-    }
+     globalQueries.push(`follow-up ${previousBrief.morningBrief.headline}`);
   }
+
+  // C. Kör sökningarna SEPARAT (Sverige vs Världen)
+  console.log("[generateMorningBrief] Fetching SWEDISH and GLOBAL news separately...");
   
-  const allQueries = [...baseQueries, ...followUpQueries];
-  
-  // 3. Fetch news from multiple Tavily searches
-  const tavilyArticles = await fetchMultipleTavilySearches(allQueries, 20, 1, { allowRepeats });
-  console.log(`[generateMorningBrief] Fetched ${tavilyArticles.length} articles from Tavily`);
-  
-  // 4. Summarize each article with AI (up to 20 articles)
-  const summarizedNews: NewsItem[] = [];
-  for (const article of tavilyArticles.slice(0, 20)) {
+  // OBS: Detta kräver att du har uppdaterat 'fetchMultipleTavilySearches' enligt Steg 2!
+  const [swedishArticles, globalArticles] = await Promise.all([
+    fetchMultipleTavilySearches(swedishQueries, 5, 1, { allowRepeats }, swedishDomains),
+    fetchMultipleTavilySearches(globalQueries, 10, 1, { allowRepeats }, globalDomains)
+  ]);
+
+  // D. Slå ihop resultaten (Svenska först så de hamnar högst upp i listan)
+  const tavilyArticles = [...swedishArticles, ...globalArticles];
+  console.log(`[generateMorningBrief] Fetched total: ${tavilyArticles.length} (SE: ${swedishArticles.length}, GL: ${globalArticles.length})`);
+
+  // --- HÄRIFRÅN ÄR DET SAMMA PARALLELL-LOGIK SOM VI FIXADE TIDIGARE ---
+
+  // 4. Summarize articles in PARALLEL
+  const articlesToProcess = tavilyArticles.slice(0, 15);
+  console.log(`[generateMorningBrief] Starting parallel summarization of ${articlesToProcess.length} articles...`);
+
+  const summaryPromises = articlesToProcess.map(async (article) => {
     try {
       const summarized = await summarizeArticle(article);
-      summarizedNews.push(summarized);
-      console.log(`[generateMorningBrief] Successfully summarized article: ${summarized.headline.substring(0, 50)}...`);
+      console.log(`[generateMorningBrief] Summarized: ${summarized.headline.substring(0, 30)}...`);
+      return summarized;
     } catch (error) {
-      console.error("Failed to summarize article:", error);
-      // Skip this article if summarization fails
+      console.error(`Failed to summarize article: ${article.title}`, error);
+      return null;
     }
-  }
+  });
+
+  const results = await Promise.all(summaryPromises);
+  const summarizedNews = results.filter((item): item is NewsItem => item !== null);
+  
   console.log(`[generateMorningBrief] Total summarized news: ${summarizedNews.length}`);
 
-  // 5. Deduplicate summarized news based on normalized URL and headline similarity
+  // 5. Deduplicate summarized news
   const deduplicatedNews = deduplicateNewsItems(summarizedNews);
   console.log(`[generateMorningBrief] Deduplicated news: ${deduplicatedNews.length} (removed ${summarizedNews.length - deduplicatedNews.length} duplicates)`);
 
-  // 3. Create context string for morning brief generation
+  // 6. Create context and generate brief
   const tavilyContext = tavilyArticles.length > 0
     ? tavilyArticles.map((a) => `- ${a.title} (${a.source}): ${a.content.slice(0, 300)}...`).join("\n")
     : "";

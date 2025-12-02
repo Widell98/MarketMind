@@ -17,7 +17,7 @@ const translations = {
     'nav.discover': 'Upptäck',
     'nav.news': 'Nyheter',
     'nav.profile': 'Profil',
-    'nav.portfolio': 'Smart Portfölj',
+    'nav.portfolio': 'Min portfölj',
     'nav.aiChat': 'AI-chatt',
     'nav.openNavigation': 'Öppna navigering',
     'nav.mainMenu': 'Huvudmeny',
@@ -120,8 +120,8 @@ const translations = {
     'aiChat.features.marketInsightsPrompt': 'Vad händer på marknaden just nu och hur påverkar det min investeringsstrategi?',
     
     // Portfolio Implementation
-    'portfolio.title': 'Portfolio Analys',
-    'portfolio.subtitle': 'Analysera och förstå din investeringsportfölj med AI-driven insikter',
+    'portfolio.title': 'Din portfölj',
+    'portfolio.subtitle': '',
     'portfolio.loading': 'Laddar din portfölj',
     'portfolio.loadingDesc': 'Hämtar dina investeringsdata...',
     'portfolio.createProfile': 'Skapa din investeringsprofil',
@@ -147,7 +147,7 @@ const translations = {
     'nav.discover': 'Discover',
     'nav.news': 'News',
     'nav.profile': 'Profile',
-    'nav.portfolio': 'Smart Portfolio',
+    'nav.portfolio': 'Your portfolio',
     'nav.aiChat': 'AI Assistant',
     'nav.openNavigation': 'Open navigation',
     'nav.mainMenu': 'Main Menu',
@@ -250,8 +250,8 @@ const translations = {
     'aiChat.features.marketInsightsPrompt': 'What\'s happening in the market right now and how does it affect my investment strategy?',
     
     // Portfolio Implementation
-    'portfolio.title': 'Portfolio Analysis',
-    'portfolio.subtitle': 'Analyze and understand your investment portfolio with AI-driven insights',
+    'portfolio.title': 'Your portfolio',
+    'portfolio.subtitle': '',
     'portfolio.loading': 'Loading your portfolio',
     'portfolio.loadingDesc': 'Fetching your investment data...',
     'portfolio.createProfile': 'Create your investment profile',
