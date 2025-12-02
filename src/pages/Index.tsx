@@ -561,7 +561,7 @@ const Index = () => {
           {/* Clean Dashboard for logged-in users */}
           {user && hasPortfolio && <div className="min-h-0 bg-background">
               <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
-                <div className="space-y-6 sm:space-y-8">
+                <div className="space-y-5 sm:space-y-6">
                   {/* Portfolio Value & Overview Combined */}
                   <PortfolioOverviewCard
                     portfolioValue={safeTotalPortfolioValue}
@@ -577,7 +577,7 @@ const Index = () => {
                     {/* Dagens förändring och allokering */}
                     {(dailyHighlights.best.length > 0 || dailyHighlights.worst.length > 0 || performance.totalPortfolioValue > 0 || safeTotalCash > 0) && (
                       <div className="space-y-3 sm:space-y-4">
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 sm:gap-4">
                           {dailyHighlights.best.length > 0 && (
                             <HoldingsHighlightCard
                               title="Bästa innehav idag"

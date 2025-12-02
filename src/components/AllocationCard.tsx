@@ -20,15 +20,15 @@ const AllocationCard: React.FC<AllocationCardProps> = ({ investedPercentage, cas
   );
 
   return (
-    <Card className="rounded-3xl border border-border/60 bg-white/90 p-4 shadow-sm dark:bg-slate-950/60 sm:p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-700 dark:bg-slate-800 dark:text-sky-300">
-          <span className="text-sm font-semibold">%</span>
+    <Card className="rounded-3xl border border-border/60 bg-white/90 p-3 shadow-sm dark:bg-slate-950/60 sm:p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50 text-sky-700 dark:bg-slate-800 dark:text-sky-300">
+          <span className="text-xs font-semibold">%</span>
         </div>
-        <h3 className="text-lg font-semibold leading-tight text-foreground">Allokering</h3>
+        <h3 className="text-base font-semibold leading-tight text-foreground sm:text-lg">Allokering</h3>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3.5">
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-sm font-semibold text-foreground">
             <span>Investerat</span>
