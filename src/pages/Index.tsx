@@ -164,13 +164,10 @@ const Index = () => {
 
   const formatPercent = (value: number) => `${value.toFixed(2)}%`;
 
-  const renderHoldingAvatar = (holding: UserHolding, accent: 'green' | 'red') => {
+  const renderHoldingAvatar = (holding: UserHolding) => {
     const initial = (holding.name || holding.symbol || '?').charAt(0).toUpperCase();
     const baseClasses = 'flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold';
-    const colorClasses =
-      accent === 'green'
-        ? 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
-        : 'bg-red-500/15 text-red-700 dark:bg-red-500/10 dark:text-red-300';
+    const colorClasses = 'bg-muted/40 text-foreground';
 
     return <div className={`${baseClasses} ${colorClasses}`}>{initial}</div>;
   };
@@ -574,32 +571,32 @@ const Index = () => {
                       <div className="space-y-3 sm:space-y-4">
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                           {dailyHighlights.best.length > 0 && (
-                            <Card className="rounded-3xl border border-emerald-200/60 bg-emerald-50/70 p-4 sm:p-6 shadow-sm dark:border-emerald-900/60 dark:bg-emerald-950/40">
+                            <Card className="rounded-3xl border border-border/60 bg-card/80 p-4 sm:p-6 shadow-sm">
                               <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-2">
-                                  <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                  <TrendingUp className="h-5 w-5 text-muted-foreground" />
                                   <h4 className="text-base font-semibold text-foreground sm:text-lg">Bästa innehav idag</h4>
                                 </div>
                               </div>
-                              <div className="divide-y divide-emerald-100/80 dark:divide-emerald-900/50">
+                              <div className="divide-y divide-border/60">
                                 {dailyHighlights.best.map((holding) => (
                                   <div
                                     key={holding.id}
                                     className="grid grid-cols-1 items-center gap-3 py-2 sm:grid-cols-[1fr_auto]"
                                   >
                                     <div className="flex items-center gap-3 min-w-0">
-                                      {renderHoldingAvatar(holding, 'green')}
+                                      {renderHoldingAvatar(holding)}
                                       <div className="min-w-0">
                                         <div className="flex items-center gap-2 min-w-0">
                                           <p className="truncate text-sm font-semibold text-foreground">{holding.name || holding.symbol || 'Innehav'}</p>
                                           {holding.symbol && (
-                                            <span className="inline-flex items-center rounded-full bg-white/70 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 shadow-sm dark:bg-emerald-900/60 dark:text-emerald-200">
+                                            <span className="inline-flex items-center rounded-full bg-muted/40 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                                               {holding.symbol}
                                             </span>
                                           )}
                                         </div>
                                         <div className="mt-1 inline-flex items-center gap-2 text-xs text-muted-foreground">
-                                          <span className="inline-flex items-center rounded-full bg-white/80 px-2 py-0.5 font-semibold text-emerald-700 shadow-sm dark:bg-emerald-900/60 dark:text-emerald-200">
+                                          <span className="inline-flex items-center rounded-full bg-muted/30 px-2 py-0.5 font-semibold text-foreground">
                                             {formatCurrentPrice(holding)}
                                           </span>
                                         </div>
@@ -609,8 +606,8 @@ const Index = () => {
                                       <span
                                         className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
                                           (holding.dailyChangePercent ?? 0) >= 0
-                                            ? 'bg-emerald-100 text-emerald-700 shadow-sm dark:bg-emerald-900/60 dark:text-emerald-200'
-                                            : 'bg-red-100 text-red-700 shadow-sm dark:bg-emerald-900/60 dark:text-red-300'
+                                            ? 'text-emerald-700 dark:text-emerald-300'
+                                            : 'text-red-700 dark:text-red-300'
                                         }`}
                                       >
                                         <TrendingUp className="h-3 w-3" />
@@ -631,32 +628,32 @@ const Index = () => {
                           )}
 
                           {dailyHighlights.worst.length > 0 && (
-                            <Card className="rounded-3xl border border-red-200/60 bg-red-50/70 p-4 sm:p-6 shadow-sm dark:border-red-900/60 dark:bg-red-950/40">
+                            <Card className="rounded-3xl border border-border/60 bg-card/80 p-4 sm:p-6 shadow-sm">
                               <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-2">
-                                  <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+                                  <TrendingDown className="h-5 w-5 text-muted-foreground" />
                                   <h4 className="text-base font-semibold text-foreground sm:text-lg">Sämsta innehav idag</h4>
                                 </div>
                               </div>
-                              <div className="divide-y divide-red-100/80 dark:divide-red-900/50">
+                              <div className="divide-y divide-border/60">
                                 {dailyHighlights.worst.map((holding) => (
                                   <div
                                     key={holding.id}
                                     className="grid grid-cols-1 items-center gap-3 py-2 sm:grid-cols-[1fr_auto]"
                                   >
                                     <div className="flex items-center gap-3 min-w-0">
-                                      {renderHoldingAvatar(holding, 'red')}
+                                      {renderHoldingAvatar(holding)}
                                       <div className="min-w-0">
                                         <div className="flex items-center gap-2 min-w-0">
                                           <p className="truncate text-sm font-semibold text-foreground">{holding.name || holding.symbol || 'Innehav'}</p>
                                           {holding.symbol && (
-                                            <span className="inline-flex items-center rounded-full bg-white/70 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-red-700 shadow-sm dark:bg-red-900/60 dark:text-red-200">
+                                            <span className="inline-flex items-center rounded-full bg-muted/40 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                                               {holding.symbol}
                                             </span>
                                           )}
                                         </div>
                                         <div className="mt-1 inline-flex items-center gap-2 text-xs text-muted-foreground">
-                                          <span className="inline-flex items-center rounded-full bg-white/80 px-2 py-0.5 font-semibold text-red-700 shadow-sm dark:bg-red-900/60 dark:text-red-200">
+                                          <span className="inline-flex items-center rounded-full bg-muted/30 px-2 py-0.5 font-semibold text-foreground">
                                             {formatCurrentPrice(holding)}
                                           </span>
                                         </div>
@@ -666,8 +663,8 @@ const Index = () => {
                                       <span
                                         className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
                                           (holding.dailyChangePercent ?? 0) <= 0
-                                            ? 'bg-red-100 text-red-700 shadow-sm dark:bg-red-900/60 dark:text-red-200'
-                                            : 'bg-emerald-100 text-emerald-700 shadow-sm dark:bg-red-900/60 dark:text-emerald-200'
+                                            ? 'text-red-700 dark:text-red-300'
+                                            : 'text-emerald-700 dark:text-emerald-300'
                                         }`}
                                       >
                                         <TrendingDown className="h-3 w-3" />
