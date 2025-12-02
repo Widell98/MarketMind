@@ -374,6 +374,15 @@ const PortfolioImplementation = () => {
                 </div>
               </div>
 
+              <div className="pt-2 sm:pt-3">
+                <PortfolioValueCards
+                  totalPortfolioValue={totalPortfolioValue}
+                  totalInvestedValue={investedValue}
+                  totalCashValue={totalCash}
+                  loading={loading}
+                />
+              </div>
+
               <TooltipProvider>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5">
                   {healthCards.map(card => (
@@ -411,14 +420,6 @@ const PortfolioImplementation = () => {
               </TooltipProvider>
             </div>
           </section>
-
-          {/* Portfolio Value Cards */}
-          <PortfolioValueCards
-            totalPortfolioValue={totalPortfolioValue}
-            totalInvestedValue={investedValue}
-            totalCashValue={totalCash}
-            loading={loading}
-          />
 
           {/* Risk Profile Required Alert */}
           {user && !riskProfile && <div className="bg-amber-50/70 dark:bg-amber-950/20 backdrop-blur-xl border border-amber-200/50 dark:border-amber-800/50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-xl">
