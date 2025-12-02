@@ -123,109 +123,74 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
   ];
 
   const renderHoldingsActions = () => (
-    <TooltipProvider delayDuration={120}>
-      <div className="flex flex-col gap-1.5 sm:gap-2">
-        <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
-          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="icon"
-                  variant={viewMode === 'cards' ? 'default' : 'outline'}
-                  onClick={() => setViewMode('cards')}
-                  className="h-8 w-8 sm:h-9 sm:w-9"
-                >
-                  <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span className="sr-only">Kortvy</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Kortvy</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="icon"
-                  variant={viewMode === 'table' ? 'default' : 'outline'}
-                  onClick={() => setViewMode('table')}
-                  className="h-8 w-8 sm:h-9 sm:w-9"
-                >
-                  <TableIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span className="sr-only">Tabellvy</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Tabellvy</TooltipContent>
-            </Tooltip>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={openAddHoldingDialog}>
-                  <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span className="sr-only">Lägg till innehav</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Lägg till innehav</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button size="icon" variant="outline" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => setShowAddCashDialog(true)}>
-                  <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span className="sr-only">Lägg till kassa</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Lägg till kassa</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 sm:h-9 sm:w-9 border border-dashed border-border text-muted-foreground"
-                >
-                  <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span className="sr-only">Uppdatera prisinformation</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
-                Klicka på en ticker i listan för att uppdatera priset.
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-1 sm:gap-1.5">
-          {filterOptions.map((option) => (
-            <Button
-              key={option.key}
-              size="sm"
-              variant={filterMode === option.key ? 'secondary' : 'ghost'}
-              className={cn(
-                'text-xs sm:text-sm rounded-full px-3 sm:px-4 font-medium border transition-colors',
-                filterMode === option.key
-                  ? 'bg-slate-900 text-slate-50 border-slate-900 hover:bg-slate-800'
-                  : 'bg-muted text-muted-foreground border-transparent hover:bg-muted/80'
-              )}
-              onClick={() => setFilterMode(option.key)}
-            >
-              {option.label}
+    <div className="flex flex-col gap-1.5 sm:gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={openAddHoldingDialog}>
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="sr-only">Lägg till innehav</span>
             </Button>
-          ))}
-        </div>
+          </TooltipTrigger>
+          <TooltipContent>Lägg till innehav</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="icon" variant="outline" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => setShowAddCashDialog(true)}>
+              <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="sr-only">Lägg till kassa</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Lägg till kassa</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 sm:h-9 sm:w-9 border border-dashed border-border text-muted-foreground"
+            >
+              <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="sr-only">Uppdatera prisinformation</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">
+            Klicka på en ticker i listan för att uppdatera priset.
+          </TooltipContent>
+        </Tooltip>
+      </div>
 
-        <div className="flex gap-1.5 sm:gap-2 flex-1 max-w-full sm:max-w-md items-center">
-          <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
-            <Input
-              placeholder="Sök innehav..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 sm:pl-10 text-xs sm:text-sm"
-            />
-          </div>
+      <div className="flex flex-wrap gap-1 sm:gap-1.5">
+        {filterOptions.map((option) => (
+          <Button
+            key={option.key}
+            size="sm"
+            variant={filterMode === option.key ? 'secondary' : 'ghost'}
+            className={cn(
+              'text-xs sm:text-sm rounded-full px-3 sm:px-4 font-medium border transition-colors',
+              filterMode === option.key
+                ? 'bg-slate-900 text-slate-50 border-slate-900 hover:bg-slate-800'
+                : 'bg-muted text-muted-foreground border-transparent hover:bg-muted/80'
+            )}
+            onClick={() => setFilterMode(option.key)}
+          >
+            {option.label}
+          </Button>
+        ))}
+      </div>
+
+      <div className="flex gap-1.5 sm:gap-2 flex-1 max-w-full sm:max-w-md items-center">
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+          <Input
+            placeholder="Sök innehav..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8 sm:pl-10 text-xs sm:text-sm"
+          />
         </div>
       </div>
-    </TooltipProvider>
+    </div>
   );
 
   const holdingPerformanceMap = useMemo<Record<string, HoldingPerformance>>(() => {
@@ -547,10 +512,46 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
   const holdingsActions = renderHoldingsActions();
 
   return (
-    <>
-      <Card className="h-fit rounded-lg sm:rounded-xl">
+    <TooltipProvider delayDuration={120}>
+      <>
+        <Card className="h-fit rounded-lg sm:rounded-xl">
         <CardHeader className="p-3 sm:p-3 md:p-4 pb-2">
-          <CardTitle className="text-base sm:text-lg md:text-xl">Dina innehav</CardTitle>
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-0.5">
+              <CardTitle className="text-base sm:text-lg md:text-xl">Aktierna</CardTitle>
+              <p className="text-xs text-muted-foreground">Sök, lägg till eller hantera aktieinnehav.</p>
+            </div>
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant={viewMode === 'cards' ? 'default' : 'outline'}
+                    onClick={() => setViewMode('cards')}
+                    className="h-8 w-8 sm:h-9 sm:w-9"
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="sr-only">Kortvy</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Kortvy</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant={viewMode === 'table' ? 'default' : 'outline'}
+                    onClick={() => setViewMode('table')}
+                    className="h-8 w-8 sm:h-9 sm:w-9"
+                  >
+                    <TableIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="sr-only">Tabellvy</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Tabellvy</TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-2.5 sm:space-y-3 p-3 sm:p-4 md:p-6 pt-0">
           <div className="space-y-2">
@@ -612,12 +613,6 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
                 </div>
               ) : (
                 <div className="space-y-2.5 sm:space-y-3">
-                  <div className="flex items-center justify-between gap-2 pb-1 sm:pb-1.5 border-b border-border/80">
-                    <div>
-                      <h3 className="text-sm sm:text-base font-semibold text-foreground">Aktier</h3>
-                      <p className="text-xs text-muted-foreground">Sök, lägg till eller hantera aktieinnehav.</p>
-                    </div>
-                  </div>
                   <HoldingsTable
                     holdings={filteredHoldings}
                     onRefreshPrice={handleUpdateHoldingPrice}
@@ -759,7 +754,8 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
         onSave={handleUpdateHolding}
         holding={editingHolding}
       />
-    </>
+      </>
+    </TooltipProvider>
   );
 };
 
