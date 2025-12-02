@@ -31,7 +31,7 @@ const HoldingsHighlightCard: React.FC<HoldingsHighlightCardProps> = ({
         <div className={`flex h-8 w-8 items-center justify-center rounded-xl bg-muted/50 ${iconColorClass}`}>
           {icon}
         </div>
-        <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-sm">
+        <h3 className="text-base font-semibold text-foreground sm:text-lg">
           {title}
         </h3>
       </div>
