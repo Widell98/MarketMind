@@ -555,11 +555,6 @@ const Index = () => {
                     {/* Dagens förändring och allokering */}
                     {(dailyHighlights.best.length > 0 || dailyHighlights.worst.length > 0) && (
                       <div className="space-y-3 sm:space-y-4">
-                        <div className="flex items-center gap-2">
-                          <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
-                          <h3 className="text-base sm:text-lg font-semibold text-foreground">Dagens toppar och bottnar</h3>
-                        </div>
-
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                           {dailyHighlights.best.length > 0 && (
                             <Card className="rounded-3xl border border-border/60 bg-card/80 p-4 sm:p-6 shadow-sm">
