@@ -324,42 +324,6 @@ const PortfolioImplementation = () => {
           {/* Page Header */}
           <section className="rounded-2xl sm:rounded-3xl border border-border/60 bg-card/70 px-4 sm:px-6 md:px-10 py-6 sm:py-8 md:py-12 shadow-sm supports-[backdrop-filter]:backdrop-blur-sm">
             <div className="flex flex-col gap-6">
-              <TooltipProvider>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5">
-                  {healthCards.map(card => (
-                    <div
-                      key={card.label}
-                      className="group rounded-2xl border border-border/60 bg-gradient-to-br from-card to-card/70 px-4 sm:px-5 py-4 sm:py-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-[0.14em]">{card.label}</span>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition group-hover:bg-primary/10 group-hover:text-primary"
-                              aria-label={`Mer info om ${card.label}`}
-                            >
-                              <Info className="h-3.5 w-3.5" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom" align="end" className="text-xs sm:text-sm max-w-xs">
-                            {card.description}
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                      <div className="mt-3 flex items-baseline gap-2">
-                        <p className="text-2xl sm:text-3xl font-semibold text-foreground">{card.value}</p>
-                        {hasPortfolioData && <span className="text-xs text-muted-foreground">vs. målnivå</span>}
-                      </div>
-                      <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                        {card.description}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </TooltipProvider>
-
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
@@ -409,6 +373,42 @@ const PortfolioImplementation = () => {
                   </Button>
                 </div>
               </div>
+
+              <TooltipProvider>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5">
+                  {healthCards.map(card => (
+                    <div
+                      key={card.label}
+                      className="group rounded-2xl border border-border/60 bg-gradient-to-br from-card to-card/70 px-4 sm:px-5 py-4 sm:py-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-[0.14em]">{card.label}</span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition group-hover:bg-primary/10 group-hover:text-primary"
+                              aria-label={`Mer info om ${card.label}`}
+                            >
+                              <Info className="h-3.5 w-3.5" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" align="end" className="text-xs sm:text-sm max-w-xs">
+                            {card.description}
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <div className="mt-3 flex items-baseline gap-2">
+                        <p className="text-2xl sm:text-3xl font-semibold text-foreground">{card.value}</p>
+                        {hasPortfolioData && <span className="text-xs text-muted-foreground">vs. målnivå</span>}
+                      </div>
+                      <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                        {card.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </TooltipProvider>
             </div>
           </section>
 
