@@ -17,7 +17,6 @@ import {
   PieChart as PieChartIcon,
   Info,
   MoreHorizontal,
-  Upload
 } from 'lucide-react';
 import {
   Dialog,
@@ -448,18 +447,6 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                   Lägg till kassa
                 </Button>
               </div>
-              {onImportHoldings && (
-                <div className="mt-3 sm:mt-4 flex justify-center">
-                  <Button
-                    variant="ghost"
-                    className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm"
-                    onClick={onImportHoldings}
-                  >
-                    <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    Importera från CSV
-                  </Button>
-                </div>
-              )}
             </div>
           ) : (
             <div className="space-y-3 sm:space-y-4">
@@ -488,12 +475,6 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                             <Banknote className="w-4 h-4" />
                             Lägg till kassa
                           </DropdownMenuItem>
-                          {onImportHoldings && (
-                            <DropdownMenuItem onSelect={onImportHoldings} className="flex items-center gap-2 text-xs sm:text-sm">
-                              <Upload className="w-4 h-4" />
-                              Importera från CSV
-                            </DropdownMenuItem>
-                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
