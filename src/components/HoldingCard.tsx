@@ -7,6 +7,7 @@ import {
   Wallet,
   Building2,
   TrendingUp,
+  TrendingDown,
   RefreshCw,
   MoreVertical,
   Edit2,
@@ -211,19 +212,44 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
             )}
           </div>
 
-          {!isCash && (quantity > 0 || (typeof effectivePrice === 'number' && effectivePrice > 0)) && (
-            <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-2">
-              {quantity > 0 && <span>{quantity} st</span>}
-              {quantity > 0 && typeof effectivePrice === 'number' && effectivePrice > 0 && <span>•</span>}
-            {typeof effectivePrice === 'number' && effectivePrice > 0 && (
-              <span>{formatCurrency(effectivePrice, effectiveCurrency)}</span>
-            )}
-          </div>
-        )}
-      </div>
+        </div>
 
         {!isCash && (
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-sm">
+            <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
+              {quantity > 0 && <span className="text-foreground font-medium">{quantity} st</span>}
+              {quantity > 0 && typeof effectivePrice === 'number' && effectivePrice > 0 && <span>•</span>}
+              {typeof effectivePrice === 'number' && effectivePrice > 0 && (
+                <span className="text-foreground font-medium">
+                  Kurs: <span className="text-muted-foreground">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
+                </span>
+              )}
+              {typeof effectivePrice === 'number' && effectivePrice > 0 && hasDailyChange && dailyChangePercent !== null && (
+                <span>•</span>
+              )}
+              {hasDailyChange && dailyChangePercent !== null ? (
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 font-semibold',
+                    dailyChangePercent > 0
+                      ? 'text-emerald-700'
+                      : dailyChangePercent < 0
+                        ? 'text-red-700'
+                        : 'text-muted-foreground'
+                  )}
+                >
+                  {dailyChangePercent > 0 ? <TrendingUp className="w-4 h-4" /> : null}
+                  {dailyChangePercent < 0 ? <TrendingDown className="w-4 h-4" /> : null}
+                  <span>
+                    {dailyChangePercent > 0 ? '+' : ''}
+                    {dailyChangePercent.toFixed(2)}%
+                  </span>
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground">Kursdata saknas</span>
+              )}
+            </div>
+
             <div className="flex items-center gap-2 text-muted-foreground">
               <MessageSquare className="w-4 h-4" />
               <button
@@ -233,30 +259,6 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
               >
                 Diskutera
               </button>
-            </div>
-
-            <div>
-              {hasDailyChange && dailyChangePercent !== null ? (
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold',
-                    dailyChangePercent > 0
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                      : dailyChangePercent < 0
-                        ? 'bg-red-50 text-red-700 border-red-100'
-                        : 'bg-muted text-muted-foreground border-border'
-                  )}
-                >
-                  <span className="text-muted-foreground">Kurs:</span>
-                  <span>
-                    {dailyChangePercent > 0 ? '+' : ''}
-                    {dailyChangePercent.toFixed(2)}%
-                  </span>
-                  <span className="text-muted-foreground">idag</span>
-                </span>
-              ) : (
-                <span className="text-xs text-muted-foreground">Kursdata saknas</span>
-              )}
             </div>
           </div>
         )}
