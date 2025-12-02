@@ -27,7 +27,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const mainClassName = isChatRoute
     ? 'flex-1 w-full min-h-0 max-w-full flex flex-col overflow-hidden'
-    : 'flex-1 container-responsive py-2 sm:py-4 lg:py-6 min-h-0 max-w-full overflow-y-scroll';
+    : 'flex-1 container-responsive py-2 sm:py-3 lg:py-4 min-h-0 max-w-full overflow-y-scroll';
 
   const breadcrumbWrapperClassName = 'mb-2 sm:mb-4';
 

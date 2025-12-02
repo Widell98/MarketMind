@@ -560,7 +560,7 @@ const Index = () => {
 
           {/* Clean Dashboard for logged-in users */}
           {user && hasPortfolio && <div className="min-h-0 bg-background">
-              <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-3 sm:py-6">
+              <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
                 <div className="space-y-6 sm:space-y-8">
                   {/* Portfolio Value & Overview Combined */}
                   <PortfolioOverviewCard
