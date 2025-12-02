@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,8 +53,60 @@ const Profile = () => {
   const { riskProfile, loading: riskProfileLoading, clearRiskProfile, refetch: refetchRiskProfile } = useRiskProfile();
   const [showResetDialog, setShowResetDialog] = useState(false);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const tabFromUrl = searchParams.get('tab');
+  const defaultTab = isAdmin ? 'content' : 'riskprofile';
+  const allowedTabs = useMemo(
+    () => (isAdmin
+      ? ['content', 'riskprofile', 'sharing-activity', 'membership']
+      : ['riskprofile', 'sharing-activity', 'membership']),
+    [isAdmin]
+  );
+
+  const initialTab = tabFromUrl && allowedTabs.includes(tabFromUrl)
+    ? tabFromUrl
+    : defaultTab;
+
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    if (tabFromUrl && allowedTabs.includes(tabFromUrl) && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [activeTab, allowedTabs, tabFromUrl]);
+
+  useEffect(() => {
+    if (!allowedTabs.includes(activeTab)) {
+      setActiveTab(defaultTab);
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.set('tab', defaultTab);
+        return next;
+      });
+    }
+  }, [activeTab, allowedTabs, defaultTab, setSearchParams]);
+
+  useEffect(() => {
+    if (location.hash === '#fine-tune-risk') {
+      const fineTuneSection = document.getElementById('fine-tune-risk');
+      if (fineTuneSection) {
+        fineTuneSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }, [location.hash]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', value);
+      return next;
+    });
+  };
+
   // Fetch profile data
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchProfileData = async () => {
       if (!user?.id) return;
       
@@ -230,7 +282,7 @@ const Profile = () => {
         {/* Main Content */}
         <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-3 sm:py-4 md:py-6 lg:py-8">
           <div className="space-y-4 sm:space-y-6">
-            <Tabs defaultValue={isAdmin ? "content" : "riskprofile"} className="w-full">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
               <TabsList
                 className={`grid w-full ${
                   isAdmin ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'
@@ -348,7 +400,9 @@ const Profile = () => {
                 onReset={() => setShowResetDialog(true)}
               />
               <SavedPortfoliosSection />
-              <UserInvestmentAnalysis />
+              <div id="fine-tune-risk">
+                <UserInvestmentAnalysis />
+              </div>
             </TabsContent>
 
             <TabsContent value="sharing-activity" className="space-y-4 sm:space-y-6 md:space-y-8">

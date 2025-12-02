@@ -122,7 +122,12 @@ const PortfolioImplementation = () => {
     // Future enhancement: trigger contextual workflows based on action
   };
   const handleUpdateProfile = () => {
-    setShowOnboarding(true);
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+
+    navigate('/profile?tab=riskprofile#fine-tune-risk');
   };
 
   const roundToTwo = (value: number) => Math.round(value * 100) / 100;
