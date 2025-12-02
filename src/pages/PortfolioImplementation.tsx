@@ -15,7 +15,8 @@ import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { AlertCircle, Brain, Info, Sparkles, Upload, User } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertCircle, Brain, Info, MoreHorizontal, Sparkles, Upload, User } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
 import { useToast } from '@/hooks/use-toast';
 import { normalizeShareClassTicker, parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
@@ -373,23 +374,28 @@ const PortfolioImplementation = () => {
                     <Sparkles className="mr-2 h-4 w-4" />
                     Starta AI-chatt
                   </Button>
-                  <Button
-                    onClick={handleImportClick}
-                    disabled={isImportingHoldings}
-                    className="rounded-xl sm:rounded-2xl px-4 sm:px-5 py-2.5 sm:py-3 shadow-md hover:shadow-lg text-xs sm:text-sm"
-                    variant="outline"
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {isImportingHoldings ? 'Importerar...' : 'Importera CSV'}
-                  </Button>
-                  <Button
-                    onClick={handleUpdateProfile}
-                    className="rounded-xl sm:rounded-2xl px-4 sm:px-5 py-2.5 sm:py-3 shadow-none"
-                    variant="ghost"
-                  >
-                    <User className="mr-2 h-4 w-4" />
-                    Uppdatera profil
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        aria-label="Fler portföljåtgärder"
+                        className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl sm:rounded-2xl shadow-md hover:shadow-lg"
+                      >
+                        <MoreHorizontal className="h-5 w-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem onSelect={handleImportClick} className="flex items-center gap-2">
+                        <Upload className="h-4 w-4" />
+                        {isImportingHoldings ? 'Importerar...' : 'Importera från CSV'}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={handleUpdateProfile} className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        Uppdatera profil
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
 
@@ -462,6 +468,7 @@ const PortfolioImplementation = () => {
                 onQuickChat={handleQuickChat}
                 onActionClick={handleActionClick}
                 importControls={portfolioImportControls}
+                onImportHoldings={handleImportClick}
               />
             </div>
 
