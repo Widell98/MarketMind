@@ -312,6 +312,13 @@ const PortfolioImplementation = () => {
         : 'När du lägger till innehav visas värdet av dina placeringar här.',
     },
     {
+      label: 'Kassa',
+      value: hasPortfolioData ? formatCurrency(totalCash) : '—',
+      description: hasPortfolioData
+        ? 'Likvida medel redo för ombalansering eller nya köp.'
+        : 'Importera eller lägg till kassa för att se din tillgängliga likviditet.',
+    },
+    {
       label: 'Diversifiering',
       value: hasPortfolioData ? formatScore(healthMetrics.diversificationScore) : '—',
       description: hasPortfolioData
