@@ -67,6 +67,8 @@ const CurrentHoldingsPrices: React.FC = () => {
         valueOriginal: valueInOriginalCurrency,
         valueCurrency,
         valueSEK: valueInSEK,
+        dailyChangePercent: holding.dailyChangePercent ?? null,
+        dailyChangeValueSEK: holding.dailyChangeValueSEK ?? null,
       };
     });
 
@@ -77,6 +79,7 @@ const CurrentHoldingsPrices: React.FC = () => {
           <Activity className="w-5 h-5 text-green-600" /> Aktuella priser
         </CardTitle>
         <CardDescription className="text-xs sm:text-sm">
+          Daglig förändring baseras på Google Sheets-kurser. Om en ticker saknas i källdatan visas ingen dagsförändring.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -95,7 +98,7 @@ const CurrentHoldingsPrices: React.FC = () => {
             {pricedHoldings.map((holding) => (
               <div
                 key={holding.id}
-                className="flex items-center justify-between p-3 bg-muted/30 rounded-lg gap-3"
+                className="grid items-center gap-3 p-3 bg-muted/30 rounded-lg grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_auto_auto]"
               >
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-sm truncate">{holding.name}</div>
@@ -126,6 +129,32 @@ const CurrentHoldingsPrices: React.FC = () => {
                       </span>
                     )}
                   </div>
+                </div>
+                <div className="text-right text-sm sm:min-w-[120px]">
+                  {holding.dailyChangePercent !== null ? (
+                    <>
+                      <div
+                        className={`font-semibold ${
+                          holding.dailyChangePercent > 0
+                            ? 'text-emerald-600'
+                            : holding.dailyChangePercent < 0
+                              ? 'text-red-600'
+                              : 'text-muted-foreground'
+                        }`}
+                      >
+                        {holding.dailyChangePercent > 0 ? '+' : ''}
+                        {holding.dailyChangePercent.toFixed(2)}%
+                      </div>
+                      {holding.dailyChangeValueSEK !== null && (
+                        <div className="text-xs text-muted-foreground">
+                          {holding.dailyChangeValueSEK > 0 ? '+' : ''}
+                          {formatCurrency(holding.dailyChangeValueSEK, 'SEK')}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">Ingen dagsdata</div>
+                  )}
                 </div>
               </div>
             ))}

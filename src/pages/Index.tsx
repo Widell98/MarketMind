@@ -48,7 +48,7 @@ import PortfolioOverviewCard, { type SummaryCard } from '@/components/PortfolioO
 import { ArrowRight, TrendingDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { convertToSEK, resolveHoldingValue } from '@/utils/currencyUtils';
-import { fetchSheetChangeData } from '@/utils/sheetChangeData';
+import { useDailyChangeData } from '@/hooks/useDailyChangeData';
 
 type QuickAction = {
   icon: React.ComponentType<{ className?: string }>;
@@ -164,10 +164,11 @@ const Index = () => {
     };
   }, [safeTotalPortfolioValue, safeTotalCash]);
 
-  // Cache for Google Sheets Change % data
-  const [sheetChangeDataCache, setSheetChangeDataCache] = React.useState<Map<string, number> | null>(null);
-  const [sheetChangeDataCacheTime, setSheetChangeDataCacheTime] = React.useState<number>(0);
-  const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+  const {
+    data: sheetChangeData,
+    loading: sheetChangeDataLoading,
+    getChangeForTicker,
+  } = useDailyChangeData();
 
   // Calculate today's development based on Change % from Google Sheets
   const [todayDevelopment, setTodayDevelopment] = React.useState<{ percent: number; value: number } | null>(null);
@@ -180,26 +181,21 @@ const Index = () => {
         return;
       }
 
+      if (sheetChangeDataLoading) {
+        setLoadingTodayDevelopment(true);
+        return;
+      }
+
       try {
         setLoadingTodayDevelopment(true);
-        
-        // Fetch Google Sheets Change % data (with caching)
-        let sheetChangeData = sheetChangeDataCache;
-        const now = Date.now();
-        
-        if (!sheetChangeData || (now - sheetChangeDataCacheTime) > CACHE_DURATION_MS) {
-          // Cache expired or doesn't exist, fetch fresh data
-          sheetChangeData = await fetchSheetChangeData();
-          setSheetChangeDataCache(sheetChangeData);
-          setSheetChangeDataCacheTime(now);
-          
-          if (import.meta.env.DEV) {
-            console.log(`Fetched fresh Change % data from Google Sheets: ${sheetChangeData.size} entries`);
-          }
-        } else {
-          if (import.meta.env.DEV) {
-            console.log(`Using cached Change % data (age: ${Math.round((now - sheetChangeDataCacheTime) / 1000)}s)`);
-          }
+
+        if (!sheetChangeData || sheetChangeData.size === 0) {
+          setTodayDevelopment({
+            percent: 0,
+            value: 0,
+          });
+          setLoadingTodayDevelopment(false);
+          return;
         }
         
         // Calculate portfolio's today development based on Change % from Google Sheets
@@ -208,34 +204,6 @@ const Index = () => {
         let totalSecuritiesValue = 0;
         let holdingsWithData = 0;
         let holdingsWithoutData = 0;
-
-        // Normalize ticker function for matching
-        const normalizeTickerForMatching = (ticker: string | null | undefined): string[] => {
-          if (!ticker) return [];
-          
-          const trimmed = ticker.trim().toUpperCase();
-          if (!trimmed) return [];
-          
-          const variants: string[] = [trimmed];
-          
-          // Remove prefixes like STO:, NASDAQ:, etc.
-          const parts = trimmed.split(':');
-          if (parts.length > 1) {
-            const symbol = parts[parts.length - 1]?.trim();
-            if (symbol) {
-              variants.push(symbol);
-              // Also add STO: prefix variant for Swedish stocks
-              if (!trimmed.startsWith('STO:')) {
-                variants.push(`STO:${symbol}`);
-              }
-            }
-          } else {
-            // Add STO: prefix variant if it doesn't have one
-            variants.push(`STO:${trimmed}`);
-          }
-          
-          return variants;
-        };
 
         actualHoldings.forEach(holding => {
           // Skip cash holdings and recommendations (they don't have Change %)
@@ -252,23 +220,11 @@ const Index = () => {
           }
 
           // Try to find Change % from Google Sheets data
-          let changePercent: number | null = null;
-          
-          if (sheetChangeData && holding.symbol) {
-            const tickerVariants = normalizeTickerForMatching(holding.symbol);
-            
-            // Try each variant until we find a match
-            for (const variant of tickerVariants) {
-              if (sheetChangeData.has(variant)) {
-                changePercent = sheetChangeData.get(variant)!;
-                break;
-              }
-            }
-          }
+          const changePercent = getChangeForTicker(holding.symbol);
 
           // Debug logging
           if (import.meta.env.DEV) {
-            console.log(`Holding: ${holding.name}, symbol: ${holding.symbol}, variants: ${normalizeTickerForMatching(holding.symbol)}, changePercent: ${changePercent}, value: ${holdingValue}`);
+            console.log(`Holding: ${holding.name}, symbol: ${holding.symbol}, changePercent: ${changePercent}, value: ${holdingValue}`);
           }
 
           // Only include holdings with valid Change % data from Google Sheets
@@ -316,7 +272,7 @@ const Index = () => {
     };
 
     calculateTodayDevelopment();
-  }, [user, hasPortfolio, safeTotalPortfolioValue, actualHoldings, sheetChangeDataCache, sheetChangeDataCacheTime]);
+  }, [user, hasPortfolio, safeTotalPortfolioValue, actualHoldings, sheetChangeData, sheetChangeDataLoading, getChangeForTicker]);
 
   const dayChangePercent = todayDevelopment?.percent ?? performance.dayChangePercentage ?? 0;
   const dayChangeValue = todayDevelopment?.value ?? 0;
