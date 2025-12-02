@@ -703,12 +703,12 @@ async function generateMorningBrief(options: GenerateOptions = {}): Promise<Gene
 
   // A. Definiera specifika domäner för att garantera svenska nyheter
   const swedishDomains = [
-   "svd.se", "dn.se/ekonomi/", "privataaffarer.se", "breakit.se", "omni.se", "placera.se"
+   "svd.se", "dn.se", "privataaffarer.se", "breakit.se", "omni.se", "placera.se"
   ];
   
   const globalDomains = [
     "cnbc.com", "reuters.com", "bloomberg.com", "ft.com", "marketwatch.com", 
-    "techcrunch.com", "wsj.com", "investing.com", "yahoo.com"
+    "techcrunch.com", "wsj.com", "investing.com", "finance.yahoo.com"
   ];
 
   // B. Dela upp sökningarna
