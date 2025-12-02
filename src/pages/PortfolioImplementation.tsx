@@ -419,7 +419,6 @@ const PortfolioImplementation = () => {
                       </div>
                       <div className="mt-3 flex items-baseline gap-2">
                         <p className="text-2xl sm:text-3xl font-semibold text-foreground">{card.value}</p>
-                        {hasPortfolioData && <span className="text-xs text-muted-foreground">vs. målnivå</span>}
                       </div>
                       <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">
                         {card.description}
