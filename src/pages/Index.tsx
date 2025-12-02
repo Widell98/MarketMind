@@ -43,7 +43,6 @@ import { useAIInsights } from '@/hooks/useAIInsights';
 import { useLikedStockCases } from '@/hooks/useLikedStockCases';
 import { useNewsData } from '@/hooks/useNewsData';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import StockCaseCard from '@/components/StockCaseCard';
 import PortfolioOverviewCard, { type SummaryCard } from '@/components/PortfolioOverviewCard';
 import { ArrowRight, TrendingDown } from 'lucide-react';
@@ -163,17 +162,6 @@ const Index = () => {
     return { best, worst };
   }, [actualHoldings]);
   
-  // Calculate allocation percentages
-  const allocationData = React.useMemo(() => {
-    const invested = safeTotalPortfolioValue - safeTotalCash;
-    const total = safeTotalPortfolioValue;
-    if (total === 0) return { cash: 0, invested: 0 };
-    return {
-      cash: (safeTotalCash / total) * 100,
-      invested: (invested / total) * 100,
-    };
-  }, [safeTotalPortfolioValue, safeTotalCash]);
-
   const {
     data: sheetChangeData,
     loading: sheetChangeDataLoading,
@@ -631,31 +619,6 @@ const Index = () => {
                               </div>
                             </Card>
                           )}
-                        </div>
-                      </div>
-                    )}
-
-                    {(allocationData.cash > 0 || allocationData.invested > 0) && (
-                      <div className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                        <div className="flex items-center gap-2 mb-4">
-                          <BarChart3 className="h-5 w-5 text-primary" />
-                          <h3 className="text-base font-semibold text-foreground sm:text-lg">Allokering</h3>
-                        </div>
-                        <div className="space-y-4">
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm text-muted-foreground">Investerat</span>
-                              <span className="text-sm font-semibold text-foreground">{allocationData.invested.toFixed(1)}%</span>
-                            </div>
-                            <Progress value={allocationData.invested} className="h-2" />
-                          </div>
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm text-muted-foreground">Kontant</span>
-                              <span className="text-sm font-semibold text-foreground">{allocationData.cash.toFixed(1)}%</span>
-                            </div>
-                            <Progress value={allocationData.cash} className="h-2" />
-                          </div>
                         </div>
                       </div>
                     )}
