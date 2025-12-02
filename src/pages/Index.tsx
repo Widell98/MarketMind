@@ -550,7 +550,6 @@ const Index = () => {
                                 <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                                 <div>
                                   <h4 className="text-base font-semibold text-foreground sm:text-lg">Bästa innehav idag</h4>
-                                  <p className="text-xs text-muted-foreground">Sorterade på dagens procentuella utveckling</p>
                                 </div>
                               </div>
                               <div className="space-y-3">
@@ -588,7 +587,6 @@ const Index = () => {
                                 <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
                                 <div>
                                   <h4 className="text-base font-semibold text-foreground sm:text-lg">Sämsta innehav idag</h4>
-                                  <p className="text-xs text-muted-foreground">Sorterade på dagens procentuella utveckling</p>
                                 </div>
                               </div>
                               <div className="space-y-3">
