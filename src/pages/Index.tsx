@@ -576,7 +576,9 @@ const Index = () => {
                                     <div className="flex-1 min-w-0 space-y-0.5">
                                       <div className="flex items-center gap-2">
                                         <p className="text-sm font-medium text-foreground truncate">{holding.name || holding.symbol || 'Innehav'}</p>
-                                        <span className="text-xs text-muted-foreground whitespace-nowrap">{formatCurrentPrice(holding)}</span>
+                                        <span className="inline-flex items-center rounded-full bg-muted/60 px-2 py-0.5 text-[11px] font-semibold text-foreground/90 whitespace-nowrap">
+                                          {formatCurrentPrice(holding)}
+                                        </span>
                                       </div>
                                       {holding.symbol && <p className="text-xs text-muted-foreground uppercase tracking-wide">{holding.symbol}</p>}
                                     </div>
@@ -616,7 +618,9 @@ const Index = () => {
                                     <div className="flex-1 min-w-0 space-y-0.5">
                                       <div className="flex items-center gap-2">
                                         <p className="text-sm font-medium text-foreground truncate">{holding.name || holding.symbol || 'Innehav'}</p>
-                                        <span className="text-xs text-muted-foreground whitespace-nowrap">{formatCurrentPrice(holding)}</span>
+                                        <span className="inline-flex items-center rounded-full bg-muted/60 px-2 py-0.5 text-[11px] font-semibold text-foreground/90 whitespace-nowrap">
+                                          {formatCurrentPrice(holding)}
+                                        </span>
                                       </div>
                                       {holding.symbol && <p className="text-xs text-muted-foreground uppercase tracking-wide">{holding.symbol}</p>}
                                     </div>
