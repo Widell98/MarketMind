@@ -149,16 +149,7 @@ const Index = () => {
 
     if (pricePerUnit !== null) {
       const currencyCode = priceCurrency || 'SEK';
-      const basePrice = formatCurrency(pricePerUnit, currencyCode);
-
-      if (!pricePerUnitInSEK || currencyCode === 'SEK') {
-        return basePrice;
-      }
-
-      return `${basePrice} (${pricePerUnitInSEK.toLocaleString('sv-SE', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })} kr)`;
+      return formatCurrency(pricePerUnit, currencyCode);
     }
 
     if (pricePerUnitInSEK !== null) {
