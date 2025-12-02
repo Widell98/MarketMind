@@ -9,6 +9,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ChatSessionsProvider } from "@/contexts/ChatSessionsContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { DailyChangeDataProvider } from "@/contexts/DailyChangeDataContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import StockCases from "./pages/StockCases";
@@ -41,14 +42,15 @@ function App() {
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <LanguageProvider>
           <AuthProvider>
-            <ChatSessionsProvider>
-              <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <ErrorBoundary>
-                  <BrowserRouter>
-                    <Analytics />
-                    <Routes>
+            <DailyChangeDataProvider>
+              <ChatSessionsProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <Sonner />
+                  <ErrorBoundary>
+                    <BrowserRouter>
+                      <Analytics />
+                      <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/stock-cases" element={<StockCases />} />
                     <Route path="/stock-cases/:id" element={<StockCaseDetail />} />
@@ -76,12 +78,13 @@ function App() {
                     <Route path="/terms" element={<Terms />} />
                     <Route path="/privacy" element={<Privacy />} />
                     <Route path="/watchlist" element={<Watchlist />} />
-                    <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </BrowserRouter>
-                </ErrorBoundary>
-              </TooltipProvider>
-            </ChatSessionsProvider>
+                      <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </BrowserRouter>
+                  </ErrorBoundary>
+                </TooltipProvider>
+              </ChatSessionsProvider>
+            </DailyChangeDataProvider>
           </AuthProvider>
         </LanguageProvider>
       </ThemeProvider>
