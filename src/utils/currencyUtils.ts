@@ -1,13 +1,15 @@
 // Simple currency conversion utility
-// In a real application, you would fetch live exchange rates from an API
+// Exchange rates are fetched from Google Sheets and can be updated dynamically
+
+import { fetchExchangeRatesFromSheet } from './sheetExchangeRates';
 
 export interface ExchangeRates {
   [key: string]: number;
 }
 
 // Base rates to SEK (Swedish Krona)
-// These should be updated regularly from a real API in production
-export const EXCHANGE_RATES: ExchangeRates = {
+// These are fallback values used when Google Sheets data is unavailable
+const FALLBACK_EXCHANGE_RATES: ExchangeRates = {
   SEK: 1,
   USD: 9.40,
   EUR: 10.92,
@@ -19,6 +21,135 @@ export const EXCHANGE_RATES: ExchangeRates = {
   CAD: 6.70,
   AUD: 6.13,
 };
+
+// Current exchange rates (can be updated dynamically)
+let currentExchangeRates: ExchangeRates = { ...FALLBACK_EXCHANGE_RATES };
+
+// Cache for exchange rates
+const EXCHANGE_RATES_CACHE_KEY = 'marketmind_exchange_rates';
+const EXCHANGE_RATES_CACHE_TIMESTAMP_KEY = 'marketmind_exchange_rates_timestamp';
+const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * Get cached exchange rates from localStorage
+ */
+const getCachedExchangeRates = (): ExchangeRates | null => {
+  try {
+    const cached = localStorage.getItem(EXCHANGE_RATES_CACHE_KEY);
+    const timestamp = localStorage.getItem(EXCHANGE_RATES_CACHE_TIMESTAMP_KEY);
+    
+    if (!cached || !timestamp) return null;
+    
+    const cacheAge = Date.now() - parseInt(timestamp, 10);
+    if (cacheAge > CACHE_DURATION_MS) {
+      // Cache expired
+      return null;
+    }
+    
+    const rates = JSON.parse(cached);
+    return rates && typeof rates === 'object' ? rates : null;
+  } catch (error) {
+    console.error('Error reading cached exchange rates:', error);
+    return null;
+  }
+};
+
+/**
+ * Save exchange rates to cache
+ */
+const saveCachedExchangeRates = (rates: ExchangeRates): void => {
+  try {
+    localStorage.setItem(EXCHANGE_RATES_CACHE_KEY, JSON.stringify(rates));
+    localStorage.setItem(EXCHANGE_RATES_CACHE_TIMESTAMP_KEY, Date.now().toString());
+  } catch (error) {
+    console.error('Error saving cached exchange rates:', error);
+  }
+};
+
+/**
+ * Fetch exchange rates from Google Sheets and update current rates
+ * Falls back to cached rates if fetch fails, then to static fallback values
+ */
+export const updateExchangeRates = async (): Promise<ExchangeRates> => {
+  try {
+    const rates = await fetchExchangeRatesFromSheet();
+    
+    // If we got valid rates (at least SEK should be present)
+    if (rates && Object.keys(rates).length > 0 && rates.SEK === 1) {
+      currentExchangeRates = { ...rates };
+      saveCachedExchangeRates(rates);
+      return rates;
+    }
+    
+    // If fetch returned empty or invalid, try cache
+    const cached = getCachedExchangeRates();
+    if (cached) {
+      currentExchangeRates = { ...cached };
+      return cached;
+    }
+    
+    // Fallback to static values
+    currentExchangeRates = { ...FALLBACK_EXCHANGE_RATES };
+    return FALLBACK_EXCHANGE_RATES;
+  } catch (error) {
+    console.error('Error updating exchange rates:', error);
+    
+    // Try cache on error
+    const cached = getCachedExchangeRates();
+    if (cached) {
+      currentExchangeRates = { ...cached };
+      return cached;
+    }
+    
+    // Fallback to static values
+    currentExchangeRates = { ...FALLBACK_EXCHANGE_RATES };
+    return FALLBACK_EXCHANGE_RATES;
+  }
+};
+
+/**
+ * Initialize exchange rates from cache or fallback
+ * Should be called on app startup
+ */
+export const initializeExchangeRates = (): ExchangeRates => {
+  const cached = getCachedExchangeRates();
+  if (cached) {
+    currentExchangeRates = { ...cached };
+    return cached;
+  }
+  
+  currentExchangeRates = { ...FALLBACK_EXCHANGE_RATES };
+  return FALLBACK_EXCHANGE_RATES;
+};
+
+/**
+ * Get current exchange rates
+ * Returns the currently active exchange rates
+ */
+export const getExchangeRates = (): ExchangeRates => {
+  return { ...currentExchangeRates };
+};
+
+// Export for backward compatibility
+// This now returns the current dynamic rates instead of static values
+export const EXCHANGE_RATES: ExchangeRates = new Proxy({} as ExchangeRates, {
+  get(target, prop: string) {
+    return currentExchangeRates[prop];
+  },
+  ownKeys() {
+    return Object.keys(currentExchangeRates);
+  },
+  has(target, prop: string) {
+    return prop in currentExchangeRates;
+  },
+  getOwnPropertyDescriptor(target, prop: string) {
+    return {
+      enumerable: true,
+      configurable: true,
+      value: currentExchangeRates[prop],
+    };
+  },
+});
 
 /**
  * Convert amount from one currency to SEK
