@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown, BarChart3, Activity, Target, Zap, Brain, AlertTriangle, Shield, Info, User, Globe, Building2, LogIn } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, Zap, Brain, AlertTriangle, Shield, Info, User, Globe, Building2, LogIn } from 'lucide-react';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioInsights } from '@/hooks/usePortfolioInsights';
 import { useToast } from '@/hooks/use-toast';
@@ -12,7 +12,8 @@ import { useNavigate } from 'react-router-dom';
 import EditHoldingDialog from './EditHoldingDialog';
 import UserHoldingsManager from './UserHoldingsManager';
 import AIRecommendations from './AIRecommendations';
-import { formatCurrency } from '@/utils/currencyUtils';
+import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
+ 
 interface PortfolioOverviewProps {
   portfolio: any;
   onQuickChat?: (message: string) => void;
@@ -41,6 +42,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   const {
     toast
   } = useToast();
+  const { holdingsPerformance } = usePortfolioPerformance();
   const navigate = useNavigate();
   const [isResetting, setIsResetting] = useState(false);
   const [editHoldingDialogOpen, setEditHoldingDialogOpen] = useState(false);
@@ -103,6 +105,18 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     };
     return labels[type as keyof typeof labels] || 'Övrigt';
   };
+  const topHoldings = React.useMemo(() => {
+    if (!holdingsPerformance || holdingsPerformance.length === 0) return { best: [], worst: [] };
+    const sorted = [...holdingsPerformance].sort((a, b) => {
+      const aChange = a.hasPurchasePrice ? a.profitPercentage : a.dayChangePercentage;
+      const bChange = b.hasPurchasePrice ? b.profitPercentage : b.dayChangePercentage;
+      return bChange - aChange;
+    });
+    return {
+      best: sorted.slice(0, 3),
+      worst: sorted.slice(-3).reverse(),
+    };
+  }, [holdingsPerformance]);
   const handleExamplePrompt = (prompt: string) => {
     const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
     if (chatTab) {
@@ -337,111 +351,77 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </Card>
       </div>;
   }
-  const formatPercent = (value: number) => `${value.toFixed(2)}%`;
-
-  const formatDailyChangeValue = (value: number | null | undefined) => {
-    if (value === null || value === undefined) return '–';
-    const prefix = value > 0 ? '+' : '';
-    return `${prefix}${formatCurrency(value, 'SEK')}`;
-  };
-
-  const sortableHoldings = actualHoldings.filter(holding =>
-    holding.holding_type !== 'recommendation' && holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined
-  );
-
-  const bestHoldings = [...sortableHoldings]
-    .sort((a, b) => (b.dailyChangePercent ?? 0) - (a.dailyChangePercent ?? 0))
-    .slice(0, 3);
-
-  const worstHoldings = [...sortableHoldings]
-    .sort((a, b) => (a.dailyChangePercent ?? 0) - (b.dailyChangePercent ?? 0))
-    .slice(0, 3);
-
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
-      <Card className="rounded-3xl border border-border/60 bg-card/80 p-4 sm:p-6 shadow-sm">
-        <CardHeader className="pb-3 sm:pb-4 px-0 pt-0 border-b border-border/60">
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg font-semibold text-foreground">
-            <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
-            <span className="break-words">Dagens toppar och bottnar</span>
-          </CardTitle>
-          <CardDescription className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Tre bästa och sämsta innehaven idag baserat på daglig förändring
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-0 pt-4 sm:pt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            {[{
-              title: 'Bästa innehav idag',
-              icon: <TrendingUp className="w-4 h-4" />,
-              items: bestHoldings,
-              wrapperClasses: 'border-emerald-100/80 dark:border-emerald-900/50 bg-gradient-to-br from-emerald-50/70 via-white/70 to-white/70 dark:from-emerald-950/30 dark:via-gray-950/60 dark:to-gray-950/60',
-              iconClasses: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-200'
-            }, {
-              title: 'Sämsta innehav idag',
-              icon: <TrendingDown className="w-4 h-4" />,
-              items: worstHoldings,
-              wrapperClasses: 'border-rose-100/80 dark:border-rose-900/50 bg-gradient-to-br from-rose-50/70 via-white/70 to-white/70 dark:from-rose-950/30 dark:via-gray-950/60 dark:to-gray-950/60',
-              iconClasses: 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-200'
-            }].map((section) => (
-              <div
-                key={section.title}
-                className={`rounded-2xl border border-border/60 shadow-sm p-4 sm:p-5 flex flex-col gap-3 ${section.wrapperClasses}`}
-              >
-                <div className="flex items-center gap-2">
-                  <div className={`rounded-full p-2 ${section.iconClasses}`}>
-                    {section.icon}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{section.title}</p>
-                    <p className="text-xs text-muted-foreground">Sorterade på dagens procentuella utveckling</p>
-                  </div>
-                </div>
-                {section.items.length > 0 ? (
-                  <div className="space-y-2.5">
-                    {section.items.map((holding) => (
-                      <div
-                        key={holding.id}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/40 dark:bg-gray-900/60 px-3 py-2.5"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{holding.name || holding.symbol || 'Innehav'}</p>
-                          {holding.symbol && <p className="text-xs text-muted-foreground uppercase tracking-wide">{holding.symbol}</p>}
-                        </div>
-                        <div className="text-right">
-                          <div
-                            className={`text-sm font-semibold ${
-                              (holding.dailyChangePercent ?? 0) > 0
-                                ? 'text-emerald-600'
-                                : (holding.dailyChangePercent ?? 0) < 0
-                                  ? 'text-rose-600'
-                                  : 'text-muted-foreground'
-                            }`}
-                          >
-                            {holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined ? (
-                              <>
-                                {holding.dailyChangePercent > 0 ? '+' : ''}
-                                {formatPercent(holding.dailyChangePercent)}
-                              </>
-                            ) : (
-                              'Ingen dagsdata'
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {formatDailyChangeValue(holding.dailyChangeValueSEK)}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Ingen dagsdata att visa ännu.</p>
-                )}
+      {(topHoldings.best.length > 0 || topHoldings.worst.length > 0) && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {topHoldings.best.length > 0 && (
+            <Card className="rounded-3xl border border-border/60 bg-card/80 p-4 sm:p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                <h3 className="text-base font-semibold text-foreground sm:text-lg">Bästa innehav</h3>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              <div className="space-y-3">
+                {topHoldings.best.map((holding) => {
+                  const change = holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
+                  const changeValue = holding.hasPurchasePrice ? holding.profit : holding.dayChange;
+                  return (
+                    <div key={holding.id} className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{holding.name}</p>
+                        {holding.symbol && (
+                          <p className="text-xs text-muted-foreground">{holding.symbol}</p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-sm font-semibold ${change >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {change >= 0 ? '+' : ''}{change.toFixed(2)}%
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {changeValue >= 0 ? '+' : ''}{changeValue.toLocaleString('sv-SE')} kr
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+
+          {topHoldings.worst.length > 0 && (
+            <Card className="rounded-3xl border border-border/60 bg-card/80 p-4 sm:p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+                <h3 className="text-base font-semibold text-foreground sm:text-lg">Sämsta innehav</h3>
+              </div>
+              <div className="space-y-3">
+                {topHoldings.worst.map((holding) => {
+                  const change = holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
+                  const changeValue = holding.hasPurchasePrice ? holding.profit : holding.dayChange;
+                  return (
+                    <div key={holding.id} className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{holding.name}</p>
+                        {holding.symbol && (
+                          <p className="text-xs text-muted-foreground">{holding.symbol}</p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-sm font-semibold ${change >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {change >= 0 ? '+' : ''}{change.toFixed(2)}%
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {changeValue >= 0 ? '+' : ''}{changeValue.toLocaleString('sv-SE')} kr
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
 
       <UserHoldingsManager importControls={importControls} />
 

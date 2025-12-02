@@ -28,6 +28,7 @@ import {
   Search,
   Newspaper,
   ExternalLink,
+  Activity,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,7 +48,7 @@ import StockCaseCard from '@/components/StockCaseCard';
 import PortfolioOverviewCard, { type SummaryCard } from '@/components/PortfolioOverviewCard';
 import { ArrowRight, TrendingDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { convertToSEK, resolveHoldingValue } from '@/utils/currencyUtils';
+import { resolveHoldingValue } from '@/utils/currencyUtils';
 import { useDailyChangeData } from '@/hooks/useDailyChangeData';
 
 type QuickAction = {
@@ -130,7 +131,6 @@ const Index = () => {
   } = useAIInsights();
   const { likedStockCases, loading: likedStockCasesLoading } = useLikedStockCases();
   const { morningBrief, newsData } = useNewsData();
-  const { holdingsPerformance } = usePortfolioPerformance();
   // Show portfolio dashboard if user has portfolio OR has holdings (so they can see portfolio value after implementing strategy)
   const hasPortfolio = !loading && (!!activePortfolio || (actualHoldings && actualHoldings.length > 0));
   const totalPortfolioValue = performance.totalPortfolioValue;
@@ -139,19 +139,29 @@ const Index = () => {
   const safeTotalPortfolioValue = typeof totalPortfolioValue === 'number' && Number.isFinite(totalPortfolioValue) ? totalPortfolioValue : 0;
   const safeTotalCash = typeof totalCash === 'number' && Number.isFinite(totalCash) ? totalCash : 0;
   
-  // Get top 3 best and worst holdings
-  const topHoldings = React.useMemo(() => {
-    if (!holdingsPerformance || holdingsPerformance.length === 0) return { best: [], worst: [] };
-    const sorted = [...holdingsPerformance].sort((a, b) => {
-      const aChange = a.hasPurchasePrice ? a.profitPercentage : a.dayChangePercentage;
-      const bChange = b.hasPurchasePrice ? b.profitPercentage : b.dayChangePercentage;
-      return bChange - aChange;
-    });
-    return {
-      best: sorted.slice(0, 3),
-      worst: sorted.slice(-3).reverse(),
-    };
-  }, [holdingsPerformance]);
+  const formatDailyChangeValue = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return '–';
+    const prefix = value > 0 ? '+' : '';
+    return `${prefix}${value.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr`;
+  };
+
+  const formatPercent = (value: number) => `${value.toFixed(2)}%`;
+
+  const dailyHighlights = React.useMemo(() => {
+    const sortableHoldings = actualHoldings.filter(holding =>
+      holding.holding_type !== 'recommendation' && holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined
+    );
+
+    const best = [...sortableHoldings]
+      .sort((a, b) => (b.dailyChangePercent ?? 0) - (a.dailyChangePercent ?? 0))
+      .slice(0, 3);
+
+    const worst = [...sortableHoldings]
+      .sort((a, b) => (a.dailyChangePercent ?? 0) - (b.dailyChangePercent ?? 0))
+      .slice(0, 3);
+
+    return { best, worst };
+  }, [actualHoldings]);
   
   // Calculate allocation percentages
   const allocationData = React.useMemo(() => {
@@ -542,104 +552,117 @@ const Index = () => {
                     isPositiveDayChange={isPositiveDayChange}
                   />
 
-                  {/* Top Holdings and Allocation */}
-                  {(topHoldings.best.length > 0 || topHoldings.worst.length > 0 || allocationData.cash > 0 || allocationData.invested > 0) && (
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-4">
-                      {/* Top 3 Best Holdings */}
-                      {topHoldings.best.length > 0 && (
-                        <div className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                          <div className="flex items-center gap-2 mb-4">
-                            <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                            <h3 className="text-base font-semibold text-foreground sm:text-lg">Bästa innehav</h3>
-                          </div>
-                          <div className="space-y-3">
-                            {topHoldings.best.map((holding) => {
-                              const change = holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
-                              const changeValue = holding.hasPurchasePrice ? holding.profit : holding.dayChange;
-                              return (
-                                <div key={holding.id} className="flex items-center justify-between">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-foreground truncate">{holding.name}</p>
-                                    {holding.symbol && (
-                                      <p className="text-xs text-muted-foreground">{holding.symbol}</p>
-                                    )}
+                    {/* Dagens förändring och allokering */}
+                    {(dailyHighlights.best.length > 0 || dailyHighlights.worst.length > 0) && (
+                      <Card className="rounded-3xl border border-border/60 bg-card/80 p-4 sm:p-6 shadow-sm">
+                        <CardHeader className="pb-3 sm:pb-4 px-0 pt-0 border-b border-border/60">
+                          <CardTitle className="flex items-center gap-2 text-base sm:text-lg font-semibold text-foreground">
+                            <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
+                            <span className="break-words">Dagens toppar och bottnar</span>
+                          </CardTitle>
+                          <CardDescription className="text-xs sm:text-sm text-muted-foreground mt-1">
+                            Tre bästa och sämsta innehaven idag baserat på daglig förändring
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-0 pt-4 sm:pt-6">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                            {[{
+                              title: 'Bästa innehav idag',
+                              icon: <TrendingUp className="w-4 h-4" />,
+                              items: dailyHighlights.best,
+                              wrapperClasses: 'border-emerald-100/80 dark:border-emerald-900/50 bg-gradient-to-br from-emerald-50/70 via-white/70 to-white/70 dark:from-emerald-950/30 dark:via-gray-950/60 dark:to-gray-950/60',
+                              iconClasses: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-200'
+                            }, {
+                              title: 'Sämsta innehav idag',
+                              icon: <TrendingDown className="w-4 h-4" />,
+                              items: dailyHighlights.worst,
+                              wrapperClasses: 'border-rose-100/80 dark:border-rose-900/50 bg-gradient-to-br from-rose-50/70 via-white/70 to-white/70 dark:from-rose-950/30 dark:via-gray-950/60 dark:to-gray-950/60',
+                              iconClasses: 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-200'
+                            }].map((section) => (
+                              <div
+                                key={section.title}
+                                className={`rounded-2xl border border-border/60 shadow-sm p-4 sm:p-5 flex flex-col gap-3 ${section.wrapperClasses}`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div className={`rounded-full p-2 ${section.iconClasses}`}>
+                                    {section.icon}
                                   </div>
-                                  <div className="text-right">
-                                    <p className={`text-sm font-semibold ${change >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                                      {change >= 0 ? '+' : ''}{change.toFixed(2)}%
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {changeValue >= 0 ? '+' : ''}{changeValue.toLocaleString('sv-SE')} kr
-                                    </p>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Top 3 Worst Holdings */}
-                      {topHoldings.worst.length > 0 && (
-                        <div className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                          <div className="flex items-center gap-2 mb-4">
-                            <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
-                            <h3 className="text-base font-semibold text-foreground sm:text-lg">Sämsta innehav</h3>
-                          </div>
-                          <div className="space-y-3">
-                            {topHoldings.worst.map((holding) => {
-                              const change = holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
-                              const changeValue = holding.hasPurchasePrice ? holding.profit : holding.dayChange;
-                              return (
-                                <div key={holding.id} className="flex items-center justify-between">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-foreground truncate">{holding.name}</p>
-                                    {holding.symbol && (
-                                      <p className="text-xs text-muted-foreground">{holding.symbol}</p>
-                                    )}
-                                  </div>
-                                  <div className="text-right">
-                                    <p className={`text-sm font-semibold ${change >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                                      {change >= 0 ? '+' : ''}{change.toFixed(2)}%
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {changeValue >= 0 ? '+' : ''}{changeValue.toLocaleString('sv-SE')} kr
-                                    </p>
+                                  <div>
+                                    <p className="text-sm font-semibold text-foreground">{section.title}</p>
+                                    <p className="text-xs text-muted-foreground">Sorterade på dagens procentuella utveckling</p>
                                   </div>
                                 </div>
-                              );
-                            })}
+                                {section.items.length > 0 ? (
+                                  <div className="space-y-2.5">
+                                    {section.items.map((holding) => (
+                                      <div
+                                        key={holding.id}
+                                        className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/40 dark:bg-gray-900/60 px-3 py-2.5"
+                                      >
+                                        <div className="min-w-0">
+                                          <p className="text-sm font-medium text-foreground truncate">{holding.name || holding.symbol || 'Innehav'}</p>
+                                          {holding.symbol && <p className="text-xs text-muted-foreground uppercase tracking-wide">{holding.symbol}</p>}
+                                        </div>
+                                        <div className="text-right">
+                                          <div
+                                            className={`text-sm font-semibold ${
+                                              (holding.dailyChangePercent ?? 0) > 0
+                                                ? 'text-emerald-600'
+                                                : (holding.dailyChangePercent ?? 0) < 0
+                                                  ? 'text-rose-600'
+                                                  : 'text-muted-foreground'
+                                            }`}
+                                          >
+                                            {holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined ? (
+                                              <>
+                                                {holding.dailyChangePercent > 0 ? '+' : ''}
+                                                {formatPercent(holding.dailyChangePercent)}
+                                              </>
+                                            ) : (
+                                              'Ingen dagsdata'
+                                            )}
+                                          </div>
+                                          <p className="text-xs text-muted-foreground">
+                                            {formatDailyChangeValue(holding.dailyChangeValueSEK)}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-sm text-muted-foreground">Ingen dagsdata att visa ännu.</p>
+                                )}
+                              </div>
+                            ))}
                           </div>
-                        </div>
-                      )}
+                        </CardContent>
+                      </Card>
+                    )}
 
-                      {/* Portfolio Allocation */}
-                      {(allocationData.cash > 0 || allocationData.invested > 0) && (
-                        <div className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                          <div className="flex items-center gap-2 mb-4">
-                            <BarChart3 className="h-5 w-5 text-primary" />
-                            <h3 className="text-base font-semibold text-foreground sm:text-lg">Allokering</h3>
+                    {(allocationData.cash > 0 || allocationData.invested > 0) && (
+                      <div className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
+                        <div className="flex items-center gap-2 mb-4">
+                          <BarChart3 className="h-5 w-5 text-primary" />
+                          <h3 className="text-base font-semibold text-foreground sm:text-lg">Allokering</h3>
+                        </div>
+                        <div className="space-y-4">
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm text-muted-foreground">Investerat</span>
+                              <span className="text-sm font-semibold text-foreground">{allocationData.invested.toFixed(1)}%</span>
+                            </div>
+                            <Progress value={allocationData.invested} className="h-2" />
                           </div>
-                          <div className="space-y-4">
-                            <div>
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm text-muted-foreground">Investerat</span>
-                                <span className="text-sm font-semibold text-foreground">{allocationData.invested.toFixed(1)}%</span>
-                              </div>
-                              <Progress value={allocationData.invested} className="h-2" />
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm text-muted-foreground">Kontant</span>
+                              <span className="text-sm font-semibold text-foreground">{allocationData.cash.toFixed(1)}%</span>
                             </div>
-                            <div>
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm text-muted-foreground">Kontant</span>
-                                <span className="text-sm font-semibold text-foreground">{allocationData.cash.toFixed(1)}%</span>
-                              </div>
-                              <Progress value={allocationData.cash} className="h-2" />
-                            </div>
+                            <Progress value={allocationData.cash} className="h-2" />
                           </div>
                         </div>
-                      )}
-                    </div>
-                  )}
+                      </div>
+                    )}
 
                   {/* News/Morning Brief Section - Moved up */}
                   {morningBrief && (
