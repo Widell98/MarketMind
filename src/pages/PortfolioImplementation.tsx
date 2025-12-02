@@ -341,20 +341,22 @@ const PortfolioImplementation = () => {
       <div className="min-h-0 bg-gradient-to-br from-background to-secondary/5">
          <div className="mx-auto w-full max-w-7xl space-y-4 sm:space-y-6 md:space-y-8 lg:space-y-12 px-3 sm:px-4 md:px-6 pb-6 sm:pb-8 md:pb-12 lg:px-8 lg:pb-16">
           {/* Page Header */}
-          <section className="rounded-2xl sm:rounded-3xl border border-border/60 bg-card/70 px-4 sm:px-6 md:px-10 py-6 sm:py-8 md:py-12 shadow-sm supports-[backdrop-filter]:backdrop-blur-sm">
-            <div className="flex flex-col gap-6">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-primary/10">
-                      <Brain className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Portfölj</p>
-                      <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-foreground">
-                        {t('portfolio.title')}
-                      </h1>
-                    </div>
+          <section className="relative overflow-hidden rounded-[28px] border border-border/60 bg-gradient-to-br from-primary/5 via-card to-card px-5 sm:px-8 md:px-12 py-7 sm:py-10 md:py-12 shadow-sm supports-[backdrop-filter]:backdrop-blur-sm">
+            <div className="absolute inset-x-8 -top-10 h-24 rounded-full bg-primary/10 blur-3xl" aria-hidden="true"></div>
+            <div className="relative flex flex-col gap-6">
+              <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-center lg:gap-10">
+                <div className="space-y-4">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary">
+                    <span className="inline-flex h-2 w-2 rounded-full bg-primary"></span>
+                    Portföljöversikt
+                  </div>
+                  <div className="space-y-2">
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground">
+                      {t('portfolio.title')}
+                    </h1>
+                    <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl">
+                      Bygg vidare på din strategi med en samlad vy över dina innehav, kassa och riskprofil.
+                    </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm text-muted-foreground">
                     <Badge variant="secondary" className="rounded-full bg-muted/70 px-3 py-1 text-xs font-medium">
@@ -364,32 +366,48 @@ const PortfolioImplementation = () => {
                       {hasPortfolioData ? `${actualHoldings?.length || 0} aktiva innehav` : 'Importera eller lägg till innehav'}
                     </span>
                   </div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    <Button
+                      onClick={() => handleQuickChat('NEW_SESSION:Portfölj AI:Kan du granska min portfölj och föreslå nästa steg?')}
+                      className="h-11 sm:h-12 rounded-2xl px-5 sm:px-7 text-sm sm:text-base shadow-lg hover:shadow-xl bg-foreground text-background"
+                    >
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Starta AI-chatt
+                    </Button>
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                      <User className="h-4 w-4 text-primary" />
+                      <button
+                        type="button"
+                        onClick={handleUpdateProfile}
+                        className="text-primary font-medium hover:underline"
+                      >
+                        Uppdatera profil
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleImportClick}
+                      disabled={isImportingHoldings}
+                      className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-primary hover:underline disabled:opacity-60"
+                    >
+                      <Upload className="h-4 w-4" />
+                      {isImportingHoldings ? 'Importerar...' : 'Importera CSV'}
+                    </button>
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2 sm:gap-3">
-                  <Button
-                    onClick={() => handleQuickChat('NEW_SESSION:Portfölj AI:Kan du granska min portfölj och föreslå nästa steg?')}
-                    className="rounded-xl sm:rounded-2xl px-4 sm:px-6 py-2.5 sm:py-3 shadow-lg hover:shadow-xl bg-foreground text-background"
-                  >
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Starta AI-chatt
-                  </Button>
-                  <Button
-                    onClick={handleImportClick}
-                    disabled={isImportingHoldings}
-                    className="rounded-xl sm:rounded-2xl px-4 sm:px-5 py-2.5 sm:py-3 shadow-md hover:shadow-lg text-xs sm:text-sm"
-                    variant="outline"
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {isImportingHoldings ? 'Importerar...' : 'Importera CSV'}
-                  </Button>
-                  <Button
-                    onClick={handleUpdateProfile}
-                    className="rounded-xl sm:rounded-2xl px-4 sm:px-5 py-2.5 sm:py-3 shadow-none"
-                    variant="ghost"
-                  >
-                    <User className="mr-2 h-4 w-4" />
-                    Uppdatera profil
-                  </Button>
+                <div className="rounded-2xl border border-border/60 bg-background/70 p-4 sm:p-6 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-2">
+                      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Portföljläge</p>
+                      <p className="text-2xl sm:text-3xl font-semibold text-foreground">{hasPortfolioData ? formatCurrency(totalPortfolioValue) : 'Redo att starta'}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {hasPortfolioData ? 'Summerad portföljstorlek inklusive kassa.' : 'Lägg till dina innehav för att se värdet här.'}
+                      </p>
+                    </div>
+                    <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                      <Brain className="h-5 w-5" />
+                    </div>
+                  </div>
                 </div>
               </div>
 
