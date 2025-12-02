@@ -47,6 +47,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TransformedHolding {
   id: string;
@@ -431,54 +432,102 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
             </div>
           ) : (
             <div className="space-y-2.5 sm:space-y-3">
-              {/* Action Bar */}
-              <div className="flex flex-col gap-2 sm:gap-3 pb-2 sm:pb-3 border-b border-border">
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm" onClick={openAddHoldingDialog}>
-                    <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    Lägg till innehav
-                  </Button>
-                  <Button size="sm" variant="outline" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm" onClick={() => setShowAddCashDialog(true)}>
-                    <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    Lägg till kassa
-                  </Button>
-                  <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] xs:text-xs text-muted-foreground border border-dashed border-border rounded-md px-2 py-1.5 sm:py-1">
-                    <RefreshCw className="w-3 h-3 flex-shrink-0" />
-                    <span className="hidden xs:inline">Klicka på en ticker för att uppdatera priset.</span>
-                    <span className="xs:hidden">Klicka på ticker</span>
-                  </div>
-                </div>
+                {/* Action Bar */}
+                <TooltipProvider delayDuration={120}>
+                  <div className="flex flex-col gap-1.5 sm:gap-2 pb-2 sm:pb-2.5 border-b border-border/80">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={openAddHoldingDialog}>
+                            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            <span className="sr-only">Lägg till innehav</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Lägg till innehav</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button size="icon" variant="outline" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => setShowAddCashDialog(true)}>
+                            <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            <span className="sr-only">Lägg till kassa</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Lägg till kassa</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 sm:h-9 sm:w-9 border border-dashed border-border text-muted-foreground"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            <span className="sr-only">Uppdatera prisinformation</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          Klicka på en ticker i listan för att uppdatera priset.
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground"
+                            onClick={() => setIsChartOpen(true)}
+                          >
+                            <PieChartIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            <span className="sr-only">Visa portföljöversikt</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Visa portföljöversikt</TooltipContent>
+                      </Tooltip>
+                    </div>
 
-                <div className="flex gap-2 flex-1 max-w-full sm:max-w-md items-center">
-                  <div className="relative flex-1 min-w-0">
-                    <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Sök innehav..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-8 sm:pl-10 text-xs sm:text-sm"
-                    />
+                    <div className="flex gap-1.5 sm:gap-2 flex-1 max-w-full sm:max-w-md items-center">
+                      <div className="relative flex-1 min-w-0">
+                        <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Sök innehav..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-8 sm:pl-10 text-xs sm:text-sm"
+                        />
+                      </div>
+                      <div className="flex gap-1 sm:gap-1.5 flex-shrink-0">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant={viewMode === 'cards' ? 'default' : 'outline'}
+                              onClick={() => setViewMode('cards')}
+                              className="h-8 w-8 sm:h-9 sm:w-9"
+                            >
+                              <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                              <span className="sr-only">Kortvy</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Kortvy</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant={viewMode === 'table' ? 'default' : 'outline'}
+                              onClick={() => setViewMode('table')}
+                              className="h-8 w-8 sm:h-9 sm:w-9"
+                            >
+                              <TableIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                              <span className="sr-only">Tabellvy</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Tabellvy</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex gap-1.5 sm:gap-2 flex-shrink-0">
-                    <Button
-                      size="icon"
-                      variant={viewMode === 'cards' ? 'default' : 'outline'}
-                      onClick={() => setViewMode('cards')}
-                      className="h-8 w-8 sm:h-9 sm:w-9"
-                    >
-                      <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant={viewMode === 'table' ? 'default' : 'outline'}
-                      onClick={() => setViewMode('table')}
-                      className="h-8 w-8 sm:h-9 sm:w-9"
-                    >
-                      <TableIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
+                </TooltipProvider>
 
               {viewMode === 'cards' ? (
                 <div className="space-y-4">
