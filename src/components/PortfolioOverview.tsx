@@ -11,7 +11,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import EditHoldingDialog from './EditHoldingDialog';
 import UserHoldingsManager from './UserHoldingsManager';
-import AIRecommendations from './AIRecommendations';
  
 interface PortfolioOverviewProps {
   portfolio: any;
@@ -341,8 +340,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
       <UserHoldingsManager importControls={importControls} />
-
-      <AIRecommendations />
 
       {/* Quick Actions - NOW THIRD */}
 
