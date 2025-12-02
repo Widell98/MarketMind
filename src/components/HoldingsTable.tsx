@@ -166,7 +166,7 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
               </TableCell>
               <TableCell className="py-3 sm:py-3.5 text-right align-middle">
                 {hasPerformanceData || profitLoss !== undefined ? (
-                  <div className="inline-flex items-center justify-end gap-2 px-2 py-1 rounded-full bg-muted/60 text-right">
+                  <div className="inline-flex items-center justify-end gap-2 text-right">
                     <span className={cn('text-sm font-semibold', profitClass)}>
                       {profitLoss !== undefined
                         ? `${profitLoss > 0 ? '+' : ''}${formatCurrency(profitLoss, 'SEK')}`
