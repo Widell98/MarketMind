@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown, Target, Zap, Brain, AlertTriangle, Shield, Info, User, Globe, Building2, LogIn } from 'lucide-react';
+import { Target, Zap, Brain, AlertTriangle, Shield, Info, User, Globe, Building2, LogIn } from 'lucide-react';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioInsights } from '@/hooks/usePortfolioInsights';
 import { useToast } from '@/hooks/use-toast';
@@ -12,8 +12,6 @@ import { useNavigate } from 'react-router-dom';
 import EditHoldingDialog from './EditHoldingDialog';
 import UserHoldingsManager from './UserHoldingsManager';
 import AIRecommendations from './AIRecommendations';
-import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
-import HoldingsHighlightCard from './HoldingsHighlightCard';
  
 interface PortfolioOverviewProps {
   portfolio: any;
@@ -43,7 +41,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   const {
     toast
   } = useToast();
-  const { holdingsPerformance } = usePortfolioPerformance();
   const navigate = useNavigate();
   const [isResetting, setIsResetting] = useState(false);
   const [editHoldingDialogOpen, setEditHoldingDialogOpen] = useState(false);
@@ -106,18 +103,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     };
     return labels[type as keyof typeof labels] || 'Övrigt';
   };
-  const topHoldings = React.useMemo(() => {
-    if (!holdingsPerformance || holdingsPerformance.length === 0) return { best: [], worst: [] };
-    const sorted = [...holdingsPerformance].sort((a, b) => {
-      const aChange = a.hasPurchasePrice ? a.profitPercentage : a.dayChangePercentage;
-      const bChange = b.hasPurchasePrice ? b.profitPercentage : b.dayChangePercentage;
-      return bChange - aChange;
-    });
-    return {
-      best: sorted.slice(0, 3),
-      worst: sorted.slice(-3).reverse(),
-    };
-  }, [holdingsPerformance]);
   const handleExamplePrompt = (prompt: string) => {
     const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
     if (chatTab) {
@@ -218,45 +203,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     }
   };
 
-  const formatChangeLabel = (value: number | null | undefined) => {
-    if (value === null || value === undefined) return '–';
-    const prefix = value > 0 ? '+' : '';
-    return `${prefix}${(value).toFixed(2)}%`;
-  };
-
-  const formatChangeValue = (value: number | null | undefined) => {
-    if (value === null || value === undefined) return '–';
-    const prefix = value > 0 ? '+' : '';
-    return `${prefix}${value.toLocaleString('sv-SE')} kr`;
-  };
-
-  const bestHoldingsItems = topHoldings.best.map((holding) => {
-    const change = holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
-    const changeValue = holding.hasPurchasePrice ? holding.profit : holding.dayChange;
-
-    return {
-      id: holding.id,
-      name: holding.name || holding.symbol || 'Innehav',
-      symbol: holding.symbol,
-      percentLabel: formatChangeLabel(change),
-      valueLabel: formatChangeValue(changeValue),
-      isPositive: (change ?? 0) >= 0,
-    };
-  });
-
-  const worstHoldingsItems = topHoldings.worst.map((holding) => {
-    const change = holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
-    const changeValue = holding.hasPurchasePrice ? holding.profit : holding.dayChange;
-
-    return {
-      id: holding.id,
-      name: holding.name || holding.symbol || 'Innehav',
-      symbol: holding.symbol,
-      percentLabel: formatChangeLabel(change),
-      valueLabel: formatChangeValue(changeValue),
-      isPositive: (change ?? 0) > 0,
-    };
-  });
   const handleEditHolding = (holding: any) => {
     setSelectedHolding(holding);
     setEditHoldingDialogOpen(true);
@@ -394,30 +340,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   }
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
-      {(topHoldings.best.length > 0 || topHoldings.worst.length > 0) && (
-        <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
-          {topHoldings.best.length > 0 && (
-            <HoldingsHighlightCard
-              title="Bästa innehav"
-              icon={<TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />}
-              iconColorClass="text-emerald-600"
-              items={bestHoldingsItems}
-              emptyText="Ingen data"
-            />
-          )}
-
-          {topHoldings.worst.length > 0 && (
-            <HoldingsHighlightCard
-              title="Sämsta innehav"
-              icon={<TrendingDown className="h-4 w-4 sm:h-5 sm:w-5" />}
-              iconColorClass="text-red-600"
-              items={worstHoldingsItems}
-              emptyText="Ingen data"
-            />
-          )}
-        </div>
-      )}
-
       <UserHoldingsManager importControls={importControls} />
 
       <AIRecommendations />

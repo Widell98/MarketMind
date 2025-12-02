@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import PortfolioOverview from '@/components/PortfolioOverview';
+import BestWorstHoldings from '@/components/BestWorstHoldings';
 import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolioAdvisor';
 import LoginPromptModal from '@/components/LoginPromptModal';
 import CommunityRecommendations from '@/components/CommunityRecommendations';
@@ -18,7 +19,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { AlertCircle, Brain, Info, Sparkles, Upload, User } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
 import { useToast } from '@/hooks/use-toast';
-import AllocationCard from '@/components/AllocationCard';
 import { normalizeShareClassTicker, parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
 import { supabase } from '@/integrations/supabase/client';
 const PortfolioImplementation = () => {
@@ -404,15 +404,10 @@ const PortfolioImplementation = () => {
                 </div>
               </TooltipProvider>
 
-              {/* Allocation Card */}
-              {hasPortfolioData && (performance.investedPercentage !== undefined || performance.cashPercentage !== undefined) && (
-                <div className="mt-4 sm:mt-5 md:mt-6">
-                  <AllocationCard
-                    investedPercentage={performance.investedPercentage ?? 0}
-                    cashPercentage={performance.cashPercentage ?? 0}
-                  />
-                </div>
-              )}
+              {/* Best/Worst Holdings */}
+              <div className="mt-4 sm:mt-5 md:mt-6">
+                <BestWorstHoldings />
+              </div>
             </div>
           </section>
 
