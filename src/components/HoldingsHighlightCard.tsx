@@ -48,13 +48,15 @@ const HoldingsHighlightCard: React.FC<HoldingsHighlightCardProps> = ({
                         {item.symbol}
                       </span>
                     )}
-                    {item.valueLabel && (
-                      <span className="text-[11px] font-semibold text-foreground">{item.valueLabel}</span>
-                    )}
                   </div>
                 </div>
-                <div className={`text-right text-base font-semibold ${item.isPositive ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {item.percentLabel}
+                <div className="text-right">
+                  <div className={`text-base font-semibold ${item.isPositive ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {item.percentLabel}
+                  </div>
+                  {item.valueLabel && (
+                    <div className="mt-0.5 text-xs font-semibold text-muted-foreground">{item.valueLabel}</div>
+                  )}
                 </div>
               </div>
             </div>
