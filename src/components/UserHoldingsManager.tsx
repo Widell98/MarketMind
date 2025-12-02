@@ -63,6 +63,8 @@ interface TransformedHolding {
   base_currency?: string;
   original_value?: number;
   original_currency?: string;
+  dailyChangePercent?: number | null;
+  dailyChangeValueSEK?: number | null;
 }
 
 interface UserHoldingsManagerProps {
@@ -388,6 +390,8 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
       base_currency: holding.currency || priceCurrency,
       original_value: valueInOriginalCurrency,
       original_currency: valueCurrency,
+      dailyChangePercent: holding.dailyChangePercent ?? holding.daily_change_pct ?? null,
+      dailyChangeValueSEK: holding.dailyChangeValueSEK ?? null,
     };
   });
 
@@ -406,6 +410,8 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
     base_currency: 'SEK',
     original_value: cash.current_value,
     original_currency: 'SEK',
+    dailyChangePercent: null,
+    dailyChangeValueSEK: null,
   }));
 
   const allHoldings = [

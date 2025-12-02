@@ -20,6 +20,7 @@ interface Holding {
   currency: string;
   current_price_per_unit?: number;
   price_currency?: string;
+  dailyChangePercent?: number | null;
 }
 
 interface HoldingsGroupSectionProps {

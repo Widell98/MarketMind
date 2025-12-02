@@ -36,6 +36,7 @@ interface HoldingCardProps {
     currency: string;
     current_price_per_unit?: number;
     price_currency?: string;
+    dailyChangePercent?: number | null;
   };
   portfolioPercentage: number;
   performance?: HoldingPerformance;
@@ -81,6 +82,8 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   const profit = holdingPerformance?.profit ?? 0;
   const profitPercentage = holdingPerformance?.profitPercentage ?? 0;
   const hasPurchasePrice = holdingPerformance?.hasPurchasePrice ?? (typeof holding.purchase_price === 'number' && holding.purchase_price > 0 && quantity > 0);
+  const hasDailyChange = typeof holding.dailyChangePercent === 'number';
+  const dailyChangePercent = holding.dailyChangePercent ?? null;
   const trimmedSymbol = holding.symbol?.trim();
   const normalizedSymbol = trimmedSymbol ? trimmedSymbol.toUpperCase() : undefined;
   const isRefreshing = Boolean(
@@ -212,23 +215,49 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
             <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-2">
               {quantity > 0 && <span>{quantity} st</span>}
               {quantity > 0 && typeof effectivePrice === 'number' && effectivePrice > 0 && <span>•</span>}
-              {typeof effectivePrice === 'number' && effectivePrice > 0 && (
-                <span>{formatCurrency(effectivePrice, effectiveCurrency)}</span>
-              )}
-            </div>
-          )}
-        </div>
+            {typeof effectivePrice === 'number' && effectivePrice > 0 && (
+              <span>{formatCurrency(effectivePrice, effectiveCurrency)}</span>
+            )}
+          </div>
+        )}
+      </div>
 
         {!isCash && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground pt-1">
-            <MessageSquare className="w-4 h-4" />
-            <button
-              type="button"
-              className="font-medium hover:text-foreground"
-              onClick={() => onDiscuss(holding.name, holding.symbol)}
-            >
-              Diskutera
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-sm">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <MessageSquare className="w-4 h-4" />
+              <button
+                type="button"
+                className="font-medium hover:text-foreground"
+                onClick={() => onDiscuss(holding.name, holding.symbol)}
+              >
+                Diskutera
+              </button>
+            </div>
+
+            <div>
+              {hasDailyChange && dailyChangePercent !== null ? (
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold',
+                    dailyChangePercent > 0
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                      : dailyChangePercent < 0
+                        ? 'bg-red-50 text-red-700 border-red-100'
+                        : 'bg-muted text-muted-foreground border-border'
+                  )}
+                >
+                  <span className="text-muted-foreground">Kurs:</span>
+                  <span>
+                    {dailyChangePercent > 0 ? '+' : ''}
+                    {dailyChangePercent.toFixed(2)}%
+                  </span>
+                  <span className="text-muted-foreground">idag</span>
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground">Kursdata saknas</span>
+              )}
+            </div>
           </div>
         )}
       </CardContent>
