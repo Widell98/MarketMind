@@ -12,7 +12,6 @@ import {
   Search,
   LayoutGrid,
   Table as TableIcon,
-  PieChart as PieChartIcon,
   RefreshCw
 } from 'lucide-react';
 import {
@@ -27,7 +26,6 @@ import HoldingsGroupSection from '@/components/HoldingsGroupSection';
 import HoldingsTable from '@/components/HoldingsTable';
 import AddHoldingDialog from '@/components/AddHoldingDialog';
 import EditHoldingDialog from '@/components/EditHoldingDialog';
-import SectorAllocationChart from '@/components/SectorAllocationChart';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import type { HoldingPerformance } from '@/hooks/usePortfolioPerformance';
@@ -67,11 +65,10 @@ interface TransformedHolding {
 }
 
 interface UserHoldingsManagerProps {
-  sectorData?: { name: string; value: number; percentage: number }[];
   importControls?: React.ReactNode;
 }
 
-const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = [], importControls }) => {
+const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControls }) => {
   const {
     actualHoldings,
     loading,
@@ -109,7 +106,6 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
   const [showEditHoldingDialog, setShowEditHoldingDialog] = useState(false);
   const [editingHolding, setEditingHolding] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
-  const [isChartOpen, setIsChartOpen] = useState(false);
   const [refreshingTicker, setRefreshingTicker] = useState<string | null>(null);
   const [holdingToDelete, setHoldingToDelete] = useState<{ id: string; name: string; type: 'cash' | 'holding' } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -150,20 +146,6 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
             <TooltipContent className="max-w-xs">
               Klicka på en ticker i listan för att uppdatera priset.
             </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground"
-                onClick={() => setIsChartOpen(true)}
-              >
-                <PieChartIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="sr-only">Visa portföljöversikt</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Visa portföljöversikt</TooltipContent>
           </Tooltip>
         </div>
 
@@ -599,17 +581,6 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Sector Allocation Dialog */}
-      <Dialog open={isChartOpen} onOpenChange={setIsChartOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Sektorexponering</DialogTitle>
-            <DialogDescription>Fördelning över olika industrisektorer</DialogDescription>
-          </DialogHeader>
-          <SectorAllocationChart data={sectorData} />
-        </DialogContent>
-      </Dialog>
 
       {/* Add Cash Dialog */}
       <Dialog open={showAddCashDialog} onOpenChange={setShowAddCashDialog}>
