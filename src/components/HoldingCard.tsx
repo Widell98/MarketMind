@@ -10,7 +10,9 @@ import {
   Wallet,
   Building2,
   TrendingUp,
-  RefreshCw
+  RefreshCw,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import SmartHoldingSuggestions from './SmartHoldingSuggestions';
 import { cn } from '@/lib/utils';
@@ -63,6 +65,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   const Icon = getHoldingIcon();
   const isCash = holding.holding_type === 'cash';
   const [isLogoError, setIsLogoError] = React.useState(false);
+  const [showDetails, setShowDetails] = React.useState(false);
 
   const {
     valueInSEK: displayValue,
@@ -79,8 +82,6 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   const profit = holdingPerformance?.profit ?? 0;
   const profitPercentage = holdingPerformance?.profitPercentage ?? 0;
   const hasPurchasePrice = holdingPerformance?.hasPurchasePrice ?? (typeof holding.purchase_price === 'number' && holding.purchase_price > 0 && quantity > 0);
-  const profitColor = profit > 0 ? 'text-green-600' : profit < 0 ? 'text-red-600' : 'text-foreground';
-  const profitPercentageColor = profit > 0 ? 'text-green-600' : profit < 0 ? 'text-red-600' : 'text-muted-foreground';
   const trimmedSymbol = holding.symbol?.trim();
   const normalizedSymbol = trimmedSymbol ? trimmedSymbol.toUpperCase() : undefined;
   const isRefreshing = Boolean(
@@ -103,150 +104,184 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   };
 
   return (
-    <Card className="hover:shadow-md transition-all duration-200 border-l-4 border-l-primary/20 rounded-lg sm:rounded-xl">
-      <CardContent className="p-3 sm:p-4">
-        <div className="space-y-3 sm:space-y-4">
-          {/* Header */}
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-3 min-w-0 flex-1">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
-                {logoUrl && !isLogoError ? (
-                  <img
-                    src={logoUrl}
-                    alt={`${holding.name} logotyp`}
-                    className="w-full h-full object-contain p-1 bg-white"
-                    onError={() => setIsLogoError(true)}
-                  />
-                ) : (
-                  <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
-                )}
-              </div>
-              
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-semibold text-foreground truncate">{holding.name}</h3>
-                  {holding.symbol && (
-                    onRefreshPrice && normalizedSymbol ? (
-                      <button
-                        type="button"
-                        onClick={() => onRefreshPrice(normalizedSymbol)}
-                        disabled={isUpdatingPrice}
-                        className={cn(
-                          badgeVariants({ variant: 'outline' }),
-                          'text-xs font-mono inline-flex items-center gap-1 px-2 py-0.5 cursor-pointer transition-colors group hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed'
-                        )}
-                        title="Uppdatera livepris"
-                      >
-                        {normalizedSymbol}
-                        <RefreshCw
-                          className={cn(
-                            'w-3 h-3 text-muted-foreground transition-opacity duration-200',
-                            isRefreshing ? 'opacity-100 animate-spin' : 'opacity-0 group-hover:opacity-100'
-                          )}
-                        />
-                      </button>
-                    ) : (
-                      <Badge variant="outline" className="text-xs font-mono">
-                        {holding.symbol}
-                      </Badge>
-                    )
-                  )}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <Badge variant="secondary" className="text-xs">
-                    {holding.holding_type === 'cash' ? 'Kassa' : holding.holding_type}
-                  </Badge>
-                  {holding.sector && (
-                    <span className="text-xs">{holding.sector}</span>
-                  )}
-                </div>
-              </div>
+    <Card className="hover:shadow-md transition-all duration-200 rounded-xl border border-border/60">
+      <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+              {logoUrl && !isLogoError ? (
+                <img
+                  src={logoUrl}
+                  alt={`${holding.name} logotyp`}
+                  className="w-full h-full object-contain p-1 bg-white"
+                  onError={() => setIsLogoError(true)}
+                />
+              ) : (
+                <Icon className="w-5 h-5 text-muted-foreground" />
+              )}
             </div>
 
-            {/* Portfolio Percentage */}
-            <div className="text-right flex-shrink-0 ml-2">
-              <div className="text-base sm:text-lg font-bold text-foreground">
-                {portfolioPercentage.toFixed(1)}%
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-foreground truncate">{holding.name}</h3>
+                {holding.symbol && (
+                  onRefreshPrice && normalizedSymbol ? (
+                    <button
+                      type="button"
+                      onClick={() => onRefreshPrice(normalizedSymbol)}
+                      disabled={isUpdatingPrice}
+                      className={cn(
+                        badgeVariants({ variant: 'outline' }),
+                        'text-[11px] font-mono inline-flex items-center gap-1 px-2 py-0.5 cursor-pointer transition-colors group hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed'
+                      )}
+                      title="Uppdatera livepris"
+                    >
+                      {normalizedSymbol}
+                      <RefreshCw
+                        className={cn(
+                          'w-3 h-3 text-muted-foreground transition-opacity duration-200',
+                          isRefreshing ? 'opacity-100 animate-spin' : 'opacity-0 group-hover:opacity-100'
+                        )}
+                      />
+                    </button>
+                  ) : (
+                    <Badge variant="outline" className="text-[11px] font-mono">
+                      {holding.symbol}
+                    </Badge>
+                  )
+                )}
               </div>
-              <div className="text-xs sm:text-sm text-muted-foreground">
-                av portfölj
+
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <Badge variant="secondary" className="text-[11px]">
+                  {holding.holding_type === 'cash' ? 'Kassa' : holding.holding_type}
+                </Badge>
+                {holding.sector && <span className="text-[11px]">{holding.sector}</span>}
               </div>
             </div>
           </div>
 
-          {/* Value Information */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
-            <div>
-              <span className="text-muted-foreground">Värde:</span>
-              <div className="font-semibold text-foreground">
-                {formatCurrency(displayValue, 'SEK')}
-              </div>
+          <div className="text-right flex-shrink-0">
+            <div className="text-lg sm:text-xl font-bold text-foreground leading-tight">
+              {portfolioPercentage.toFixed(1)}%
             </div>
+            <div className="text-xs text-muted-foreground">av portfölj</div>
+          </div>
+        </div>
 
-            {!isCash && quantity > 0 && (
-              <div>
-                <span className="text-muted-foreground">Antal:</span>
-                <div className="font-semibold text-foreground">
-                  {quantity}
+        {/* Value & quantity */}
+        <div className="space-y-1">
+          <div className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">
+            {formatCurrency(displayValue, 'SEK')}
+          </div>
+          {!isCash && quantity > 0 && (
+            <div className="text-sm text-muted-foreground">{quantity} st</div>
+          )}
+        </div>
+
+        {/* Performance */}
+        {!isCash && (
+          <div
+            className={cn(
+              'inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium',
+              hasPurchasePrice
+                ? profit > 0
+                  ? 'bg-green-50 text-green-700'
+                  : profit < 0
+                    ? 'bg-red-50 text-red-700'
+                    : 'bg-muted text-foreground'
+                : 'bg-muted text-muted-foreground'
+            )}
+          >
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">Utveckling</span>
+            {hasPerformanceData && hasPurchasePrice ? (
+              <>
+                <span>{`${profit > 0 ? '+' : ''}${formatCurrency(profit, 'SEK')}`}</span>
+                <span className="text-xs">{`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}</span>
+              </>
+            ) : (
+              <span className="text-xs">{hasPerformanceData ? 'Köpkurs saknas' : 'Beräknar...'}</span>
+            )}
+          </div>
+        )}
+
+        {/* Quick actions */}
+        <div className="flex gap-2 flex-wrap">
+          {!isCash && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 min-w-0 justify-start text-blue-700 hover:text-blue-800 hover:bg-blue-50"
+                onClick={() => onDiscuss(holding.name, holding.symbol)}
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                <span className="truncate text-sm">Diskutera</span>
+              </Button>
+              {onEdit && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex-shrink-0 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50"
+                  onClick={() => onEdit(holding.id)}
+                  aria-label="Redigera innehav"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </Button>
+              )}
+            </>
+          )}
+
+          {isCash && onEdit && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex-1 min-w-0 justify-start text-blue-700 hover:text-blue-800 hover:bg-blue-50"
+              onClick={() => onEdit(holding.id)}
+            >
+              <Edit2 className="w-4 h-4 mr-2" />
+              <span className="truncate text-sm">Redigera</span>
+            </Button>
+          )}
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex-shrink-0 text-red-700 hover:text-red-800 hover:bg-red-50"
+            onClick={() => onDelete(holding.id, holding.name)}
+            aria-label="Ta bort innehav"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {/* Details toggle */}
+        <div className="pt-1 border-t border-border/80">
+          <button
+            type="button"
+            className="w-full text-left text-sm text-blue-700 hover:text-blue-800 flex items-center justify-between py-1.5"
+            onClick={() => setShowDetails((prev) => !prev)}
+          >
+            <span className="font-medium">{showDetails ? 'Dölj detaljer' : 'Visa mer'}</span>
+            {showDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+          </button>
+
+          {showDetails && (
+            <div className="pt-2 space-y-3 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Investerat</p>
+                  <p className="font-semibold text-foreground">{formatCurrency(investedValue, 'SEK')}</p>
+                  {hasPerformanceData && !hasPurchasePrice && (
+                    <p className="text-xs text-muted-foreground">Köpkurs saknas – använder aktuellt värde.</p>
+                  )}
                 </div>
-              </div>
-            )}
 
-            {!isCash && (
-              <div>
-                <span className="text-muted-foreground">Investerat:</span>
-                <div className="font-semibold text-foreground">
-                  {formatCurrency(investedValue, 'SEK')}
-                </div>
-                {hasPerformanceData ? (
-                  !hasPurchasePrice ? (
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Köpkurs saknas – använder aktuellt värde.
-                    </div>
-                  ) : null
-                ) : (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Beräknar avkastning...
-                  </div>
-                )}
-              </div>
-            )}
-
-            {!isCash && (
-              <div>
-                <span className="text-muted-foreground">Avkastning:</span>
-                {hasPerformanceData ? (
-                  <>
-                    <div className={cn('font-semibold', hasPurchasePrice ? profitColor : 'text-foreground')}>
-                      {hasPurchasePrice
-                        ? `${profit > 0 ? '+' : ''}${formatCurrency(profit, 'SEK')}`
-                        : formatCurrency(0, 'SEK')}
-                    </div>
-                    {hasPurchasePrice ? (
-                      <div className={cn('text-xs', profitPercentageColor)}>
-                        {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}
-                      </div>
-                    ) : (
-                      <div className="text-xs text-muted-foreground">
-                        Köpkurs saknas
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Beräknar avkastning...
-                  </div>
-                )}
-              </div>
-            )}
-
-            {!isCash && (
-              <div className="col-span-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Aktuellt pris:</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">
+                {!isCash && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Aktuellt pris</p>
+                    <p className="font-semibold text-foreground">
                       {typeof effectivePrice === 'number' && Number.isFinite(effectivePrice) && effectivePrice > 0
                         ? (
                           <>
@@ -259,89 +294,42 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                           </>
                         )
                         : 'Pris saknas'}
-                    </span>
-                  </div>
-                </div>
-                {!effectivePrice && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Pris saknas – uppdatera för att hämta live-pris.
+                    </p>
+                    {!effectivePrice && (
+                      <p className="text-xs text-muted-foreground">Pris saknas – uppdatera för att hämta live-pris.</p>
+                    )}
+                    {isRefreshing && (
+                      <p className="text-xs text-muted-foreground">Hämtar live-pris...</p>
+                    )}
                   </div>
                 )}
-                {isRefreshing && (
-                  <div className="text-xs text-muted-foreground mt-1">Hämtar live-pris...</div>
+
+                {!isCash && quantity > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Antal</p>
+                    <p className="font-semibold text-foreground">{quantity}</p>
+                  </div>
+                )}
+
+                {holding.sector && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Sektor</p>
+                    <p className="font-semibold text-foreground">{holding.sector}</p>
+                  </div>
                 )}
               </div>
-            )}
-          </div>
 
-          {/* Progress Bar */}
-          <div className="space-y-1">
-            <div className="w-full bg-muted rounded-full h-2">
-              <div 
-                className="bg-primary rounded-full h-2 transition-all duration-300"
-                style={{ width: `${Math.min(portfolioPercentage, 100)}%` }}
-              />
+              {showAISuggestions && (
+                <SmartHoldingSuggestions
+                  holdingId={holding.id}
+                  holdingName={holding.name}
+                  holdingType={holding.holding_type}
+                  currentValue={holding.current_value}
+                  portfolioPercentage={portfolioPercentage}
+                  onSuggestionAction={handleSuggestionAction}
+                />
+              )}
             </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-2 pt-2 flex-wrap">
-            {!isCash && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 min-w-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 text-xs sm:text-sm"
-                  onClick={() => onDiscuss(holding.name, holding.symbol)}
-                >
-                  <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />
-                  <span className="truncate">Diskutera</span>
-                </Button>
-                {onEdit && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-green-600 hover:text-green-700 hover:bg-green-50 flex-shrink-0 px-2 sm:px-3"
-                    onClick={() => onEdit(holding.id)}
-                  >
-                    <Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  </Button>
-                )}
-              </>
-            )}
-            
-            {isCash && onEdit && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 min-w-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 text-xs sm:text-sm"
-                onClick={() => onEdit(holding.id)}
-              >
-                <Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />
-                <span className="truncate">Redigera</span>
-              </Button>
-            )}
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0 px-2 sm:px-3"
-              onClick={() => onDelete(holding.id, holding.name)}
-            >
-              <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            </Button>
-          </div>
-
-          {/* AI Suggestions */}
-          {showAISuggestions && (
-            <SmartHoldingSuggestions
-              holdingId={holding.id}
-              holdingName={holding.name}
-              holdingType={holding.holding_type}
-              currentValue={holding.current_value}
-              portfolioPercentage={portfolioPercentage}
-              onSuggestionAction={handleSuggestionAction}
-            />
           )}
         </div>
       </CardContent>
