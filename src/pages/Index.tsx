@@ -573,10 +573,12 @@ const Index = () => {
                               <div className="space-y-3">
                                 {dailyHighlights.best.map((holding) => (
                                   <div key={holding.id} className="flex items-center justify-between">
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-foreground truncate">{holding.name || holding.symbol || 'Innehav'}</p>
+                                    <div className="flex-1 min-w-0 space-y-0.5">
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-sm font-medium text-foreground truncate">{holding.name || holding.symbol || 'Innehav'}</p>
+                                        <span className="text-xs text-muted-foreground whitespace-nowrap">{formatCurrentPrice(holding)}</span>
+                                      </div>
                                       {holding.symbol && <p className="text-xs text-muted-foreground uppercase tracking-wide">{holding.symbol}</p>}
-                                      <p className="text-xs text-muted-foreground">{formatCurrentPrice(holding)}</p>
                                     </div>
                                     <div className="text-right">
                                       <p
@@ -611,10 +613,12 @@ const Index = () => {
                               <div className="space-y-3">
                                 {dailyHighlights.worst.map((holding) => (
                                   <div key={holding.id} className="flex items-center justify-between">
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-foreground truncate">{holding.name || holding.symbol || 'Innehav'}</p>
+                                    <div className="flex-1 min-w-0 space-y-0.5">
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-sm font-medium text-foreground truncate">{holding.name || holding.symbol || 'Innehav'}</p>
+                                        <span className="text-xs text-muted-foreground whitespace-nowrap">{formatCurrentPrice(holding)}</span>
+                                      </div>
                                       {holding.symbol && <p className="text-xs text-muted-foreground uppercase tracking-wide">{holding.symbol}</p>}
-                                      <p className="text-xs text-muted-foreground">{formatCurrentPrice(holding)}</p>
                                     </div>
                                     <div className="text-right">
                                       <p
