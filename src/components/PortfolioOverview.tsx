@@ -359,8 +359,8 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
 
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
-      <Card className="border border-gray-200/80 dark:border-gray-800 bg-white/70 dark:bg-gray-900/70 shadow-sm rounded-lg sm:rounded-xl">
-        <CardHeader className="pb-3 sm:pb-4 p-4 sm:p-6 border-b border-border/60">
+      <Card className="rounded-3xl border border-border/60 bg-card/80 p-4 sm:p-6 shadow-sm">
+        <CardHeader className="pb-3 sm:pb-4 px-0 pt-0 border-b border-border/60">
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg font-semibold text-foreground">
             <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
             <span className="break-words">Dagens toppar och bottnar</span>
@@ -369,24 +369,24 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             Tre bästa och sämsta innehaven idag baserat på daglig förändring
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-4 sm:p-6">
+        <CardContent className="p-0 pt-4 sm:pt-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {[{
               title: 'Bästa innehav idag',
               icon: <TrendingUp className="w-4 h-4" />,
               items: bestHoldings,
-              wrapperClasses: 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-100/80 dark:border-emerald-900/50',
+              wrapperClasses: 'border-emerald-100/80 dark:border-emerald-900/50 bg-gradient-to-br from-emerald-50/70 via-white/70 to-white/70 dark:from-emerald-950/30 dark:via-gray-950/60 dark:to-gray-950/60',
               iconClasses: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-200'
             }, {
               title: 'Sämsta innehav idag',
               icon: <TrendingDown className="w-4 h-4" />,
               items: worstHoldings,
-              wrapperClasses: 'bg-rose-50/80 dark:bg-rose-950/40 border-rose-100/80 dark:border-rose-900/50',
+              wrapperClasses: 'border-rose-100/80 dark:border-rose-900/50 bg-gradient-to-br from-rose-50/70 via-white/70 to-white/70 dark:from-rose-950/30 dark:via-gray-950/60 dark:to-gray-950/60',
               iconClasses: 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-200'
             }].map((section) => (
               <div
                 key={section.title}
-                className={`rounded-xl border shadow-sm p-4 sm:p-5 flex flex-col gap-3 bg-gradient-to-br from-white/60 via-white to-white dark:from-gray-950/60 dark:via-gray-950 dark:to-gray-950 ${section.wrapperClasses}`}
+                className={`rounded-2xl border border-border/60 shadow-sm p-4 sm:p-5 flex flex-col gap-3 ${section.wrapperClasses}`}
               >
                 <div className="flex items-center gap-2">
                   <div className={`rounded-full p-2 ${section.iconClasses}`}>
