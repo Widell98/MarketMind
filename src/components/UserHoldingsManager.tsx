@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -384,25 +384,8 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
   return (
     <>
       <Card className="h-fit rounded-lg sm:rounded-xl">
-        <CardHeader className="p-3 sm:p-4 md:p-6 space-y-1">
-          <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
-            <span className="flex items-center gap-2">
-              <Package className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
-              <span className="text-base sm:text-lg md:text-xl break-words">Dina Innehav</span>
-            </span>
-            <PieChartIcon
-              className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 cursor-pointer flex-shrink-0"
-              onClick={() => setIsChartOpen(true)}
-            />
-          </CardTitle>
-          <CardDescription className="text-xs sm:text-sm">
-            {loading || cashLoading
-              ? "Laddar dina innehav..."
-              : allHoldings.length > 0
-                ? `Snabböversikt över ${allHoldings.length} innehav och kassa`
-                : "Lägg till dina aktier, fonder och kassapositioner för en samlad vy"
-            }
-          </CardDescription>
+        <CardHeader className="p-3 sm:p-3 md:p-4 pb-2">
+          <CardTitle className="text-base sm:text-lg md:text-xl">Dina innehav</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2.5 sm:space-y-3 p-3 sm:p-4 md:p-6 pt-0">
           {loading || cashLoading ? (
