@@ -64,7 +64,7 @@ const PortfolioOverviewCard: React.FC<PortfolioOverviewCardProps> = ({
                     ? 'text-emerald-600 dark:text-emerald-400' 
                     : 'text-red-600 dark:text-red-400'
                 )}>
-                  Total avkastning: {totalReturn >= 0 ? '+' : ''}{totalReturnFormatted} kr ({totalReturnPercentage >= 0 ? '+' : ''}{totalReturnPercentage.toFixed(2)}%)
+                  Total avkastning på nuvarande innehav: {totalReturn >= 0 ? '+' : ''}{totalReturnFormatted} kr ({totalReturnPercentage >= 0 ? '+' : ''}{totalReturnPercentage.toFixed(2)}%)
                 </p>
               )
             )}

@@ -22,6 +22,7 @@ import FloatingActionButton from '@/components/FloatingActionButton';
 import { useToast } from '@/hooks/use-toast';
 import { normalizeShareClassTicker, parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
 import { supabase } from '@/integrations/supabase/client';
+import { useExchangeRates } from '@/contexts/ExchangeRatesContext'; // [!code ++] Lägg till denna import
 const PortfolioImplementation = () => {
   const {
     actualHoldings,
@@ -32,6 +33,11 @@ const PortfolioImplementation = () => {
     activePortfolio,
     loading
   } = usePortfolio();
+
+  // [!code ++] Lägg till detta anrop. 
+  // Även om du inte använder 'rates'-variabeln direkt här, 
+  // så tvingar detta komponenten att rendera om när kurserna uppdateras.
+  const { rates } = useExchangeRates();
   const {
     user,
     loading: authLoading
