@@ -11,7 +11,9 @@ import {
   RefreshCw,
   MoreVertical,
   Edit2,
-  Trash2
+  Trash2,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -70,6 +72,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   const Icon = getHoldingIcon();
   const isCash = holding.holding_type === 'cash';
   const [isLogoError, setIsLogoError] = React.useState(false);
+  const [showDetails, setShowDetails] = React.useState(false);
 
   const {
     valueInSEK: displayValue,
@@ -200,23 +203,34 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                     <TooltipTrigger asChild>
                       <div
                         className={cn(
-                          'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border',
+                          'inline-flex items-center gap-1.5 text-sm font-medium',
                           hasPerformanceData && hasPurchasePrice
                             ? profit > 0
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                              ? 'text-emerald-600 dark:text-emerald-500'
                               : profit < 0
-                                ? 'bg-red-50 text-red-700 border-red-100'
-                                : 'bg-muted text-foreground border-border'
-                            : 'bg-muted text-muted-foreground border-border'
+                                ? 'text-red-600 dark:text-red-500'
+                                : 'text-muted-foreground'
+                            : 'text-muted-foreground'
                         )}
                       >
-                        {hasPerformanceData && hasPurchasePrice ? (
-                          <span>
-                            {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}% (${profit > 0 ? '+' : ''}${formatCurrency(profit, 'SEK')})`}
-                          </span>
-                        ) : (
-                          <span className="text-xs font-medium">Prisdata saknas</span>
+                        {hasPerformanceData && hasPurchasePrice && (
+                          <>
+                            {profit > 0 ? (
+                              <TrendingUp className="w-3.5 h-3.5" />
+                            ) : profit < 0 ? (
+                              <TrendingDown className="w-3.5 h-3.5" />
+                            ) : null}
+                            <span>
+                              {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}
+                            </span>
+                            <span className="text-muted-foreground">
+                              ({`${profit > 0 ? '+' : ''}${formatCurrency(profit, 'SEK')}`})
+                            </span>
+                          </>
                         )}
+                        {!hasPerformanceData || !hasPurchasePrice ? (
+                          <span className="text-xs">Prisdata saknas</span>
+                        ) : null}
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="text-xs font-medium">
@@ -234,70 +248,94 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
         </div>
 
         {!isCash && (
-          <div className="flex flex-wrap items-start justify-between gap-3 pt-1 text-sm">
-            <div className="flex flex-col gap-1 text-muted-foreground">
-              <div className="flex flex-wrap items-center gap-3">
-                {typeof effectivePrice === 'number' && effectivePrice > 0 && (
-                  <span className="text-foreground font-semibold">
-                    Kurs: <span className="text-muted-foreground font-medium">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
-                  </span>
-                )}
-                {hasDailyChange && dailyChangePercent !== null ? (
-                  <div className="flex flex-wrap items-center gap-2 font-semibold">
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1',
-                        dailyChangePercent > 0
-                          ? 'text-emerald-700'
-                          : dailyChangePercent < 0
-                            ? 'text-red-700'
-                            : 'text-muted-foreground'
-                      )}
-                    >
-                      {dailyChangePercent > 0 ? <TrendingUp className="w-4 h-4" /> : null}
-                      {dailyChangePercent < 0 ? <TrendingDown className="w-4 h-4" /> : null}
-                      <span>
-                        {dailyChangePercent > 0 ? '+' : ''}
-                        {dailyChangePercent.toFixed(2)}%
-                      </span>
-                    </span>
+          <div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="group inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground p-0 h-auto"
+              onClick={() => setShowDetails((prev) => !prev)}
+            >
+              {showDetails ? (
+                <>
+                  Dölj detaljer
+                  <ChevronUp className="h-4 w-4 transition-transform group-hover:-translate-y-0.5" />
+                </>
+              ) : (
+                <>
+                  Visa mer
+                  <ChevronDown className="h-4 w-4 transition-transform group-hover:translate-y-0.5" />
+                </>
+              )}
+            </Button>
 
-                    {dailyChangeValue !== null && (
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1',
-                          dailyChangePercent > 0
-                            ? 'text-emerald-700'
-                            : dailyChangePercent < 0
-                              ? 'text-red-700'
-                              : 'text-muted-foreground'
-                        )}
-                      >
-                        (
-                        {dailyChangeValue > 0 ? '+' : ''}
-                        {formatCurrency(dailyChangeValue, 'SEK')}
-                        )
+            {showDetails && (
+              <div className="flex flex-wrap items-start justify-between gap-3 pt-1 text-sm mt-2">
+                <div className="flex flex-col gap-1 text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-3">
+                    {typeof effectivePrice === 'number' && effectivePrice > 0 && (
+                      <span className="text-foreground font-semibold">
+                        Kurs: <span className="text-muted-foreground font-medium">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
                       </span>
                     )}
+                    {hasDailyChange && dailyChangePercent !== null ? (
+                      <div className="flex flex-wrap items-center gap-2 font-semibold">
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-1',
+                            dailyChangePercent > 0
+                              ? 'text-emerald-700'
+                              : dailyChangePercent < 0
+                                ? 'text-red-700'
+                                : 'text-muted-foreground'
+                          )}
+                        >
+                          {dailyChangePercent > 0 ? <TrendingUp className="w-4 h-4" /> : null}
+                          {dailyChangePercent < 0 ? <TrendingDown className="w-4 h-4" /> : null}
+                          <span>
+                            {dailyChangePercent > 0 ? '+' : ''}
+                            {dailyChangePercent.toFixed(2)}%
+                          </span>
+                        </span>
+
+                        {dailyChangeValue !== null && (
+                          <span
+                            className={cn(
+                              'inline-flex items-center gap-1',
+                              dailyChangePercent > 0
+                                ? 'text-emerald-700'
+                                : dailyChangePercent < 0
+                                  ? 'text-red-700'
+                                  : 'text-muted-foreground'
+                            )}
+                          >
+                            (
+                            {dailyChangeValue > 0 ? '+' : ''}
+                            {formatCurrency(dailyChangeValue, 'SEK')}
+                            )
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Kursdata saknas</span>
+                    )}
                   </div>
-                ) : (
-                  <span className="text-xs text-muted-foreground">Kursdata saknas</span>
-                )}
+
+                  {quantity > 0 && <span className="text-foreground font-semibold">{quantity} st</span>}
+                </div>
+
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <MessageSquare className="w-4 h-4" />
+                  <button
+                    type="button"
+                    className="font-medium hover:text-foreground"
+                    onClick={() => onDiscuss(holding.name, holding.symbol)}
+                  >
+                    Diskutera
+                  </button>
+                </div>
               </div>
-
-              {quantity > 0 && <span className="text-foreground font-semibold">{quantity} st</span>}
-            </div>
-
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <MessageSquare className="w-4 h-4" />
-              <button
-                type="button"
-                className="font-medium hover:text-foreground"
-                onClick={() => onDiscuss(holding.name, holding.symbol)}
-              >
-                Diskutera
-              </button>
-            </div>
+            )}
           </div>
         )}
       </CardContent>

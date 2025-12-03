@@ -48,3 +48,4 @@ const CompactAllocationCard: React.FC<CompactAllocationCardProps> = ({ investedP
 
 export default CompactAllocationCard;
 
+

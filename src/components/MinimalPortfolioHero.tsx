@@ -133,3 +133,4 @@ const MinimalPortfolioHero: React.FC<MinimalPortfolioHeroProps> = ({
 
 export default MinimalPortfolioHero;
 
+
