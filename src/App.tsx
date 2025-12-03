@@ -10,6 +10,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ChatSessionsProvider } from "@/contexts/ChatSessionsContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { DailyChangeDataProvider } from "@/contexts/DailyChangeDataContext";
+import { ExchangeRatesProvider } from "@/contexts/ExchangeRatesContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import StockCases from "./pages/StockCases";
@@ -42,8 +43,9 @@ function App() {
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <LanguageProvider>
           <AuthProvider>
-            <DailyChangeDataProvider>
-              <ChatSessionsProvider>
+            <ExchangeRatesProvider>
+              <DailyChangeDataProvider>
+                <ChatSessionsProvider>
                 <TooltipProvider>
                   <Toaster />
                   <Sonner />
@@ -83,8 +85,9 @@ function App() {
                     </BrowserRouter>
                   </ErrorBoundary>
                 </TooltipProvider>
-              </ChatSessionsProvider>
-            </DailyChangeDataProvider>
+                </ChatSessionsProvider>
+              </DailyChangeDataProvider>
+            </ExchangeRatesProvider>
           </AuthProvider>
         </LanguageProvider>
       </ThemeProvider>
