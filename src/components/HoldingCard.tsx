@@ -85,6 +85,10 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   const hasPurchasePrice = holdingPerformance?.hasPurchasePrice ?? (typeof holding.purchase_price === 'number' && holding.purchase_price > 0 && quantity > 0);
   const hasDailyChange = typeof holding.dailyChangePercent === 'number';
   const dailyChangePercent = holding.dailyChangePercent ?? null;
+  const dailyChangeValue =
+    hasDailyChange && dailyChangePercent !== null
+      ? (displayValue * dailyChangePercent) / 100
+      : null;
   const trimmedSymbol = holding.symbol?.trim();
   const normalizedSymbol = trimmedSymbol ? trimmedSymbol.toUpperCase() : undefined;
   const isRefreshing = Boolean(
@@ -243,6 +247,13 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                   <span>
                     {dailyChangePercent > 0 ? '+' : ''}
                     {dailyChangePercent.toFixed(2)}%
+                    {dailyChangeValue !== null && (
+                      <>
+                        {' '}
+                        ({dailyChangeValue > 0 ? '+' : ''}
+                        {formatCurrency(dailyChangeValue, 'SEK')})
+                      </>
+                    )}
                   </span>
                 </span>
               ) : (
