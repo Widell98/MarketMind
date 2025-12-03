@@ -616,7 +616,7 @@ const StockCaseDetail = ({
   const handleSaveSuccess = () => {
     toast({
       title: "Sparad till portfölj!",
-      description: "Detta stock case har sparats och är nu tillgängligt i dina Community-rekommenderade Innehav.",
+      description: "Detta stock case har sparats och är nu tillgängligt i dina Community-förslag på Innehav.",
       action: <ToastAction altText="Gå till portfölj" onClick={() => navigate('/portfolio-implementation')}>
         Gå till portfölj
       </ToastAction>

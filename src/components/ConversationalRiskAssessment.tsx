@@ -507,7 +507,7 @@ Din kompletta portfölj har sparats och du kan implementera rekommendationerna d
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Brain className="w-5 h-5 text-purple-600" />
-                  AI-Rekommenderade Innehav
+                  Ai-Förslag på innehav
                   <Badge variant="secondary" className="bg-purple-100 text-purple-700 border-purple-200">
                     {aiRecommendations.length} innehav
                   </Badge>

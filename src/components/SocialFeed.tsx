@@ -137,7 +137,7 @@ const SocialFeed = () => {
         {stocks.length > 0 && (
           <div>
             <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Rekommenderade aktier ({stocks.length > 3 ? 'Top 3' : 'Alla'})
+              Förslag på Investeringar ({stocks.length > 3 ? 'Top 3' : 'Alla'})
             </h5>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               {stocks.slice(0, 3).map((stock: any, index: number) => (

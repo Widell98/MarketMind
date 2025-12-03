@@ -950,7 +950,7 @@ const classifyIntentWithLLM = async (
         Authorization: `Bearer ${openAIApiKey}`,
       },
       body: JSON.stringify({
-        model: INLINE_INTENT_MODEL,
+        model: LIGHTWEIGHT_CHAT_MODEL,
         temperature: 0,
         max_completion_tokens: 5,
         messages: [

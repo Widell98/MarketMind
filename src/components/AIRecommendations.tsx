@@ -201,14 +201,14 @@ const AIRecommendations = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Brain className="w-5 h-5 text-blue-600" />
-            AI-Rekommenderade Innehav
+            Ai-Förslag på innehav
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
             <div className="flex items-center justify-center gap-2">
               <Brain className="w-4 h-4 animate-pulse" />
-              <span>Laddar AI-rekommendationer...</span>
+              <span>Laddar Ai-förslag...</span>
             </div>
           </div>
         </CardContent>
@@ -222,7 +222,7 @@ const AIRecommendations = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Brain className="w-5 h-5 text-blue-600" />
-            AI-Rekommenderade Innehav
+            Ai-Förslag på innehav
           </CardTitle>
           <CardDescription>
             Personaliserade investeringsförslag baserade på din profil
@@ -231,7 +231,7 @@ const AIRecommendations = () => {
         <CardContent>
           <div className="text-center py-8">
             <Brain className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
-            <h3 className="text-lg font-medium mb-2 text-foreground">Inga AI-rekommendationer tillgängliga</h3>
+            <h3 className="text-lg font-medium mb-2 text-foreground">Inga Ai-förslag tillgängliga</h3>
             <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
               Chatta med AI:n eller använd Portfolio Advisor för att få personaliserade investeringsidéer baserade på din portfölj.
             </p>
@@ -240,7 +240,7 @@ const AIRecommendations = () => {
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Sparkles className="w-5 h-5 text-blue-600" />
                 <span className="font-medium text-blue-700 dark:text-blue-300">
-                  Få AI-rekommendationer
+                  Få Ai-förslag
                 </span>
               </div>
               <p className="text-sm text-muted-foreground mb-3">
@@ -280,7 +280,7 @@ const AIRecommendations = () => {
                 <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
                   <Brain className="w-5 h-5 text-primary" />
                 </div>
-                <span>AI-Rekommenderade Innehav</span>
+                <span>Ai-Förslag på innehav</span>
                 {totalRecommendations > 0 && (
                   <Badge
                     variant="outline"
@@ -311,7 +311,7 @@ const AIRecommendations = () => {
                   <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2">
                       <Trash2 className="w-5 h-5 text-red-600" />
-                      Rensa alla AI-rekommendationer
+                      Rensa alla Ai-förslag
                     </AlertDialogTitle>
                     <AlertDialogDescription className="text-base">
                       Är du säker på att du vill radera alla AI-rekommenderade innehav? Den här åtgärden kan inte ångras.
@@ -342,7 +342,7 @@ const AIRecommendations = () => {
           {/* Header: antal och vy-val */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
             <div className="text-sm text-muted-foreground font-medium text-center sm:text-left">
-              {totalRecommendations} AI-rekommendationer
+              {totalRecommendations} Ai-förslag
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
               <div className="flex items-center justify-center sm:justify-end gap-1">
@@ -392,7 +392,7 @@ const AIRecommendations = () => {
               className="w-full mt-6 rounded-xl py-3 bg-card/50 hover:bg-primary/5 text-primary hover:text-primary/80 border-primary/20 hover:border-primary/30"
               onClick={() => setIsAllRecommendationsOpen(true)}
             >
-              Visa alla AI-rekommendationer ({totalRecommendations})
+              Visa alla Ai-förslag ({totalRecommendations})
             </Button>
           )}
         </CardContent>
@@ -448,13 +448,13 @@ const AIRecommendations = () => {
               Alla AI-rekommenderade innehav
             </DialogTitle>
             <DialogDescription>
-              Utforska hela listan över dina sparade AI-rekommendationer.
+              Utforska hela listan över dina sparade Ai-förslag.
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
             <span className="text-sm text-muted-foreground text-center sm:text-left">
-              {totalRecommendations} AI-rekommendationer
+              {totalRecommendations} Ai-förslag
             </span>
             <div className="flex items-center justify-center sm:justify-end gap-1">
               <Button

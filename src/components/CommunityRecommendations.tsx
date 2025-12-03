@@ -250,7 +250,7 @@ const CommunityRecommendations: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="w-5 h-5 text-blue-600" />
-            Community-rekommenderade Innehav
+            Community-förslag Innehav
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -271,7 +271,7 @@ const CommunityRecommendations: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="w-5 h-5 text-blue-600" />
-            Community-rekommenderade Innehav
+            Community-förslag Innehav
           </CardTitle>
           <CardDescription>
             Dina sparade stock-cases och analyser från communityn
@@ -320,7 +320,7 @@ const CommunityRecommendations: React.FC = () => {
             <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
               <Users className="w-5 h-5 text-primary" />
             </div>
-            <span>Community-rekommenderade Innehav</span>
+            <span>Community-förslag Innehav</span>
             {recommendations.length > 0 && (
               <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 rounded-full">
                 {recommendations.length} rekommendationer
