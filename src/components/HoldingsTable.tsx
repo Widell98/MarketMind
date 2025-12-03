@@ -25,6 +25,8 @@ interface Holding {
   current_price_per_unit?: number;
   price_currency?: string;
   base_currency?: string;
+  dailyChangePercent?: number | null;
+  dailyChangeValueSEK?: number | null;
 }
 
 interface HoldingsTableProps {
@@ -52,6 +54,7 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
           <TableHead className="min-w-[180px]">Namn</TableHead>
           <TableHead className="text-right">Marknadsvärde</TableHead>
           <TableHead className="text-right">Utveckling</TableHead>
+          <TableHead className="text-right">Utveckling idag</TableHead>
           <TableHead className="text-right">Andel</TableHead>
         </TableRow>
       </TableHeader>
@@ -85,6 +88,20 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
               ? 'text-green-600'
               : 'text-red-600'
             : 'text-foreground';
+
+          const dailyChangePercent = typeof holding.dailyChangePercent === 'number'
+            ? holding.dailyChangePercent
+            : null;
+          const dailyChangeValue = dailyChangePercent !== null
+            ? typeof holding.dailyChangeValueSEK === 'number'
+              ? holding.dailyChangeValueSEK
+              : (valueInSEK * dailyChangePercent) / 100
+            : null;
+          const dailyChangeClass = dailyChangePercent !== null && dailyChangePercent !== 0
+            ? dailyChangePercent > 0
+              ? 'text-emerald-600'
+              : 'text-red-600'
+            : 'text-muted-foreground';
 
           const shareOfPortfolio = totalPortfolioValue && totalPortfolioValue > 0
             ? (valueInSEK / totalPortfolioValue) * 100
@@ -176,6 +193,22 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
                       {profitPercentage !== undefined
                         ? `${profitLoss !== undefined && profitLoss > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`
                         : '—'}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-sm text-muted-foreground">—</span>
+                )}
+              </TableCell>
+              <TableCell className="py-3 sm:py-3.5 text-right align-middle">
+                {dailyChangePercent !== null ? (
+                  <div className="inline-flex flex-col items-end text-right gap-0.5">
+                    <span className={cn('text-sm font-semibold', dailyChangeClass)}>
+                      {dailyChangeValue !== null
+                        ? `${dailyChangeValue > 0 ? '+' : ''}${formatCurrency(dailyChangeValue, 'SEK')}`
+                        : '—'}
+                    </span>
+                    <span className={cn('text-xs font-medium', dailyChangeClass)}>
+                      {`${dailyChangePercent > 0 ? '+' : ''}${dailyChangePercent.toFixed(2)}%`}
                     </span>
                   </div>
                 ) : (
