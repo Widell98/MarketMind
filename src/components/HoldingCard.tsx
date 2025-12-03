@@ -232,30 +232,41 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                 <span>•</span>
               )}
               {hasDailyChange && dailyChangePercent !== null ? (
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1 font-semibold',
-                    dailyChangePercent > 0
-                      ? 'text-emerald-700'
-                      : dailyChangePercent < 0
-                        ? 'text-red-700'
-                        : 'text-muted-foreground'
-                  )}
-                >
-                  {dailyChangePercent > 0 ? <TrendingUp className="w-4 h-4" /> : null}
-                  {dailyChangePercent < 0 ? <TrendingDown className="w-4 h-4" /> : null}
-                  <span>
-                    {dailyChangePercent > 0 ? '+' : ''}
-                    {dailyChangePercent.toFixed(2)}%
-                    {dailyChangeValue !== null && (
-                      <>
-                        {' '}
-                        ({dailyChangeValue > 0 ? '+' : ''}
-                        {formatCurrency(dailyChangeValue, 'SEK')})
-                      </>
+                <div className="flex flex-wrap items-center gap-2 font-semibold">
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1',
+                      dailyChangePercent > 0
+                        ? 'text-emerald-700'
+                        : dailyChangePercent < 0
+                          ? 'text-red-700'
+                          : 'text-muted-foreground'
                     )}
+                  >
+                    {dailyChangePercent > 0 ? <TrendingUp className="w-4 h-4" /> : null}
+                    {dailyChangePercent < 0 ? <TrendingDown className="w-4 h-4" /> : null}
+                    <span>
+                      {dailyChangePercent > 0 ? '+' : ''}
+                      {dailyChangePercent.toFixed(2)}%
+                    </span>
                   </span>
-                </span>
+
+                  {dailyChangeValue !== null && (
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-sm',
+                        dailyChangePercent > 0
+                          ? 'text-emerald-700'
+                          : dailyChangePercent < 0
+                            ? 'text-red-700'
+                            : 'text-muted-foreground'
+                      )}
+                    >
+                      {dailyChangeValue > 0 ? '+' : ''}
+                      {formatCurrency(dailyChangeValue, 'SEK')}
+                    </span>
+                  )}
+                </div>
               ) : (
                 <span className="text-xs text-muted-foreground">Kursdata saknas</span>
               )}
