@@ -120,14 +120,14 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
 
             <div className="min-w-0 flex-1">
               <h3 className="font-semibold text-foreground leading-tight truncate text-sm sm:text-base">{holding.name}</h3>
-              <div className="text-xs sm:text-sm text-muted-foreground font-medium leading-tight">
+              <div className="text-xs sm:text-sm text-red-600 font-medium leading-tight">
                 {normalizedSymbol ? (
                   onRefreshPrice ? (
                     <button
                       type="button"
                       onClick={() => onRefreshPrice(normalizedSymbol)}
                       disabled={isUpdatingPrice}
-                      className="inline-flex items-center gap-1 px-0 py-0 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="inline-flex items-center gap-1 px-0 py-0 text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Uppdatera livepris"
                     >
                       {normalizedSymbol}
@@ -139,7 +139,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                       />
                     </button>
                   ) : (
-                    <span>{normalizedSymbol}</span>
+                    <span className="text-red-600">{normalizedSymbol}</span>
                   )
                 ) : (
                   <span className="uppercase">{holding.holding_type}</span>
@@ -188,7 +188,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
 
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <div className="text-3xl sm:text-4xl font-bold text-foreground leading-tight">
+            <div className="text-3xl sm:text-4xl font-extrabold text-foreground leading-tight">
               {formatCurrency(displayValue, 'SEK')}
             </div>
 
@@ -219,12 +219,12 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
         </div>
 
         {!isCash && (
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3 pt-1 text-sm">
             <div className="flex flex-col gap-1 text-muted-foreground">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-3">
                 {typeof effectivePrice === 'number' && effectivePrice > 0 && (
-                  <span className="text-foreground font-medium">
-                    Kurs: <span className="text-muted-foreground">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
+                  <span className="text-foreground font-semibold">
+                    Kurs <span className="text-muted-foreground font-medium">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
                   </span>
                 )}
                 {hasDailyChange && dailyChangePercent !== null ? (
@@ -250,7 +250,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                     {dailyChangeValue !== null && (
                       <span
                         className={cn(
-                          'inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-sm',
+                          'inline-flex items-center gap-1',
                           dailyChangePercent > 0
                             ? 'text-emerald-700'
                             : dailyChangePercent < 0
@@ -258,8 +258,10 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                               : 'text-muted-foreground'
                         )}
                       >
+                        (
                         {dailyChangeValue > 0 ? '+' : ''}
                         {formatCurrency(dailyChangeValue, 'SEK')}
+                        )
                       </span>
                     )}
                   </div>
@@ -268,7 +270,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                 )}
               </div>
 
-              {quantity > 0 && <span className="text-foreground font-medium">{quantity} st</span>}
+              {quantity > 0 && <span className="text-foreground font-semibold">{quantity} st</span>}
             </div>
 
             <div className="flex items-center gap-2 text-muted-foreground">
