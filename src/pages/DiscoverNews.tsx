@@ -26,9 +26,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDiscoverReportSummaries } from '@/hooks/useDiscoverReportSummaries';
 import { useNewsData } from '@/hooks/useNewsData';
 import { cn } from '@/lib/utils';
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ReportDetailDialogContent from '@/components/ReportDetailDialogContent';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const formatCategoryLabel = (category?: string) => {
   if (!category) return 'Marknad';
@@ -626,54 +627,51 @@ const DiscoverNews = () => {
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-5 rounded-3xl border border-border/60 bg-card/70 p-4 sm:p-5 lg:p-6 shadow-inner">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Senaste rapporterna</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Senaste rapporterna</p>
                     <h3 className="text-xl sm:text-2xl font-bold text-foreground">Djupdyk i AI-sammanfattningarna</h3>
                   </div>
+                  <Badge variant="outline" className="self-start rounded-full border-dashed px-3 py-1 text-xs text-muted-foreground">
+                    {totalReports} {totalReports === 1 ? 'rapport' : 'rapporter'}
+                  </Badge>
                 </div>
 
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Filter className="w-4 h-4" />
-                      <span>Sortera rapporter</span>
+                      <span>Sorterat utifrån</span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        variant={reportSort === 'latest' ? 'default' : 'outline'}
-                        size="sm"
-                        className="rounded-full"
-                        onClick={() => setReportSort('latest')}
-                      >
-                        Senaste
-                      </Button>
-                      <Button
-                        variant={reportSort === 'name' ? 'default' : 'outline'}
-                        size="sm"
-                        className="rounded-full"
-                        onClick={() => setReportSort('name')}
-                      >
-                        Namn
-                      </Button>
-                    </div>
+                    <Select
+                      value={reportSort}
+                      onValueChange={(value) => setReportSort((value as 'latest' | 'name') || 'latest')}
+                    >
+                      <SelectTrigger className="w-48 rounded-full">
+                        <SelectValue placeholder="Välj sortering" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="latest">Senaste uppdatering</SelectItem>
+                        <SelectItem value="name">Företagsnamn</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
-                  <div className="w-full lg:w-80">
+                  <div className="w-full lg:w-96">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         value={reportSearch}
                         onChange={(event) => setReportSearch(event.target.value)}
-                        placeholder="Sök efter bolag eller titel"
+                        placeholder="Sök efter bolag, titel eller nyckelord"
                         className="w-full rounded-full pl-9"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="grid gap-4 xl:gap-5 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-5 md:grid-cols-1 xl:grid-cols-2">
                   {paginatedReports.map((report) => (
                     <ReportHighlightCard key={report.id} report={report} />
                   ))}
