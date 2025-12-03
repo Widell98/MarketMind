@@ -203,7 +203,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
 
             {!isCash && hasDailyChange && dailyChangePercent !== null ? (
               <div className="flex flex-wrap items-center gap-2 font-semibold">
-                <span className="text-muted-foreground text-sm font-medium">Dagsutveckling:</span>
+                <span className="text-muted-foreground text-sm font-medium">idag:</span>
                 <span
                   className={cn(
                     'inline-flex items-center gap-1',
@@ -270,7 +270,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
             {showDetails && (
               <div className="space-y-3 pt-1 mt-2">
                 {hasPerformanceData && hasPurchasePrice && (
-                  <div className="flex flex-wrap items-center gap-2 font-semibold">
+                  <div className="flex flex-wrap items-center gap-2 font-semibold pb-3 border-b border-border">
                     <span className="text-muted-foreground text-sm font-medium">Total utveckling:</span>
                     <TooltipProvider delayDuration={120}>
                       <Tooltip>
@@ -318,14 +318,14 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                   </div>
                 )}
 
-                {typeof effectivePrice === 'number' && effectivePrice > 0 && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-muted-foreground text-sm font-medium">Kurs:</span>
-                    <span className="text-foreground font-semibold">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
-                  </div>
-                )}
-
-                <div className="flex justify-center">
+                <div className="flex items-center justify-between gap-4">
+                  {typeof effectivePrice === 'number' && effectivePrice > 0 && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-muted-foreground text-sm font-medium">Kurs:</span>
+                      <span className="text-foreground font-semibold">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
+                    </div>
+                  )}
+                  
                   <button
                     type="button"
                     className="flex items-center gap-2 text-muted-foreground font-medium hover:text-foreground text-sm"
