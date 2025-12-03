@@ -8,6 +8,7 @@ import Layout from '@/components/Layout';
 import Breadcrumb from '@/components/Breadcrumb';
 import EnhancedAnalysisCard from '@/components/EnhancedAnalysisCard';
 import EnhancedAnalysesSearch from '@/components/EnhancedAnalysesSearch';
+import AnalysisDetailModal from '@/components/AnalysisDetailModal';
 import { useAnalyses } from '@/hooks/useAnalyses';
 import { useFollowingAnalyses } from '@/hooks/useFollowingAnalyses';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,6 +34,8 @@ const MarketAnalyses = () => {
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState('desc');
   const [viewMode, setViewMode] = useState('grid');
+  const [selectedAnalysisId, setSelectedAnalysisId] = useState<string | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   
   const { data: analyses, isLoading } = useAnalyses(50);
   const { data: followingAnalyses, isLoading: followingLoading } = useFollowingAnalyses();
@@ -43,7 +46,8 @@ const MarketAnalyses = () => {
   };
 
   const handleViewDetails = (id: string) => {
-    navigate(`/analysis/${id}`);
+    setSelectedAnalysisId(id);
+    setIsDetailOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -53,6 +57,11 @@ const MarketAnalyses = () => {
     } catch (error) {
       console.error('Error deleting analysis:', error);
     }
+  };
+
+  const closeDetailModal = () => {
+    setIsDetailOpen(false);
+    setSelectedAnalysisId(null);
   };
 
   // Filter and sort analyses for "Upptäck" tab
@@ -342,10 +351,16 @@ const MarketAnalyses = () => {
         </Tabs>
 
         {/* Create Analysis Dialog */}
-      <CreateAnalysisDialog
-        isOpen={isCreateDialogOpen}
-        onClose={closeCreateDialog}
-      />
+        <CreateAnalysisDialog
+          isOpen={isCreateDialogOpen}
+          onClose={closeCreateDialog}
+        />
+
+        <AnalysisDetailModal
+          analysisId={selectedAnalysisId}
+          open={isDetailOpen}
+          onClose={closeDetailModal}
+        />
       </div>
     </Layout>
   );
