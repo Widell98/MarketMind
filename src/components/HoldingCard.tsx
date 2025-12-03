@@ -305,14 +305,11 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
 
                 <div className="flex flex-wrap items-start justify-between gap-3 text-sm">
                   <div className="flex flex-col gap-1 text-muted-foreground">
-                    <div className="flex flex-wrap items-center gap-3">
-                      {typeof effectivePrice === 'number' && effectivePrice > 0 && (
-                        <span className="text-foreground font-semibold">
-                          Kurs: <span className="text-muted-foreground font-medium">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
-                        </span>
-                      )}
-                    </div>
-
+                    {typeof effectivePrice === 'number' && effectivePrice > 0 && (
+                      <span className="text-foreground font-semibold">
+                        Kurs: <span className="text-muted-foreground font-medium">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
+                      </span>
+                    )}
                     {quantity > 0 && <span className="text-foreground font-semibold">{quantity} st</span>}
                   </div>
 
