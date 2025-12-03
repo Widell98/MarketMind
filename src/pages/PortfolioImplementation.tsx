@@ -22,6 +22,7 @@ import FloatingActionButton from '@/components/FloatingActionButton';
 import { useToast } from '@/hooks/use-toast';
 import { normalizeShareClassTicker, parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
 import { supabase } from '@/integrations/supabase/client';
+import { useExchangeRates } from '@/contexts/ExchangeRatesContext'; // [!code ++] Lägg till denna import
 const PortfolioImplementation = () => {
   const {
     actualHoldings,
