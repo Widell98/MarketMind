@@ -73,19 +73,47 @@ const saveCachedExchangeRates = (rates: ExchangeRates): void => {
 export const updateExchangeRates = async (): Promise<ExchangeRates> => {
   try {
     const rates = await fetchExchangeRatesFromSheet();
-    
-    // If we got valid rates (at least SEK should be present)
-    if (rates && Object.keys(rates).length > 0 && rates.SEK === 1) {
-      currentExchangeRates = { ...rates };
-      saveCachedExchangeRates(rates);
-      return rates;
+
+    if (rates && typeof rates === 'object') {
+      const mergedRates: ExchangeRates = {
+        ...FALLBACK_EXCHANGE_RATES,
+        ...rates,
+      };
+
+      // Ensure SEK is always 1
+      mergedRates.SEK = 1;
+
+      const missingCurrencies = Object.keys(FALLBACK_EXCHANGE_RATES).filter(
+        (currency) => !(currency in rates)
+      );
+
+      if (missingCurrencies.length > 0) {
+        console.warn(
+          'Some exchange rates were missing from the live source. Using fallback values for:',
+          missingCurrencies
+        );
+      }
+
+      const hasNonSEKRate = Object.keys(mergedRates).some(
+        (currency) => currency !== 'SEK' && typeof mergedRates[currency] === 'number'
+      );
+
+      if (!hasNonSEKRate) {
+        console.warn(
+          'Live exchange rates only contained SEK. Keeping fallback defaults for other currencies.'
+        );
+      }
+
+      currentExchangeRates = mergedRates;
+      saveCachedExchangeRates(mergedRates);
+      return mergedRates;
     }
-    
+
     // If fetch returned empty or invalid, try cache
     const cached = getCachedExchangeRates();
     if (cached) {
-      currentExchangeRates = { ...cached };
-      return cached;
+      currentExchangeRates = { ...FALLBACK_EXCHANGE_RATES, ...cached };
+      return currentExchangeRates;
     }
     
     // Fallback to static values
@@ -97,8 +125,8 @@ export const updateExchangeRates = async (): Promise<ExchangeRates> => {
     // Try cache on error
     const cached = getCachedExchangeRates();
     if (cached) {
-      currentExchangeRates = { ...cached };
-      return cached;
+      currentExchangeRates = { ...FALLBACK_EXCHANGE_RATES, ...cached };
+      return currentExchangeRates;
     }
     
     // Fallback to static values
@@ -114,8 +142,8 @@ export const updateExchangeRates = async (): Promise<ExchangeRates> => {
 export const initializeExchangeRates = (): ExchangeRates => {
   const cached = getCachedExchangeRates();
   if (cached) {
-    currentExchangeRates = { ...cached };
-    return cached;
+    currentExchangeRates = { ...FALLBACK_EXCHANGE_RATES, ...cached };
+    return currentExchangeRates;
   }
   
   currentExchangeRates = { ...FALLBACK_EXCHANGE_RATES };
