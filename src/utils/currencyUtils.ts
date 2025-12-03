@@ -156,10 +156,10 @@ export const EXCHANGE_RATES: ExchangeRates = new Proxy({} as ExchangeRates, {
  */
 export const convertToSEK = (amount: number, fromCurrency: string): number => {
   if (!amount || amount === 0) return 0;
-  
-  const currency = fromCurrency?.toUpperCase() || 'SEK';
+
+  const currency = fromCurrency?.trim()?.toUpperCase() || 'SEK';
   const rate = EXCHANGE_RATES[currency];
-  
+
   if (!rate) {
     console.warn(`Exchange rate not found for currency: ${currency}, defaulting to SEK`);
     return amount;
@@ -173,8 +173,8 @@ export const convertToSEK = (amount: number, fromCurrency: string): number => {
  */
 export const convertFromSEK = (amountInSEK: number, toCurrency: string): number => {
   if (!amountInSEK || amountInSEK === 0) return 0;
-  
-  const currency = toCurrency?.toUpperCase() || 'SEK';
+
+  const currency = toCurrency?.trim()?.toUpperCase() || 'SEK';
   const rate = EXCHANGE_RATES[currency];
   
   if (!rate) {
