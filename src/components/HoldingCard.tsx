@@ -193,28 +193,25 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
             </div>
 
             {!isCash && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-foreground">Total utveckling:</span>
-                <div
-                  className={cn(
-                    'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border',
-                    hasPerformanceData && hasPurchasePrice
-                      ? profit > 0
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                        : profit < 0
-                          ? 'bg-red-50 text-red-700 border-red-100'
-                          : 'bg-muted text-foreground border-border'
-                      : 'bg-muted text-muted-foreground border-border'
-                  )}
-                >
-                  {hasPerformanceData && hasPurchasePrice ? (
-                    <span>
-                      {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}% (${profit > 0 ? '+' : ''}${formatCurrency(profit, 'SEK')})`}
-                    </span>
-                  ) : (
-                    <span className="text-xs font-medium">Prisdata saknas</span>
-                  )}
-                </div>
+              <div
+                className={cn(
+                  'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border',
+                  hasPerformanceData && hasPurchasePrice
+                    ? profit > 0
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                      : profit < 0
+                        ? 'bg-red-50 text-red-700 border-red-100'
+                        : 'bg-muted text-foreground border-border'
+                    : 'bg-muted text-muted-foreground border-border'
+                )}
+              >
+                {hasPerformanceData && hasPurchasePrice ? (
+                  <span>
+                    {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}% (${profit > 0 ? '+' : ''}${formatCurrency(profit, 'SEK')})`}
+                  </span>
+                ) : (
+                  <span className="text-xs font-medium">Prisdata saknas</span>
+                )}
               </div>
             )}
           </div>
@@ -223,41 +220,18 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
 
         {!isCash && (
           <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-sm">
-            <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
-              {quantity > 0 && <span className="text-foreground font-medium">{quantity} st</span>}
-              {quantity > 0 && typeof effectivePrice === 'number' && effectivePrice > 0 && <span>•</span>}
-              {typeof effectivePrice === 'number' && effectivePrice > 0 && (
-                <span className="text-foreground font-medium">
-                  Kurs: <span className="text-muted-foreground">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
-                </span>
-              )}
-              {typeof effectivePrice === 'number' && effectivePrice > 0 && hasDailyChange && dailyChangePercent !== null && (
-                <span>•</span>
-              )}
-              {hasDailyChange && dailyChangePercent !== null ? (
-                <div className="flex flex-wrap items-center gap-2 font-semibold">
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-1',
-                      dailyChangePercent > 0
-                        ? 'text-emerald-700'
-                        : dailyChangePercent < 0
-                          ? 'text-red-700'
-                          : 'text-muted-foreground'
-                    )}
-                  >
-                    {dailyChangePercent > 0 ? <TrendingUp className="w-4 h-4" /> : null}
-                    {dailyChangePercent < 0 ? <TrendingDown className="w-4 h-4" /> : null}
-                    <span>
-                      {dailyChangePercent > 0 ? '+' : ''}
-                      {dailyChangePercent.toFixed(2)}%
-                    </span>
+            <div className="flex flex-col gap-1 text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-2">
+                {typeof effectivePrice === 'number' && effectivePrice > 0 && (
+                  <span className="text-foreground font-medium">
+                    Kurs: <span className="text-muted-foreground">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
                   </span>
-
-                  {dailyChangeValue !== null && (
+                )}
+                {hasDailyChange && dailyChangePercent !== null ? (
+                  <div className="flex flex-wrap items-center gap-2 font-semibold">
                     <span
                       className={cn(
-                        'inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-sm',
+                        'inline-flex items-center gap-1',
                         dailyChangePercent > 0
                           ? 'text-emerald-700'
                           : dailyChangePercent < 0
@@ -265,14 +239,36 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                             : 'text-muted-foreground'
                       )}
                     >
-                      {dailyChangeValue > 0 ? '+' : ''}
-                      {formatCurrency(dailyChangeValue, 'SEK')}
+                      {dailyChangePercent > 0 ? <TrendingUp className="w-4 h-4" /> : null}
+                      {dailyChangePercent < 0 ? <TrendingDown className="w-4 h-4" /> : null}
+                      <span>
+                        {dailyChangePercent > 0 ? '+' : ''}
+                        {dailyChangePercent.toFixed(2)}%
+                      </span>
                     </span>
-                  )}
-                </div>
-              ) : (
-                <span className="text-xs text-muted-foreground">Kursdata saknas</span>
-              )}
+
+                    {dailyChangeValue !== null && (
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-sm',
+                          dailyChangePercent > 0
+                            ? 'text-emerald-700'
+                            : dailyChangePercent < 0
+                              ? 'text-red-700'
+                              : 'text-muted-foreground'
+                        )}
+                      >
+                        {dailyChangeValue > 0 ? '+' : ''}
+                        {formatCurrency(dailyChangeValue, 'SEK')}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Kursdata saknas</span>
+                )}
+              </div>
+
+              {quantity > 0 && <span className="text-foreground font-medium">{quantity} st</span>}
             </div>
 
             <div className="flex items-center gap-2 text-muted-foreground">
