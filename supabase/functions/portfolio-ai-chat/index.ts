@@ -1151,6 +1151,7 @@ type HoldingRecord = {
   price_currency?: string | null;
   currency?: string | null;
   current_value?: number | string | null;
+  purchase_price?: number | string | null;
 };
 
 type HoldingValueBreakdown = {
@@ -1210,6 +1211,213 @@ const formatAllocationLabel = (label: string): string => {
     .filter(Boolean)
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+};
+
+type ReturnQuestionType = 'total' | 'specific' | 'all' | 'ranking' | 'none';
+
+type ReturnQuestionAnalysis = {
+  isReturnQuestion: boolean;
+  questionType: ReturnQuestionType;
+  mentionedTickers: string[];
+  mentionedCompanyNames: string[];
+};
+
+const RETURN_KEYWORD_PATTERNS = [
+  /avkastning/i,
+  /prestanda/i,
+  /resultat/i,
+  /vinst/i,
+  /förlust/i,
+  /hur.*mycket.*jag.*upp/i,
+  /hur.*går.*det.*för/i,
+  /hur.*har.*presterat/i,
+  /vad.*är.*min.*vinst/i,
+  /hur.*mycket.*tjänat/i,
+  /hur.*mycket.*förlorat/i,
+  /performance/i,
+  /\breturn\b/i,
+  /profit/i,
+  /loss/i,
+  /gain/i,
+];
+
+const TOTAL_RETURN_PATTERNS = [
+  /hur.*mycket.*jag.*upp.*totalt/i,
+  /total.*avkastning/i,
+  /hela.*portfölj.*avkastning/i,
+  /portfölj.*prestanda/i,
+  /total.*resultat/i,
+];
+
+const ALL_HOLDINGS_PATTERNS = [
+  /mina.*aktier.*avkastning/i,
+  /alla.*innehav.*prestanda/i,
+  /hur.*går.*det.*för.*mina.*aktier/i,
+  /prestanda.*på.*alla/i,
+];
+
+const RANKING_RETURN_PATTERNS = [
+  /vilka.*innehav.*(?:mest|bäst|högst).*avkastning/i,
+  /vilka.*aktier.*(?:mest|bäst|högst).*avkastning/i,
+  /vilka.*(?:mest|bäst|högst).*presterat/i,
+  /vilka.*(?:mest|bäst|högst).*resultat/i,
+  /vilka.*(?:mest|bäst|högst).*vinst/i,
+  /sortera.*innehav.*avkastning/i,
+  /rank.*innehav.*avkastning/i,
+  /jämför.*innehav.*avkastning/i,
+  /vilka.*har.*(?:mest|bäst|högst).*avkastning/i,
+  /vilka.*har.*(?:mest|bäst|högst).*presterat/i,
+  /top.*innehav.*avkastning/i,
+  /bäst.*presterande.*innehav/i,
+  /mest.*lönsamma.*innehav/i,
+];
+
+const detectReturnQuestion = (
+  message: string,
+  detectedTickers: string[],
+  detectedEntities: string[] = []
+): ReturnQuestionAnalysis => {
+  const lowerMessage = message.toLowerCase();
+  
+  // Check if it's a return-related question at all
+  const hasReturnKeywords = RETURN_KEYWORD_PATTERNS.some(pattern => pattern.test(message));
+
+  if (!hasReturnKeywords) {
+    return {
+      isReturnQuestion: false,
+      questionType: 'none',
+      mentionedTickers: [],
+      mentionedCompanyNames: [],
+    };
+  }
+
+  // Check for total return questions
+  const isTotalQuestion = TOTAL_RETURN_PATTERNS.some(pattern => pattern.test(message));
+  if (isTotalQuestion) {
+    return {
+      isReturnQuestion: true,
+      questionType: 'total',
+      mentionedTickers: [],
+      mentionedCompanyNames: [],
+    };
+  }
+
+  // Check for ranking/comparison questions (vilka innehav har gett mest avkastning)
+  const isRankingQuestion = RANKING_RETURN_PATTERNS.some(pattern => pattern.test(message));
+  if (isRankingQuestion) {
+    return {
+      isReturnQuestion: true,
+      questionType: 'ranking',
+      mentionedTickers: [],
+      mentionedCompanyNames: [],
+    };
+  }
+
+  // Check for all holdings questions
+  const isAllHoldingsQuestion = ALL_HOLDINGS_PATTERNS.some(pattern => pattern.test(message));
+  if (isAllHoldingsQuestion) {
+    return {
+      isReturnQuestion: true,
+      questionType: 'all',
+      mentionedTickers: [],
+      mentionedCompanyNames: [],
+    };
+  }
+
+  // Extract mentioned tickers and company names
+  const mentionedTickers = detectedTickers || [];
+  const mentionedCompanyNames = detectedEntities.filter(entity => {
+    // Filter out tickers (usually short uppercase strings)
+    const isLikelyTicker = /^[A-Z0-9]{1,6}$/.test(entity);
+    return !isLikelyTicker && entity.length > 2;
+  });
+
+  // If specific tickers or companies are mentioned, it's a specific question
+  if (mentionedTickers.length > 0 || mentionedCompanyNames.length > 0) {
+    return {
+      isReturnQuestion: true,
+      questionType: 'specific',
+      mentionedTickers,
+      mentionedCompanyNames,
+    };
+  }
+
+  // Default to total if return keywords found but no specific pattern
+  return {
+    isReturnQuestion: true,
+    questionType: 'total',
+    mentionedTickers: [],
+    mentionedCompanyNames: [],
+  };
+};
+
+type HoldingWithReturn = {
+  holding: HoldingRecord;
+  value: HoldingValueBreakdown;
+  investedValue: number;
+  returnAmount: number;
+  returnPercentage: number | null;
+  hasPurchasePrice: boolean;
+};
+
+const matchHoldingsToQuestion = (
+  questionAnalysis: ReturnQuestionAnalysis,
+  holdingsWithReturns: HoldingWithReturn[]
+): HoldingWithReturn[] => {
+  if (questionAnalysis.questionType === 'total' || questionAnalysis.questionType === 'none') {
+    return [];
+  }
+
+  if (questionAnalysis.questionType === 'ranking') {
+    // Return all holdings with purchase price, sorted by return percentage (highest first)
+    return holdingsWithReturns
+      .filter(item => item.hasPurchasePrice && item.returnPercentage !== null)
+      .sort((a, b) => {
+        // Sort by return percentage descending (highest return first)
+        const returnA = a.returnPercentage ?? 0;
+        const returnB = b.returnPercentage ?? 0;
+        return returnB - returnA;
+      });
+  }
+
+  if (questionAnalysis.questionType === 'all') {
+    // Return all holdings with purchase price, sorted by value
+    return holdingsWithReturns
+      .filter(item => item.hasPurchasePrice && item.returnPercentage !== null)
+      .sort((a, b) => b.value.valueInSEK - a.value.valueInSEK);
+  }
+
+  // Specific question - match by ticker or company name
+  const matchedHoldings: HoldingWithReturn[] = [];
+
+  for (const holdingData of holdingsWithReturns) {
+    if (!holdingData.hasPurchasePrice || holdingData.returnPercentage === null) {
+      continue;
+    }
+
+    const holding = holdingData.holding;
+    const symbol = typeof holding.symbol === 'string' ? holding.symbol.toUpperCase() : null;
+    const name = typeof holding.name === 'string' ? holding.name.toLowerCase() : null;
+
+    // Check ticker match
+    const tickerMatch = questionAnalysis.mentionedTickers.some(ticker => {
+      const normalizedTicker = ticker.toUpperCase();
+      return symbol === normalizedTicker;
+    });
+
+    // Check company name match
+    const nameMatch = questionAnalysis.mentionedCompanyNames.some(entity => {
+      const normalizedEntity = entity.toLowerCase();
+      if (!name) return false;
+      return name.includes(normalizedEntity) || normalizedEntity.includes(name);
+    });
+
+    if (tickerMatch || nameMatch) {
+      matchedHoldings.push(holdingData);
+    }
+  }
+
+  return matchedHoldings;
 };
 
 type RealTimeAssessment = {
@@ -3621,9 +3829,49 @@ serve(async (req) => {
 
         const totalValue = holdingsWithValues.reduce((sum, item) => sum + item.value.valueInSEK, 0);
 
+        // Calculate return data
+        let totalInvested = 0;
+        const holdingsWithReturns = holdingsWithValues.map(({ holding, value }) => {
+          const purchasePrice = parseNumericValue(holding.purchase_price);
+          const quantity = value.quantity;
+          const currentValue = value.valueInSEK;
+          
+          let investedValue = 0;
+          let returnPercentage: number | null = null;
+          let returnAmount = 0;
+          const hasPurchasePrice = purchasePrice !== null && purchasePrice > 0 && quantity > 0;
+          
+          if (hasPurchasePrice) {
+            // Get currency for purchase price (use holding currency or price currency)
+            const purchaseCurrency = typeof holding.currency === 'string' && holding.currency.trim().length > 0
+              ? holding.currency.trim().toUpperCase()
+              : typeof holding.price_currency === 'string' && holding.price_currency.trim().length > 0
+                ? holding.price_currency.trim().toUpperCase()
+                : value.priceCurrency;
+            
+            const purchaseValueInOriginalCurrency = purchasePrice * quantity;
+            investedValue = convertToSEK(purchaseValueInOriginalCurrency, purchaseCurrency);
+            returnAmount = currentValue - investedValue;
+            returnPercentage = investedValue > 0 ? (returnAmount / investedValue) * 100 : 0;
+            totalInvested += investedValue;
+          }
+          
+          return {
+            holding,
+            value,
+            investedValue,
+            returnAmount,
+            returnPercentage,
+            hasPurchasePrice,
+          };
+        });
+
+        const totalReturn = totalValue - totalInvested;
+        const totalReturnPercentage = totalInvested > 0 ? (totalReturn / totalInvested) * 100 : null;
+
         const actualHoldingsLookup = new Map<string, { label: string; percentage: number; valueInSEK: number }>();
 
-        holdingsWithValues.forEach(({ holding, value }) => {
+        holdingsWithReturns.forEach(({ holding, value }) => {
           const label = holding.symbol || holding.name || 'Okänt innehav';
           const percentage = totalValue > 0 ? (value.valueInSEK / totalValue) * 100 : 0;
           const entry = { label, percentage, valueInSEK: value.valueInSEK };
@@ -3640,11 +3888,11 @@ serve(async (req) => {
           }
         });
 
-        const topHoldings = [...holdingsWithValues]
+        const topHoldings = [...holdingsWithReturns]
           .sort((a, b) => b.value.valueInSEK - a.value.valueInSEK)
           .slice(0, 5);
 
-        const topHoldingsDetails = topHoldings.map(({ holding, value }) => {
+        const topHoldingsDetails = topHoldings.map(({ holding, value, returnPercentage }) => {
           const label = holding.symbol || holding.name || 'Okänt innehav';
           const percentage = totalValue > 0 ? (value.valueInSEK / totalValue) * 100 : 0;
 
@@ -3660,6 +3908,7 @@ serve(async (req) => {
             percentage,
             formattedPercentage: percentage.toFixed(1),
             identifiers: Array.from(identifiers),
+            returnPercentage,
           };
         });
 
@@ -3727,8 +3976,58 @@ serve(async (req) => {
 
         contextInfo += `\n\nNUVARANDE PORTFÖLJ:
   - Totalt värde: ${totalValueFormatted} SEK
-  - Antal innehav: ${actualHoldings.length}
-  - Största positioner: ${holdingsSummary || 'Inga registrerade innehav'}`;
+  - Antal innehav: ${actualHoldings.length}`;
+
+        // Add return data if available
+        if (totalInvested > 0 && totalReturnPercentage !== null) {
+          const totalInvestedFormatted = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0 }).format(Math.round(totalInvested));
+          const totalReturnFormatted = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0, signDisplay: 'always' }).format(Math.round(totalReturn));
+          const totalReturnPercentageFormatted = totalReturnPercentage >= 0 
+            ? `+${totalReturnPercentage.toFixed(1)}` 
+            : totalReturnPercentage.toFixed(1);
+          
+          contextInfo += `\n  - Totalt investerat: ${totalInvestedFormatted} SEK
+  - Total avkastning: ${totalReturnFormatted} SEK (${totalReturnPercentageFormatted}%)`;
+        }
+
+        contextInfo += `\n  - Största positioner: ${holdingsSummary || 'Inga registrerade innehav'}`;
+
+        // Dynamically add per-holding returns only when user asks about specific returns
+        const returnQuestionAnalysis = detectReturnQuestion(message, detectedTickers, interpretedEntities);
+        
+        if (returnQuestionAnalysis.isReturnQuestion && returnQuestionAnalysis.questionType !== 'total') {
+          const relevantHoldings = matchHoldingsToQuestion(returnQuestionAnalysis, holdingsWithReturns);
+          
+          if (relevantHoldings.length > 0) {
+            const returnsSummary = relevantHoldings
+              .map(({ holding, value, returnPercentage, investedValue, returnAmount }, index) => {
+                const label = holding.symbol || holding.name || 'Okänt innehav';
+                const percentage = totalValue > 0 ? (value.valueInSEK / totalValue) * 100 : 0;
+                const returnSign = returnPercentage! >= 0 ? '+' : '';
+                const investedFormatted = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0 }).format(Math.round(investedValue));
+                const currentFormatted = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0 }).format(Math.round(value.valueInSEK));
+                const returnFormatted = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0, signDisplay: 'always' }).format(Math.round(returnAmount));
+                
+                // Add ranking number for ranking questions
+                const prefix = returnQuestionAnalysis.questionType === 'ranking' 
+                  ? `${index + 1}. ` 
+                  : '    • ';
+                
+                return `${prefix}${label} (${percentage.toFixed(1)}%): ${returnSign}${returnPercentage!.toFixed(1)}% sedan köp (investerat: ${investedFormatted} SEK, nuvarande värde: ${currentFormatted} SEK, vinst/förlust: ${returnFormatted} SEK)`;
+              })
+              .join('\n');
+            
+            const questionTypeLabel = returnQuestionAnalysis.questionType === 'ranking'
+              ? 'dina innehav sorterade efter avkastning (högst först)'
+              : returnQuestionAnalysis.questionType === 'all' 
+                ? 'dina innehav' 
+                : returnQuestionAnalysis.questionType === 'specific'
+                  ? 'dina nämnda innehav'
+                  : 'dina innehav';
+            
+            contextInfo += `\n  - Avkastning för ${questionTypeLabel}:\n${returnsSummary}`;
+          }
+        }
 
         if (portfolio) {
           if (recommendedAllocationEntries.length > 0) {
@@ -3748,6 +4047,19 @@ serve(async (req) => {
           }
 
           contextInfo += `\n- Förväntad årlig avkastning: ${portfolio.expected_return || 'Ej beräknad'}%`;
+        }
+
+        // Add instructions for using return data
+        if (totalInvested > 0 && totalReturnPercentage !== null) {
+          contextInfo += `\n\nAVKASTNINGSINFORMATION:
+- Använd avkastningsdata när användaren frågar om portföljens prestanda eller resultat.
+- Formulera svar som "du är upp X% sedan investeringen påbörjades" eller "portföljen har genererat X% avkastning" när det är relevant.
+- När detaljerad per-holding avkastning finns i kontexten (ovan), använd den för att ge specifika svar om de nämnda aktierna.
+- När användaren frågar om "vilka innehav har gett mest avkastning" eller liknande ranking-frågor, använd den sorterade listan som finns i kontexten (redan sorterad efter avkastning, högst först).
+- Jämför avkastning mellan olika innehav när det är meningsfullt och användaren frågar om det.
+- Observera att inköpsdatum saknas, så du kan INTE beräkna årlig avkastning eller tidsbaserade mått - använd endast total avkastning i procent.
+- När användaren frågar om "hur mycket är jag upp totalt" eller liknande, referera till den totala avkastningen i procent som anges ovan.
+- Om användaren frågar om specifika aktiers avkastning och den informationen finns i kontexten, använd den detaljerade avkastningsdata som inkluderar investerat belopp, nuvarande värde och vinst/förlust.`;
         }
       }
     }
