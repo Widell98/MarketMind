@@ -32,6 +32,11 @@ const PortfolioImplementation = () => {
     activePortfolio,
     loading
   } = usePortfolio();
+
+  // [!code ++] Lägg till detta anrop. 
+  // Även om du inte använder 'rates'-variabeln direkt här, 
+  // så tvingar detta komponenten att rendera om när kurserna uppdateras.
+  const { rates } = useExchangeRates();
   const {
     user,
     loading: authLoading
