@@ -335,7 +335,20 @@ export const parsePortfolioHoldingsFromCSV = (text: string): ParsedCsvHolding[] 
     const currencyFromValue = currencyRaw
       ? currencyRaw.replace(/[^a-zA-Z]/g, '').toUpperCase() || undefined
       : undefined;
-    const normalizedSymbol = normalizeShareClassTicker(symbolRaw);
+      
+    // Notera: Ändrat från 'const' till 'let' för att kunna uppdatera tickern
+    let normalizedSymbol = normalizeShareClassTicker(symbolRaw);
+
+    // FIX: Hantera nordiska marknader (DKK/NOK) där tickern saknar punkt-suffix
+    const detectedCurrency = currencyFromValue || priceCurrencyHint;
+    if (normalizedSymbol && !normalizedSymbol.includes('.')) {
+      if (detectedCurrency === 'DKK') {
+        normalizedSymbol += '.CO'; // Lägg till Köpenhamn-suffix för DKK
+      } else if (detectedCurrency === 'NOK') {
+        normalizedSymbol += '.OL'; // Lägg till Oslo-suffix för NOK
+      }
+    }
+
     const normalizedNameFallback = normalizeShareClassTicker(symbolRaw);
     const inferredFromSymbol = inferCurrencyFromSymbol(normalizedSymbol);
     const resolvedCurrency = (
