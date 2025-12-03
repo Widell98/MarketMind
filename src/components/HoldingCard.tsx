@@ -120,14 +120,14 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
 
             <div className="min-w-0 flex-1">
               <h3 className="font-semibold text-foreground leading-tight truncate text-sm sm:text-base">{holding.name}</h3>
-              <div className="text-xs sm:text-sm text-red-600 font-medium leading-tight">
+              <div className="text-xs sm:text-sm text-foreground font-medium leading-tight">
                 {normalizedSymbol ? (
                   onRefreshPrice ? (
                     <button
                       type="button"
                       onClick={() => onRefreshPrice(normalizedSymbol)}
                       disabled={isUpdatingPrice}
-                      className="inline-flex items-center gap-1 px-0 py-0 text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="inline-flex items-center gap-1 px-0 py-0 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Uppdatera livepris"
                     >
                       {normalizedSymbol}
@@ -139,7 +139,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                       />
                     </button>
                   ) : (
-                    <span className="text-red-600">{normalizedSymbol}</span>
+                    <span>{normalizedSymbol}</span>
                   )
                 ) : (
                   <span className="uppercase">{holding.holding_type}</span>
