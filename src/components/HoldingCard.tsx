@@ -104,7 +104,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   return (
     <Card className="hover:shadow-md transition-all duration-200 rounded-xl border border-border/60">
       <CardContent className="p-4 sm:p-5 space-y-3 sm:space-y-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0 flex-1">
             <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
               {logoUrl && !isLogoError ? (
@@ -149,7 +149,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
             </div>
           </div>
 
-          <div className="flex items-start gap-2 sm:gap-3 flex-shrink-0 self-end sm:self-start">
+          <div className="flex items-start gap-2 sm:gap-3 flex-shrink-0">
             <div className="text-right">
               <div className="text-sm sm:text-base font-semibold text-foreground leading-tight">
                 {portfolioPercentage.toFixed(1)}%
@@ -188,7 +188,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
         </div>
 
         <div className="space-y-2">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <div className="text-3xl sm:text-4xl font-extrabold text-foreground leading-tight">
               {formatCurrency(displayValue, 'SEK')}
             </div>
@@ -199,7 +199,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                   <TooltipTrigger asChild>
                     <div
                       className={cn(
-                        'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border w-full sm:w-auto justify-center sm:justify-start',
+                        'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border',
                         hasPerformanceData && hasPurchasePrice
                           ? profit > 0
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
@@ -229,9 +229,9 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
         </div>
 
         {!isCash && (
-          <div className="flex flex-col gap-3 pt-1 text-sm lg:flex-row lg:items-start lg:justify-between">
-            <div className="flex flex-col gap-1 text-muted-foreground w-full lg:max-w-3xl">
-              <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-3 pt-1 text-sm">
+            <div className="flex flex-col gap-1 text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-3">
                 {typeof effectivePrice === 'number' && effectivePrice > 0 && (
                   <span className="text-foreground font-semibold">
                     Kurs: <span className="text-muted-foreground font-medium">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
