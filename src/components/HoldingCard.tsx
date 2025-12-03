@@ -193,25 +193,28 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
             </div>
 
             {!isCash && (
-              <div
-                className={cn(
-                  'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border',
-                  hasPerformanceData && hasPurchasePrice
-                    ? profit > 0
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                      : profit < 0
-                        ? 'bg-red-50 text-red-700 border-red-100'
-                        : 'bg-muted text-foreground border-border'
-                    : 'bg-muted text-muted-foreground border-border'
-                )}
-              >
-                {hasPerformanceData && hasPurchasePrice ? (
-                  <span>
-                    {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}% (${profit > 0 ? '+' : ''}${formatCurrency(profit, 'SEK')})`}
-                  </span>
-                ) : (
-                  <span className="text-xs font-medium">Prisdata saknas</span>
-                )}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-foreground">Total utveckling:</span>
+                <div
+                  className={cn(
+                    'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border',
+                    hasPerformanceData && hasPurchasePrice
+                      ? profit > 0
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                        : profit < 0
+                          ? 'bg-red-50 text-red-700 border-red-100'
+                          : 'bg-muted text-foreground border-border'
+                      : 'bg-muted text-muted-foreground border-border'
+                  )}
+                >
+                  {hasPerformanceData && hasPurchasePrice ? (
+                    <span>
+                      {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}% (${profit > 0 ? '+' : ''}${formatCurrency(profit, 'SEK')})`}
+                    </span>
+                  ) : (
+                    <span className="text-xs font-medium">Prisdata saknas</span>
+                  )}
+                </div>
               </div>
             )}
           </div>
