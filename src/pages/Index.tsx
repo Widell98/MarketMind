@@ -579,25 +579,21 @@ const Index = () => {
                     {(dailyHighlights.best.length > 0 || dailyHighlights.worst.length > 0 || performance.totalPortfolioValue > 0 || safeTotalCash > 0) && (
                       <div className="space-y-3 sm:space-y-4">
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 sm:gap-4">
-                          {dailyHighlights.best.length > 0 && (
-                            <HoldingsHighlightCard
-                              title="Bästa innehav idag"
-                              icon={<TrendingUp className="h-5 w-5" />}
-                              iconColorClass="text-emerald-600"
-                              items={bestHighlightItems}
-                              emptyText="Ingen dagsdata ännu"
-                            />
-                          )}
+                          <HoldingsHighlightCard
+                            title="Bästa innehav idag"
+                            icon={<TrendingUp className="h-5 w-5" />}
+                            iconColorClass="text-emerald-600"
+                            items={bestHighlightItems}
+                            emptyText="Inga innehav på plus idag, testa ai-chatten för att upptäcka nya innehav"
+                          />
 
-                          {dailyHighlights.worst.length > 0 && (
-                            <HoldingsHighlightCard
-                              title="Sämsta innehav idag"
-                              icon={<TrendingDown className="h-5 w-5" />}
-                              iconColorClass="text-red-600"
-                              items={worstHighlightItems}
-                              emptyText="Ingen dagsdata ännu"
-                            />
-                          )}
+                          <HoldingsHighlightCard
+                            title="Sämsta innehav idag"
+                            icon={<TrendingDown className="h-5 w-5" />}
+                            iconColorClass="text-red-600"
+                            items={worstHighlightItems}
+                            emptyText="Ingen dagsdata ännu"
+                          />
 
                           {(performance.totalPortfolioValue > 0 || safeTotalCash > 0) && (
                             <AllocationCard

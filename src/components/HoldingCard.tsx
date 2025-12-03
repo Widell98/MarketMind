@@ -194,35 +194,40 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
             </div>
 
             {!isCash && (
-              <TooltipProvider delayDuration={120}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div
-                      className={cn(
-                        'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border',
-                        hasPerformanceData && hasPurchasePrice
-                          ? profit > 0
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                            : profit < 0
-                              ? 'bg-red-50 text-red-700 border-red-100'
-                              : 'bg-muted text-foreground border-border'
-                          : 'bg-muted text-muted-foreground border-border'
-                      )}
-                    >
-                      {hasPerformanceData && hasPurchasePrice ? (
-                        <span>
-                          {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}% (${profit > 0 ? '+' : ''}${formatCurrency(profit, 'SEK')})`}
-                        </span>
-                      ) : (
-                        <span className="text-xs font-medium">Prisdata saknas</span>
-                      )}
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs font-medium">
-                    totala utveckling på innehav
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <div className="flex items-center gap-2">
+                <TooltipProvider delayDuration={120}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        className={cn(
+                          'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border',
+                          hasPerformanceData && hasPurchasePrice
+                            ? profit > 0
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                              : profit < 0
+                                ? 'bg-red-50 text-red-700 border-red-100'
+                                : 'bg-muted text-foreground border-border'
+                            : 'bg-muted text-muted-foreground border-border'
+                        )}
+                      >
+                        {hasPerformanceData && hasPurchasePrice ? (
+                          <span>
+                            {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}% (${profit > 0 ? '+' : ''}${formatCurrency(profit, 'SEK')})`}
+                          </span>
+                        ) : (
+                          <span className="text-xs font-medium">Prisdata saknas</span>
+                        )}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs font-medium">
+                      totala utveckling på innehav
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <span className="hidden sm:inline text-xs text-muted-foreground font-medium whitespace-nowrap">
+                  Total utveckling
+                </span>
+              </div>
             )}
           </div>
 
