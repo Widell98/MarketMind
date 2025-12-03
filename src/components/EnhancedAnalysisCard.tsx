@@ -106,15 +106,23 @@ const EnhancedAnalysisCard: React.FC<EnhancedAnalysisCardProps> = ({
   const userIsFollowing = isFollowing(analysis.user_id);
 
   return (
-    <Card className="hover:shadow-md transition-all duration-200 cursor-pointer border-0 shadow-sm">
+    <Card
+      className="hover:shadow-md transition-all duration-200 cursor-pointer border-0 shadow-sm"
+      onClick={() => onViewDetails(analysis.id)}
+      role="button"
+      tabIndex={0}
+    >
       <CardContent className="p-6">
         <div className="flex items-start space-x-4">
           {/* Avatar with Profile Hover Card */}
           <HoverCard>
             <HoverCardTrigger asChild>
-              <Avatar 
+              <Avatar
                 className="w-12 h-12 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-                onClick={() => handleUserClick(analysis.user_id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleUserClick(analysis.user_id);
+                }}
               >
                 <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground font-semibold">
                   {authorName[0]?.toUpperCase()}
@@ -148,7 +156,10 @@ const EnhancedAnalysisCard: React.FC<EnhancedAnalysisCardProps> = ({
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handleUserClick(analysis.user_id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleUserClick(analysis.user_id);
+                  }}
                   className="font-semibold text-sm hover:underline"
                 >
                   {authorName}
@@ -166,7 +177,10 @@ const EnhancedAnalysisCard: React.FC<EnhancedAnalysisCardProps> = ({
                   <Button
                     variant={userIsFollowing ? "secondary" : "outline"}
                     size="sm"
-                    onClick={handleFollow}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleFollow();
+                    }}
                     className="ml-2"
                   >
                     {userIsFollowing ? (
@@ -187,7 +201,12 @@ const EnhancedAnalysisCard: React.FC<EnhancedAnalysisCardProps> = ({
                 {user && isOwnAnalysis && (onEdit || onDelete) && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -230,19 +249,47 @@ const EnhancedAnalysisCard: React.FC<EnhancedAnalysisCardProps> = ({
             </div>
 
             {/* Title and Content */}
-            <div onClick={() => onViewDetails(analysis.id)} className="cursor-pointer">
+            <div className="cursor-pointer">
               <h3 className="font-semibold text-lg mb-2 hover:text-primary transition-colors">
                 {analysis.title}
               </h3>
-              <p className="text-muted-foreground text-sm line-clamp-3 mb-4">
+              <p className="text-muted-foreground text-sm line-clamp-3 mb-3">
                 {analysis.content.substring(0, 200)}
                 {analysis.content.length > 200 && '...'}
               </p>
             </div>
 
+            {/* Compact Engagement Badges */}
+            <div className="flex flex-wrap gap-2 mb-4 text-xs">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleLike();
+                }}
+                className={`flex items-center gap-1 rounded-full px-3 py-1 border transition-colors ${
+                  isLiked
+                    ? 'border-red-200 bg-red-50 text-red-600 dark:border-red-900/40 dark:bg-red-900/30'
+                    : 'border-border text-muted-foreground hover:text-red-500'
+                }`}
+              >
+                <Heart className={`w-3 h-3 ${isLiked ? 'fill-current' : ''}`} />
+                <span>{likeCount}</span>
+              </button>
+
+              <div className="flex items-center gap-1 rounded-full px-3 py-1 border border-border text-muted-foreground">
+                <MessageCircle className="w-3 h-3" />
+                <span>{analysis.comments_count || 0}</span>
+              </div>
+
+              <div className="flex items-center gap-1 rounded-full px-3 py-1 border border-border text-muted-foreground">
+                <Eye className="w-3 h-3" />
+                <span>{analysis.views_count || 0}</span>
+              </div>
+            </div>
+
             {/* Tags */}
             {analysis.tags && analysis.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-4">
+              <div className="flex flex-wrap gap-1 mb-2">
                 {analysis.tags.slice(0, 3).map((tag: string, index: number) => (
                   <Badge key={index} variant="secondary" className="text-xs">
                     #{tag}
@@ -250,49 +297,6 @@ const EnhancedAnalysisCard: React.FC<EnhancedAnalysisCardProps> = ({
                 ))}
               </div>
             )}
-
-            {/* Engagement Bar */}
-            <div className="flex items-center justify-between pt-3 border-t border-border">
-              <div className="flex items-center space-x-6">
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleLike();
-                  }}
-                  className={`flex items-center space-x-2 transition-colors group ${
-                    isLiked 
-                      ? 'text-red-500' 
-                      : 'text-muted-foreground hover:text-red-500'
-                  }`}
-                >
-                  <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : 'group-hover:fill-current'}`} />
-                  <span className="text-sm">{likeCount}</span>
-                </button>
-                
-                <button 
-                  onClick={() => onViewDetails(analysis.id)}
-                  className="flex items-center space-x-2 text-muted-foreground hover:text-primary transition-colors"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span className="text-sm">{analysis.comments_count || 0}</span>
-                </button>
-
-                <div className="flex items-center space-x-2 text-muted-foreground">
-                  <Eye className="w-4 h-4" />
-                  <span className="text-sm">{analysis.views_count || 0}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onViewDetails(analysis.id)}
-                >
-                  Läs mer
-                </Button>
-              </div>
-            </div>
           </div>
         </div>
       </CardContent>
