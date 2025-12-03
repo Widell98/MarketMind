@@ -23,6 +23,7 @@ import {
 import { cn } from '@/lib/utils';
 import { formatCurrency, resolveHoldingValue } from '@/utils/currencyUtils';
 import type { HoldingPerformance } from '@/hooks/usePortfolioPerformance';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface HoldingCardProps {
   holding: {
@@ -193,26 +194,35 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
             </div>
 
             {!isCash && (
-              <div
-                className={cn(
-                  'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border',
-                  hasPerformanceData && hasPurchasePrice
-                    ? profit > 0
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                      : profit < 0
-                        ? 'bg-red-50 text-red-700 border-red-100'
-                        : 'bg-muted text-foreground border-border'
-                    : 'bg-muted text-muted-foreground border-border'
-                )}
-              >
-                {hasPerformanceData && hasPurchasePrice ? (
-                  <span>
-                    {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}% (${profit > 0 ? '+' : ''}${formatCurrency(profit, 'SEK')})`}
-                  </span>
-                ) : (
-                  <span className="text-xs font-medium">Prisdata saknas</span>
-                )}
-              </div>
+              <TooltipProvider delayDuration={120}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className={cn(
+                        'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border',
+                        hasPerformanceData && hasPurchasePrice
+                          ? profit > 0
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                            : profit < 0
+                              ? 'bg-red-50 text-red-700 border-red-100'
+                              : 'bg-muted text-foreground border-border'
+                          : 'bg-muted text-muted-foreground border-border'
+                      )}
+                    >
+                      {hasPerformanceData && hasPurchasePrice ? (
+                        <span>
+                          {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}% (${profit > 0 ? '+' : ''}${formatCurrency(profit, 'SEK')})`}
+                        </span>
+                      ) : (
+                        <span className="text-xs font-medium">Prisdata saknas</span>
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs font-medium">
+                    totala utveckling på innehav
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
 
@@ -224,7 +234,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
               <div className="flex flex-wrap items-center gap-3">
                 {typeof effectivePrice === 'number' && effectivePrice > 0 && (
                   <span className="text-foreground font-semibold">
-                    Kurs <span className="text-muted-foreground font-medium">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
+                    Kurs: <span className="text-muted-foreground font-medium">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
                   </span>
                 )}
                 {hasDailyChange && dailyChangePercent !== null ? (
