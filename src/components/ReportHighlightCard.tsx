@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, FileText, LineChart, ArrowRight, TrendingUp, TrendingDown } from 'lucide-react';
+import {
+  ArrowRight,
+  BadgeCheck,
+  Calendar,
+  FileText,
+  LineChart,
+  TrendingDown,
+  TrendingUp,
+} from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 
@@ -13,7 +21,7 @@ interface ReportHighlightCardProps {
   report: GeneratedReport;
 }
 
-const truncateText = (text: string, limit = 160) => {
+const truncateText = (text: string, limit = 220) => {
   if (!text) return '';
   if (text.length <= limit) {
     return text;
@@ -23,7 +31,7 @@ const truncateText = (text: string, limit = 160) => {
 };
 
 const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => {
-  const highlightedMetrics = (report.keyMetrics ?? []).slice(0, 2);
+  const highlightedMetrics = (report.keyMetrics ?? []).slice(0, 3);
   const companyInitial = report.companyName?.charAt(0).toUpperCase() || '?';
   const [logoFailed, setLogoFailed] = useState(false);
   useEffect(() => setLogoFailed(false), [report.companyLogoUrl]);
@@ -36,129 +44,176 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Card className="group h-full cursor-pointer overflow-hidden border-border/60 bg-card/90 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:border-primary/50 hover:shadow-xl">
-          <CardContent className="flex h-full flex-col gap-3 sm:gap-4 lg:gap-5 p-4 sm:p-5 lg:p-6">
-            {/* Logo and Header Section */}
-            <div className="flex items-start gap-3 sm:gap-4">
-              <div className="relative h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16 shrink-0 overflow-hidden rounded-xl sm:rounded-2xl border border-border/60 bg-gradient-to-br from-primary/10 via-primary/5 to-muted shadow-sm ring-1 ring-inset ring-border/40">
-                {companyLogoUrl ? (
-                  <img
-                    src={companyLogoUrl}
-                    alt={`${report.companyName} logotyp`}
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
-                    loading="lazy"
-                    onError={() => setLogoFailed(true)}
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-sm sm:text-base lg:text-lg font-bold text-primary">
-                    {companyInitial}
+        <Card className="group h-full cursor-pointer overflow-hidden rounded-[22px] border border-border/60 bg-gradient-to-br from-background via-background to-muted/40 shadow-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:shadow-xl">
+          <CardContent className="flex h-full flex-col gap-5 p-5 sm:p-6 lg:p-7">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="relative h-12 w-12 sm:h-14 sm:w-14 shrink-0 overflow-hidden rounded-xl border border-border/60 bg-gradient-to-br from-primary/10 via-primary/5 to-muted shadow-sm ring-1 ring-inset ring-border/40">
+                  {companyLogoUrl ? (
+                    <img
+                      src={companyLogoUrl}
+                      alt={`${report.companyName} logotyp`}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                      loading="lazy"
+                      onError={() => setLogoFailed(true)}
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-base sm:text-lg font-bold text-primary">
+                      {companyInitial}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex min-w-0 flex-col gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary" className="rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary border-primary/20">
+                      {report.companyName}
+                    </Badge>
+                    {report.sourceDocumentName && (
+                      <Badge variant="outline" className="rounded-full px-3 py-1 text-[11px]">
+                        {report.sourceDocumentName}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">AI-summerad rapport</p>
+                    <h3 className="text-lg sm:text-xl lg:text-2xl font-bold leading-tight text-foreground line-clamp-2 group-hover:text-primary transition-colors">
+                      {report.reportTitle}
+                    </h3>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-end gap-2 text-right text-xs text-muted-foreground">
+                <div className="flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-3 py-1">
+                  <Calendar className="h-3.5 w-3.5" />
+                  <span className="font-medium text-foreground">{createdAtLabel}</span>
+                </div>
+                <div className="flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-primary">
+                  <BadgeCheck className="h-3.5 w-3.5" />
+                  <span className="text-[11px] font-semibold">Hög precision</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
+              <div className="space-y-3">
+                <p className="text-sm leading-relaxed text-muted-foreground line-clamp-4">{truncateText(report.summary)}</p>
+
+                {report.keyPoints.length > 0 && (
+                  <div className="rounded-2xl border border-dashed border-border/60 bg-muted/30 p-3 sm:p-4">
+                    <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      <FileText className="h-3 w-3" />
+                      Viktiga punkter
+                    </div>
+                    <ul className="grid gap-2 text-sm text-foreground/90">
+                      {report.keyPoints.slice(0, 3).map((point, index) => (
+                        <li key={`${report.id}-point-${index}`} className="flex items-start gap-2">
+                          <span className="mt-1 inline-flex h-2 w-2 rounded-full bg-primary/70" />
+                          <span className="leading-snug">{point}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
               </div>
 
-              <div className="flex-1 min-w-0 space-y-1.5 sm:space-y-2">
-                <Badge variant="secondary" className="rounded-full bg-primary/10 px-2 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-xs font-semibold text-primary border-primary/20">
-                  {report.companyName}
-                </Badge>
-                <h3 className="text-base sm:text-lg lg:text-xl font-bold text-foreground leading-tight line-clamp-2 group-hover:text-primary transition-colors">{report.reportTitle}</h3>
-              </div>
-            </div>
+              {highlightedMetrics.length > 0 && (
+                <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-background/70 p-4 shadow-inner">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      <LineChart className="h-3 w-3 text-primary" />
+                      Nyckeltal
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">{highlightedMetrics.length} valda</span>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {highlightedMetrics.map((metric, index) => {
+                      const normalizeTrend = (trend: string | undefined): string => {
+                        if (!trend) return '';
 
-            {/* Summary Section */}
-            <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground line-clamp-2 sm:line-clamp-3">{truncateText(report.summary, 180)}</p>
+                        const lowerTrend = trend.toLowerCase();
 
-            {/* Key Metrics Section */}
-            {highlightedMetrics.length > 0 && (
-              <div className="space-y-1.5 sm:space-y-2">
-                <div className="flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  <LineChart className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-primary" />
-                  Nyckeltal
-                </div>
-                <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
-                  {highlightedMetrics.map((metric, index) => {
-                    const normalizeTrend = (trend: string | undefined): string => {
-                      if (!trend) return '';
-                      
-                      const lowerTrend = trend.toLowerCase();
-                      
-                      // Ersätt "ökade med" med "+"
-                      if (lowerTrend.includes('ökade med')) {
-                        const match = trend.match(/ökade med\s*([\d.,\s]+)/i);
-                        if (match) {
-                          return `+${match[1].trim()}`;
+                        if (lowerTrend.includes('ökade med')) {
+                          const match = trend.match(/ökade med\s*([\d.,\s]+)/i);
+                          if (match) {
+                            return `+${match[1].trim()}`;
+                          }
+                          return trend.replace(/ökade med/gi, '+');
                         }
-                        return trend.replace(/ökade med/gi, '+');
-                      }
-                      
-                      // Ersätt "minskade med" med "-"
-                      if (lowerTrend.includes('minskade med')) {
-                        const match = trend.match(/minskade med\s*([\d.,\s]+)/i);
-                        if (match) {
-                          return `-${match[1].trim()}`;
+
+                        if (lowerTrend.includes('minskade med')) {
+                          const match = trend.match(/minskade med\s*([\d.,\s]+)/i);
+                          if (match) {
+                            return `-${match[1].trim()}`;
+                          }
+                          return trend.replace(/minskade med/gi, '-');
                         }
-                        return trend.replace(/minskade med/gi, '-');
-                      }
-                      
-                      // Om det redan finns + eller - i början, behåll det
-                      if (trend.trim().startsWith('+') || trend.trim().startsWith('-')) {
+
+                        if (trend.trim().startsWith('+') || trend.trim().startsWith('-')) {
+                          return trend;
+                        }
+
                         return trend;
-                      }
-                      
-                      return trend;
-                    };
-                    
-                    const normalizedTrend = normalizeTrend(metric.trend);
-                    const trendUp = normalizedTrend.toLowerCase().includes('upp') || normalizedTrend.startsWith('+') || normalizedTrend.match(/\+[\d.,\s]+/);
-                    const trendDown = normalizedTrend.toLowerCase().includes('ned') || normalizedTrend.startsWith('-') || normalizedTrend.match(/-[\d.,\s]+/);
-                    
-                    return (
-                      <div
-                        key={`${report.id}-highlight-metric-${index}`}
-                        className="rounded-lg border border-border/50 bg-gradient-to-br from-muted/40 to-muted/20 p-2 sm:p-2.5 transition-all duration-300 group-hover:border-primary/50 group-hover:shadow-sm overflow-hidden"
-                      >
-                        <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-0.5 sm:mb-1 truncate min-w-0">{metric.label}</p>
-                        <div className="flex items-baseline gap-1 sm:gap-1.5 min-w-0">
-                          <p className="text-base sm:text-lg font-bold text-foreground truncate min-w-0 flex-1">{metric.value}</p>
-                          {normalizedTrend && (
-                            <div className={`flex items-center gap-0.5 text-[9px] sm:text-[10px] font-medium shrink-0 min-w-0 ${
-                              trendUp ? 'text-emerald-600 dark:text-emerald-400' : 
-                              trendDown ? 'text-red-600 dark:text-red-400' : 
-                              'text-muted-foreground'
-                            }`}>
-                              {trendUp && <TrendingUp className="h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0" />}
-                              {trendDown && <TrendingDown className="h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0" />}
-                              <span className="truncate min-w-0">{normalizedTrend}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+                      };
 
-            {/* Metadata Section */}
-            <div className="flex items-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border border-border/50 bg-muted/20 px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs">
-              <div className="flex items-center gap-1 sm:gap-1.5 rounded-md sm:rounded-lg bg-background/80 px-1.5 sm:px-2 py-0.5 sm:py-1 font-medium text-foreground">
-                <FileText className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground" />
-                <span>{report.keyPoints.length}</span>
-              </div>
-              <div className="flex items-center gap-1 sm:gap-1.5 rounded-md sm:rounded-lg bg-background/80 px-1.5 sm:px-2 py-0.5 sm:py-1 font-medium text-foreground">
-                <LineChart className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground" />
-                <span>{report.keyMetrics.length}</span>
-              </div>
-              <div className="flex items-center gap-1 sm:gap-1.5 rounded-md sm:rounded-lg bg-background/80 px-1.5 sm:px-2 py-0.5 sm:py-1 font-medium text-muted-foreground ml-auto">
-                <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                <span className="hidden sm:inline">{createdAtLabel}</span>
-                <span className="sm:hidden text-[9px]">Nyligen</span>
-              </div>
+                      const normalizedTrend = normalizeTrend(metric.trend);
+                      const trendUp = normalizedTrend.toLowerCase().includes('upp') || normalizedTrend.startsWith('+') || normalizedTrend.match(/\+[\d.,\s]+/);
+                      const trendDown = normalizedTrend.toLowerCase().includes('ned') || normalizedTrend.startsWith('-') || normalizedTrend.match(/-[\d.,\s]+/);
+
+                      return (
+                        <div
+                          key={`${report.id}-highlight-metric-${index}`}
+                          className="flex flex-col gap-2 rounded-xl border border-border/60 bg-gradient-to-br from-muted/60 to-muted/30 p-3 transition-all duration-300 group-hover:border-primary/60 group-hover:shadow-sm"
+                        >
+                          <p className="text-[12px] font-semibold text-foreground/90 truncate" title={metric.label}>{metric.label}</p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-lg font-bold text-foreground">{metric.value}</p>
+                            {normalizedTrend && (
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                                  trendUp
+                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                                    : trendDown
+                                    ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300'
+                                    : 'bg-muted text-foreground'
+                                }`}
+                              >
+                                {trendUp && <TrendingUp className="h-3 w-3" />}
+                                {trendDown && <TrendingDown className="h-3 w-3" />}
+                                <span className="leading-none">{normalizedTrend}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* CTA Section */}
-            <div className="mt-auto flex items-center justify-between rounded-lg border border-dashed border-primary/30 bg-primary/5 px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-medium text-primary transition-colors group-hover:border-primary/50 group-hover:bg-primary/10">
-              <span className="truncate">Klicka för att läsa hela analysen</span>
-              <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-0 transition-opacity group-hover:opacity-100 shrink-0 ml-1" />
+            {/* Footer */}
+            <div className="flex flex-col gap-3 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-2.5 py-1">
+                  <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="font-medium text-foreground">{report.keyPoints.length} punkter</span>
+                </div>
+                <div className="flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-2.5 py-1">
+                  <LineChart className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="font-medium text-foreground">{report.keyMetrics.length} nyckeltal</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Läs rapporten</span>
+                <div className="rounded-full bg-primary/10 p-1.5 text-primary transition-colors group-hover:bg-primary/20">
+                  <ArrowRight className="h-4 w-4" />
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
