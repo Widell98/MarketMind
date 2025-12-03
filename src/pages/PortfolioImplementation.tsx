@@ -347,16 +347,6 @@ const PortfolioImplementation = () => {
                     <span className="xs:hidden">AI-chatt</span>
                   </Button>
                   <Button
-                    onClick={handleImportClick}
-                    disabled={isImportingHoldings}
-                    className="rounded-xl sm:rounded-2xl px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 shadow-md hover:shadow-lg text-xs sm:text-sm"
-                    variant="outline"
-                  >
-                    <Upload className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">{isImportingHoldings ? 'Importerar...' : 'Importera CSV'}</span>
-                    <span className="sm:hidden">{isImportingHoldings ? '...' : 'CSV'}</span>
-                  </Button>
-                  <Button
                     onClick={handleUpdateProfile}
                     className="rounded-xl sm:rounded-2xl px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 shadow-none text-xs sm:text-sm"
                     variant="ghost"
