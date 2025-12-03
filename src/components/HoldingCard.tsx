@@ -107,9 +107,9 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   return (
     <Card className="hover:shadow-md transition-all duration-200 rounded-xl border border-border/60">
       <CardContent className="p-4 sm:p-5 space-y-3 sm:space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0 flex-1">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+        <div className="flex items-start justify-between gap-2 sm:gap-3">
+          <div className="flex items-start gap-2 sm:gap-3 min-w-0 flex-1">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
               {logoUrl && !isLogoError ? (
                 <img
                   src={logoUrl}
@@ -118,18 +118,18 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                   onError={() => setIsLogoError(true)}
                 />
               ) : (
-                <Icon className="w-5 h-5 text-muted-foreground" />
+                <Icon className="w-5 h-5 sm:w-5 sm:h-5 md:w-6 md:h-6 text-muted-foreground" />
               )}
             </div>
 
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-foreground leading-tight truncate text-sm sm:text-base">{holding.name}</h3>
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h3 className="font-semibold text-foreground leading-tight truncate text-sm sm:text-base md:text-lg">{holding.name}</h3>
                 {!isCash && quantity > 0 && (
-                  <span className="text-xs sm:text-sm text-muted-foreground font-medium">{quantity} st</span>
+                  <span className="text-xs sm:text-sm text-muted-foreground font-medium whitespace-nowrap">{quantity} st</span>
                 )}
               </div>
-              <div className="text-xs sm:text-sm text-foreground font-medium leading-tight">
+              <div className="text-xs sm:text-sm text-foreground font-medium leading-tight mt-0.5">
                 {normalizedSymbol ? (
                   onRefreshPrice ? (
                     <button
@@ -142,7 +142,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                       {normalizedSymbol}
                       <RefreshCw
                         className={cn(
-                          'w-3.5 h-3.5 transition-opacity duration-150',
+                          'w-3.5 h-3.5 sm:w-4 sm:h-4 transition-opacity duration-150',
                           isRefreshing ? 'opacity-100 animate-spin' : 'opacity-60'
                         )}
                       />
@@ -157,9 +157,9 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
             </div>
           </div>
 
-          <div className="flex items-start gap-2 sm:gap-3 flex-shrink-0">
+          <div className="flex items-start gap-1.5 sm:gap-2 md:gap-3 flex-shrink-0">
             <div className="text-right">
-              <div className="text-sm sm:text-base font-semibold text-foreground leading-tight">
+              <div className="text-sm sm:text-base md:text-lg font-semibold text-foreground leading-tight">
                 {portfolioPercentage.toFixed(1)}%
               </div>
             </div>
@@ -195,15 +195,15 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
           </div>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <div className="text-3xl sm:text-4xl font-extrabold text-foreground leading-tight">
+        <div className="space-y-2 sm:space-y-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4">
+            <div className="font-extrabold text-foreground leading-tight" style={{ fontSize: '2.25rem' }}>
               {formatCurrency(displayValue, 'SEK')}
             </div>
 
             {!isCash && hasDailyChange && dailyChangePercent !== null ? (
-              <div className="flex flex-wrap items-center gap-2 font-semibold">
-                <span className="text-muted-foreground text-sm font-medium">idag:</span>
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 font-semibold">
+                <span className="text-muted-foreground text-xs sm:text-sm font-medium">Idag</span>
                 <span
                   className={cn(
                     'inline-flex items-center gap-1',
@@ -214,9 +214,9 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                         : 'text-muted-foreground'
                   )}
                 >
-                  {dailyChangePercent > 0 ? <TrendingUp className="w-3.5 h-3.5" /> : null}
-                  {dailyChangePercent < 0 ? <TrendingDown className="w-3.5 h-3.5" /> : null}
-                  <span>
+                  {dailyChangePercent > 0 ? <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : null}
+                  {dailyChangePercent < 0 ? <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : null}
+                  <span className="text-xs sm:text-sm">
                     {dailyChangePercent > 0 ? '+' : ''}
                     {dailyChangePercent.toFixed(2)}%
                   </span>
@@ -225,7 +225,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                 {dailyChangeValue !== null && (
                   <span
                     className={cn(
-                      'inline-flex items-center gap-1',
+                      'inline-flex items-center gap-1 text-xs sm:text-sm',
                       dailyChangePercent > 0
                         ? 'text-emerald-600 dark:text-emerald-500'
                         : dailyChangePercent < 0
@@ -251,27 +251,27 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
               type="button"
               variant="ghost"
               size="sm"
-              className="group inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground p-0 h-auto"
+              className="group inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground p-0 h-auto"
               onClick={() => setShowDetails((prev) => !prev)}
             >
               {showDetails ? (
                 <>
-                  Dölj detaljer
-                  <ChevronUp className="h-4 w-4 transition-transform group-hover:-translate-y-0.5" />
+                  <span className="whitespace-nowrap">Dölj detaljer</span>
+                  <ChevronUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform group-hover:-translate-y-0.5" />
                 </>
               ) : (
                 <>
-                  Visa mer
-                  <ChevronDown className="h-4 w-4 transition-transform group-hover:translate-y-0.5" />
+                  <span className="whitespace-nowrap">Visa mer</span>
+                  <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform group-hover:translate-y-0.5" />
                 </>
               )}
             </Button>
 
             {showDetails && (
-              <div className="space-y-3 pt-1 mt-2">
+              <div className="space-y-3 sm:space-y-4 pt-1 mt-2">
                 {hasPerformanceData && hasPurchasePrice && (
-                  <div className="flex flex-wrap items-center gap-2 font-semibold pb-3 border-b border-border">
-                    <span className="text-muted-foreground text-sm font-medium">Total utveckling:</span>
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 font-semibold pb-3 border-b border-border">
+                    <span className="text-muted-foreground text-xs sm:text-sm font-medium">Total utveckling:</span>
                     <TooltipProvider delayDuration={120}>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -286,11 +286,11 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                             )}
                           >
                             {profit > 0 ? (
-                              <TrendingUp className="w-3.5 h-3.5" />
+                              <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             ) : profit < 0 ? (
-                              <TrendingDown className="w-3.5 h-3.5" />
+                              <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             ) : null}
-                            <span>
+                            <span className="text-xs sm:text-sm">
                               {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}
                             </span>
                           </span>
@@ -302,7 +302,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                     </TooltipProvider>
                     <span
                       className={cn(
-                        'inline-flex items-center gap-1',
+                        'inline-flex items-center gap-1 text-xs sm:text-sm',
                         profit > 0
                           ? 'text-emerald-600 dark:text-emerald-500'
                           : profit < 0
@@ -318,17 +318,17 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                   </div>
                 )}
 
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
                   {typeof effectivePrice === 'number' && effectivePrice > 0 && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-muted-foreground text-sm font-medium">Kurs:</span>
+                    <div className="flex items-center gap-2 text-xs sm:text-sm">
+                      <span className="text-muted-foreground font-medium">Kurs:</span>
                       <span className="text-foreground font-semibold">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
                     </div>
                   )}
                   
                   <button
                     type="button"
-                    className="flex items-center gap-2 text-muted-foreground font-medium hover:text-foreground text-sm"
+                    className="flex items-center gap-2 text-muted-foreground font-medium hover:text-foreground text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start"
                     onClick={() => onDiscuss(holding.name, holding.symbol)}
                   >
                     <MessageSquare className="w-4 h-4" />
