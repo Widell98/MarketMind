@@ -90,20 +90,20 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
             </div>
 
             {/* Body */}
-            <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
-              <div className="space-y-3">
+            <div className="grid gap-5 lg:grid-cols-[1.35fr_1fr]">
+              <div className="space-y-4">
                 <p className="text-sm leading-relaxed text-muted-foreground line-clamp-3">{truncateText(report.summary)}</p>
 
                 {report.keyPoints.length > 0 && (
-                  <div className="rounded-2xl border border-border/50 bg-muted/20 p-3 sm:p-4">
-                    <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                       <FileText className="h-3 w-3" />
                       Viktiga punkter
                     </div>
                     <ul className="grid gap-2 text-sm text-foreground/90">
                       {report.keyPoints.slice(0, 3).map((point, index) => (
                         <li key={`${report.id}-point-${index}`} className="flex items-start gap-2">
-                          <span className="mt-1 inline-flex h-2 w-2 rounded-full bg-primary/70" />
+                          <span className="mt-1 inline-flex h-1.5 w-1.5 rounded-full bg-primary/70" />
                           <span className="leading-snug">{point}</span>
                         </li>
                       ))}
@@ -113,12 +113,12 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
               </div>
 
               {highlightedMetrics.length > 0 && (
-                <div className="flex flex-col gap-3 pt-3 border-t border-border/70">
+                <div className="flex flex-col gap-4 pt-4 border-t border-border/60">
                   <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     <LineChart className="h-3 w-3 text-primary" />
                     Nyckeltal
                   </div>
-                  <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+                  <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
                     {highlightedMetrics.map((metric, index) => {
                       const normalizeTrend = (trend: string | undefined): string => {
                         if (!trend) return '';
@@ -153,30 +153,32 @@ const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => 
                       const trendDown = normalizedTrend.toLowerCase().includes('ned') || normalizedTrend.startsWith('-') || normalizedTrend.match(/-[\d.,\s]+/);
 
                       return (
-                        <div key={`${report.id}-highlight-metric-${index}`} className="flex flex-col gap-1 pr-2 sm:pr-3">
+                        <div key={`${report.id}-highlight-metric-${index}`} className="flex flex-col gap-2 pr-2 sm:pr-4">
                           <p
-                            className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/90 leading-tight break-words"
+                            className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/90 leading-tight break-words"
                             title={metric.label}
                           >
                             {metric.label}
                           </p>
-                          <div className="flex flex-wrap items-baseline gap-2 text-xl font-bold text-foreground leading-tight">
-                            <span>{metric.value}</span>
-                            {normalizedTrend && (
-                              <span
-                                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                  trendUp
-                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
-                                    : trendDown
-                                    ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300'
-                                    : 'bg-muted text-foreground'
-                                }`}
-                              >
-                                {trendUp && <TrendingUp className="h-3 w-3" />}
-                                {trendDown && <TrendingDown className="h-3 w-3" />}
-                                <span className="leading-none">{normalizedTrend}</span>
-                              </span>
-                            )}
+                          <div className="flex flex-col gap-1 text-foreground">
+                            <div className="flex flex-wrap items-baseline gap-2 text-2xl font-bold leading-tight">
+                              <span>{metric.value}</span>
+                              {normalizedTrend && (
+                                <span
+                                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                    trendUp
+                                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                                      : trendDown
+                                      ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300'
+                                      : 'bg-muted/50 text-foreground'
+                                  }`}
+                                >
+                                  {trendUp && <TrendingUp className="h-3 w-3" />}
+                                  {trendDown && <TrendingDown className="h-3 w-3" />}
+                                  <span className="leading-none">{normalizedTrend}</span>
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
