@@ -8,14 +8,20 @@ const BestWorstHoldings: React.FC = () => {
 
   const topHoldings = React.useMemo(() => {
     if (!holdingsPerformance || holdingsPerformance.length === 0) return { best: [], worst: [] };
-    const sorted = [...holdingsPerformance].sort((a, b) => {
-      const aChange = a.hasPurchasePrice ? a.profitPercentage : a.dayChangePercentage;
-      const bChange = b.hasPurchasePrice ? b.profitPercentage : b.dayChangePercentage;
-      return bChange - aChange;
-    });
+    const getChange = (holding: (typeof holdingsPerformance)[number]) =>
+      holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
+
+    const positiveHoldings = holdingsPerformance
+      .filter((holding) => (getChange(holding) ?? 0) > 0)
+      .sort((a, b) => (getChange(b) ?? 0) - (getChange(a) ?? 0));
+
+    const negativeHoldings = holdingsPerformance
+      .filter((holding) => (getChange(holding) ?? 0) < 0)
+      .sort((a, b) => (getChange(a) ?? 0) - (getChange(b) ?? 0));
+
     return {
-      best: sorted.slice(0, 3),
-      worst: sorted.slice(-3).reverse(),
+      best: positiveHoldings.slice(0, 3),
+      worst: negativeHoldings.slice(0, 3),
     };
   }, [holdingsPerformance]);
 

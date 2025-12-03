@@ -190,6 +190,11 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
             Klicka på en ticker i listan för att uppdatera priset.
           </TooltipContent>
         </Tooltip>
+        {importControls && (
+          <div className="w-full sm:w-auto flex justify-end sm:justify-start">
+            {importControls}
+          </div>
+        )}
       </div>
     </div>
   );
