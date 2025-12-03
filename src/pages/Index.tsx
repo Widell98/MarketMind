@@ -51,6 +51,7 @@ import { resolveHoldingValue } from '@/utils/currencyUtils';
 import { useDailyChangeData } from '@/hooks/useDailyChangeData';
 import HoldingsHighlightCard from '@/components/HoldingsHighlightCard';
 import AllocationCard from '@/components/AllocationCard';
+import { isMarketOpen } from '@/utils/marketHours';
 
 type QuickAction = {
   icon: React.ComponentType<{ className?: string }>;
@@ -139,6 +140,7 @@ const Index = () => {
   const holdingsCount = actualHoldings?.length ?? 0;
   const safeTotalPortfolioValue = typeof totalPortfolioValue === 'number' && Number.isFinite(totalPortfolioValue) ? totalPortfolioValue : 0;
   const safeTotalCash = typeof totalCash === 'number' && Number.isFinite(totalCash) ? totalCash : 0;
+  const marketsOpen = isMarketOpen();
   
   const formatDailyChangeValue = (value: number | null | undefined) => {
     if (value === null || value === undefined) return '–';
@@ -157,7 +159,11 @@ const Index = () => {
   };
 
   const dailyHighlights = React.useMemo(() => {
-    const sortableHoldings = actualHoldings.filter(holding =>
+    if (!marketsOpen) {
+      return { best: [], worst: [] };
+    }
+
+    const sortableHoldings = (actualHoldings || []).filter(holding =>
       holding.holding_type !== 'recommendation' && holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined
     );
 
@@ -170,7 +176,10 @@ const Index = () => {
       .slice(0, 3);
 
     return { best, worst };
-  }, [actualHoldings]);
+  }, [actualHoldings, marketsOpen]);
+
+  const hasHighlightData = dailyHighlights.best.length > 0 || dailyHighlights.worst.length > 0;
+  const shouldShowHighlightCards = marketsOpen ? hasHighlightData : true;
 
   const formatChangeLabel = (value: number | null | undefined) => {
     if (value === null || value === undefined) return '–';
@@ -209,6 +218,15 @@ const Index = () => {
   React.useEffect(() => {
     const calculateTodayDevelopment = async () => {
       if (!user || !hasPortfolio || safeTotalPortfolioValue === 0 || !actualHoldings || actualHoldings.length === 0) {
+        setLoadingTodayDevelopment(false);
+        return;
+      }
+
+      if (!marketsOpen) {
+        setTodayDevelopment({
+          percent: 0,
+          value: 0,
+        });
         setLoadingTodayDevelopment(false);
         return;
       }
@@ -304,44 +322,55 @@ const Index = () => {
     };
 
     calculateTodayDevelopment();
-  }, [user, hasPortfolio, safeTotalPortfolioValue, actualHoldings, sheetChangeData, sheetChangeDataLoading, getChangeForTicker]);
+  }, [user, hasPortfolio, safeTotalPortfolioValue, actualHoldings, sheetChangeData, sheetChangeDataLoading, getChangeForTicker, marketsOpen]);
 
-  const dayChangePercent = todayDevelopment?.percent ?? performance.dayChangePercentage ?? 0;
-  const dayChangeValue = todayDevelopment?.value ?? 0;
+  const dayChangePercent = marketsOpen
+    ? todayDevelopment?.percent ?? performance.dayChangePercentage ?? 0
+    : 0;
+  const dayChangeValue = marketsOpen
+    ? todayDevelopment?.value ?? 0
+    : 0;
   const isPositiveDayChange = dayChangePercent >= 0;
 
   const summaryCards = React.useMemo<SummaryCard[]>(() => {
     const changeValue = dayChangeValue;
     const changeValueFormatted = changeValue !== 0
-      ? (changeValue >= 0 
+      ? (changeValue >= 0
         ? `+${changeValue.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr`
         : `${changeValue.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr`)
       : '0,00 kr';
+    const closedLabel = 'Marknaden stängd – 0,00 kr';
     return [
       {
         icon: Star,
         label: 'Utveckling idag',
-        value: loadingTodayDevelopment 
+        value: loadingTodayDevelopment
           ? '—'
-          : (dayChangePercent !== 0
-            ? (isPositiveDayChange 
-              ? `+${dayChangePercent.toFixed(2)}%` 
+          : (!marketsOpen
+            ? '0.00%'
+            : (dayChangePercent !== 0
+            ? (isPositiveDayChange
+              ? `+${dayChangePercent.toFixed(2)}%`
               : `${dayChangePercent.toFixed(2)}%`)
-            : '0.00%'),
+            : '0.00%')),
         helper: loadingTodayDevelopment
           ? 'Laddar...'
-          : (changeValue !== 0
+          : (!marketsOpen
+            ? closedLabel
+            : (changeValue !== 0
             ? changeValueFormatted
-            : safeTotalPortfolioValue > 0 
+            : safeTotalPortfolioValue > 0
               ? `${safeTotalPortfolioValue.toLocaleString('sv-SE')} kr`
-              : t('dashboard.onTrack')),
+              : t('dashboard.onTrack'))),
         helperClassName: loadingTodayDevelopment
           ? 'text-muted-foreground'
-          : (dayChangePercent !== 0
-            ? (isPositiveDayChange 
-              ? 'text-emerald-600 dark:text-emerald-400 font-medium' 
-              : 'text-red-600 dark:text-red-400 font-medium')
-            : 'text-muted-foreground'),
+          : (!marketsOpen
+            ? 'text-muted-foreground'
+            : (dayChangePercent !== 0
+              ? (isPositiveDayChange
+                ? 'text-emerald-600 dark:text-emerald-400 font-medium'
+                : 'text-red-600 dark:text-red-400 font-medium')
+              : 'text-muted-foreground')),
       },
       {
         icon: BarChart3,
@@ -365,7 +394,7 @@ const Index = () => {
         helperClassName: 'text-muted-foreground',
       },
     ];
-  }, [t, safeTotalPortfolioValue, holdingsCount, safeTotalCash, dayChangePercent, isPositiveDayChange, likedStockCases.length, loadingTodayDevelopment, dayChangeValue]);
+  }, [t, safeTotalPortfolioValue, holdingsCount, safeTotalCash, dayChangePercent, isPositiveDayChange, likedStockCases.length, loadingTodayDevelopment, dayChangeValue, marketsOpen]);
 
   const quickActions = React.useMemo<QuickAction[]>(() => [
     {
@@ -574,27 +603,27 @@ const Index = () => {
                   />
 
                     {/* Dagens förändring och allokering */}
-                    {(dailyHighlights.best.length > 0 || dailyHighlights.worst.length > 0 || performance.totalPortfolioValue > 0 || safeTotalCash > 0) && (
+                    {(shouldShowHighlightCards || performance.totalPortfolioValue > 0 || safeTotalCash > 0) && (
                       <div className="space-y-3 sm:space-y-4">
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 sm:gap-4">
-                          {dailyHighlights.best.length > 0 && (
-                            <HoldingsHighlightCard
-                              title="Bästa innehav idag"
-                              icon={<TrendingUp className="h-5 w-5" />}
-                              iconColorClass="text-emerald-600"
-                              items={bestHighlightItems}
-                              emptyText="Ingen dagsdata ännu"
-                            />
-                          )}
+                          {shouldShowHighlightCards && (
+                            <>
+                              <HoldingsHighlightCard
+                                title="Bästa innehav idag"
+                                icon={<TrendingUp className="h-5 w-5" />}
+                                iconColorClass="text-emerald-600"
+                                items={bestHighlightItems}
+                                emptyText="Ingen data ännu"
+                              />
 
-                          {dailyHighlights.worst.length > 0 && (
-                            <HoldingsHighlightCard
-                              title="Sämsta innehav idag"
-                              icon={<TrendingDown className="h-5 w-5" />}
-                              iconColorClass="text-red-600"
-                              items={worstHighlightItems}
-                              emptyText="Ingen dagsdata ännu"
-                            />
+                              <HoldingsHighlightCard
+                                title="Sämsta innehav idag"
+                                icon={<TrendingDown className="h-5 w-5" />}
+                                iconColorClass="text-red-600"
+                                items={worstHighlightItems}
+                                emptyText="Ingen data ännu"
+                              />
+                            </>
                           )}
 
                           {(performance.totalPortfolioValue > 0 || safeTotalCash > 0) && (
