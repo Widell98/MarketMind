@@ -196,53 +196,46 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
               {formatCurrency(displayValue, 'SEK')}
             </div>
 
-            {!isCash && (
-              <div className="flex items-center gap-2">
-                <TooltipProvider delayDuration={120}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div
-                        className={cn(
-                          'inline-flex items-center gap-1.5 text-sm font-medium',
-                          hasPerformanceData && hasPurchasePrice
-                            ? profit > 0
-                              ? 'text-emerald-600 dark:text-emerald-500'
-                              : profit < 0
-                                ? 'text-red-600 dark:text-red-500'
-                                : 'text-muted-foreground'
-                            : 'text-muted-foreground'
-                        )}
-                      >
-                        {hasPerformanceData && hasPurchasePrice && (
-                          <>
-                            {profit > 0 ? (
-                              <TrendingUp className="w-3.5 h-3.5" />
-                            ) : profit < 0 ? (
-                              <TrendingDown className="w-3.5 h-3.5" />
-                            ) : null}
-                            <span>
-                              {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}
-                            </span>
-                            <span className="text-muted-foreground">
-                              ({`${profit > 0 ? '+' : ''}${formatCurrency(profit, 'SEK')}`})
-                            </span>
-                          </>
-                        )}
-                        {!hasPerformanceData || !hasPurchasePrice ? (
-                          <span className="text-xs">Prisdata saknas</span>
-                        ) : null}
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-xs font-medium">
-                      totala utveckling på innehav
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <span className="hidden sm:inline text-xs text-muted-foreground font-medium whitespace-nowrap">
-                  Total utveckling
+            {!isCash && hasDailyChange && dailyChangePercent !== null ? (
+              <div className="flex flex-wrap items-center gap-2 font-semibold">
+                <span className="text-muted-foreground text-sm font-medium">Utveckling idag:</span>
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1',
+                    dailyChangePercent > 0
+                      ? 'text-emerald-600 dark:text-emerald-500'
+                      : dailyChangePercent < 0
+                        ? 'text-red-600 dark:text-red-500'
+                        : 'text-muted-foreground'
+                  )}
+                >
+                  {dailyChangePercent > 0 ? <TrendingUp className="w-3.5 h-3.5" /> : null}
+                  {dailyChangePercent < 0 ? <TrendingDown className="w-3.5 h-3.5" /> : null}
+                  <span>
+                    {dailyChangePercent > 0 ? '+' : ''}
+                    {dailyChangePercent.toFixed(2)}%
+                  </span>
                 </span>
+
+                {dailyChangeValue !== null && (
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1',
+                      dailyChangePercent > 0
+                        ? 'text-emerald-600 dark:text-emerald-500'
+                        : dailyChangePercent < 0
+                          ? 'text-red-600 dark:text-red-500'
+                          : 'text-muted-foreground'
+                    )}
+                  >
+                    (
+                    {dailyChangeValue > 0 ? '+' : ''}
+                    {formatCurrency(dailyChangeValue, 'SEK')}
+                    )
+                  </span>
+                )}
               </div>
-            )}
+            ) : null}
           </div>
 
         </div>
@@ -270,69 +263,69 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
             </Button>
 
             {showDetails && (
-              <div className="flex flex-wrap items-start justify-between gap-3 pt-1 text-sm mt-2">
-                <div className="flex flex-col gap-1 text-muted-foreground">
-                  <div className="flex flex-wrap items-center gap-3">
-                    {typeof effectivePrice === 'number' && effectivePrice > 0 && (
-                      <span className="text-foreground font-semibold">
-                        Kurs: <span className="text-muted-foreground font-medium">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
-                      </span>
-                    )}
-                    {hasDailyChange && dailyChangePercent !== null ? (
-                      <div className="flex flex-wrap items-center gap-2 font-semibold">
-                        <span
-                          className={cn(
-                            'inline-flex items-center gap-1',
-                            dailyChangePercent > 0
-                              ? 'text-emerald-700'
-                              : dailyChangePercent < 0
-                                ? 'text-red-700'
-                                : 'text-muted-foreground'
-                          )}
-                        >
-                          {dailyChangePercent > 0 ? <TrendingUp className="w-4 h-4" /> : null}
-                          {dailyChangePercent < 0 ? <TrendingDown className="w-4 h-4" /> : null}
-                          <span>
-                            {dailyChangePercent > 0 ? '+' : ''}
-                            {dailyChangePercent.toFixed(2)}%
-                          </span>
-                        </span>
-
-                        {dailyChangeValue !== null && (
-                          <span
+              <div className="space-y-3 pt-1 mt-2">
+                {hasPerformanceData && hasPurchasePrice && (
+                  <div className="flex items-center gap-2">
+                    <TooltipProvider delayDuration={120}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
                             className={cn(
-                              'inline-flex items-center gap-1',
-                              dailyChangePercent > 0
-                                ? 'text-emerald-700'
-                                : dailyChangePercent < 0
-                                  ? 'text-red-700'
+                              'inline-flex items-center gap-1.5 text-sm font-medium',
+                              profit > 0
+                                ? 'text-emerald-600 dark:text-emerald-500'
+                                : profit < 0
+                                  ? 'text-red-600 dark:text-red-500'
                                   : 'text-muted-foreground'
                             )}
                           >
-                            (
-                            {dailyChangeValue > 0 ? '+' : ''}
-                            {formatCurrency(dailyChangeValue, 'SEK')}
-                            )
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Kursdata saknas</span>
-                    )}
+                            {profit > 0 ? (
+                              <TrendingUp className="w-3.5 h-3.5" />
+                            ) : profit < 0 ? (
+                              <TrendingDown className="w-3.5 h-3.5" />
+                            ) : null}
+                            <span>
+                              {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}
+                            </span>
+                            <span className="text-muted-foreground">
+                              ({`${profit > 0 ? '+' : ''}${formatCurrency(profit, 'SEK')}`})
+                            </span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs font-medium">
+                          totala utveckling på innehav
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">
+                      Total utveckling
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-start justify-between gap-3 text-sm">
+                  <div className="flex flex-col gap-1 text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-3">
+                      {typeof effectivePrice === 'number' && effectivePrice > 0 && (
+                        <span className="text-foreground font-semibold">
+                          Kurs: <span className="text-muted-foreground font-medium">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {quantity > 0 && <span className="text-foreground font-semibold">{quantity} st</span>}
                   </div>
 
-                  {quantity > 0 && <span className="text-foreground font-semibold">{quantity} st</span>}
-                </div>
-
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <MessageSquare className="w-4 h-4" />
-                  <button
-                    type="button"
-                    className="font-medium hover:text-foreground"
-                    onClick={() => onDiscuss(holding.name, holding.symbol)}
-                  >
-                    Diskutera
-                  </button>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <MessageSquare className="w-4 h-4" />
+                    <button
+                      type="button"
+                      className="font-medium hover:text-foreground"
+                      onClick={() => onDiscuss(holding.name, holding.symbol)}
+                    >
+                      Diskutera
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
