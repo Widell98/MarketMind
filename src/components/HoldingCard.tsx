@@ -23,6 +23,7 @@ import {
 import { cn } from '@/lib/utils';
 import { formatCurrency, resolveHoldingValue } from '@/utils/currencyUtils';
 import type { HoldingPerformance } from '@/hooks/usePortfolioPerformance';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface HoldingCardProps {
   holding: {
@@ -85,6 +86,10 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   const hasPurchasePrice = holdingPerformance?.hasPurchasePrice ?? (typeof holding.purchase_price === 'number' && holding.purchase_price > 0 && quantity > 0);
   const hasDailyChange = typeof holding.dailyChangePercent === 'number';
   const dailyChangePercent = holding.dailyChangePercent ?? null;
+  const dailyChangeValue =
+    hasDailyChange && dailyChangePercent !== null
+      ? (displayValue * dailyChangePercent) / 100
+      : null;
   const trimmedSymbol = holding.symbol?.trim();
   const normalizedSymbol = trimmedSymbol ? trimmedSymbol.toUpperCase() : undefined;
   const isRefreshing = Boolean(
@@ -116,7 +121,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
 
             <div className="min-w-0 flex-1">
               <h3 className="font-semibold text-foreground leading-tight truncate text-sm sm:text-base">{holding.name}</h3>
-              <div className="text-xs sm:text-sm text-muted-foreground font-medium leading-tight">
+              <div className="text-xs sm:text-sm text-foreground font-medium leading-tight">
                 {normalizedSymbol ? (
                   onRefreshPrice ? (
                     <button
@@ -184,70 +189,98 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
 
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <div className="text-3xl sm:text-4xl font-bold text-foreground leading-tight">
+            <div className="text-3xl sm:text-4xl font-extrabold text-foreground leading-tight">
               {formatCurrency(displayValue, 'SEK')}
             </div>
 
             {!isCash && (
-              <div
-                className={cn(
-                  'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border',
-                  hasPerformanceData && hasPurchasePrice
-                    ? profit > 0
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                      : profit < 0
-                        ? 'bg-red-50 text-red-700 border-red-100'
-                        : 'bg-muted text-foreground border-border'
-                    : 'bg-muted text-muted-foreground border-border'
-                )}
-              >
-                {hasPerformanceData && hasPurchasePrice ? (
-                  <span>
-                    {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}% (${profit > 0 ? '+' : ''}${formatCurrency(profit, 'SEK')})`}
-                  </span>
-                ) : (
-                  <span className="text-xs font-medium">Prisdata saknas</span>
-                )}
-              </div>
+              <TooltipProvider delayDuration={120}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className={cn(
+                        'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border',
+                        hasPerformanceData && hasPurchasePrice
+                          ? profit > 0
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                            : profit < 0
+                              ? 'bg-red-50 text-red-700 border-red-100'
+                              : 'bg-muted text-foreground border-border'
+                          : 'bg-muted text-muted-foreground border-border'
+                      )}
+                    >
+                      {hasPerformanceData && hasPurchasePrice ? (
+                        <span>
+                          {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}% (${profit > 0 ? '+' : ''}${formatCurrency(profit, 'SEK')})`}
+                        </span>
+                      ) : (
+                        <span className="text-xs font-medium">Prisdata saknas</span>
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs font-medium">
+                    totala utveckling på innehav
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
 
         </div>
 
         {!isCash && (
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-sm">
-            <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
-              {quantity > 0 && <span className="text-foreground font-medium">{quantity} st</span>}
-              {quantity > 0 && typeof effectivePrice === 'number' && effectivePrice > 0 && <span>•</span>}
-              {typeof effectivePrice === 'number' && effectivePrice > 0 && (
-                <span className="text-foreground font-medium">
-                  Kurs: <span className="text-muted-foreground">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
-                </span>
-              )}
-              {typeof effectivePrice === 'number' && effectivePrice > 0 && hasDailyChange && dailyChangePercent !== null && (
-                <span>•</span>
-              )}
-              {hasDailyChange && dailyChangePercent !== null ? (
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1 font-semibold',
-                    dailyChangePercent > 0
-                      ? 'text-emerald-700'
-                      : dailyChangePercent < 0
-                        ? 'text-red-700'
-                        : 'text-muted-foreground'
-                  )}
-                >
-                  {dailyChangePercent > 0 ? <TrendingUp className="w-4 h-4" /> : null}
-                  {dailyChangePercent < 0 ? <TrendingDown className="w-4 h-4" /> : null}
-                  <span>
-                    {dailyChangePercent > 0 ? '+' : ''}
-                    {dailyChangePercent.toFixed(2)}%
+          <div className="flex flex-wrap items-start justify-between gap-3 pt-1 text-sm">
+            <div className="flex flex-col gap-1 text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-3">
+                {typeof effectivePrice === 'number' && effectivePrice > 0 && (
+                  <span className="text-foreground font-semibold">
+                    Kurs: <span className="text-muted-foreground font-medium">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
                   </span>
-                </span>
-              ) : (
-                <span className="text-xs text-muted-foreground">Kursdata saknas</span>
-              )}
+                )}
+                {hasDailyChange && dailyChangePercent !== null ? (
+                  <div className="flex flex-wrap items-center gap-2 font-semibold">
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1',
+                        dailyChangePercent > 0
+                          ? 'text-emerald-700'
+                          : dailyChangePercent < 0
+                            ? 'text-red-700'
+                            : 'text-muted-foreground'
+                      )}
+                    >
+                      {dailyChangePercent > 0 ? <TrendingUp className="w-4 h-4" /> : null}
+                      {dailyChangePercent < 0 ? <TrendingDown className="w-4 h-4" /> : null}
+                      <span>
+                        {dailyChangePercent > 0 ? '+' : ''}
+                        {dailyChangePercent.toFixed(2)}%
+                      </span>
+                    </span>
+
+                    {dailyChangeValue !== null && (
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1',
+                          dailyChangePercent > 0
+                            ? 'text-emerald-700'
+                            : dailyChangePercent < 0
+                              ? 'text-red-700'
+                              : 'text-muted-foreground'
+                        )}
+                      >
+                        (
+                        {dailyChangeValue > 0 ? '+' : ''}
+                        {formatCurrency(dailyChangeValue, 'SEK')}
+                        )
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Kursdata saknas</span>
+                )}
+              </div>
+
+              {quantity > 0 && <span className="text-foreground font-semibold">{quantity} st</span>}
             </div>
 
             <div className="flex items-center gap-2 text-muted-foreground">
