@@ -382,6 +382,7 @@ export const useAIChat = (portfolioId?: string) => {
   const [quotaExceeded, setQuotaExceeded] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
   const ephemeralMessagesRef = useRef<Message[]>([]);
+  const isCreatingSessionRef = useRef(false);
 
   const addOrReplaceEphemeralMessage = useCallback((message: Message) => {
     ephemeralMessagesRef.current = [
@@ -547,6 +548,9 @@ export const useAIChat = (portfolioId?: string) => {
       return;
     }
     
+    // Set flag to prevent auto-load of latest session
+    isCreatingSessionRef.current = true;
+    
     setIsLoading(true);
 
     // Clear messages immediately for new session
@@ -588,8 +592,15 @@ export const useAIChat = (portfolioId?: string) => {
         is_active: data.is_active || false,
       };
 
-      setSessions(prev => [newSession, ...prev]);
+      // Set current session ID FIRST to prevent auto-load
       setCurrentSessionId(newSession.id);
+      
+      // Use setTimeout to ensure currentSessionId state is updated before sessions list
+      // This prevents race conditions where useEffect might run before currentSessionId is set
+      setTimeout(() => {
+        // Then update sessions list
+        setSessions(prev => [newSession, ...prev]);
+      }, 0);
       
       // Only send initial message if explicitly requested and provided
       if (shouldSendInitialMessage) {
@@ -606,6 +617,7 @@ export const useAIChat = (portfolioId?: string) => {
       
     } catch (error) {
       console.error('Error creating new session:', error);
+      isCreatingSessionRef.current = false;
       toast({
         title: "Fel",
         description: "Kunde inte skapa ny session. Försök igen.",
@@ -1501,7 +1513,8 @@ export const useAIChat = (portfolioId?: string) => {
   }, [clearEphemeralMessages, currentSessionId]);
 
   useEffect(() => {
-    if (!user || currentSessionId || sessions.length === 0) {
+    // Don't auto-load if we're currently creating a session or if conditions aren't met
+    if (!user || currentSessionId || sessions.length === 0 || isCreatingSessionRef.current) {
       return;
     }
 
@@ -1509,6 +1522,18 @@ export const useAIChat = (portfolioId?: string) => {
     setCurrentSessionId(mostRecentSession.id);
     loadMessages(mostRecentSession.id);
   }, [user, sessions, currentSessionId, loadMessages]);
+
+  // Reset the creating session flag once currentSessionId is properly set
+  // This ensures we don't interfere with normal auto-load behavior after session creation
+  useEffect(() => {
+    if (isCreatingSessionRef.current && currentSessionId) {
+      // Give it time to ensure sessions list is also updated and all state is stable
+      const timeoutId = setTimeout(() => {
+        isCreatingSessionRef.current = false;
+      }, 1000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [currentSessionId]);
 
   useEffect(() => {
     if (!currentSessionId) {

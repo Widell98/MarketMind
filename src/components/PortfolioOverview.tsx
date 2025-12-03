@@ -257,7 +257,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               <div className="min-w-0 flex-1">
                 <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
                   <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 flex-shrink-0" />
-                  <span className="break-words">AI-Rekommenderade Innehav</span>
+                  <span className="break-words">Ai-Förslag på innehav</span>
                 </CardTitle>
                 <CardDescription className="text-xs sm:text-sm text-muted-foreground mt-1">
                   Aktier som AI-advisorn rekommenderar för din portfölj

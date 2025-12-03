@@ -402,7 +402,7 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
       {portfolio.recommended_stocks && portfolio.recommended_stocks.length > 0 && (
         <Card className="w-full overflow-hidden">
           <CardHeader className="p-3 sm:p-4 md:p-6">
-            <CardTitle className="text-sm sm:text-base md:text-lg">AI-Rekommenderade Investeringar</CardTitle>
+            <CardTitle className="text-sm sm:text-base md:text-lg">AI-Förslag på Investeringar</CardTitle>
             <CardDescription className="text-xs sm:text-sm">AI-genererade förslag baserat på din profil</CardDescription>
           </CardHeader>
           <CardContent className="p-3 sm:p-4 md:p-6 pt-0">

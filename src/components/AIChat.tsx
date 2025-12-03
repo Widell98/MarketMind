@@ -225,9 +225,11 @@ const AIChat = ({
         initialMessage
       } = navigationState;
       const startNewSession = async () => {
+        // Create new session without sending initial message
         await createNewSession(sessionName);
 
         if (initialMessage) {
+          // Pre-fill the input with the initial message (user will send it themselves)
           setInput(initialMessage);
           setTimeout(() => {
             inputRef.current?.focus();

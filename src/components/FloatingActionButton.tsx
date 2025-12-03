@@ -97,80 +97,81 @@ const FloatingActionButton: React.FC = () => {
     }
   };
 
-  return (
-    <>
-      <div className="fixed bottom-6 right-6 z-50">
-        {/* Action Menu */}
-        {isOpen && (
-          <Card className="mb-4 shadow-2xl border-2 border-primary/20 bg-background/95 backdrop-blur-sm">
-            <CardContent className="p-2">
-              <div className="space-y-2 w-48">
-                {quickActions.map((action, index) => {
-                  const Icon = action.icon;
-                  return (
-                    <Button
-                      key={action.id}
-                      variant="ghost"
-                      className={cn(
-                        "w-full justify-start gap-3 h-12 transition-all duration-200",
-                        "hover:scale-105 hover:shadow-md"
-                      )}
-                      style={{
-                        animationDelay: `${index * 50}ms`,
-                        animation: 'fadeInUp 0.3s ease-out forwards'
-                      }}
-                      onClick={() => handleActionClick(action.id)}
-                    >
-                      <div className={cn(
-                        "w-8 h-8 rounded-lg flex items-center justify-center",
-                        action.color
-                      )}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <span className="font-medium">{action.label}</span>
-                    </Button>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+  return null;
+  // return (
+  //   <>
+  //     <div className="fixed bottom-6 right-6 z-50">
+  //       {/* Action Menu */}
+  //       {isOpen && (
+  //         <Card className="mb-4 shadow-2xl border-2 border-primary/20 bg-background/95 backdrop-blur-sm">
+  //           <CardContent className="p-2">
+  //             <div className="space-y-2 w-48">
+  //               {quickActions.map((action, index) => {
+  //                 const Icon = action.icon;
+  //                 return (
+  //                   <Button
+  //                     key={action.id}
+  //                     variant="ghost"
+  //                     className={cn(
+  //                       "w-full justify-start gap-3 h-12 transition-all duration-200",
+  //                       "hover:scale-105 hover:shadow-md"
+  //                     )}
+  //                     style={{
+  //                       animationDelay: `${index * 50}ms`,
+  //                       animation: 'fadeInUp 0.3s ease-out forwards'
+  //                     }}
+  //                     onClick={() => handleActionClick(action.id)}
+  //                   >
+  //                     <div className={cn(
+  //                       "w-8 h-8 rounded-lg flex items-center justify-center",
+  //                       action.color
+  //                     )}>
+  //                       <Icon className="w-4 h-4" />
+  //                     </div>
+  //                     <span className="font-medium">{action.label}</span>
+  //                   </Button>
+  //                 );
+  //               })}
+  //             </div>
+  //           </CardContent>
+  //         </Card>
+  //       )}
 
-        {/* Main FAB */}
-        <Button
-          className={cn(
-            "w-14 h-14 rounded-full shadow-2xl transition-all duration-300",
-            "bg-primary hover:bg-primary/90 text-primary-foreground",
-            "hover:scale-110 active:scale-95",
-            isOpen && "rotate-45"
-          )}
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          {isOpen ? (
-            <X className="w-6 h-6" />
-          ) : (
-            <Zap className="w-6 h-6" />
-          )}
-        </Button>
-      </div>
+  //       {/* Main FAB */}
+  //       <Button
+  //         className={cn(
+  //           "w-14 h-14 rounded-full shadow-2xl transition-all duration-300",
+  //           "bg-primary hover:bg-primary/90 text-primary-foreground",
+  //           "hover:scale-110 active:scale-95",
+  //           isOpen && "rotate-45"
+  //         )}
+  //         onClick={() => setIsOpen(!isOpen)}
+  //       >
+  //         {isOpen ? (
+  //           <X className="w-6 h-6" />
+  //         ) : (
+  //           <Zap className="w-6 h-6" />
+  //         )}
+  //       </Button>
+  //     </div>
 
-      {/* CSS Animation */}
-      <style>
-        {`
-          @keyframes fadeInUp {
-            from {
-              opacity: 0;
-              transform: translateY(10px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-        `}
-      </style>
-    </>
-  );
+  //     {/* CSS Animation */}
+  //     <style>
+  //       {`
+  //         @keyframes fadeInUp {
+  //           from {
+  //             opacity: 0;
+  //             transform: translateY(10px);
+  //           }
+  //           to {
+  //             opacity: 1;
+  //             transform: translateY(0);
+  //           }
+  //         }
+  //       `}
+  //     </style>
+  //   </>
+  // );
 };
 
 export default FloatingActionButton;

@@ -73,7 +73,7 @@ const BestWorstHoldings: React.FC = () => {
     <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
       {topHoldings.best.length > 0 && (
         <HoldingsHighlightCard
-          title="Bästa innehav"
+          title="Bästa innehav i portföljen"
           icon={<TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />}
           iconColorClass="text-emerald-600"
           items={bestHoldingsItems}
@@ -83,7 +83,7 @@ const BestWorstHoldings: React.FC = () => {
 
       {topHoldings.worst.length > 0 && (
         <HoldingsHighlightCard
-          title="Sämsta innehav"
+          title="Sämsta innehav i portföljen"
           icon={<TrendingDown className="h-4 w-4 sm:h-5 sm:w-5" />}
           iconColorClass="text-red-600"
           items={worstHoldingsItems}
@@ -95,4 +95,5 @@ const BestWorstHoldings: React.FC = () => {
 };
 
 export default BestWorstHoldings;
+
 

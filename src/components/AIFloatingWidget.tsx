@@ -151,19 +151,20 @@ Ge ett kortfattat, snabbt svar på investeringsfrågan.`;
   const toggleVoice = () => setIsListening(prev => !prev);
 
   if (!isOpen) {
-    return (
-      <div className="fixed bottom-20 right-6 md:bottom-6 md:right-6 z-50 hidden md:block">
-        <Button
-          onClick={() => setIsOpen(true)}
-          className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-r from-primary to-blue-600 hover:scale-105 shadow-lg"
-        >
-          <Brain className="w-5 h-5 md:w-6 md:h-6 text-white" />
-        </Button>
-        <div className="absolute -top-1 -right-1 md:-top-2 md:-right-2 w-5 h-5 md:w-6 md:h-6 bg-green-500 rounded-full flex items-center justify-center">
-          <Sparkles className="w-2 h-2 md:w-3 md:h-3 text-white" />
-        </div>
-      </div>
-    );
+    return null;
+    // return (
+    //   <div className="fixed bottom-20 right-6 md:bottom-6 md:right-6 z-50 hidden md:block">
+    //     <Button
+    //       onClick={() => setIsOpen(true)}
+    //       className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-r from-primary to-blue-600 hover:scale-105 shadow-lg"
+    //     >
+    //       <Brain className="w-5 h-5 md:w-6 md:h-6 text-white" />
+    //     </Button>
+    //     <div className="absolute -top-1 -right-1 md:-top-2 md:-right-2 w-5 h-5 md:w-6 md:h-6 bg-green-500 rounded-full flex items-center justify-center">
+    //       <Sparkles className="w-2 h-2 md:w-3 md:h-3 text-white" />
+    //     </div>
+    //   </div>
+    // );
   }
 
   return (
