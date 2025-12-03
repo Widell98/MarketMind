@@ -6,7 +6,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import ProfileMenu from './ProfileMenu';
 import BreadcrumbNavigation from './Breadcrumb';
-import AIFloatingWidget from './AIFloatingWidget';
+// import AIFloatingWidget from './AIFloatingWidget';
 import MobileNavigation from './MobileNavigation';
 import AppSidebar from './AppSidebar';
 import LanguageToggle from './LanguageToggle';
@@ -124,7 +124,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </div>
 
           {/* AI Floating Widget - available on all pages */}
-          <AIFloatingWidget />
+          {/* <AIFloatingWidget /> */}
         </div>
       </SidebarProvider>
     </ConversationMemoryProvider>
