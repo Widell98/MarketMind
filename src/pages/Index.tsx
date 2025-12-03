@@ -1,34 +1,29 @@
 import React from 'react';
 import Layout from '@/components/Layout';
 import {
-  Brain,
-  UserPlus,
-  BarChart3,
-  Users,
+  ArrowRight,
   ArrowUpRight,
-  TrendingUp,
-  Shield,
-  MessageCircle,
-  CheckCircle,
-  Heart,
-  Target,
-  Coffee,
-  HandHeart,
-  MapPin,
-  Clock,
-  Zap,
-  DollarSign,
-  MessageSquare,
-  Settings,
+  BarChart3,
+  Bell,
+  Brain,
   Building2,
-  RefreshCw,
-  Sparkles,
-  Search,
-  Newspaper,
+  CheckCircle,
+  Clock,
+  Coffee,
   ExternalLink,
-  Activity,
+  Eye,
+  HandHeart,
+  Heart,
+  MapPin,
+  MessageSquare,
+  Newspaper,
+  Search,
+  Shield,
+  Sparkles,
   Star,
-  Wallet,
+  TrendingDown,
+  TrendingUp,
+  Zap,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,19 +33,14 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
-import { useUserHoldings, type UserHolding } from '@/hooks/useUserHoldings';
-import { useAIInsights } from '@/hooks/useAIInsights';
+import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useLikedStockCases } from '@/hooks/useLikedStockCases';
 import { useNewsData } from '@/hooks/useNewsData';
 import { Badge } from '@/components/ui/badge';
 import StockCaseCard from '@/components/StockCaseCard';
-import PortfolioOverviewCard, { type SummaryCard } from '@/components/PortfolioOverviewCard';
-import { ArrowRight, TrendingDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveHoldingValue } from '@/utils/currencyUtils';
 import { useDailyChangeData } from '@/hooks/useDailyChangeData';
-import HoldingsHighlightCard from '@/components/HoldingsHighlightCard';
-import AllocationCard from '@/components/AllocationCard';
 
 type QuickAction = {
   icon: React.ComponentType<{ className?: string }>;
@@ -58,6 +48,35 @@ type QuickAction = {
   description: string;
   to: string;
 };
+
+type QuickStatCardProps = {
+  label: string;
+  value: string;
+  subValue?: string;
+  isPositive?: boolean;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+const QuickStatCard: React.FC<QuickStatCardProps> = ({ label, value, subValue, isPositive, icon: Icon }) => (
+  <Card className="border-border/60 bg-card/50 backdrop-blur-sm shadow-sm">
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
+        <div className={`p-2 rounded-full ${isPositive ? 'bg-emerald-500/10' : 'bg-primary/10'}`}>
+          <Icon className={`w-4 h-4 ${isPositive ? 'text-emerald-600' : 'text-primary'}`} />
+        </div>
+      </div>
+      <div>
+        <h3 className="text-2xl font-bold tracking-tight">{value}</h3>
+        {subValue && (
+          <p className={`text-sm mt-1 font-medium ${isPositive ? 'text-emerald-600' : 'text-red-600'}`}>
+            {subValue}
+          </p>
+        )}
+      </div>
+    </div>
+  </Card>
+);
 
 
 const insightTypeLabels: Record<'performance' | 'allocation' | 'risk' | 'opportunity', string> = {
@@ -103,6 +122,13 @@ const formatTime = (dateString: string): string => {
   }
 };
 
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 10) return 'God morgon';
+  if (hour < 18) return 'God dag';
+  return 'God kväll';
+};
+
 const Index = () => {
   const navigate = useNavigate();
   const {
@@ -124,12 +150,6 @@ const Index = () => {
   const {
     actualHoldings
   } = useUserHoldings();
-  const {
-    insights,
-    isLoading: insightsLoading,
-    lastUpdated: insightsLastUpdated,
-    refreshInsights,
-  } = useAIInsights();
   const { likedStockCases, loading: likedStockCasesLoading } = useLikedStockCases();
   const { morningBrief, newsData } = useNewsData();
   // Show portfolio dashboard if user has portfolio OR has holdings (so they can see portfolio value after implementing strategy)
@@ -147,14 +167,6 @@ const Index = () => {
   };
 
   const formatPercent = (value: number) => `${value.toFixed(2)}%`;
-
-  const renderHoldingAvatar = (holding: UserHolding) => {
-    const initial = (holding.name || holding.symbol || '?').charAt(0).toUpperCase();
-    const baseClasses = 'flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold';
-    const colorClasses = 'bg-muted/40 text-foreground';
-
-    return <div className={`${baseClasses} ${colorClasses}`}>{initial}</div>;
-  };
 
   const dailyHighlights = React.useMemo(() => {
     const sortableHoldings = actualHoldings.filter(holding =>
@@ -312,63 +324,6 @@ const Index = () => {
   const dayChangeValue = todayDevelopment?.value ?? 0;
   const isPositiveDayChange = dayChangePercent >= 0;
 
-  const summaryCards = React.useMemo<SummaryCard[]>(() => {
-    const changeValue = dayChangeValue;
-    const changeValueFormatted = changeValue !== 0
-      ? (changeValue >= 0 
-        ? `+${changeValue.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr`
-        : `${changeValue.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr`)
-      : '0,00 kr';
-    return [
-      {
-        icon: Star,
-        label: 'Utveckling idag',
-        value: loadingTodayDevelopment 
-          ? '—'
-          : (dayChangePercent !== 0
-            ? (isPositiveDayChange 
-              ? `+${dayChangePercent.toFixed(2)}%` 
-              : `${dayChangePercent.toFixed(2)}%`)
-            : '0.00%'),
-        helper: loadingTodayDevelopment
-          ? 'Laddar...'
-          : (changeValue !== 0
-            ? changeValueFormatted
-            : safeTotalPortfolioValue > 0 
-              ? `${safeTotalPortfolioValue.toLocaleString('sv-SE')} kr`
-              : t('dashboard.onTrack')),
-        helperClassName: loadingTodayDevelopment
-          ? 'text-muted-foreground'
-          : (dayChangePercent !== 0
-            ? (isPositiveDayChange 
-              ? 'text-emerald-600 dark:text-emerald-400 font-medium' 
-              : 'text-red-600 dark:text-red-400 font-medium')
-            : 'text-muted-foreground'),
-      },
-      {
-        icon: BarChart3,
-        label: t('dashboard.holdings'),
-        value: holdingsCount.toString(),
-        helper: t('dashboard.balancedSpread'),
-        helperClassName: 'text-muted-foreground',
-      },
-      {
-        icon: Heart,
-        label: 'Gillade aktier',
-        value: likedStockCases.length.toString(),
-        helper: 'Dina favoriter',
-        helperClassName: 'text-muted-foreground',
-      },
-      {
-        icon: Wallet,
-        label: 'Likvida medel',
-        value: `${safeTotalCash.toLocaleString('sv-SE')} kr`,
-        helper: 'Redo för nya möjligheter',
-        helperClassName: 'text-muted-foreground',
-      },
-    ];
-  }, [t, safeTotalPortfolioValue, holdingsCount, safeTotalCash, dayChangePercent, isPositiveDayChange, likedStockCases.length, loadingTodayDevelopment, dayChangeValue]);
-
   const quickActions = React.useMemo<QuickAction[]>(() => [
     {
       icon: MessageSquare,
@@ -396,23 +351,52 @@ const Index = () => {
     },
   ], []);
 
-  const lastUpdatedLabel = React.useMemo(() => {
-    if (!insightsLastUpdated) {
-      return null;
-    }
+  const actionCenterItems = React.useMemo(() => {
+    const items: { icon: React.ComponentType<{ className?: string }>; title: string; description: string; to?: string }[] = [];
 
-    try {
-      return new Intl.DateTimeFormat('sv-SE', {
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(insightsLastUpdated);
-    } catch {
-      return insightsLastUpdated.toLocaleTimeString('sv-SE', {
-        hour: '2-digit',
-        minute: '2-digit',
+    if (morningBrief) {
+      items.push({
+        icon: Coffee,
+        title: 'Morgonrapporten är här',
+        description: morningBrief.headline,
+        to: '/news',
       });
     }
-  }, [insightsLastUpdated]);
+
+    if (bestHighlightItems.length > 0) {
+      const leader = bestHighlightItems[0];
+      items.push({
+        icon: TrendingUp,
+        title: `${leader.symbol} leder idag`,
+        description: `${leader.percentLabel} • ${leader.valueLabel}`,
+      });
+    }
+
+    if (worstHighlightItems.length > 0) {
+      const laggard = worstHighlightItems[0];
+      items.push({
+        icon: TrendingDown,
+        title: `${laggard.symbol} behöver uppmärksamhet`,
+        description: `${laggard.percentLabel} • ${laggard.valueLabel}`,
+      });
+    }
+
+    if (likedStockCases.length > 0) {
+      items.push({
+        icon: Star,
+        title: 'Du har sparade case att följa upp',
+        description: `${likedStockCases.length} favoriter väntar`,
+        to: '/discover?tab=liked',
+      });
+    }
+
+    return items.slice(0, 3);
+  }, [bestHighlightItems, likedStockCases.length, morningBrief, worstHighlightItems]);
+
+  const marketPulseDescription = isPositiveDayChange
+    ? 'Marknaden är på gott humör idag.'
+    : 'Marknaden är lite sur just nu.';
+
   return <Layout>
       <div className="min-h-0 bg-background">
         <div className="w-full max-w-5xl xl:max-w-6xl mx-auto px-3 sm:px-6 py-5 sm:py-9 lg:py-12">
@@ -561,250 +545,217 @@ const Index = () => {
 
           {/* Clean Dashboard for logged-in users */}
           {user && hasPortfolio && <div className="min-h-0 bg-background">
-              <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
-                <div className="space-y-5 sm:space-y-6">
-                  {/* Portfolio Value & Overview Combined */}
-                  <PortfolioOverviewCard
-                    portfolioValue={safeTotalPortfolioValue}
-                    totalReturn={performance.totalReturn}
-                    totalReturnPercentage={performance.totalReturnPercentage}
-                    summaryCards={summaryCards}
-                    loading={loadingTodayDevelopment && summaryCards.length === 0}
-                    dayChangePercent={dayChangePercent}
-                    dayChangeValue={dayChangeValue}
-                    isPositiveDayChange={isPositiveDayChange}
+              <div className="w-full max-w-6xl mx-auto px-4 py-8 space-y-8">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <h1 className="text-3xl font-bold tracking-tight">
+                      {getGreeting()}, {greetingName}!
+                    </h1>
+                    <p className="text-muted-foreground mt-1">
+                      Här är din dagliga sammanfattning. Marknaden är {isPositiveDayChange ? 'på gott humör' : 'lite sur'} idag.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="gap-2" asChild>
+                      <Link to="/discover">
+                        <Zap className="w-4 h-4" />
+                        Hitta nya case
+                      </Link>
+                    </Button>
+                    <Button className="gap-2" asChild>
+                      <Link to="/portfolio-implementation">
+                        <Eye className="w-4 h-4" />
+                        Gå till analysen
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <QuickStatCard
+                    label="Portföljvärde"
+                    value={`${safeTotalPortfolioValue.toLocaleString('sv-SE')} kr`}
+                    subValue={loadingTodayDevelopment ? '...' : formatDailyChangeValue(dayChangeValue)}
+                    isPositive={isPositiveDayChange}
+                    icon={TrendingUp}
                   />
+                  <QuickStatCard
+                    label="Utveckling idag"
+                    value={loadingTodayDevelopment ? '...' : `${isPositiveDayChange ? '+' : ''}${dayChangePercent.toFixed(2)}%`}
+                    subValue="Jämfört med gårdagens stängning"
+                    isPositive={isPositiveDayChange}
+                    icon={isPositiveDayChange ? TrendingUp : TrendingDown}
+                  />
+                  <QuickStatCard
+                    label="Likvida medel"
+                    value={`${safeTotalCash.toLocaleString('sv-SE')} kr`}
+                    subValue="Redo att investeras"
+                    isPositive
+                    icon={Coffee}
+                  />
+                </div>
 
-                    {/* Dagens förändring och allokering */}
-                    {(dailyHighlights.best.length > 0 || dailyHighlights.worst.length > 0 || performance.totalPortfolioValue > 0 || safeTotalCash > 0) && (
-                      <div className="space-y-3 sm:space-y-4">
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 sm:gap-4">
-                          {dailyHighlights.best.length > 0 && (
-                            <HoldingsHighlightCard
-                              title="Bästa innehav idag"
-                              icon={<TrendingUp className="h-5 w-5" />}
-                              iconColorClass="text-emerald-600"
-                              items={bestHighlightItems}
-                              emptyText="Ingen dagsdata ännu"
-                            />
-                          )}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  <div className="lg:col-span-2 space-y-6">
+                    {morningBrief && (
+                      <Card className="bg-gradient-to-br from-card to-primary/5 border-primary/20 overflow-hidden">
+                        <div className="p-6">
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="bg-primary/10 p-2 rounded-lg">
+                              <Coffee className="w-5 h-5 text-primary" />
+                            </div>
+                            <h2 className="text-lg font-semibold">Morgonens spaning</h2>
+                            <Badge variant="outline" className="ml-auto">AI-Genererad</Badge>
+                          </div>
 
-                          {dailyHighlights.worst.length > 0 && (
-                            <HoldingsHighlightCard
-                              title="Sämsta innehav idag"
-                              icon={<TrendingDown className="h-5 w-5" />}
-                              iconColorClass="text-red-600"
-                              items={worstHighlightItems}
-                              emptyText="Ingen dagsdata ännu"
-                            />
-                          )}
+                          <h3 className="text-xl font-medium mb-3">{morningBrief.headline}</h3>
+                          <p className="text-muted-foreground leading-relaxed mb-6">
+                            {morningBrief.overview}
+                          </p>
 
-                          {(performance.totalPortfolioValue > 0 || safeTotalCash > 0) && (
-                            <AllocationCard
-                              investedPercentage={performance.investedPercentage ?? 0}
-                              cashPercentage={performance.cashPercentage ?? 0}
-                            />
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                  {/* News/Morning Brief Section - Moved up */}
-                  {morningBrief && (
-                    <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Sparkles className="h-5 w-5 text-primary" />
-                        <h2 className="text-base font-semibold text-foreground sm:text-lg">Morgonrapport</h2>
-                        <Badge variant="secondary" className="ml-2">Idag</Badge>
-                      </div>
-                      <div className="space-y-3">
-                        <h3 className="text-lg font-semibold text-foreground">{morningBrief.headline}</h3>
-                        <p className="text-sm text-muted-foreground line-clamp-3">{morningBrief.overview}</p>
-                        {morningBrief.keyHighlights && morningBrief.keyHighlights.length > 0 && (
-                          <div className="mt-4 space-y-2">
-                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Höjdpunkter</p>
-                            <ul className="space-y-1">
+                          {morningBrief.keyHighlights && (
+                            <div className="bg-background/50 rounded-xl p-4 space-y-3">
                               {morningBrief.keyHighlights.slice(0, 3).map((highlight, idx) => (
-                                <li key={idx} className="flex items-start gap-2 text-sm text-foreground">
-                                  <span className="text-primary mt-1">•</span>
-                                  <span>{highlight}</span>
-                                </li>
+                                <div key={idx} className="flex gap-3 items-start">
+                                  <div className="min-w-1.5 h-1.5 rounded-full bg-primary mt-2" />
+                                  <span className="text-sm">{highlight}</span>
+                                </div>
                               ))}
-                            </ul>
-                          </div>
-                        )}
-                        <Button asChild variant="outline" size="sm" className="mt-4">
-                          <Link to="/news">
-                            Läs mer
-                            <ArrowRight className="ml-2 h-4 w-4" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="bg-muted/30 px-6 py-3 border-t border-border/10 flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">Uppdaterad 08:00</span>
+                          <Link to="/news" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
+                            Läs hela rapporten <ArrowRight className="w-3 h-3" />
                           </Link>
-                        </Button>
-                      </div>
-                    </section>
-                  )}
-
-                  {/* Liked Stocks Section */}
-                  <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <Heart className="h-5 w-5 text-primary" />
-                        <h2 className="text-base font-semibold text-foreground sm:text-lg">Dina gillade aktier</h2>
-                      </div>
-                      {likedStockCases.length > 0 && (
-                        <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                          <Link to="/discover?tab=liked">
-                            Se alla
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </Link>
-                        </Button>
-                      )}
-                    </div>
-                    {likedStockCasesLoading ? (
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
-                        {Array.from({ length: 3 }).map((_, index) => (
-                          <div key={index} className="rounded-2xl border border-border/60 bg-muted/20 p-4 animate-pulse">
-                            <div className="h-4 w-3/4 rounded bg-muted mb-2" />
-                            <div className="h-3 w-1/2 rounded bg-muted" />
-                          </div>
-                        ))}
-                      </div>
-                    ) : likedStockCases.length > 0 ? (
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
-                        {likedStockCases.slice(0, 3).map((stockCase) => (
-                          <StockCaseCard
-                            key={stockCase.id}
-                            stockCase={stockCase}
-                            onViewDetails={(id) => navigate(`/stock-cases/${id}`)}
-                            showMetaBadges={false}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-8 text-center">
-                        <Heart className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-semibold mb-2">Inga gillade aktier ännu</h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Utforska aktier och lägg till dem i dina favoriter
-                        </p>
-                        <Button asChild>
-                          <Link to="/discover">
-                            <Search className="mr-2 h-4 w-4" />
-                            Upptäck aktier
-                          </Link>
-                        </Button>
-                      </div>
+                        </div>
+                      </Card>
                     )}
-                  </section>
 
-                  {/* Latest News Section */}
-                  {newsData && newsData.length > 0 && (
-                    <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          <Newspaper className="h-5 w-5 text-primary" />
-                          <h2 className="text-base font-semibold text-foreground sm:text-lg">Senaste nyheter</h2>
-                        </div>
-                        <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                          <Link to="/news">
-                            Se alla
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </Link>
-                        </Button>
-                      </div>
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-                        {newsData.slice(0, 3).map((newsItem) => (
-                          <Card
-                            key={newsItem.id}
-                            className="rounded-2xl border border-border/60 bg-background/80 p-4 hover:shadow-md transition-all cursor-pointer group"
-                            onClick={() => {
-                              if (newsItem.url && newsItem.url !== '#') {
-                                window.open(newsItem.url, '_blank', 'noopener,noreferrer');
-                              }
-                            }}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold px-1">Marknadspuls</h3>
+                      <div className="bg-card border rounded-xl divide-y">
+                        {newsData?.slice(0, 4).map((news) => (
+                          <div
+                            key={news.id}
+                            className="group p-4 hover:bg-muted/50 transition-colors flex gap-4 cursor-pointer"
+                            onClick={() => news.url && window.open(news.url)}
                           >
-                            <div className="flex items-center justify-between mb-2">
-                              <Badge variant="secondary" className="text-xs">
-                                {formatCategoryLabel(newsItem.category)}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                {formatTime(newsItem.publishedAt)}
-                              </span>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge variant="secondary" className="text-[10px] h-5">
+                                  {news.source}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">{formatTime(news.publishedAt)}</span>
+                              </div>
+                              <h4 className="font-medium text-sm line-clamp-1">{news.headline}</h4>
                             </div>
-                            <h3 className="font-semibold text-sm mb-2 line-clamp-2 group-hover:text-primary transition-colors">
-                              {newsItem.headline}
-                            </h3>
-                            <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                              {newsItem.summary}
-                            </p>
-                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/60">
-                              <span className="text-xs text-muted-foreground">{newsItem.source}</span>
-                              {newsItem.url && newsItem.url !== '#' && (
-                                <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
-                              )}
-                            </div>
-                          </Card>
+                            <ArrowRight className="w-4 h-4 text-muted-foreground self-center opacity-0 group-hover:opacity-100" />
+                          </div>
                         ))}
                       </div>
-                    </section>
-                  )}
-
-                  {/* <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <h2 className="text-base font-semibold text-foreground sm:text-lg">AI-insikter för dig</h2>
-                        <p className="text-sm text-muted-foreground sm:text-base">Personliga rekommendationer baserade på din portfölj.</p>
-                      </div>
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                        {lastUpdatedLabel && <span className="text-xs text-muted-foreground sm:text-sm">Senast uppdaterad {lastUpdatedLabel}</span>}
-                        <Button type="button" variant="outline" size="sm" onClick={refreshInsights} disabled={insightsLoading} className="w-full justify-center sm:w-auto">
-                          <RefreshCw className={`mr-2 h-4 w-4 ${insightsLoading ? 'animate-spin' : ''}`} />
-                          {insightsLoading ? 'Hämtar...' : 'Uppdatera'}
-                        </Button>
-                      </div>
                     </div>
-                    <div className="-mx-1 mt-4 flex gap-3 overflow-x-auto pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible">
-                      {insightsLoading && insights.length === 0 ? (
-                        Array.from({ length: 2 }).map((_, index) => (
-                          <div
-                            key={index}
-                            className="min-w-[16rem] animate-pulse rounded-2xl border border-border/60 bg-muted/20 p-4 sm:min-w-0 sm:p-5"
+                  </div>
+
+                  <div className="space-y-6">
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base">Action center</CardTitle>
+                        <CardDescription>Snabba saker att hålla koll på just nu.</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {actionCenterItems.map((item, index) => (
+                          <Link
+                            key={`${item.title}-${index}`}
+                            to={item.to || '#'}
+                            className={`flex gap-3 items-start p-3 rounded-xl border transition-colors ${item.to ? 'hover:border-primary/50 hover:bg-primary/5' : ''}`}
                           >
-                            <div className="h-5 w-20 rounded-full bg-muted" />
-                            <div className="mt-4 h-4 w-3/4 rounded bg-muted" />
-                            <div className="mt-2 h-3 w-full rounded bg-muted" />
-                            <div className="mt-2 h-3 w-2/3 rounded bg-muted" />
-                          </div>
-                        ))
-                      ) : insights.length > 0 ? (
-                        insights.map((insight, index) => {
-                          const type = (insight.type as keyof typeof insightTypeLabels) ?? 'opportunity';
-                          const badgeClassName = insightBadgeStyles[type] ?? 'bg-primary/10 text-primary';
-                          const label = insightTypeLabels[type] ?? 'AI-insikt';
-                          const title = insight.title || 'AI-insikt';
-                          const message = insight.message || '';
-
-                          return (
-                            <div
-                              key={`${title}-${index}`}
-                              className="min-w-[16rem] flex-1 rounded-2xl border border-border/60 bg-background/80 p-4 sm:min-w-0 sm:p-5"
-                            >
-                              <Badge className={`mb-3 w-fit ${badgeClassName}`}>{label}</Badge>
-                              <p className="text-sm font-semibold text-foreground">{title}</p>
-                              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{message}</p>
+                            <div className="p-2 rounded-lg bg-muted">
+                              <item.icon className="w-4 h-4 text-primary" />
                             </div>
-                          );
-                        })
-                      ) : (
-                        <div className="flex min-w-[16rem] flex-col justify-center gap-2 rounded-2xl border border-dashed border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground sm:min-w-0 sm:p-6">
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Sparkles className="h-4 w-4 text-primary" />
-                            <span>Inga AI-insikter ännu</span>
+                            <div className="space-y-1">
+                              <p className="text-sm font-medium">{item.title}</p>
+                              <p className="text-xs text-muted-foreground">{item.description}</p>
+                            </div>
+                            <ArrowRight className="w-4 h-4 text-muted-foreground ml-auto" />
+                          </Link>
+                        ))}
+                        {actionCenterItems.length === 0 && (
+                          <p className="text-sm text-muted-foreground">Inga viktiga åtgärder just nu.</p>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {dailyHighlights.best.length > 0 && (
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base">Dagens rörelser</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="space-y-3">
+                            {bestHighlightItems.slice(0, 3).map((item) => (
+                              <div key={item.id} className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
+                                    {item.symbol?.slice(0, 1)}
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium">{item.symbol}</p>
+                                    <p className="text-xs text-muted-foreground">{item.name}</p>
+                                  </div>
+                                </div>
+                                <Badge variant="outline" className="text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-950/30 dark:border-emerald-900">
+                                  {item.percentLabel}
+                                </Badge>
+                              </div>
+                            ))}
                           </div>
-                          <p>Tryck på uppdatera för att hämta personliga rekommendationer.</p>
+                          <Button variant="ghost" className="w-full text-xs" asChild>
+                            <Link to="/portfolio-implementation">Se alla innehav</Link>
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base">Marknadstemperatur</CardTitle>
+                        <CardDescription>{marketPulseDescription}</CardDescription>
+                      </CardHeader>
+                      <CardContent className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Din portfölj idag</p>
+                          <p className={`text-xl font-semibold ${isPositiveDayChange ? 'text-emerald-600' : 'text-red-600'}`}>
+                            {loadingTodayDevelopment ? '...' : `${dayChangePercent.toFixed(2)}%`}
+                          </p>
+                          <p className="text-xs text-muted-foreground">Mot gårdagens stängning</p>
                         </div>
-                      )}
-                    </div>
-                  </section> */}
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Bell className="w-4 h-4" />
+                          Uppdateras under dagen
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base">Genvägar</CardTitle>
+                      </CardHeader>
+                      <CardContent className="grid grid-cols-2 gap-3">
+                        {quickActions.map((action, i) => (
+                          <Link
+                            key={i}
+                            to={action.to}
+                            className="flex flex-col items-center justify-center p-4 rounded-xl border bg-muted/20 hover:bg-muted/40 transition-colors text-center gap-2"
+                          >
+                            <action.icon className="w-5 h-5 text-primary" />
+                            <span className="text-xs font-medium">{action.title}</span>
+                          </Link>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
               </div>
             </div>}
