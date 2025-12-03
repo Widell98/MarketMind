@@ -262,24 +262,15 @@ const PortfolioImplementation = () => {
   const investedValue = performance.totalValue ?? 0;
 
   const portfolioImportControls = (
-    <>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".csv,text/csv"
-        className="hidden"
-        onChange={handlePortfolioCsvUpload}
-      />
-      <Button
-        onClick={handleImportClick}
-        disabled={isImportingHoldings}
-        className="rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-4 shadow-md transition-all duration-200 hover:shadow-lg text-xs sm:text-sm w-full sm:w-auto"
-        variant="outline"
-      >
-        <Upload className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-        {isImportingHoldings ? 'Importerar...' : 'Importera från CSV'}
-      </Button>
-    </>
+    <Button
+      onClick={handleImportClick}
+      disabled={isImportingHoldings}
+      className="rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-4 shadow-md transition-all duration-200 hover:shadow-lg text-xs sm:text-sm w-full sm:w-auto"
+      variant="outline"
+    >
+      <Upload className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+      {isImportingHoldings ? 'Importerar...' : 'Importera från CSV'}
+    </Button>
   );
 
   const hasPortfolioData = (actualHoldings?.length || 0) > 0 && totalPortfolioValue > 0;
@@ -316,6 +307,13 @@ const PortfolioImplementation = () => {
 
   // Always show portfolio implementation page with tabs
   return <Layout>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv,text/csv"
+        className="hidden"
+        onChange={handlePortfolioCsvUpload}
+      />
       <LoginPromptModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
       
       <div className="min-h-0 bg-gradient-to-br from-background to-secondary/5">
@@ -353,16 +351,6 @@ const PortfolioImplementation = () => {
                     <Sparkles className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     <span className="hidden xs:inline">Starta AI-chatt</span>
                     <span className="xs:hidden">AI-chatt</span>
-                  </Button>
-                  <Button
-                    onClick={handleImportClick}
-                    disabled={isImportingHoldings}
-                    className="rounded-xl sm:rounded-2xl px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 shadow-md hover:shadow-lg text-xs sm:text-sm"
-                    variant="outline"
-                  >
-                    <Upload className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">{isImportingHoldings ? 'Importerar...' : 'Importera CSV'}</span>
-                    <span className="sm:hidden">{isImportingHoldings ? '...' : 'CSV'}</span>
                   </Button>
                   <Button
                     onClick={handleUpdateProfile}

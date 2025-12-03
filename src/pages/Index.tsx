@@ -162,10 +162,12 @@ const Index = () => {
     );
 
     const best = [...sortableHoldings]
+      .filter((holding) => (holding.dailyChangePercent ?? 0) > 0)
       .sort((a, b) => (b.dailyChangePercent ?? 0) - (a.dailyChangePercent ?? 0))
       .slice(0, 3);
 
     const worst = [...sortableHoldings]
+      .filter((holding) => (holding.dailyChangePercent ?? 0) < 0)
       .sort((a, b) => (a.dailyChangePercent ?? 0) - (b.dailyChangePercent ?? 0))
       .slice(0, 3);
 
