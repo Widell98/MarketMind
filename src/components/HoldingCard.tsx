@@ -197,7 +197,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
 
         <div className="space-y-2 sm:space-y-3">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4">
-            <div className="font-extrabold text-foreground leading-tight" style={{ fontSize: '2.25rem' }}>
+            <div className="font-extrabold text-foreground leading-tight" style={{ fontSize: '2rem' }}>
               {formatCurrency(displayValue, 'SEK')}
             </div>
 
