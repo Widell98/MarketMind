@@ -263,51 +263,53 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
             </div>
 
             {hasPerformanceData && hasPurchasePrice && (
-              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 font-semibold pb-3 border-b border-border">
-                <span className="text-muted-foreground text-xs sm:text-sm font-medium">Total utveckling:</span>
-                <TooltipProvider delayDuration={120}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1',
-                          profit > 0
-                            ? 'text-emerald-600 dark:text-emerald-500'
-                            : profit < 0
-                              ? 'text-red-600 dark:text-red-500'
-                              : 'text-muted-foreground'
-                        )}
-                      >
-                        {profit > 0 ? (
-                          <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        ) : profit < 0 ? (
-                          <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        ) : null}
-                        <span className="text-xs sm:text-sm">
-                          {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}
+              <div className="border-t border-border pt-3">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 font-semibold">
+                  <span className="text-muted-foreground text-xs sm:text-sm font-medium">Total utveckling:</span>
+                  <TooltipProvider delayDuration={120}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-1',
+                            profit > 0
+                              ? 'text-emerald-600 dark:text-emerald-500'
+                              : profit < 0
+                                ? 'text-red-600 dark:text-red-500'
+                                : 'text-muted-foreground'
+                          )}
+                        >
+                          {profit > 0 ? (
+                            <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          ) : profit < 0 ? (
+                            <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          ) : null}
+                          <span className="text-xs sm:text-sm">
+                            {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}
+                          </span>
                         </span>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-xs font-medium">
-                      totala utveckling på innehav
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1 text-xs sm:text-sm',
-                    profit > 0
-                      ? 'text-emerald-600 dark:text-emerald-500'
-                      : profit < 0
-                        ? 'text-red-600 dark:text-red-500'
-                        : 'text-muted-foreground'
-                  )}
-                >
-                  (
-                  {profit > 0 ? '+' : ''}
-                  {formatCurrency(profit, 'SEK')}
-                  )
-                </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs font-medium">
+                        totala utveckling på innehav
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1 text-xs sm:text-sm',
+                      profit > 0
+                        ? 'text-emerald-600 dark:text-emerald-500'
+                        : profit < 0
+                          ? 'text-red-600 dark:text-red-500'
+                          : 'text-muted-foreground'
+                    )}
+                  >
+                    (
+                    {profit > 0 ? '+' : ''}
+                    {formatCurrency(profit, 'SEK')}
+                    )
+                  </span>
+                </div>
               </div>
             )}
           </div>
