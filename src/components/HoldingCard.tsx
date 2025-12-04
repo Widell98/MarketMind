@@ -102,11 +102,12 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   }, [normalizedSymbol]);
 
   return (
-    <Card className="hover:shadow-md transition-all duration-200 rounded-xl border border-border/60">
-      <CardContent className="p-4 sm:p-5 space-y-3 sm:space-y-4">
-        <div className="flex items-start justify-between gap-2 sm:gap-3">
-          <div className="flex items-start gap-2 sm:gap-3 min-w-0 flex-1">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+    <TooltipProvider delayDuration={120}>
+      <Card className="hover:shadow-md transition-all duration-200 rounded-xl border border-border/60">
+        <CardContent className="p-4 sm:p-5 space-y-3 sm:space-y-4">
+          <div className="flex items-start justify-between gap-2 sm:gap-3">
+            <div className="flex items-start gap-2 sm:gap-3 min-w-0 flex-1">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
               {logoUrl && !isLogoError ? (
                 <img
                   src={logoUrl}
@@ -121,7 +122,19 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                <h3 className="font-semibold text-foreground leading-tight truncate text-sm sm:text-base md:text-lg">{holding.name}</h3>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <h3
+                      className="font-semibold text-foreground leading-tight truncate text-sm sm:text-base md:text-lg"
+                      title={holding.name}
+                    >
+                      {holding.name}
+                    </h3>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs break-words text-xs sm:text-sm">
+                    {holding.name}
+                  </TooltipContent>
+                </Tooltip>
                 {!isCash && quantity > 0 && (
                   <span className="text-xs sm:text-sm text-muted-foreground font-medium whitespace-nowrap">{quantity} st</span>
                 )}
@@ -266,34 +279,32 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
               <div className="border-t border-border pt-3">
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 font-semibold">
                   <span className="text-muted-foreground text-xs sm:text-sm font-medium">Total utveckling:</span>
-                  <TooltipProvider delayDuration={120}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span
-                          className={cn(
-                            'inline-flex items-center gap-1',
-                            profit > 0
-                              ? 'text-emerald-600 dark:text-emerald-500'
-                              : profit < 0
-                                ? 'text-red-600 dark:text-red-500'
-                                : 'text-muted-foreground'
-                          )}
-                        >
-                          {profit > 0 ? (
-                            <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                          ) : profit < 0 ? (
-                            <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                          ) : null}
-                          <span className="text-xs sm:text-sm">
-                            {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}
-                          </span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1',
+                          profit > 0
+                            ? 'text-emerald-600 dark:text-emerald-500'
+                            : profit < 0
+                              ? 'text-red-600 dark:text-red-500'
+                              : 'text-muted-foreground'
+                        )}
+                      >
+                        {profit > 0 ? (
+                          <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        ) : profit < 0 ? (
+                          <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        ) : null}
+                        <span className="text-xs sm:text-sm">
+                          {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}
                         </span>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="text-xs font-medium">
-                        totala utveckling på innehav
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs font-medium">
+                      totala utveckling på innehav
+                    </TooltipContent>
+                  </Tooltip>
                   <span
                     className={cn(
                       'inline-flex items-center gap-1 text-xs sm:text-sm',
@@ -314,8 +325,9 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
             )}
           </div>
         )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </TooltipProvider>
   );
 };
 
