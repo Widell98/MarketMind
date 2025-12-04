@@ -178,12 +178,6 @@ const DiscoverNews = () => {
 
   const isWeeklySummary = isWeekend() || morningBrief?.headline?.toLowerCase().includes('veckosammanfattning');
 
-  const marketMetrics = [
-    { label: 'OMX30', value: '+0.8%', detail: 'Stiger efter starka verkstadsrapporter' },
-    { label: 'S&P 500', value: '+0.3%', detail: 'Tech leder uppgången' },
-    { label: 'USD/SEK', value: '10.45', detail: 'Krona stärks mot dollarn' },
-  ];
-
   return (
     <Layout>
       <div className="w-full pb-20 bg-background/50 min-h-screen">
@@ -222,20 +216,6 @@ const DiscoverNews = () => {
                   Rapporter
                 </TabsTrigger>
               </TabsList>
-            </div>
-
-            <div className="hidden md:grid grid-cols-1 sm:grid-cols-3 gap-3 bg-card/60 border border-border/60 rounded-2xl p-3 shadow-sm">
-              {marketMetrics.map((metric) => (
-                <div key={metric.label} className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary font-semibold">
-                    {metric.value}
-                  </div>
-                  <div className="space-y-0.5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{metric.label}</p>
-                    <p className="text-sm font-semibold text-foreground leading-tight">{metric.detail}</p>
-                  </div>
-                </div>
-              ))}
             </div>
 
             <TabsContent value="news" className="space-y-8 animate-fade-in mt-0">
