@@ -126,41 +126,41 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                   <span className="text-xs sm:text-sm text-muted-foreground font-medium whitespace-nowrap">{quantity} st</span>
                 )}
               </div>
-              <div className="text-xs sm:text-sm text-foreground font-medium leading-tight mt-0.5">
-                {normalizedSymbol ? (
-                  onRefreshPrice ? (
-                    <button
-                      type="button"
-                      onClick={() => onRefreshPrice(normalizedSymbol)}
-                      disabled={isUpdatingPrice}
-                      className="inline-flex items-center gap-1 px-0 py-0 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Uppdatera livepris"
-                    >
-                      {normalizedSymbol}
-                      <RefreshCw
-                        className={cn(
-                          'w-3.5 h-3.5 sm:w-4 sm:h-4 transition-opacity duration-150',
-                          isRefreshing ? 'opacity-100 animate-spin' : 'opacity-60'
-                        )}
-                      />
-                    </button>
+              <div className="flex items-center justify-between gap-3 mt-0.5">
+                <div className="text-xs sm:text-sm text-foreground font-medium leading-tight">
+                  {normalizedSymbol ? (
+                    onRefreshPrice ? (
+                      <button
+                        type="button"
+                        onClick={() => onRefreshPrice(normalizedSymbol)}
+                        disabled={isUpdatingPrice}
+                        className="inline-flex items-center gap-1 px-0 py-0 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Uppdatera livepris"
+                      >
+                        {normalizedSymbol}
+                        <RefreshCw
+                          className={cn(
+                            'w-3.5 h-3.5 sm:w-4 sm:h-4 transition-opacity duration-150',
+                            isRefreshing ? 'opacity-100 animate-spin' : 'opacity-60'
+                          )}
+                        />
+                      </button>
+                    ) : (
+                      <span>{normalizedSymbol}</span>
+                    )
                   ) : (
-                    <span>{normalizedSymbol}</span>
-                  )
-                ) : (
-                  <span className="uppercase">{holding.holding_type}</span>
-                )}
+                    <span className="uppercase">{holding.holding_type}</span>
+                  )}
+                </div>
+
+                <div className="text-sm sm:text-base md:text-lg font-semibold text-foreground leading-tight text-right">
+                  {portfolioPercentage.toFixed(1)}%
+                </div>
               </div>
             </div>
           </div>
 
           <div className="flex items-start gap-1.5 sm:gap-2 md:gap-3 flex-shrink-0">
-            <div className="text-right">
-              <div className="text-sm sm:text-base md:text-lg font-semibold text-foreground leading-tight">
-                {portfolioPercentage.toFixed(1)}%
-              </div>
-            </div>
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
