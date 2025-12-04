@@ -41,9 +41,11 @@ const HoldingsHighlightCard: React.FC<HoldingsHighlightCardProps> = ({
         <div className="divide-y divide-border/60">
           {items.map((item, index) => (
             <div key={item.id} className="py-2.5">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-foreground">{item.name}</p>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1 sm:flex-[1.4]">
+                  <p className="text-sm font-medium text-foreground truncate sm:line-clamp-2 sm:whitespace-normal">
+                    {item.name}
+                  </p>
                   <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                     {item.symbol && (
                       <span className="rounded-full px-2 py-0.5 font-semibold uppercase tracking-wide text-[11px] text-muted-foreground">
@@ -52,7 +54,7 @@ const HoldingsHighlightCard: React.FC<HoldingsHighlightCardProps> = ({
                     )}
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex-none min-w-[96px] sm:min-w-[120px]">
                   <div className={`text-sm font-semibold sm:text-base ${item.isPositive ? 'text-emerald-600' : 'text-red-600'}`}>
                     {item.percentLabel}
                   </div>
