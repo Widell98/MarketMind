@@ -639,7 +639,6 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
                       onRefreshPrice={group.key === 'cash' ? undefined : handleUpdateHoldingPrice}
                       isUpdatingPrice={updating}
                       refreshingTicker={refreshingTicker}
-                      actions={index === 0 ? holdingsActionButtons : undefined}
                     />
                   ))}
                 </div>
