@@ -6,6 +6,87 @@ import { resolveHoldingValue, convertToSEK } from '@/utils/currencyUtils';
 import { mapEdgeFunctionErrorMessage } from '@/utils/mapEdgeFunctionError';
 import type { SheetTicker } from '@/hooks/useSheetTickers';
 
+const STOCKHOLM_TIMEZONE = 'Europe/Stockholm';
+
+const getLocalDate = (date: Date, timeZone: string) => new Intl.DateTimeFormat('sv-SE', {
+  timeZone,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+}).format(date);
+
+const getTimeInMinutes = (date: Date, timeZone: string) => {
+  const parts = new Intl.DateTimeFormat('sv-SE', {
+    timeZone,
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false,
+  }).formatToParts(date);
+
+  const hour = Number(parts.find(part => part.type === 'hour')?.value ?? 0);
+  const minute = Number(parts.find(part => part.type === 'minute')?.value ?? 0);
+
+  return (hour * 60) + minute;
+};
+
+const isWeekdayInTimeZone = (date: Date, timeZone: string) => {
+  const weekday = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    weekday: 'short',
+  }).format(date).toLowerCase();
+
+  return weekday !== 'sat' && weekday !== 'sun';
+};
+
+const isHoliday = (date: Date, timeZone: string, holidays: Set<string>) => {
+  const localDate = getLocalDate(date, timeZone);
+  return holidays.has(localDate);
+};
+
+const isWithinWindow = (date: Date, config: {
+  timeZone: string;
+  open: { hour: number; minute: number };
+  close: { hour: number; minute: number };
+  holidays?: Set<string>;
+}) => {
+  const holidaySet = config.holidays ?? new Set<string>();
+
+  if (!isWeekdayInTimeZone(date, config.timeZone)) {
+    return false;
+  }
+
+  if (isHoliday(date, config.timeZone, holidaySet)) {
+    return false;
+  }
+
+  const minutes = getTimeInMinutes(date, config.timeZone);
+  const openMinutes = (config.open.hour * 60) + config.open.minute;
+  const closeMinutes = (config.close.hour * 60) + config.close.minute;
+
+  return minutes >= openMinutes && minutes <= closeMinutes;
+};
+
+const SWEDISH_MARKET_HOLIDAYS = new Set<string>();
+const US_MARKET_HOLIDAYS = new Set<string>();
+
+const isWithinMarketHours = (date: Date = new Date()) => {
+  const swedishMarketOpen = isWithinWindow(date, {
+    timeZone: STOCKHOLM_TIMEZONE,
+    open: { hour: 9, minute: 0 },
+    close: { hour: 17, minute: 30 },
+    holidays: SWEDISH_MARKET_HOLIDAYS,
+  });
+
+  const usMarketOpen = isWithinWindow(date, {
+    timeZone: STOCKHOLM_TIMEZONE,
+    open: { hour: 15, minute: 30 },
+    close: { hour: 22, minute: 0 },
+    holidays: US_MARKET_HOLIDAYS,
+  });
+
+  return swedishMarketOpen || usMarketOpen;
+};
+
 type FinnhubPriceResponse = {
   symbol: string;
   price: number;
@@ -202,6 +283,7 @@ export const usePortfolioPerformance = () => {
   const [holdingsPerformance, setHoldingsPerformance] = useState<HoldingPerformance[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [isMarketOpen, setIsMarketOpen] = useState(isWithinMarketHours());
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -251,6 +333,8 @@ export const usePortfolioPerformance = () => {
 
     try {
       setLoading(true);
+      const marketOpen = isWithinMarketHours();
+      setIsMarketOpen(marketOpen);
 
       // Get all holdings (both securities and cash)
       const { data: allHoldings, error: holdingsError } = await supabase
@@ -277,6 +361,7 @@ export const usePortfolioPerformance = () => {
           investedPercentage: 0,
           lastUpdated: new Date().toISOString()
         });
+        setIsMarketOpen(marketOpen);
         setHoldingsPerformance([]);
         return;
       }
@@ -338,6 +423,9 @@ export const usePortfolioPerformance = () => {
         const dayChange = currentValue - yesterdayValue;
         const dayChangePercentage = yesterdayValue > 0 ? (dayChange / yesterdayValue) * 100 : 0;
 
+        const effectiveDayChange = marketOpen ? dayChange : 0;
+        const effectiveDayChangePercentage = marketOpen ? dayChangePercentage : 0;
+
         holdingsPerf.push({
           id: holding.id,
           name: holding.name,
@@ -346,8 +434,8 @@ export const usePortfolioPerformance = () => {
           investedValue,
           profit,
           profitPercentage,
-          dayChange,
-          dayChangePercentage,
+          dayChange: effectiveDayChange,
+          dayChangePercentage: effectiveDayChangePercentage,
           hasPurchasePrice,
         });
 
@@ -361,6 +449,9 @@ export const usePortfolioPerformance = () => {
       const dayChange = totalValue - totalYesterdayValue;
       const dayChangePercentage = totalYesterdayValue > 0 ? (dayChange / totalYesterdayValue) * 100 : 0;
 
+      const effectiveDayChange = marketOpen ? dayChange : 0;
+      const effectiveDayChangePercentage = marketOpen ? dayChangePercentage : 0;
+
       // Calculate total portfolio value (securities + cash)
       const totalPortfolioValue = totalValue + totalCash;
       const cashPercentage = totalPortfolioValue > 0 ? (totalCash / totalPortfolioValue) * 100 : 0;
@@ -371,8 +462,8 @@ export const usePortfolioPerformance = () => {
         totalInvested: Math.round(totalInvested * 100) / 100,
         totalReturn: Math.round(totalReturn * 100) / 100,
         totalReturnPercentage: Math.round(totalReturnPercentage * 100) / 100,
-        dayChange: Math.round(dayChange * 100) / 100,
-        dayChangePercentage: Math.round(dayChangePercentage * 100) / 100,
+        dayChange: Math.round(effectiveDayChange * 100) / 100,
+        dayChangePercentage: Math.round(effectiveDayChangePercentage * 100) / 100,
         totalCash: Math.round(totalCash * 100) / 100,
         totalPortfolioValue: Math.round(totalPortfolioValue * 100) / 100,
         cashPercentage: Math.round(cashPercentage * 100) / 100,
@@ -1025,6 +1116,7 @@ export const usePortfolioPerformance = () => {
     holdingsPerformance,
     loading,
     updating,
+    isMarketOpen,
     updateAllPrices,
     updatePrices,
     refetch: calculatePerformance
