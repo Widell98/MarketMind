@@ -290,8 +290,8 @@ const DiscoverNews = () => {
                         </div>
                       </div>
 
-                      <div className="grid gap-6 lg:grid-cols-[1.7fr,1fr] items-start">
-                        <div className="space-y-4">
+                      <div className="space-y-6">
+                        <div className="space-y-4 max-w-5xl">
                           <h2 className="text-3xl md:text-4xl xl:text-[2.6rem] font-bold tracking-tight text-foreground leading-tight group-hover:text-primary transition-colors">
                             {morningBrief.headline}
                           </h2>
@@ -357,7 +357,7 @@ const DiscoverNews = () => {
                             )}
                           </div>
                         </div>
-
+                      
                         {morningBrief.keyHighlights && morningBrief.keyHighlights.length > 0 && (
                           <div className="rounded-2xl border border-border/60 bg-muted/40 p-4 md:p-5 flex flex-col gap-3 shadow-inner">
                             <div className="flex items-center justify-between">
@@ -386,6 +386,7 @@ const DiscoverNews = () => {
                             </div>
                           </div>
                         )}
+                      </div>
                       </div>
                     </div>
                   </Card>
