@@ -387,7 +387,6 @@ const DiscoverNews = () => {
                           </div>
                         )}
                       </div>
-                      </div>
                     </div>
                   </Card>
                 );
