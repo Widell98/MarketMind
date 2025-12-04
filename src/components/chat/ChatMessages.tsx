@@ -91,25 +91,25 @@ const ChatMessages = ({
       title: 'Portföljanalys',
       prompt: 'Ge mig en komplett analys av min portfölj med rekommendationer för optimering',
       icon: <PieChart className="h-4 w-4" />,
-      description: 'Få en genomgång av din portföljs prestanda och struktur',
+      description: 'Översikt av portföljens prestanda',
     },
     {
       title: 'Riskhantering',
       prompt: 'Analysera riskerna i min portfölj och föreslå strategier för bättre diversifiering',
       icon: <Activity className="h-4 w-4" />,
-      description: 'Identifiera och minimera risker för en mer balanserad portfölj',
+      description: 'Identifiera och minska risker',
     },
     {
       title: 'Investeringsförslag',
       prompt: 'Vilka aktier och tillgångar borde jag överväga nästa baserat på min profil?',
       icon: <Zap className="h-4 w-4" />,
-      description: 'Få personliga rekommendationer baserade på din riskprofil',
+      description: 'förslag efter din riskprofil',
     },
     {
       title: 'Marknadsinsikter',
       prompt: 'Vad händer på marknaden just nu och hur påverkar det min investeringsstrategi?',
       icon: <TrendingUp className="h-4 w-4" />,
-      description: 'Håll dig uppdaterad med aktuella marknadstrender',
+      description: 'Uppdateras om marknadstrender',
     },
   ];
 
