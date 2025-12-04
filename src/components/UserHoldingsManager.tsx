@@ -47,7 +47,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface TransformedHolding {
   id: string;
@@ -554,14 +553,34 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
     <TooltipProvider delayDuration={120}>
       <>
         <Card className="h-fit rounded-lg sm:rounded-xl">
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'all' | 'stock' | 'fund')} className="w-full">
         <CardHeader className="p-3 sm:p-3 md:p-4 pb-2">
           <div className="flex flex-col gap-2.5">
-            <TabsList className="grid grid-cols-3 sm:inline-flex w-full sm:w-auto">
-              <TabsTrigger value="all" className="text-xs sm:text-sm">Alla</TabsTrigger>
-              <TabsTrigger value="stock" className="text-xs sm:text-sm">Aktier</TabsTrigger>
-              <TabsTrigger value="fund" className="text-xs sm:text-sm">Fonder</TabsTrigger>
-            </TabsList>
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+              <Button
+                variant={activeTab === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveTab('all')}
+                className="text-xs sm:text-sm"
+              >
+                Alla
+              </Button>
+              <Button
+                variant={activeTab === 'stock' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveTab('stock')}
+                className="text-xs sm:text-sm"
+              >
+                Aktier
+              </Button>
+              <Button
+                variant={activeTab === 'fund' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveTab('fund')}
+                className="text-xs sm:text-sm"
+              >
+                Fonder
+              </Button>
+            </div>
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
               <div className="space-y-0.5">
                 <CardTitle className="text-base sm:text-lg md:text-xl">
@@ -685,7 +704,6 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
             </div>
           )}
         </CardContent>
-      </Tabs>
       </Card>
 
       <AlertDialog
