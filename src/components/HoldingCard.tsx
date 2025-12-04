@@ -77,6 +77,14 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
     priceCurrency: effectiveCurrency,
     quantity: normalizedQuantity,
   } = resolveHoldingValue(holding);
+  const formatRoundedCurrency = (amount: number, currency: string = 'SEK') =>
+    new Intl.NumberFormat('sv-SE', {
+      style: 'currency',
+      currency,
+      useGrouping: false,
+      maximumFractionDigits: 0,
+      minimumFractionDigits: 0,
+    }).format(Math.round(amount));
 
   const quantity = normalizedQuantity;
   const holdingPerformance = performance;
@@ -298,7 +306,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                 >
                   (
                   {profit > 0 ? '+' : ''}
-                  {formatCurrency(profit, 'SEK')}
+                  {formatRoundedCurrency(profit, 'SEK')}
                   )
                 </span>
               </div>
