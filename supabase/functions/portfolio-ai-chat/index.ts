@@ -1228,12 +1228,19 @@ const RETURN_KEYWORD_PATTERNS = [
   /resultat/i,
   /vinst/i,
   /förlust/i,
-  /hur.*mycket.*jag.*upp/i,
+  // NYTT: Fångar "hur mycket är X upp/ner" utan att kräva ordet "jag"
+  /hur.*mycket.*(?:är|ligger|gick).*(?:upp|ner|plus|minus)/i, 
+  /hur.*mycket.*(?:är|ligger|gick).*jag.*upp/i, // Behåll den gamla för säkerhets skull
+  /ligger.*(?:plus|minus)/i,
   /hur.*går.*det.*för/i,
   /hur.*har.*presterat/i,
   /vad.*är.*min.*vinst/i,
   /hur.*mycket.*tjänat/i,
   /hur.*mycket.*förlorat/i,
+  // NYTT: Fångar explicita frågor om inköpskurs/GAV
+  /inköpskurs/i,
+  /gav/i,
+  /genomsnittlig.*anskaffningsvärde/i,
   /performance/i,
   /\breturn\b/i,
   /profit/i,
