@@ -115,7 +115,6 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
   const [holdingToDelete, setHoldingToDelete] = useState<{ id: string; name: string; type: 'cash' | 'holding' } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
-  const [activeTab, setActiveTab] = useState<'all' | 'stock' | 'fund'>('all');
   const [addHoldingInitialData, setAddHoldingInitialData] = useState<any | null>(null);
 
   const filterOptions: Array<{ key: FilterMode; label: string }> = [
@@ -295,8 +294,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
   };
 
   const handleOpenAddHolding = () => {
-    const defaultHoldingType = activeTab === 'fund' ? 'fund' : 'stock';
-    setAddHoldingInitialData({ holding_type: defaultHoldingType });
+    setAddHoldingInitialData({ holding_type: 'stock' });
     openAddHoldingDialog();
   };
 
@@ -339,7 +337,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
 
   const handleAddHolding = async (holdingData: any) => {
     const payload = {
-      holding_type: holdingData.holding_type || (activeTab === 'fund' ? 'fund' : 'stock'),
+      holding_type: holdingData.holding_type || 'stock',
       ...holdingData,
     };
 
@@ -443,13 +441,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
     ...transformedCashHoldings
   ];
 
-  const tabHoldings = useMemo(() => {
-    return allHoldings.filter(holding => {
-      if (activeTab === 'stock') return holding.holding_type === 'stock';
-      if (activeTab === 'fund') return holding.holding_type === 'fund';
-      return true;
-    });
-  }, [activeTab, allHoldings]);
+  const tabHoldings = useMemo(() => allHoldings, [allHoldings]);
 
   const totalPortfolioValue = performance?.totalPortfolioValue ?? allHoldings.reduce((sum, holding) => {
     return sum + resolveHoldingValue(holding).valueInSEK;
@@ -554,76 +546,42 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
       <>
         <Card className="h-fit rounded-lg sm:rounded-xl">
         <CardHeader className="p-3 sm:p-3 md:p-4 pb-2">
-          <div className="flex flex-col gap-2.5">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-              <Button
-                variant={activeTab === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveTab('all')}
-                className="text-xs sm:text-sm"
-              >
-                Alla
-              </Button>
-              <Button
-                variant={activeTab === 'stock' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveTab('stock')}
-                className="text-xs sm:text-sm"
-              >
-                Aktier
-              </Button>
-              <Button
-                variant={activeTab === 'fund' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveTab('fund')}
-                className="text-xs sm:text-sm"
-              >
-                Fonder
-              </Button>
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+            <div className="space-y-0.5">
+              <CardTitle className="text-base sm:text-lg md:text-xl">Innehav</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Sök, lägg till eller hantera dina innehav.
+              </p>
             </div>
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-              <div className="space-y-0.5">
-                <CardTitle className="text-base sm:text-lg md:text-xl">
-                  {activeTab === 'stock' ? 'Aktier' : activeTab === 'fund' ? 'Fonder' : 'Innehav'}
-                </CardTitle>
-                <p className="text-xs text-muted-foreground">
-                  {activeTab === 'stock'
-                    ? 'Sök, lägg till eller hantera aktieinnehav.'
-                    : activeTab === 'fund'
-                      ? 'Sök, lägg till eller hantera fondinnehav.'
-                      : 'Sök, lägg till eller hantera dina innehav.'}
-                </p>
-              </div>
-              <div className="flex items-center gap-1 sm:gap-1.5">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant={viewMode === 'cards' ? 'default' : 'outline'}
-                      onClick={() => setViewMode('cards')}
-                      className="h-8 w-8 sm:h-9 sm:w-9"
-                    >
-                      <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      <span className="sr-only">Kortvy</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Kortvy</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant={viewMode === 'table' ? 'default' : 'outline'}
-                      onClick={() => setViewMode('table')}
-                      className="h-8 w-8 sm:h-9 sm:w-9"
-                    >
-                      <TableIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      <span className="sr-only">Tabellvy</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Tabellvy</TooltipContent>
-                </Tooltip>
-              </div>
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant={viewMode === 'cards' ? 'default' : 'outline'}
+                    onClick={() => setViewMode('cards')}
+                    className="h-8 w-8 sm:h-9 sm:w-9"
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="sr-only">Kortvy</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Kortvy</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant={viewMode === 'table' ? 'default' : 'outline'}
+                    onClick={() => setViewMode('table')}
+                    className="h-8 w-8 sm:h-9 sm:w-9"
+                  >
+                    <TableIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="sr-only">Tabellvy</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Tabellvy</TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </CardHeader>
@@ -639,7 +597,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
             <div className="text-center py-6 sm:py-8">
               <Package className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 opacity-50 text-muted-foreground" />
               <h3 className="text-base sm:text-lg font-medium mb-2 text-foreground">
-                {activeTab === 'stock' ? 'Inga aktier registrerade' : activeTab === 'fund' ? 'Inga fonder registrerade' : 'Inga innehav registrerade'}
+                Inga innehav registrerade
               </h3>
               <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 max-w-sm mx-auto px-2">
                 Lägg till dina nuvarande aktier, fonder och kassapositioner för att få en komplett bild av din portfölj och bättre AI-rekommendationer.
