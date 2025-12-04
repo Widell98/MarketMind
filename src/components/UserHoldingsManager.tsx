@@ -115,6 +115,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
   const [holdingToDelete, setHoldingToDelete] = useState<{ id: string; name: string; type: 'cash' | 'holding' } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
+  const [addHoldingInitialData, setAddHoldingInitialData] = useState<any | null>(null);
 
   const filterOptions: Array<{ key: FilterMode; label: string }> = [
     { key: 'all', label: 'Alla' },
@@ -159,7 +160,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
       <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={openAddHoldingDialog}>
+            <Button size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => handleOpenAddHolding()}>
               <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span className="sr-only">Lägg till innehav</span>
             </Button>
@@ -292,6 +293,11 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
     setHoldingToDelete(null);
   };
 
+  const handleOpenAddHolding = () => {
+    setAddHoldingInitialData({ holding_type: 'stock' });
+    openAddHoldingDialog();
+  };
+
 
   const handleEditHolding = (id: string) => {
     const holding = actualHoldings.find(h => h.id === id);
@@ -330,9 +336,15 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
   };
 
   const handleAddHolding = async (holdingData: any) => {
-    const success = await addHolding(holdingData);
+    const payload = {
+      holding_type: holdingData.holding_type || 'stock',
+      ...holdingData,
+    };
+
+    const success = await addHolding(payload);
     if (success) {
       closeAddHoldingDialog();
+      setAddHoldingInitialData(null);
       const normalizedSymbol = typeof holdingData.symbol === 'string'
         ? holdingData.symbol.trim().toUpperCase()
         : undefined;
@@ -341,6 +353,11 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
       }
     }
     return success;
+  };
+
+  const handleCloseAddHoldingDialog = () => {
+    setAddHoldingInitialData(null);
+    closeAddHoldingDialog();
   };
 
   const handleUpdateHoldingPrice = async (symbol?: string) => {
@@ -424,17 +441,19 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
     ...transformedCashHoldings
   ];
 
+  const tabHoldings = useMemo(() => allHoldings, [allHoldings]);
+
   const totalPortfolioValue = performance?.totalPortfolioValue ?? allHoldings.reduce((sum, holding) => {
     return sum + resolveHoldingValue(holding).valueInSEK;
   }, 0);
 
   // Group holdings by type
-  const groupHoldings = () => {
+  const groupHoldings = (visibleHoldings: TransformedHolding[]) => {
     const groups = {
-      stocks: allHoldings.filter(h => h.holding_type === 'stock'),
-      funds: allHoldings.filter(h => h.holding_type === 'fund'),
-      cash: allHoldings.filter(h => h.holding_type === 'cash'),
-      other: allHoldings.filter(h => !['stock', 'fund', 'cash'].includes(h.holding_type))
+      stocks: visibleHoldings.filter(h => h.holding_type === 'stock'),
+      funds: visibleHoldings.filter(h => h.holding_type === 'fund'),
+      cash: visibleHoldings.filter(h => h.holding_type === 'cash'),
+      other: visibleHoldings.filter(h => !['stock', 'fund', 'cash'].includes(h.holding_type))
     };
 
     return Object.entries(groups)
@@ -511,7 +530,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
     return true;
   };
 
-  const filteredGroups = groupHoldings()
+  const filteredGroups = groupHoldings(tabHoldings)
     .map(group => ({
       ...group,
       holdings: group.holdings.filter(holding => matchesSearch(holding) && matchesFilter(holding))
@@ -527,10 +546,12 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
       <>
         <Card className="h-fit rounded-lg sm:rounded-xl">
         <CardHeader className="p-3 sm:p-3 md:p-4 pb-2">
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
             <div className="space-y-0.5">
-              <CardTitle className="text-base sm:text-lg md:text-xl">Aktierna</CardTitle>
-              <p className="text-xs text-muted-foreground">Sök, lägg till eller hantera aktieinnehav.</p>
+              <CardTitle className="text-base sm:text-lg md:text-xl">Innehav</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Sök, lägg till eller hantera dina innehav.
+              </p>
             </div>
             <div className="flex items-center gap-1 sm:gap-1.5">
               <Tooltip>
@@ -572,15 +593,17 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
                 <span>Laddar innehav...</span>
               </div>
             </div>
-          ) : allHoldings.length === 0 ? (
+          ) : tabHoldings.length === 0 ? (
             <div className="text-center py-6 sm:py-8">
               <Package className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 opacity-50 text-muted-foreground" />
-              <h3 className="text-base sm:text-lg font-medium mb-2 text-foreground">Inga innehav registrerade</h3>
+              <h3 className="text-base sm:text-lg font-medium mb-2 text-foreground">
+                Inga innehav registrerade
+              </h3>
               <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 max-w-sm mx-auto px-2">
                 Lägg till dina nuvarande aktier, fonder och kassapositioner för att få en komplett bild av din portfölj och bättre AI-rekommendationer.
               </p>
               <div className="flex flex-col sm:flex-row gap-2 justify-center px-2">
-                <Button className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm w-full sm:w-auto" onClick={openAddHoldingDialog}>
+                <Button className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm w-full sm:w-auto" onClick={() => handleOpenAddHolding()}>
                   <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Lägg till innehav
                 </Button>
@@ -592,6 +615,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
             </div>
           ) : (
             <div className="space-y-2.5 sm:space-y-3">
+              {holdingsActionButtons}
               {viewMode === 'cards' ? (
                 <div className="space-y-4">
                   {filteredGroups.map((group, index) => (
@@ -615,7 +639,6 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
                       onRefreshPrice={group.key === 'cash' ? undefined : handleUpdateHoldingPrice}
                       isUpdatingPrice={updating}
                       refreshingTicker={refreshingTicker}
-                      actions={index === 0 ? holdingsActionButtons : undefined}
                     />
                   ))}
                 </div>
@@ -632,7 +655,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
                 </div>
               )}
 
-              {allHoldings.length > 0 && (
+              {tabHoldings.length > 0 && (
                 <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
                 </div>
               )}
@@ -748,8 +771,9 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
       {/* Add Holding Dialog */}
       <AddHoldingDialog
         isOpen={isAddHoldingDialogOpen}
-        onClose={closeAddHoldingDialog}
+        onClose={handleCloseAddHoldingDialog}
         onAdd={handleAddHolding}
+        initialData={addHoldingInitialData}
       />
 
       {/* Edit Holding Dialog */}

@@ -46,6 +46,15 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
   holdingPerformanceMap,
   totalPortfolioValue
 }) => {
+  const formatRoundedCurrency = (amount: number, currency: string = 'SEK') =>
+    new Intl.NumberFormat('sv-SE', {
+      style: 'currency',
+      currency,
+      useGrouping: true,
+      maximumFractionDigits: 0,
+      minimumFractionDigits: 0,
+    }).format(Math.round(amount));
+
   return (
     <Table>
       <TableHeader>
@@ -186,7 +195,7 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
                   <div className="inline-flex items-center justify-end gap-2 text-right">
                     <span className={cn('text-sm font-semibold', profitClass)}>
                       {profitLoss !== undefined
-                        ? `${profitLoss > 0 ? '+' : ''}${formatCurrency(profitLoss, 'SEK')}`
+                        ? `${profitLoss > 0 ? '+' : ''}${formatRoundedCurrency(profitLoss, 'SEK')}`
                         : '—'}
                     </span>
                     <span className={cn('text-xs font-medium', profitClass)}>

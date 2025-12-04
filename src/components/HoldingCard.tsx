@@ -11,9 +11,7 @@ import {
   RefreshCw,
   MoreVertical,
   Edit2,
-  Trash2,
-  ChevronDown,
-  ChevronUp
+  Trash2
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -72,7 +70,6 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   const Icon = getHoldingIcon();
   const isCash = holding.holding_type === 'cash';
   const [isLogoError, setIsLogoError] = React.useState(false);
-  const [showDetails, setShowDetails] = React.useState(false);
 
   const {
     valueInSEK: displayValue,
@@ -80,6 +77,14 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
     priceCurrency: effectiveCurrency,
     quantity: normalizedQuantity,
   } = resolveHoldingValue(holding);
+  const formatRoundedCurrency = (amount: number, currency: string = 'SEK') =>
+    new Intl.NumberFormat('sv-SE', {
+      style: 'currency',
+      currency,
+      useGrouping: true,
+      maximumFractionDigits: 0,
+      minimumFractionDigits: 0,
+    }).format(Math.round(amount));
 
   const quantity = normalizedQuantity;
   const holdingPerformance = performance;
@@ -105,11 +110,12 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   }, [normalizedSymbol]);
 
   return (
-    <Card className="hover:shadow-md transition-all duration-200 rounded-xl border border-border/60">
-      <CardContent className="p-4 sm:p-5 space-y-3 sm:space-y-4">
-        <div className="flex items-start justify-between gap-2 sm:gap-3">
-          <div className="flex items-start gap-2 sm:gap-3 min-w-0 flex-1">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+    <TooltipProvider delayDuration={120}>
+      <Card className="hover:shadow-md transition-all duration-200 rounded-xl border border-border/60">
+        <CardContent className="p-4 sm:p-5 space-y-3 sm:space-y-4">
+          <div className="flex items-start justify-between gap-2 sm:gap-3">
+            <div className="flex items-start gap-2 sm:gap-3 min-w-0 flex-1">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
               {logoUrl && !isLogoError ? (
                 <img
                   src={logoUrl}
@@ -124,46 +130,58 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                <h3 className="font-semibold text-foreground leading-tight truncate text-sm sm:text-base md:text-lg">{holding.name}</h3>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <h3
+                      className="font-semibold text-foreground leading-tight truncate text-sm sm:text-base md:text-lg"
+                      title={holding.name}
+                    >
+                      {holding.name}
+                    </h3>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs break-words text-xs sm:text-sm">
+                    {holding.name}
+                  </TooltipContent>
+                </Tooltip>
                 {!isCash && quantity > 0 && (
                   <span className="text-xs sm:text-sm text-muted-foreground font-medium whitespace-nowrap">{quantity} st</span>
                 )}
               </div>
-              <div className="text-xs sm:text-sm text-foreground font-medium leading-tight mt-0.5">
-                {normalizedSymbol ? (
-                  onRefreshPrice ? (
-                    <button
-                      type="button"
-                      onClick={() => onRefreshPrice(normalizedSymbol)}
-                      disabled={isUpdatingPrice}
-                      className="inline-flex items-center gap-1 px-0 py-0 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Uppdatera livepris"
-                    >
-                      {normalizedSymbol}
-                      <RefreshCw
-                        className={cn(
-                          'w-3.5 h-3.5 sm:w-4 sm:h-4 transition-opacity duration-150',
-                          isRefreshing ? 'opacity-100 animate-spin' : 'opacity-60'
-                        )}
-                      />
-                    </button>
+              <div className="flex items-center justify-between gap-3 mt-0.5">
+                <div className="text-xs sm:text-sm text-foreground font-medium leading-tight">
+                  {normalizedSymbol ? (
+                    onRefreshPrice ? (
+                      <button
+                        type="button"
+                        onClick={() => onRefreshPrice(normalizedSymbol)}
+                        disabled={isUpdatingPrice}
+                        className="inline-flex items-center gap-1 px-0 py-0 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Uppdatera livepris"
+                      >
+                        {normalizedSymbol}
+                        <RefreshCw
+                          className={cn(
+                            'w-3.5 h-3.5 sm:w-4 sm:h-4 transition-opacity duration-150',
+                            isRefreshing ? 'opacity-100 animate-spin' : 'opacity-60'
+                          )}
+                        />
+                      </button>
+                    ) : (
+                      <span>{normalizedSymbol}</span>
+                    )
                   ) : (
-                    <span>{normalizedSymbol}</span>
-                  )
-                ) : (
-                  <span className="uppercase">{holding.holding_type}</span>
-                )}
+                    <span className="uppercase">{holding.holding_type}</span>
+                  )}
+                </div>
+
+                <div className="text-sm sm:text-base md:text-lg font-semibold text-foreground leading-tight text-right">
+                  {portfolioPercentage.toFixed(1)}%
+                </div>
               </div>
             </div>
           </div>
 
           <div className="flex items-start gap-1.5 sm:gap-2 md:gap-3 flex-shrink-0">
-            <div className="text-right">
-              <div className="text-sm sm:text-base md:text-lg font-semibold text-foreground leading-tight">
-                {portfolioPercentage.toFixed(1)}%
-              </div>
-            </div>
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -246,63 +264,15 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
         </div>
 
         {!isCash && (
-          <div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="group inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground p-0 h-auto"
-              onClick={() => setShowDetails((prev) => !prev)}
-            >
-              {showDetails ? (
-                <>
-                  <span className="whitespace-nowrap">Dölj detaljer</span>
-                  <ChevronUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform group-hover:-translate-y-0.5" />
-                </>
-              ) : (
-                <>
-                  <span className="whitespace-nowrap">Visa mer</span>
-                  <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform group-hover:translate-y-0.5" />
-                </>
-              )}
-            </Button>
-
-            {showDetails && (
-              <div className="space-y-3 sm:space-y-4 pt-1 mt-2">
-                {hasPerformanceData && hasPurchasePrice && (
-                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 font-semibold pb-3 border-b border-border">
-                    <span className="text-muted-foreground text-xs sm:text-sm font-medium">Total utveckling:</span>
-                    <TooltipProvider delayDuration={120}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span
-                            className={cn(
-                              'inline-flex items-center gap-1',
-                              profit > 0
-                                ? 'text-emerald-600 dark:text-emerald-500'
-                                : profit < 0
-                                  ? 'text-red-600 dark:text-red-500'
-                                  : 'text-muted-foreground'
-                            )}
-                          >
-                            {profit > 0 ? (
-                              <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                            ) : profit < 0 ? (
-                              <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                            ) : null}
-                            <span className="text-xs sm:text-sm">
-                              {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}
-                            </span>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="text-xs font-medium">
-                          totala utveckling på innehav
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+          <div className="space-y-3 sm:space-y-4 pt-1 mt-2">
+            {hasPerformanceData && hasPurchasePrice && (
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 font-semibold">
+                <span className="text-muted-foreground text-xs sm:text-sm font-medium">Total utveckling:</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
                     <span
                       className={cn(
-                        'inline-flex items-center gap-1 text-xs sm:text-sm',
+                        'inline-flex items-center gap-1',
                         profit > 0
                           ? 'text-emerald-600 dark:text-emerald-500'
                           : profit < 0
@@ -310,37 +280,60 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                             : 'text-muted-foreground'
                       )}
                     >
-                      (
-                      {profit > 0 ? '+' : ''}
-                      {formatCurrency(profit, 'SEK')}
-                      )
+                      {profit > 0 ? (
+                        <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      ) : profit < 0 ? (
+                        <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      ) : null}
+                      <span className="text-xs sm:text-sm">
+                        {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}
+                      </span>
                     </span>
-                  </div>
-                )}
-
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-                  {typeof effectivePrice === 'number' && effectivePrice > 0 && (
-                    <div className="flex items-center gap-2 text-xs sm:text-sm">
-                      <span className="text-muted-foreground font-medium">Kurs:</span>
-                      <span className="text-foreground font-semibold">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
-                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs font-medium">
+                    totala utveckling på innehav
+                  </TooltipContent>
+                </Tooltip>
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 text-xs sm:text-sm',
+                    profit > 0
+                      ? 'text-emerald-600 dark:text-emerald-500'
+                      : profit < 0
+                        ? 'text-red-600 dark:text-red-500'
+                        : 'text-muted-foreground'
                   )}
-                  
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 text-muted-foreground font-medium hover:text-foreground text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start"
-                    onClick={() => onDiscuss(holding.name, holding.symbol)}
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    Diskutera
-                  </button>
-                </div>
+                >
+                  (
+                  {profit > 0 ? '+' : ''}
+                  {formatRoundedCurrency(profit, 'SEK')}
+                  )
+                </span>
               </div>
             )}
+
+            <div className="border-t border-border pt-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+              {typeof effectivePrice === 'number' && effectivePrice > 0 && (
+                <div className="flex items-center gap-2 text-xs sm:text-sm">
+                  <span className="text-muted-foreground font-medium">Kurs:</span>
+                  <span className="text-foreground font-semibold">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="flex items-center gap-2 text-muted-foreground font-medium hover:text-foreground text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start"
+                onClick={() => onDiscuss(holding.name, holding.symbol)}
+              >
+                <MessageSquare className="w-4 h-4" />
+                Diskutera
+              </button>
+            </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </TooltipProvider>
   );
 };
 
