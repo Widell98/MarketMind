@@ -11,9 +11,7 @@ import {
   RefreshCw,
   MoreVertical,
   Edit2,
-  Trash2,
-  ChevronDown,
-  ChevronUp
+  Trash2
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -72,7 +70,6 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   const Icon = getHoldingIcon();
   const isCash = holding.holding_type === 'cash';
   const [isLogoError, setIsLogoError] = React.useState(false);
-  const [showDetails, setShowDetails] = React.useState(false);
 
   const {
     valueInSEK: displayValue,
@@ -246,97 +243,73 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
         </div>
 
         {!isCash && (
-          <div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="group inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground p-0 h-auto"
-              onClick={() => setShowDetails((prev) => !prev)}
-            >
-              {showDetails ? (
-                <>
-                  <span className="whitespace-nowrap">Dölj detaljer</span>
-                  <ChevronUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform group-hover:-translate-y-0.5" />
-                </>
-              ) : (
-                <>
-                  <span className="whitespace-nowrap">Visa mer</span>
-                  <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform group-hover:translate-y-0.5" />
-                </>
-              )}
-            </Button>
-
-            {showDetails && (
-              <div className="space-y-3 sm:space-y-4 pt-1 mt-2">
-                {hasPerformanceData && hasPurchasePrice && (
-                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 font-semibold pb-3 border-b border-border">
-                    <span className="text-muted-foreground text-xs sm:text-sm font-medium">Total utveckling:</span>
-                    <TooltipProvider delayDuration={120}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span
-                            className={cn(
-                              'inline-flex items-center gap-1',
-                              profit > 0
-                                ? 'text-emerald-600 dark:text-emerald-500'
-                                : profit < 0
-                                  ? 'text-red-600 dark:text-red-500'
-                                  : 'text-muted-foreground'
-                            )}
-                          >
-                            {profit > 0 ? (
-                              <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                            ) : profit < 0 ? (
-                              <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                            ) : null}
-                            <span className="text-xs sm:text-sm">
-                              {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}
-                            </span>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="text-xs font-medium">
-                          totala utveckling på innehav
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1 text-xs sm:text-sm',
-                        profit > 0
-                          ? 'text-emerald-600 dark:text-emerald-500'
-                          : profit < 0
-                            ? 'text-red-600 dark:text-red-500'
-                            : 'text-muted-foreground'
-                      )}
-                    >
-                      (
-                      {profit > 0 ? '+' : ''}
-                      {formatCurrency(profit, 'SEK')}
-                      )
-                    </span>
-                  </div>
-                )}
-
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-                  {typeof effectivePrice === 'number' && effectivePrice > 0 && (
-                    <div className="flex items-center gap-2 text-xs sm:text-sm">
-                      <span className="text-muted-foreground font-medium">Kurs:</span>
-                      <span className="text-foreground font-semibold">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
-                    </div>
+          <div className="space-y-3 sm:space-y-4 pt-1 mt-2">
+            {hasPerformanceData && hasPurchasePrice && (
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 font-semibold pb-3 border-b border-border">
+                <span className="text-muted-foreground text-xs sm:text-sm font-medium">Total utveckling:</span>
+                <TooltipProvider delayDuration={120}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1',
+                          profit > 0
+                            ? 'text-emerald-600 dark:text-emerald-500'
+                            : profit < 0
+                              ? 'text-red-600 dark:text-red-500'
+                              : 'text-muted-foreground'
+                        )}
+                      >
+                        {profit > 0 ? (
+                          <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        ) : profit < 0 ? (
+                          <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        ) : null}
+                        <span className="text-xs sm:text-sm">
+                          {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}
+                        </span>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs font-medium">
+                      totala utveckling på innehav
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 text-xs sm:text-sm',
+                    profit > 0
+                      ? 'text-emerald-600 dark:text-emerald-500'
+                      : profit < 0
+                        ? 'text-red-600 dark:text-red-500'
+                        : 'text-muted-foreground'
                   )}
-                  
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 text-muted-foreground font-medium hover:text-foreground text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start"
-                    onClick={() => onDiscuss(holding.name, holding.symbol)}
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    Diskutera
-                  </button>
-                </div>
+                >
+                  (
+                  {profit > 0 ? '+' : ''}
+                  {formatCurrency(profit, 'SEK')}
+                  )
+                </span>
               </div>
             )}
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+              {typeof effectivePrice === 'number' && effectivePrice > 0 && (
+                <div className="flex items-center gap-2 text-xs sm:text-sm">
+                  <span className="text-muted-foreground font-medium">Kurs:</span>
+                  <span className="text-foreground font-semibold">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="flex items-center gap-2 text-muted-foreground font-medium hover:text-foreground text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start"
+                onClick={() => onDiscuss(holding.name, holding.symbol)}
+              >
+                <MessageSquare className="w-4 h-4" />
+                Diskutera
+              </button>
+            </div>
           </div>
         )}
       </CardContent>
