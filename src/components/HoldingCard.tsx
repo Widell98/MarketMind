@@ -257,7 +257,54 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
 
         {!isCash && (
           <div className="space-y-3 sm:space-y-4 pt-1 mt-2">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+            {hasPerformanceData && hasPurchasePrice && (
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 font-semibold">
+                <span className="text-muted-foreground text-xs sm:text-sm font-medium">Total utveckling:</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1',
+                        profit > 0
+                          ? 'text-emerald-600 dark:text-emerald-500'
+                          : profit < 0
+                            ? 'text-red-600 dark:text-red-500'
+                            : 'text-muted-foreground'
+                      )}
+                    >
+                      {profit > 0 ? (
+                        <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      ) : profit < 0 ? (
+                        <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      ) : null}
+                      <span className="text-xs sm:text-sm">
+                        {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}
+                      </span>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs font-medium">
+                    totala utveckling på innehav
+                  </TooltipContent>
+                </Tooltip>
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 text-xs sm:text-sm',
+                    profit > 0
+                      ? 'text-emerald-600 dark:text-emerald-500'
+                      : profit < 0
+                        ? 'text-red-600 dark:text-red-500'
+                        : 'text-muted-foreground'
+                  )}
+                >
+                  (
+                  {profit > 0 ? '+' : ''}
+                  {formatCurrency(profit, 'SEK')}
+                  )
+                </span>
+              </div>
+            )}
+
+            <div className="border-t border-border pt-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
               {typeof effectivePrice === 'number' && effectivePrice > 0 && (
                 <div className="flex items-center gap-2 text-xs sm:text-sm">
                   <span className="text-muted-foreground font-medium">Kurs:</span>
@@ -274,55 +321,6 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                 Diskutera
               </button>
             </div>
-
-            {hasPerformanceData && hasPurchasePrice && (
-              <div className="border-t border-border pt-3">
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 font-semibold">
-                  <span className="text-muted-foreground text-xs sm:text-sm font-medium">Total utveckling:</span>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1',
-                          profit > 0
-                            ? 'text-emerald-600 dark:text-emerald-500'
-                            : profit < 0
-                              ? 'text-red-600 dark:text-red-500'
-                              : 'text-muted-foreground'
-                        )}
-                      >
-                        {profit > 0 ? (
-                          <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        ) : profit < 0 ? (
-                          <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        ) : null}
-                        <span className="text-xs sm:text-sm">
-                          {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}
-                        </span>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-xs font-medium">
-                      totala utveckling på innehav
-                    </TooltipContent>
-                  </Tooltip>
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-1 text-xs sm:text-sm',
-                      profit > 0
-                        ? 'text-emerald-600 dark:text-emerald-500'
-                        : profit < 0
-                          ? 'text-red-600 dark:text-red-500'
-                          : 'text-muted-foreground'
-                    )}
-                  >
-                    (
-                    {profit > 0 ? '+' : ''}
-                    {formatCurrency(profit, 'SEK')}
-                    )
-                  </span>
-                </div>
-              </div>
-            )}
           </div>
         )}
         </CardContent>
