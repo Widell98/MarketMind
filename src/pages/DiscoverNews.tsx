@@ -5,7 +5,6 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
-  CheckCircle2,
   ExternalLink,
   Filter,
   LineChart,
@@ -26,7 +25,6 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDiscoverReportSummaries } from '@/hooks/useDiscoverReportSummaries';
 import { useNewsData } from '@/hooks/useNewsData';
-import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import ReportDetailDialogContent from '@/components/ReportDetailDialogContent';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
@@ -184,15 +182,6 @@ const DiscoverNews = () => {
     { label: 'USD/SEK', value: '10.45', detail: 'Krona stärks mot dollarn' },
   ];
 
-  const getCategoryBadgeClass = (category?: string) => {
-    const normalized = category?.toLowerCase() || '';
-    if (normalized.includes('tech')) return 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-100';
-    if (normalized.includes('macro') || normalized.includes('global')) return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-100';
-    if (normalized.includes('commodit')) return 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-100';
-    if (normalized.includes('earnings') || normalized.includes('rapport')) return 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-100';
-    return 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-100';
-  };
-
   return (
     <Layout>
       <div className="w-full pb-20 bg-background/50 min-h-screen">
@@ -296,15 +285,13 @@ const DiscoverNews = () => {
                   <Card className="rounded-[2rem] border-border/50 shadow-lg overflow-hidden group hover:shadow-xl transition-all">
                     <div className="relative bg-gradient-to-br from-primary/5 via-transparent to-transparent p-5 md:p-6 xl:p-8">
                       <div className="flex items-start justify-between gap-4 mb-4">
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold bg-primary/15 text-primary border-primary/20">
-                              {isWeeklySummary ? 'Veckosammanfattning' : 'Morgonrapport'}
-                            </Badge>
-                            <Badge variant="outline" className="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary border-primary/30">
-                              {todayDate.split(' ')[0]}
-                            </Badge>
-                          </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold bg-primary/10 text-primary border-primary/20">
+                            {isWeeklySummary ? 'Veckosammanfattning' : 'Morgonrapport'}
+                          </Badge>
+                          <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">
+                            {todayDate.split(' ')[0]}
+                          </Badge>
                           {morningBrief.sentiment && (
                             <Badge variant="outline" className={`rounded-full px-3 py-1 text-xs font-medium flex items-center gap-1.5 ${getSentimentColor()}`}>
                               {getSentimentIcon()}
@@ -376,22 +363,22 @@ const DiscoverNews = () => {
                         </div>
 
                         {morningBrief.keyHighlights && morningBrief.keyHighlights.length > 0 && (
-                          <div className="rounded-2xl border border-border/70 bg-muted/40 p-4 shadow-inner">
-                            <div className="flex items-center justify-between mb-3">
-                              <div>
-                                <p className="text-[11px] font-semibold uppercase tracking-wide text-primary/80">{isWeeklySummary ? 'Veckans Höjdpunkter' : 'Snabbkollen'}</p>
-                                <p className="text-sm font-semibold text-foreground">Det viktigaste på 30 sek</p>
-                              </div>
-                              <Sparkles className="h-4 w-4 text-primary" />
+                          <div className="rounded-2xl border border-border/60 bg-muted/20 p-4">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                              <Sparkles className="h-4 w-4" />
+                              {isWeeklySummary ? 'Veckans Höjdpunkter' : 'Snabbkollen'}
                             </div>
-                            <ul className="space-y-2">
+                            <div className="flex flex-wrap gap-2">
                               {morningBrief.keyHighlights.slice(0, isWeeklySummary ? 7 : 5).map((highlight, idx) => (
-                                <li key={idx} className="flex gap-2 text-sm text-foreground">
-                                  <CheckCircle2 className="h-4 w-4 text-primary mt-0.5" />
-                                  <span className="leading-snug">{highlight}</span>
-                                </li>
+                                <Badge
+                                  key={idx}
+                                  variant="secondary"
+                                  className="rounded-full px-3 py-1 text-xs bg-muted/60 text-foreground/80 hover:bg-muted transition-colors"
+                                >
+                                  {highlight}
+                                </Badge>
                               ))}
-                            </ul>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -408,14 +395,14 @@ const DiscoverNews = () => {
                   : heroNews.summary;
 
                 return (
-                  <Card className="rounded-[2rem] border-border/50 shadow-xl overflow-hidden group hover:-translate-y-0.5 transition-all bg-gradient-to-r from-slate-900 via-slate-900/95 to-slate-800 text-white">
-                    <div className="relative p-5 md:p-6 xl:p-8">
+                  <Card className="rounded-[2rem] border-border/50 shadow-lg overflow-hidden group hover:shadow-xl transition-all">
+                    <div className="relative bg-gradient-to-br from-primary/5 via-transparent to-transparent p-5 md:p-6 xl:p-8">
                       <div className="flex items-start justify-between gap-4 mb-4">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold bg-white/15 text-white border-white/20">
+                          <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold bg-primary/10 text-primary border-primary/20">
                             Huvudnyhet
                           </Badge>
-                          <Badge variant="outline" className="rounded-full px-2.5 py-1 text-xs font-medium border-white/30 text-white bg-white/10">
+                          <Badge variant="outline" className="rounded-full px-2.5 py-1 text-xs font-medium">
                             {formatCategoryLabel(heroNews.category)}
                           </Badge>
                         </div>
@@ -423,7 +410,7 @@ const DiscoverNews = () => {
                           href={heroNews.url && heroNews.url !== '#' ? heroNews.url : '#'}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-white/80 hover:text-white transition-colors flex items-center gap-1"
+                          className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {heroNews.source}
@@ -431,27 +418,27 @@ const DiscoverNews = () => {
                         </a>
                       </div>
 
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className="mt-1 flex-shrink-0">
-                          <div className="rounded-xl bg-white/15 p-2">
-                            <Sparkles className="w-4 h-4 text-white" />
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="mt-1 flex-shrink-0">
+                            <div className="rounded-xl bg-primary/10 p-2">
+                              <Sparkles className="w-4 h-4 text-primary" />
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h2 className="text-xl md:text-2xl xl:text-3xl font-bold tracking-tight text-foreground leading-tight mb-2 group-hover:text-primary transition-colors">
+                              {heroNews.headline}
+                            </h2>
                           </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h2 className="text-xl md:text-2xl xl:text-3xl font-bold tracking-tight leading-tight mb-2 group-hover:text-primary-foreground transition-colors">
-                            {heroNews.headline}
-                          </h2>
-                        </div>
-                      </div>
 
                       <div className="mb-4">
-                        <p className="text-sm md:text-base text-white/80 leading-relaxed line-clamp-3 max-w-4xl">
+                        <p className="text-sm md:text-base text-muted-foreground leading-relaxed line-clamp-3 max-w-4xl">
                           {displaySummary}
                         </p>
                         {shouldTruncate && (
                           <button
                             onClick={() => setIsHeroExpanded(!isHeroExpanded)}
-                            className="mt-2 text-sm text-white hover:text-white/80 font-medium flex items-center gap-1 transition-colors"
+                            className="mt-2 text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1 transition-colors"
                           >
                             {isHeroExpanded ? (
                               <>
@@ -470,14 +457,14 @@ const DiscoverNews = () => {
 
                       <div className="flex flex-wrap items-center gap-3">
                         <Button
-                          className="rounded-full bg-white text-slate-900 hover:bg-slate-100"
+                          className="rounded-full"
                           size="sm"
                           onClick={() => setSelectedNews(heroNews)}
                         >
                           Läs mer
                           <ArrowRight className="ml-2 w-4 h-4" />
                         </Button>
-                        <div className="flex items-center gap-2 text-xs text-white/70">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Clock className="w-3.5 h-3.5" />
                           {formatPublishedLabel(heroNews.publishedAt)}
                         </div>
@@ -510,13 +497,7 @@ const DiscoverNews = () => {
                           >
                             <CardContent className="p-4 xl:p-5 flex flex-col h-full gap-3">
                               <div className="flex items-center justify-between gap-2">
-                                <Badge
-                                  variant="secondary"
-                                  className={cn(
-                                    'rounded-full px-3 py-1 text-[11px] font-semibold border border-border/60',
-                                    getCategoryBadgeClass(item.category)
-                                  )}
-                                >
+                                <Badge variant="secondary" className="rounded-lg px-2 py-0.5 bg-muted/80 font-medium text-xs">
                                   {formatCategoryLabel(item.category)}
                                 </Badge>
                                 <a
