@@ -615,6 +615,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
             </div>
           ) : (
             <div className="space-y-2.5 sm:space-y-3">
+              {holdingsActionButtons}
               {viewMode === 'cards' ? (
                 <div className="space-y-4">
                   {filteredGroups.map((group, index) => (
