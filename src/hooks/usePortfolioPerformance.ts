@@ -69,7 +69,7 @@ const isWithinWindow = (date: Date, config: {
 const SWEDISH_MARKET_HOLIDAYS = new Set<string>();
 const US_MARKET_HOLIDAYS = new Set<string>();
 
-const isWithinMarketHours = (date: Date = new Date()) => {
+const getMarketOpenStates = (date: Date = new Date()) => {
   const swedishMarketOpen = isWithinWindow(date, {
     timeZone: STOCKHOLM_TIMEZONE,
     open: { hour: 9, minute: 0 },
@@ -84,7 +84,41 @@ const isWithinMarketHours = (date: Date = new Date()) => {
     holidays: US_MARKET_HOLIDAYS,
   });
 
-  return swedishMarketOpen || usMarketOpen;
+  return {
+    swedishMarketOpen,
+    usMarketOpen,
+    anyMarketOpen: swedishMarketOpen || usMarketOpen,
+  };
+};
+
+const isWithinMarketHours = (date: Date = new Date()) => getMarketOpenStates(date).anyMarketOpen;
+
+type Market = 'SWEDEN' | 'US' | 'UNKNOWN';
+
+const getHoldingMarket = (holding: HoldingRow): Market => {
+  const normalizedSymbol = stripSymbolPrefix(holding.symbol)?.toUpperCase();
+  const currency = holding.currency?.toUpperCase() || holding.price_currency?.toUpperCase();
+
+  if (normalizedSymbol?.endsWith('.ST')) {
+    return 'SWEDEN';
+  }
+
+  if (currency === 'SEK') {
+    return 'SWEDEN';
+  }
+
+  if (currency === 'USD') {
+    return 'US';
+  }
+
+  if (normalizedSymbol) {
+    const suffix = normalizedSymbol.split('.').pop();
+    if (suffix === 'STO' || suffix === 'SSE') {
+      return 'SWEDEN';
+    }
+  }
+
+  return 'UNKNOWN';
 };
 
 type FinnhubPriceResponse = {
@@ -333,8 +367,8 @@ export const usePortfolioPerformance = () => {
 
     try {
       setLoading(true);
-      const marketOpen = isWithinMarketHours();
-      setIsMarketOpen(marketOpen);
+      const marketOpenStates = getMarketOpenStates();
+      setIsMarketOpen(marketOpenStates.anyMarketOpen);
 
       // Get all holdings (both securities and cash)
       const { data: allHoldings, error: holdingsError } = await supabase
@@ -361,7 +395,7 @@ export const usePortfolioPerformance = () => {
           investedPercentage: 0,
           lastUpdated: new Date().toISOString()
         });
-        setIsMarketOpen(marketOpen);
+        setIsMarketOpen(marketOpenStates.anyMarketOpen);
         setHoldingsPerformance([]);
         return;
       }
@@ -393,6 +427,7 @@ export const usePortfolioPerformance = () => {
       let totalValue = 0;
       let totalInvested = 0;
       let totalYesterdayValue = 0;
+      let totalEffectiveDayChange = 0;
       const holdingsPerf: HoldingPerformance[] = [];
 
       securities.forEach(holding => {
@@ -423,8 +458,15 @@ export const usePortfolioPerformance = () => {
         const dayChange = currentValue - yesterdayValue;
         const dayChangePercentage = yesterdayValue > 0 ? (dayChange / yesterdayValue) * 100 : 0;
 
-        const effectiveDayChange = marketOpen ? dayChange : 0;
-        const effectiveDayChangePercentage = marketOpen ? dayChangePercentage : 0;
+        const market = getHoldingMarket(holding);
+        const holdingMarketOpen = market === 'SWEDEN'
+          ? marketOpenStates.swedishMarketOpen
+          : market === 'US'
+            ? marketOpenStates.usMarketOpen
+            : marketOpenStates.anyMarketOpen;
+
+        const effectiveDayChange = holdingMarketOpen ? dayChange : 0;
+        const effectiveDayChangePercentage = holdingMarketOpen ? dayChangePercentage : 0;
 
         holdingsPerf.push({
           id: holding.id,
@@ -442,6 +484,7 @@ export const usePortfolioPerformance = () => {
         totalValue += currentValue;
         totalInvested += investedValue;
         totalYesterdayValue += yesterdayValue;
+        totalEffectiveDayChange += effectiveDayChange;
       });
 
       const totalReturn = totalValue - totalInvested;
@@ -449,8 +492,10 @@ export const usePortfolioPerformance = () => {
       const dayChange = totalValue - totalYesterdayValue;
       const dayChangePercentage = totalYesterdayValue > 0 ? (dayChange / totalYesterdayValue) * 100 : 0;
 
-      const effectiveDayChange = marketOpen ? dayChange : 0;
-      const effectiveDayChangePercentage = marketOpen ? dayChangePercentage : 0;
+      const effectiveDayChange = marketOpenStates.anyMarketOpen ? totalEffectiveDayChange : 0;
+      const effectiveDayChangePercentage = totalYesterdayValue > 0
+        ? (effectiveDayChange / totalYesterdayValue) * 100
+        : 0;
 
       // Calculate total portfolio value (securities + cash)
       const totalPortfolioValue = totalValue + totalCash;
