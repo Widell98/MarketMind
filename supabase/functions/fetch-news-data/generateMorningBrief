@@ -30,6 +30,10 @@ serve(async (req) => {
         const items = await generateMarketMomentum();
         return jsonResponse(items);
       }
+        case "latest_news": {
+        const news = await fetchLatestMarketNews();
+        return jsonResponse({ news });
+      }
       case "news":
       default: {
         const forceRefresh = body?.forceRefresh === true;
@@ -260,7 +264,7 @@ async function fetchTavilyNews(query: string, maxResults = 15, days = 1, domains
       body: JSON.stringify({
         api_key: tavilyApiKey,
         query,
-        search_depth: "basic",
+        search_depth: "advanced",
         include_domains: targetDomains, // <--- HÄR ÄR ÄNDRINGEN
         topic: "news",
         max_results: maxResults,
@@ -683,11 +687,89 @@ Regler:
   return { morningBrief: normalizedBrief, news: deduplicatedNews, rawPayload: {}, digestHash };
 }
 
+async function fetchLatestMarketNews(): Promise<NewsItem[]> {
+  console.log("[fetchLatestMarketNews] Generating Daily Morning Digest...");
+
+  // Domäner: Vi blandar tech-fokuserade sajter med tunga finanshus
+  const swedishDomains = ["efn.se", "realtid.se", "finanswatch.se", "placera.se", "affarsvarlden.se", "breakit.se", "privataaffarer.se", "omni.se"];
+  const globalDomains = ["cnbc.com", "bloomberg.com", "techcrunch.com", "theverge.com", "marketwatch.com", "investing.com", "reuters.com"];
+
+  // KATEGORI 1: Gårdagens stängning & Tech-nyheter (Det som driver sentimentet)
+  // Syfte: Ge användaren koll på omvärlden och det som är "spännande".
+  const globalTrendQueries = [
+    "us stock market close summary key tech drivers", // Hur gick USA igår?
+    "breaking news artificial intelligence stock market impact", // AI/Tech-nyheter
+    "big tech news nvidia apple microsoft tesla", // De stora drakarna
+    "market sentiment pre-market europe us" // Vad tror vi om idag?
+  ];
+
+  // KATEGORI 2: Svenska case & Morgonens snackisar
+  // Syfte: Vad händer på hemmaplan?
+  const swedishBuzzQueries = [
+    "stockholmsbörsen morgonrapport vad händer idag",
+    "svenska bolagsnyheter vinstvarning uppköp",
+    "dagens vinnare förlorare prognos",
+    "hetta aktier idag snackisar"
+  ];
+
+  // KATEGORI 3: Konkreta Råd & Analyser (Actionable)
+  // Syfte: "Vad ska jag köpa/sälja?"
+  const analystQueries = [
+    "dagens aktierekommendationer riktkurser köp sälj", // Det viktigaste för många
+    "analyst upgrades downgrades price targets today", // Globala rekommendationer
+    "bankernas favoriter just nu aktier"
+  ];
+
+  // Vi hämtar lite färre artiklar per kategori men från fler kategorier för att säkra mixen
+  // allowRepeats: false är viktigt här för att inte fylla listan med dubbletter
+  const [trendArticles, swedishArticles, analystArticles] = await Promise.all([
+    fetchMultipleTavilySearches(globalTrendQueries, 4, 1, { allowRepeats: false }, globalDomains),
+    fetchMultipleTavilySearches(swedishBuzzQueries, 4, 1, { allowRepeats: false }, swedishDomains),
+    fetchMultipleTavilySearches(analystQueries, 4, 1, { allowRepeats: false }, [...swedishDomains, ...globalDomains])
+  ]);
+
+  // Slå ihop – Prioritetsordning: 
+  // 1. Analyser (Användare älskar riktkurser)
+  // 2. Svenska nyheter (Hemmaplan)
+  // 3. Globala trender (Kontext)
+  const rawArticles = [...analystArticles, ...swedishArticles, ...trendArticles];
+
+  // Mappa till NewsItem
+  const newsItems: NewsItem[] = rawArticles.map(article => ({
+    id: `news_${crypto.randomUUID()}`,
+    headline: article.title,
+    // Vi behåller en lite längre "snippet" här så användaren får kontext direkt
+    summary: article.content.slice(0, 250) + "...", 
+    // Vi kan sätta en kategori baserat på källan/innehållet om vi vill, men "market_update" funkar generellt
+    category: determineCategory(article.title, article.content), 
+    source: article.source,
+    publishedAt: article.published_date || new Date().toISOString(),
+    url: article.url
+  }));
+
+  // Sortera: Eftersom detta är en morgon-digest vill vi kanske prioritera 
+  // relevans/kategori (som vi gjorde i array-ordningen ovan) snarare än strikt tid, 
+  // men att sortera på tid är oftast säkrast för att inte visa gamla grejer.
+  return deduplicateNewsItems(newsItems).sort((a, b) => 
+    new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+  );
+}
+
+// Liten hjälpare för att snygga till kategorierna i frontend
+function determineCategory(title: string, content: string): string {
+    const t = title.toLowerCase();
+    const c = content.toLowerCase();
+    if (t.includes("rekommendation") || t.includes("riktkurs") || t.includes("köp") || t.includes("sälj") || t.includes("upgrade")) return "analys";
+    if (t.includes("tech") || t.includes("ai ") || t.includes("nvidia") || c.includes("artificial intelligence")) return "tech";
+    if (t.includes("stockholm") || t.includes("omx") || t.includes("svensk")) return "sverige";
+    return "marknad";
+}
+
 async function generateMorningBrief(options: GenerateOptions = {}): Promise<GeneratedMorningBrief> {
   const today = new Date();
   const { allowRepeats = false } = options;
   
-  // Check if it's weekend - if so, generate weekly summary
+  // Check if it's weekend
   if (isWeekend(today)) {
     console.log(`[generateMorningBrief] Weekend detected, generating weekly summary`);
     return await generateWeeklySummary();
@@ -695,190 +777,155 @@ async function generateMorningBrief(options: GenerateOptions = {}): Promise<Gene
   
   const yesterday = getPreviousWeekday(today);
   
-  // 1. Get previous day's brief for context
+  // 1. Räkna ut veckodagar för att hjälpa AI:n
+  const todayName = today.toLocaleDateString('sv-SE', { weekday: 'long' });
+  const yesterdayName = yesterday.toLocaleDateString('sv-SE', { weekday: 'long' });
+
+  // 2. Get previous day's brief
   const previousBrief = await getPreviousDayBrief(today);
-  console.log(`[generateMorningBrief] Previous day brief found: ${!!previousBrief}`);
   
-  // --- HÄR ÄR DEN NYA LOGIKEN (SVERIGE VS GLOBALT) ---
+  // --- DEFINIERA SÖKNINGAR (Samma som du hade, men vi återanvänder dem) ---
+  const swedishDomains = ["di.se", "svd.se", "dn.se", "privataaffarer.se", "breakit.se", "omni.se", "placera.se"];
+  const globalMajorDomains = ["cnbc.com", "reuters.com", "bloomberg.com"];
+  const globalAlternativeDomains = ["ft.com", "marketwatch.com", "techcrunch.com", "wsj.com", "investing.com", "finance.yahoo.com", "barrons.com"];
 
-  // A. Definiera specifika domäner för att garantera svenska nyheter
-  const swedishDomains = [
-   "svd.se", "dn.se", "privataaffarer.se", "breakit.se", "omni.se", "placera.se"
-  ];
-  
-  const globalDomains = [
-    "cnbc.com", "reuters.com", "bloomberg.com", "ft.com", "marketwatch.com", 
-    "techcrunch.com", "wsj.com", "investing.com", "finance.yahoo.com"
-  ];
-
-  // B. Dela upp sökningarna
- const swedishQueries = [
-    "börsen idag stockholm vinnare förlorare placera",
-    "svensk ekonomi nyheter svt ränta",
-    "marknadskollen omni ekonomi",
-    "aktier analys aktiespararna",
-    "svenska storbolag rapport"
+  // Dina optimerade frågor
+  const swedishQueries = [
+    "stockholmsbörsen omxs30 nyheter idag morgonrapport",
+    "svensk ekonomi ränta inflation riksbanken bnp",
+    "dagens aktierekommendationer riktkurser köp sälj bankanalys",
+    "svenska bolagsrapporter kvartalsrapport vinstvarning idag",
+    "first north spotlight aktier nyheter småbolag"
   ];
   
   const globalQueries = [
-    "us stock market close summary key events",
-    "federal reserve interest rates inflation",
-    "big tech earnings ai nvidia apple microsoft",
-    "oil prices gold commodities market",
-    "european markets ecb rates economy"
+    "us stock market close summary s&p500 nasdaq key drivers yesterday",
+    "stock market futures pre-market sentiment europe us",
+    "global macro economy federal reserve ecb interest rates",
+    "trending stocks market movers active trading volume pre-market",
+    "commodities outlook oil price gold brent crude analysis"
   ];
 
-  // Lägg till uppföljning från gårdagen i den globala sökningen
   if (previousBrief && previousBrief.morningBrief.headline) {
      globalQueries.push(`follow-up ${previousBrief.morningBrief.headline}`);
   }
 
-  // C. Kör sökningarna SEPARAT (Sverige vs Världen)
-  console.log("[generateMorningBrief] Fetching SWEDISH and GLOBAL news separately...");
+  console.log("[generateMorningBrief] Fetching SWEDISH, GLOBAL MAJORS, and GLOBAL ALTS...");
   
-  // OBS: Detta kräver att du har uppdaterat 'fetchMultipleTavilySearches' enligt Steg 2!
-  const [swedishArticles, globalArticles] = await Promise.all([
+  const [swedishArticles, globalMajorArticles, globalAltArticles] = await Promise.all([
     fetchMultipleTavilySearches(swedishQueries, 5, 1, { allowRepeats }, swedishDomains),
-    fetchMultipleTavilySearches(globalQueries, 10, 1, { allowRepeats }, globalDomains)
+    fetchMultipleTavilySearches(globalQueries, 5, 1, { allowRepeats }, globalMajorDomains),
+    fetchMultipleTavilySearches(globalQueries, 5, 1, { allowRepeats }, globalAlternativeDomains)
   ]);
 
-  // D. Slå ihop resultaten (Svenska först så de hamnar högst upp i listan)
-  const tavilyArticles = [...swedishArticles, ...globalArticles];
-  console.log(`[generateMorningBrief] Fetched total: ${tavilyArticles.length} (SE: ${swedishArticles.length}, GL: ${globalArticles.length})`);
+  // 3. Slå ihop och DATUM-FILTRERA (Ny säkerhetsåtgärd)
+  const allArticles = [...swedishArticles, ...globalAltArticles, ...globalMajorArticles];
+  
+  // Filtrera bort artiklar som är äldre än 2 dagar (om datum finns) för att undvika "tisdagsnyheter" på torsdagen
+  const freshArticles = allArticles.filter(a => {
+    if (!a.published_date) return true; // Behåll om datum saknas
+    const pubDate = new Date(a.published_date);
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    return pubDate > twoDaysAgo;
+  });
 
-  // --- HÄRIFRÅN ÄR DET SAMMA PARALLELL-LOGIK SOM VI FIXADE TIDIGARE ---
+  console.log(`[generateMorningBrief] Fetched total: ${allArticles.length}, after date filter: ${freshArticles.length}`);
 
-  // 4. Summarize articles in PARALLEL
-  const articlesToProcess = tavilyArticles.slice(0, 15);
-  console.log(`[generateMorningBrief] Starting parallel summarization of ${articlesToProcess.length} articles...`);
-
+  // 4. Summarize articles
+  const articlesToProcess = freshArticles.slice(0, 15);
   const summaryPromises = articlesToProcess.map(async (article) => {
     try {
-      const summarized = await summarizeArticle(article);
-      console.log(`[generateMorningBrief] Summarized: ${summarized.headline.substring(0, 30)}...`);
-      return summarized;
+      return await summarizeArticle(article);
     } catch (error) {
-      console.error(`Failed to summarize article: ${article.title}`, error);
       return null;
     }
   });
 
   const results = await Promise.all(summaryPromises);
   const summarizedNews = results.filter((item): item is NewsItem => item !== null);
-  
-  console.log(`[generateMorningBrief] Total summarized news: ${summarizedNews.length}`);
-
-  // 5. Deduplicate summarized news
   const deduplicatedNews = deduplicateNewsItems(summarizedNews);
-  console.log(`[generateMorningBrief] Deduplicated news: ${deduplicatedNews.length} (removed ${summarizedNews.length - deduplicatedNews.length} duplicates)`);
 
-  // 6. Create context and generate brief
-  const tavilyContext = tavilyArticles.length > 0
-    ? tavilyArticles.map((a) => `- ${a.title} (${a.source}): ${a.content.slice(0, 300)}...`).join("\n")
+  // 5. Create context
+  const tavilyContext = articlesToProcess.length > 0
+    ? articlesToProcess.map((a) => `- ${a.title} (${a.source}) [${a.published_date || 'N/A'}]: ${a.content.slice(0, 300)}...`).join("\n")
     : "";
   
   const previousDayContext = previousBrief
-    ? `Gårdagens huvudnyhet: ${previousBrief.morningBrief.headline}\n` +
-      `Gårdagens översikt: ${previousBrief.morningBrief.overview}\n` +
-      `Gårdagens teman: ${previousBrief.morningBrief.focusToday.join(", ")}\n`
+    ? `Gårdagens (${yesterdayName}) huvudnyhet: ${previousBrief.morningBrief.headline}\n`
     : "";
 
   const systemPrompt =
-    "Du är en svensk finansredaktör som skriver morgonbrev och strukturerade nyhetssammanfattningar baserat på faktiska nyhetsartiklar. Du svarar alltid med giltig JSON.";
+    "Du är en svensk finansredaktör som skriver morgonbrev. Du är extremt noga med datum och tidsangivelser.";
 
-  const userPrompt = `Skriv ett detaljerat morgonbrev för datumet ${today.toLocaleDateString("sv-SE")} baserat på följande faktiska nyhetsartiklar.
+  // 6. Den uppdaterade PROMPTEN som fixar problemet:
+  const userPrompt = `Skriv ett morgonbrev för idag, **${todayName}** den ${today.toLocaleDateString("sv-SE")}.
 
-VIKTIGT: Du ska INTE skapa egna nyheter. Använd endast informationen från artiklarna nedan.
+DIN UPPGIFT:
+Summera vad som hände på marknaden under gårdagen (**${yesterdayName}**) och vad som förväntas hända idag (**${todayName}**).
 
-${previousDayContext ? `KONTEKST FRÅN GÅRDAGEN:\n---\n${previousDayContext}---\n\nAnvänd detta som bakgrund för att förstå utvecklingen, men fokusera på DAGENS nyheter.\n\n` : ""}Faktiska nyhetsartiklar för idag:
+VIKTIGA REGLER FÖR TIDSHANTERING:
+1. **Fokusera på ${yesterdayName}:** När du beskriver börsens stängning eller makrosiffror, avser du gårdagen.
+2. **Varning för gamla nyheter:** Om en artikel nämner händelser från i förrgår (t.ex. "i tisdags" om det är torsdag idag), får du INTE presentera det som en nyhet. Använd det endast som bakgrundskontext ("efter tisdagens räntebesked...").
+3. **Framåtblickande:** Vad händer idag? (Rapporter, terminer, makro).
+
+${previousDayContext ? `KONTEKST FRÅN FÖRRGÅR:\n${previousDayContext}\n` : ""}
+
+TILLGÄNGLIGA ARTIKLAR (Kolla datum!):
 ---
-${tavilyContext || "Inga nyhetsartiklar tillgängliga för idag."}
+${tavilyContext || "Inga nyheter tillgängliga."}
 ---
 
-Baserat på dessa artiklar, skapa:
-- En huvudrubrik som sammanfattar den viktigaste nyheten
-- En översikt (3-4 meningar) för Hero-kortet
-- 5 korta nyhetspunkter för "Snabbkollen"
-- 3 teman för "Fokus idag"
-- Exakt 3 fördjupande sektioner (t.ex. Makro, Tech, Marknad) baserat på artiklarna
-- Ett sentiment (bullish/bearish/neutral) baserat på artiklarnas innehåll
-
-Fokusera på händelser och sentiment från ${yesterday.toLocaleDateString("sv-SE")} (gårdagen) och natten till idag.
-
-FORMAT (måste följas exakt):
+FORMAT (JSON):
 {
   "morning_brief": {
-    "headline": "Kort, slagkraftig huvudrubrik (max 6 ord)",
-    "overview": "Engagerande ingress för huvudnyheten (3-4 meningar). Detta visas i det stora Hero-kortet.",
-    "key_highlights": [
-      "Kort nyhetspunkt 1 (max 1 mening)",
-      "Kort nyhetspunkt 2",
-      "Kort nyhetspunkt 3",
-      "Kort nyhetspunkt 4",
-      "Kort nyhetspunkt 5"
-    ],
+    "headline": "Rubrik för ${todayName}en (max 6 ord)",
+    "overview": "Sammanfattning av läget inför börsöppning. Vad hände igår (${yesterdayName}) och vad styr idag?",
+    "key_highlights": ["Punkt 1", "Punkt 2", "Punkt 3", "Punkt 4", "Punkt 5"],
     "focus_today": ["Tema 1", "Tema 2", "Tema 3"],
     "sentiment": "bullish"|"bearish"|"neutral",
-    "generated_at": "ISO timestamp",
+    "generated_at": "${new Date().toISOString()}",
     "sections": [
-      { 
-        "title": "Rubrik för sektion 1 (t.ex. 'Makroläget')", 
-        "body": "Innehållsrik text (2-3 stycken) baserat på artiklarna." 
-      },
-      { "title": "Rubrik för sektion 2", "body": "..." },
-      { "title": "Rubrik för sektion 3", "body": "..." }
+      { "title": "Gårdagens handel (${yesterdayName})", "body": "..." },
+      { "title": "Sverige & Makro", "body": "..." },
+      { "title": "Inför öppning", "body": "..." }
     ]
   }
-}
-
-Regler:
-- Använd endast information från de faktiska artiklarna ovan.
-- Var specifik med siffror och fakta från artiklarna.
-- Blanda svenska och internationella perspektiv baserat på artiklarna.`;
+}`;
 
   let morningBrief: MorningBrief;
   
-  if (tavilyArticles.length > 0 && openAIApiKey) {
+  if (freshArticles.length > 0 && openAIApiKey) {
     try {
       const raw = await callOpenAI(systemPrompt, userPrompt, 2000);
-      logAiResponse("morning_brief", raw);
       const parsed = parseJsonPayload(raw);
-      morningBrief = normalizeMorningBrief((parsed?.morning_brief ?? parsed?.brief ?? parsed?.newsletter ?? {}) as Record<string, unknown>);
+      morningBrief = normalizeMorningBrief((parsed?.morning_brief ?? {}) as Record<string, unknown>);
     } catch (error) {
-      console.error("Failed to generate morning brief:", error);
-      // Fallback morning brief
-      morningBrief = {
-        id: `brief_${crypto.randomUUID()}`,
-        headline: "Dagens Nyheter",
-        overview: tavilyArticles[0]?.title || "Marknadsläget just nu",
-        keyHighlights: tavilyArticles.slice(0, 5).map(a => a.title),
-        focusToday: ["Nyheter", "Marknad", "Analys"],
-        sentiment: "neutral",
-        generatedAt: new Date().toISOString(),
-        sections: [],
-      };
+      console.error("Error generating brief:", error);
+      morningBrief = createFallbackBrief(freshArticles);
     }
   } else {
-    // Fallback if no articles or OpenAI unavailable
-    morningBrief = {
-      id: `brief_${crypto.randomUUID()}`,
-      headline: "Dagens Nyheter",
-      overview: "Inga nyheter tillgängliga för idag.",
-      keyHighlights: [],
-      focusToday: ["Nyheter", "Marknad", "Analys"],
-      sentiment: "neutral",
-      generatedAt: new Date().toISOString(),
-      sections: [],
-    };
+    morningBrief = createFallbackBrief([]);
   }
 
-  const runGeneratedAt = new Date().toISOString();
-  const normalizedBrief = { ...morningBrief, generatedAt: runGeneratedAt };
-
+  const normalizedBrief = { ...morningBrief, generatedAt: new Date().toISOString() };
   const digestHash = await computeDigestHash({ morningBrief: normalizedBrief, news: deduplicatedNews });
-  console.log(`[generateMorningBrief] Returning: morningBrief=${!!morningBrief}, newsCount=${deduplicatedNews.length}`);
-  console.log(`[generateMorningBrief] News items sample:`, deduplicatedNews.slice(0, 2).map(n => ({ headline: n.headline, source: n.source })));
+  
   return { morningBrief: normalizedBrief, news: deduplicatedNews, rawPayload: {}, digestHash };
+}
+
+// Hjälpfunktion för fallback (så vi slipper duplicera kod)
+function createFallbackBrief(articles: any[]): MorningBrief {
+    return {
+        id: `brief_${crypto.randomUUID()}`,
+        headline: "Morgonrapporten",
+        overview: articles[0]?.title || "Inga nyheter tillgängliga just nu.",
+        keyHighlights: articles.slice(0, 5).map(a => a.title),
+        focusToday: ["Marknad", "Nyheter"],
+        sentiment: "neutral",
+        generatedAt: new Date().toISOString(),
+        sections: []
+    };
 }
 
 async function generateMarketMomentum() {
