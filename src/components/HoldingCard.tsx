@@ -244,6 +244,24 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
 
         {!isCash && (
           <div className="space-y-3 sm:space-y-4 pt-1 mt-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+              {typeof effectivePrice === 'number' && effectivePrice > 0 && (
+                <div className="flex items-center gap-2 text-xs sm:text-sm">
+                  <span className="text-muted-foreground font-medium">Kurs:</span>
+                  <span className="text-foreground font-semibold">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="flex items-center gap-2 text-muted-foreground font-medium hover:text-foreground text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start"
+                onClick={() => onDiscuss(holding.name, holding.symbol)}
+              >
+                <MessageSquare className="w-4 h-4" />
+                Diskutera
+              </button>
+            </div>
+
             {hasPerformanceData && hasPurchasePrice && (
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 font-semibold pb-3 border-b border-border">
                 <span className="text-muted-foreground text-xs sm:text-sm font-medium">Total utveckling:</span>
@@ -292,24 +310,6 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                 </span>
               </div>
             )}
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-              {typeof effectivePrice === 'number' && effectivePrice > 0 && (
-                <div className="flex items-center gap-2 text-xs sm:text-sm">
-                  <span className="text-muted-foreground font-medium">Kurs:</span>
-                  <span className="text-foreground font-semibold">{formatCurrency(effectivePrice, effectiveCurrency)}</span>
-                </div>
-              )}
-
-              <button
-                type="button"
-                className="flex items-center gap-2 text-muted-foreground font-medium hover:text-foreground text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start"
-                onClick={() => onDiscuss(holding.name, holding.symbol)}
-              >
-                <MessageSquare className="w-4 h-4" />
-                Diskutera
-              </button>
-            </div>
           </div>
         )}
       </CardContent>
