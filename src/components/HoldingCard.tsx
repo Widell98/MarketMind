@@ -81,7 +81,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
     new Intl.NumberFormat('sv-SE', {
       style: 'currency',
       currency,
-      useGrouping: false,
+      useGrouping: true,
       maximumFractionDigits: 0,
       minimumFractionDigits: 0,
     }).format(Math.round(amount));

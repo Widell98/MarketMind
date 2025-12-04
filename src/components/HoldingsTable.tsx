@@ -50,7 +50,7 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
     new Intl.NumberFormat('sv-SE', {
       style: 'currency',
       currency,
-      useGrouping: false,
+      useGrouping: true,
       maximumFractionDigits: 0,
       minimumFractionDigits: 0,
     }).format(Math.round(amount));
