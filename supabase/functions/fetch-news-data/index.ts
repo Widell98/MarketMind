@@ -24,6 +24,7 @@ serve(async (req) => {
   try {
     const body = await readJsonBody(req);
     const type = typeof body?.type === "string" ? body.type : "news";
+    const contentType = parseContentType(body);
 
     switch (type) {
       case "momentum": {
@@ -38,7 +39,7 @@ serve(async (req) => {
         const now = new Date();
 
         if (!forceRefresh && latestStored && isSameUtcDay(new Date(latestStored.morningBrief.generatedAt), now)) {
-          return jsonResponse(latestStored);
+          return jsonResponse(formatMorningBriefResponse(latestStored, contentType));
         }
 
         const generated = await generateMorningBrief({ allowRepeats: forceRefresh });
@@ -48,7 +49,7 @@ serve(async (req) => {
           : null;
 
         const responsePayload = persisted ?? { morningBrief: generated.morningBrief, news: generated.news };
-        return jsonResponse(responsePayload);
+        return jsonResponse(formatMorningBriefResponse(responsePayload, contentType));
       }
     }
   } catch (error) {
@@ -74,6 +75,34 @@ function jsonResponse(payload: unknown, status = 200): Response {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+type ContentType = "all" | "morning-brief" | "news";
+
+function parseContentType(body: Record<string, unknown> | null): ContentType {
+  if (!body || typeof body.contentType !== "string") {
+    return "all";
+  }
+
+  const normalized = body.contentType.toLowerCase();
+  if (normalized === "morning-brief") return "morning-brief";
+  if (normalized === "news") return "news";
+  return "all";
+}
+
+function formatMorningBriefResponse(
+  payload: { morningBrief: MorningBrief; news: NewsItem[] },
+  contentType: ContentType,
+) {
+  switch (contentType) {
+    case "morning-brief":
+      return { morningBrief: payload.morningBrief };
+    case "news":
+      return { news: payload.news };
+    case "all":
+    default:
+      return { morningBrief: payload.morningBrief, news: payload.news };
+  }
 }
 
 // --- Date Helper Functions ---
@@ -372,16 +401,16 @@ async function categorizeArticle(title: string, content: string): Promise<string
 
 async function summarizeArticle(article: TavilyArticle): Promise<NewsItem> {
   const category = await categorizeArticle(article.title, article.content);
-  
-  // If OpenAI is not available, use original content as summary
+
+  // Om OpenAI inte finns, använd originaltitel som fallback
   if (!openAIApiKey) {
-    const summary = article.content.length > 200 
+    const summary = article.content.length > 200
       ? article.content.slice(0, 200) + "..."
       : article.content;
-    
+
     return {
       id: `news_${crypto.randomUUID()}`,
-      headline: article.title,
+      headline: article.title, // Fallback
       summary,
       category,
       source: article.source,
@@ -391,23 +420,47 @@ async function summarizeArticle(article: TavilyArticle): Promise<NewsItem> {
   }
 
   try {
-    const systemPrompt = "Du är en svensk finansjournalist som sammanfattar nyhetsartiklar. Du svarar alltid med en kort sammanfattning på svenska (max 2-3 meningar).";
-    
-    const userPrompt = `Sammanfatta följande artikel på svenska. Behåll all faktisk information men omskriv texten för att undvika upprepning. Använd inte samma meningar som originalet. Max 2-3 meningar.
+    // 1. Uppdaterad System-prompt: Vi ber om JSON med både rubrik och text
+    const systemPrompt =
+      "Du är en svensk finansredaktör. Din uppgift är att läsa en råtext och skapa en kort, slagkraftig nyhetsnotis. Du svarar ALLTID med giltig JSON i formatet: { \"headline\": \"...\", \"summary\": \"...\" }.";
 
-Rubrik: ${article.title}
+    // 2. Uppdaterad User-prompt: Instruktioner för att sätta en BRA rubrik
+    const userPrompt = `Analysera följande text och skapa:
+1. En beskrivande rubrik (max 7-8 ord). Den får INTE vara generisk som "Omni Ekonomi" eller "Dagens Nyheter", utan måste beskriva innehållet (t.ex. "Musk köper Tesla-aktier för en miljard").
+2. En sammanfattning på svenska (max 2-3 meningar).
+
+Originaltitel: ${article.title}
 
 Innehåll:
-${article.content.slice(0, 1000)}
+${article.content.slice(0, 1200)}
 
-Sammanfattning:`;
+Svara med JSON.`;
 
-    const summary = await callOpenAI(systemPrompt, userPrompt, 150);
-    
+    // Vi ökar maxTokens lite eftersom vi nu vill ha JSON
+    const rawResponse = await callOpenAI(systemPrompt, userPrompt, 400);
+
+    // 3. Parsa JSON-svaret (Vi återanvänder din befintliga hjälpfunktion)
+    let parsed;
+    try {
+      parsed = parseJsonPayload(rawResponse);
+    } catch (e) {
+      console.warn("JSON parse failed for summary, using raw text fallback");
+      parsed = { headline: article.title, summary: rawResponse };
+    }
+
+    // Säkerställ att vi har värden, annars fallback
+    const newHeadline = typeof parsed?.headline === "string" && parsed.headline.length > 5
+      ? parsed.headline
+      : article.title;
+        
+    const newSummary = typeof parsed?.summary === "string" && parsed.summary.length > 10
+      ? parsed.summary
+      : (typeof parsed?.headline === "string" ? rawResponse.replace(parsed.headline, "") : rawResponse);
+
     return {
       id: `news_${crypto.randomUUID()}`,
-      headline: article.title,
-      summary: summary.trim() || article.content.slice(0, 200),
+      headline: newHeadline, // HÄR använder vi nu den AI-genererade rubriken
+      summary: newSummary.trim(),
       category,
       source: article.source,
       publishedAt: article.published_date ? new Date(article.published_date).toISOString() : new Date().toISOString(),
@@ -415,15 +468,11 @@ Sammanfattning:`;
     };
   } catch (error) {
     console.error("Failed to summarize article:", error);
-    // Fallback to original content
-    const summary = article.content.length > 200 
-      ? article.content.slice(0, 200) + "..."
-      : article.content;
-    
+    // Fallback vid fel
     return {
       id: `news_${crypto.randomUUID()}`,
       headline: article.title,
-      summary,
+      summary: article.content.slice(0, 200) + "...",
       category,
       source: article.source,
       publishedAt: article.published_date ? new Date(article.published_date).toISOString() : new Date().toISOString(),
@@ -743,13 +792,29 @@ async function generateMorningBrief(options: GenerateOptions = {}): Promise<Gene
   ]);
 
   // D. Slå ihop resultaten (Svenska först så de hamnar högst upp i listan)
-  const tavilyArticles = [...swedishArticles, ...globalArticles];
-  console.log(`[generateMorningBrief] Fetched total: ${tavilyArticles.length} (SE: ${swedishArticles.length}, GL: ${globalArticles.length})`);
+  const majorDomains = new Set([
+    "cnbc.com",
+    "reuters.com",
+    "bloomberg.com",
+    "ft.com",
+    "wsj.com",
+  ]);
+
+  const globalMajorArticles = globalArticles.filter((article) => majorDomains.has(article.domain));
+  const globalAltArticles = globalArticles.filter((article) => !majorDomains.has(article.domain));
+
+  // Fix: Ta max 5 från varje kategori för att TVINGA fram en blandning
+  const tavilyArticles = [
+    ...swedishArticles.slice(0, 5), // Max 5 svenska
+    ...globalAltArticles.slice(0, 5), // Max 5 analys/tech
+    ...globalMajorArticles.slice(0, 5), // Max 5 stora globala (CNBC/Reuters)
+  ];
+  console.log(`[generateMorningBrief] Fetched total: ${tavilyArticles.length} (SE: ${swedishArticles.length}, GL: ${globalArticles.length}, GL-major: ${globalMajorArticles.length}, GL-alt: ${globalAltArticles.length})`);
 
   // --- HÄRIFRÅN ÄR DET SAMMA PARALLELL-LOGIK SOM VI FIXADE TIDIGARE ---
 
   // 4. Summarize articles in PARALLEL
-  const articlesToProcess = tavilyArticles.slice(0, 15);
+  const articlesToProcess = tavilyArticles;
   console.log(`[generateMorningBrief] Starting parallel summarization of ${articlesToProcess.length} articles...`);
 
   const summaryPromises = articlesToProcess.map(async (article) => {
