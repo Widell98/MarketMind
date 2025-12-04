@@ -1,8 +1,8 @@
-# Welcome to your Lovable project
+# Welcome to Market Mind
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/f3bdb396-b2bb-4755-9f8f-5bc2c9217c55
+AI-powered stock market learning and portfolio tools.
 
 ## How can I edit this code?
 
@@ -10,7 +10,7 @@ There are several ways of editing your application.
 
 **Use your preferred IDE**
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+If you want to work locally using your own IDE, clone this repo and push changes.
 
 The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
@@ -56,15 +56,7 @@ This project is built with:
 
 ## How can I deploy this project?
 
-Simply open [Lovable](https://lovable.dev/projects/f3bdb396-b2bb-4755-9f8f-5bc2c9217c55) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+You can deploy Market Mind to any platform that supports static or serverless Vite builds, such as Vercel, Netlify, or your own infrastructure. Run the production build with `npm run build` and follow your provider's instructions for deploying the generated `dist` folder.
 
 ## Running the Supabase Edge Functions locally
 

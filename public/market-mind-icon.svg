@@ -1,0 +1,18 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc" fill="none">
+  <title id="title">Market Mind Icon</title>
+  <desc id="desc">Stylized brain inside a circular badge for the Market Mind brand.</desc>
+  <defs>
+    <linearGradient id="bg" x1="80" x2="440" y1="96" y2="416" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0EA5E9" />
+      <stop offset="1" stop-color="#6366F1" />
+    </linearGradient>
+    <linearGradient id="brain" x1="140" x2="360" y1="156" y2="356" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFC" />
+      <stop offset="1" stop-color="#E2E8F0" />
+    </linearGradient>
+  </defs>
+  <circle cx="256" cy="256" r="220" fill="url(#bg)" />
+  <path fill="#0B2647" fill-opacity="0.14" d="M256 476c121.1 0 220-98.9 220-220 0-21.8-3.1-42.8-9-62.7L318 123l-75.5 19.3-36 53.7-56.5-20L71 250l31.8 125.7L234 433l22 37.4c0 1.9-.1 3.8-.1 5.6Z" />
+  <path fill="url(#brain)" stroke="#0F172A" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" d="M202 151c-31 0-56 25.1-56 56v62c0 31 25 56 56 56h13c19.3 0 35 15.7 35 35v26c0 18.2-14.8 33-33 33-17 0-31-13-33-29M310 151c31 0 56 25.1 56 56v62c0 31-25 56-56 56h-13c-19.3 0-35 15.7-35 35v26c0 18.2 14.8 33 33 33 17 0 31-13 33-29M202 151c17.7 0 32-14.3 32-32 0-17.6-14.3-32-32-32-17.6 0-32 14.4-32 32 0 4.8 1.1 9.4 3 13.5M256 138c17.7 0 32-14.3 32-32 0-17.6-14.3-32-32-32-17.6 0-32 14.4-32 32 0 4.8 1.1 9.4 3 13.5M310 151c-17.7 0-32-14.3-32-32 0-17.6 14.3-32 32-32s32 14.4 32 32c0 4.8-1.1 9.4-3 13.5" />
+  <path stroke="#0EA5E9" stroke-width="12" stroke-linecap="round" d="M196 250h32m56 0h32M256 125v262" />
+</svg>
