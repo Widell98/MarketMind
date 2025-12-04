@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  CheckCircle2,
   ExternalLink,
   Filter,
   LineChart,
@@ -177,11 +178,26 @@ const DiscoverNews = () => {
 
   const isWeeklySummary = isWeekend() || morningBrief?.headline?.toLowerCase().includes('veckosammanfattning');
 
+  const marketMetrics = [
+    { label: 'OMX30', value: '+0.8%', detail: 'Stiger efter starka verkstadsrapporter' },
+    { label: 'S&P 500', value: '+0.3%', detail: 'Tech leder uppgången' },
+    { label: 'USD/SEK', value: '10.45', detail: 'Krona stärks mot dollarn' },
+  ];
+
+  const getCategoryBadgeClass = (category?: string) => {
+    const normalized = category?.toLowerCase() || '';
+    if (normalized.includes('tech')) return 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-100';
+    if (normalized.includes('macro') || normalized.includes('global')) return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-100';
+    if (normalized.includes('commodit')) return 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-100';
+    if (normalized.includes('earnings') || normalized.includes('rapport')) return 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-100';
+    return 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-100';
+  };
+
   return (
     <Layout>
       <div className="w-full pb-20 bg-background/50 min-h-screen">
-        <div className="mx-auto w-full max-w-[1800px] px-4 sm:px-6 lg:px-8 xl:px-12 py-8 md:py-12">
-          
+        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+
           <Tabs
             value={activeTab}
             onValueChange={(value) => setActiveTab((value as 'news' | 'reports') || 'news')}
@@ -215,6 +231,20 @@ const DiscoverNews = () => {
                   Rapporter
                 </TabsTrigger>
               </TabsList>
+            </div>
+
+            <div className="hidden md:grid grid-cols-1 sm:grid-cols-3 gap-3 bg-card/60 border border-border/60 rounded-2xl p-3 shadow-sm">
+              {marketMetrics.map((metric) => (
+                <div key={metric.label} className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary font-semibold">
+                    {metric.value}
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{metric.label}</p>
+                    <p className="text-sm font-semibold text-foreground leading-tight">{metric.detail}</p>
+                  </div>
+                </div>
+              ))}
             </div>
 
             <TabsContent value="news" className="space-y-8 animate-fade-in mt-0">
@@ -260,17 +290,21 @@ const DiscoverNews = () => {
                   return 'text-muted-foreground bg-muted';
                 };
 
+                const publishedLabel = heroNews ? formatPublishedLabel(heroNews.publishedAt) : todayDate;
+
                 return (
                   <Card className="rounded-[2rem] border-border/50 shadow-lg overflow-hidden group hover:shadow-xl transition-all">
                     <div className="relative bg-gradient-to-br from-primary/5 via-transparent to-transparent p-5 md:p-6 xl:p-8">
                       <div className="flex items-start justify-between gap-4 mb-4">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold bg-primary/10 text-primary border-primary/20">
-                            {isWeeklySummary ? 'Veckosammanfattning' : 'Morgonrapport'}
-                          </Badge>
-                          <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">
-                            {todayDate.split(' ')[0]}
-                          </Badge>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold bg-primary/15 text-primary border-primary/20">
+                              {isWeeklySummary ? 'Veckosammanfattning' : 'Morgonrapport'}
+                            </Badge>
+                            <Badge variant="outline" className="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary border-primary/30">
+                              {todayDate.split(' ')[0]}
+                            </Badge>
+                          </div>
                           {morningBrief.sentiment && (
                             <Badge variant="outline" className={`rounded-full px-3 py-1 text-xs font-medium flex items-center gap-1.5 ${getSentimentColor()}`}>
                               {getSentimentIcon()}
@@ -279,67 +313,88 @@ const DiscoverNews = () => {
                           )}
                         </div>
                       </div>
-                      
-                      <h2 className="text-xl md:text-2xl xl:text-3xl font-bold tracking-tight text-foreground leading-tight mb-3 group-hover:text-primary transition-colors">
-                        {morningBrief.headline}
-                      </h2>
-                      
-                      <div className={`${isWeeklySummary ? 'prose prose-slate dark:prose-invert max-w-none' : ''} mb-4`}>
-                        {isWeeklySummary ? (
-                          <div className="text-sm md:text-base text-muted-foreground leading-relaxed space-y-3 max-w-5xl">
-                            {morningBrief.overview.split('\n\n').map((paragraph, idx) => (
-                              paragraph.trim() && (
-                                <p key={idx} className="mb-3">
-                                  {paragraph.trim()}
+
+                      <div className="grid gap-6 lg:grid-cols-[1.7fr,1fr] items-start">
+                        <div className="space-y-4">
+                          <h2 className="text-2xl md:text-3xl xl:text-4xl font-bold tracking-tight text-foreground leading-tight group-hover:text-primary transition-colors">
+                            {morningBrief.headline}
+                          </h2>
+
+                          <div className={`${isWeeklySummary ? 'prose prose-slate dark:prose-invert max-w-none' : ''}`}>
+                            {isWeeklySummary ? (
+                              <div className="text-sm md:text-base text-muted-foreground leading-relaxed space-y-3 max-w-5xl">
+                                {morningBrief.overview.split('\n\n').map((paragraph, idx) => (
+                                  paragraph.trim() && (
+                                    <p key={idx} className="mb-3">
+                                      {paragraph.trim()}
+                                    </p>
+                                  )
+                                ))}
+                              </div>
+                            ) : (
+                              <div>
+                                <p className={`text-sm md:text-base text-muted-foreground leading-relaxed max-w-4xl ${shouldTruncate && !isBriefExpanded ? 'line-clamp-6' : ''}`}>
+                                  {displayOverview}
                                 </p>
-                              )
-                            ))}
-                          </div>
-                        ) : (
-                          <div>
-                            <p className={`text-sm md:text-base text-muted-foreground leading-relaxed max-w-4xl ${shouldTruncate && !isBriefExpanded ? 'line-clamp-6' : ''}`}>
-                              {displayOverview}
-                            </p>
-                            {shouldTruncate && (
-                              <button
-                                onClick={() => setIsBriefExpanded(!isBriefExpanded)}
-                                className="mt-3 text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1 transition-colors"
-                              >
-                                {isBriefExpanded ? (
-                                  <>
-                                    Visa mindre
-                                    <ChevronUp className="w-4 h-4" />
-                                  </>
-                                ) : (
-                                  <>
-                                    Läs mer
-                                    <ChevronDown className="w-4 h-4" />
-                                  </>
+                                {shouldTruncate && (
+                                  <button
+                                    onClick={() => setIsBriefExpanded(!isBriefExpanded)}
+                                    className="mt-3 text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1 transition-colors"
+                                  >
+                                    {isBriefExpanded ? (
+                                      <>
+                                        Visa mindre
+                                        <ChevronUp className="w-4 h-4" />
+                                      </>
+                                    ) : (
+                                      <>
+                                        Läs mer
+                                        <ChevronDown className="w-4 h-4" />
+                                      </>
+                                    )}
+                                  </button>
                                 )}
-                              </button>
+                              </div>
                             )}
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-3">
+                            <Button
+                              className="rounded-full"
+                              size="sm"
+                              onClick={() => heroNews && setSelectedNews(heroNews)}
+                              disabled={!heroNews}
+                            >
+                              Läs mer
+                              <ArrowRight className="ml-2 w-4 h-4" />
+                            </Button>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Clock className="w-3.5 h-3.5" />
+                              {publishedLabel}
+                            </div>
+                          </div>
+                        </div>
+
+                        {morningBrief.keyHighlights && morningBrief.keyHighlights.length > 0 && (
+                          <div className="rounded-2xl border border-border/70 bg-muted/40 p-4 shadow-inner">
+                            <div className="flex items-center justify-between mb-3">
+                              <div>
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-primary/80">{isWeeklySummary ? 'Veckans Höjdpunkter' : 'Snabbkollen'}</p>
+                                <p className="text-sm font-semibold text-foreground">Det viktigaste på 30 sek</p>
+                              </div>
+                              <Sparkles className="h-4 w-4 text-primary" />
+                            </div>
+                            <ul className="space-y-2">
+                              {morningBrief.keyHighlights.slice(0, isWeeklySummary ? 7 : 5).map((highlight, idx) => (
+                                <li key={idx} className="flex gap-2 text-sm text-foreground">
+                                  <CheckCircle2 className="h-4 w-4 text-primary mt-0.5" />
+                                  <span className="leading-snug">{highlight}</span>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
                         )}
                       </div>
-                      
-                      {morningBrief.keyHighlights && morningBrief.keyHighlights.length > 0 && (
-                        <div className="mt-4">
-                          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                            {isWeeklySummary ? 'Veckans Höjdpunkter' : 'Snabbkollen'}
-                          </h3>
-                          <div className="flex flex-wrap gap-2">
-                            {morningBrief.keyHighlights.slice(0, isWeeklySummary ? 7 : 5).map((highlight, idx) => (
-                              <Badge
-                                key={idx}
-                                variant="secondary"
-                                className="rounded-full px-3 py-1 text-xs bg-muted/60 text-foreground/80 hover:bg-muted transition-colors"
-                              >
-                                {highlight}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </Card>
                 );
@@ -353,14 +408,14 @@ const DiscoverNews = () => {
                   : heroNews.summary;
 
                 return (
-                  <Card className="rounded-[2rem] border-border/50 shadow-lg overflow-hidden group hover:shadow-xl transition-all">
-                    <div className="relative bg-gradient-to-br from-primary/5 via-transparent to-transparent p-5 md:p-6 xl:p-8">
+                  <Card className="rounded-[2rem] border-border/50 shadow-xl overflow-hidden group hover:-translate-y-0.5 transition-all bg-gradient-to-r from-slate-900 via-slate-900/95 to-slate-800 text-white">
+                    <div className="relative p-5 md:p-6 xl:p-8">
                       <div className="flex items-start justify-between gap-4 mb-4">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold bg-primary/10 text-primary border-primary/20">
+                          <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold bg-white/15 text-white border-white/20">
                             Huvudnyhet
                           </Badge>
-                          <Badge variant="outline" className="rounded-full px-2.5 py-1 text-xs font-medium">
+                          <Badge variant="outline" className="rounded-full px-2.5 py-1 text-xs font-medium border-white/30 text-white bg-white/10">
                             {formatCategoryLabel(heroNews.category)}
                           </Badge>
                         </div>
@@ -368,35 +423,35 @@ const DiscoverNews = () => {
                           href={heroNews.url && heroNews.url !== '#' ? heroNews.url : '#'}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+                          className="text-xs text-white/80 hover:text-white transition-colors flex items-center gap-1"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {heroNews.source}
                           <ExternalLink className="w-3 h-3" />
                         </a>
                       </div>
-                      
+
                       <div className="flex items-start gap-3 mb-3">
                         <div className="mt-1 flex-shrink-0">
-                          <div className="rounded-xl bg-primary/10 p-2">
-                            <Sparkles className="w-4 h-4 text-primary" />
+                          <div className="rounded-xl bg-white/15 p-2">
+                            <Sparkles className="w-4 h-4 text-white" />
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h2 className="text-xl md:text-2xl xl:text-3xl font-bold tracking-tight text-foreground leading-tight mb-2 group-hover:text-primary transition-colors">
+                          <h2 className="text-xl md:text-2xl xl:text-3xl font-bold tracking-tight leading-tight mb-2 group-hover:text-primary-foreground transition-colors">
                             {heroNews.headline}
                           </h2>
                         </div>
                       </div>
-                      
+
                       <div className="mb-4">
-                        <p className="text-sm md:text-base text-muted-foreground leading-relaxed line-clamp-3 max-w-4xl">
+                        <p className="text-sm md:text-base text-white/80 leading-relaxed line-clamp-3 max-w-4xl">
                           {displaySummary}
                         </p>
                         {shouldTruncate && (
                           <button
                             onClick={() => setIsHeroExpanded(!isHeroExpanded)}
-                            className="mt-2 text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1 transition-colors"
+                            className="mt-2 text-sm text-white hover:text-white/80 font-medium flex items-center gap-1 transition-colors"
                           >
                             {isHeroExpanded ? (
                               <>
@@ -412,17 +467,17 @@ const DiscoverNews = () => {
                           </button>
                         )}
                       </div>
-                      
+
                       <div className="flex flex-wrap items-center gap-3">
                         <Button
-                          className="rounded-full"
+                          className="rounded-full bg-white text-slate-900 hover:bg-slate-100"
                           size="sm"
                           onClick={() => setSelectedNews(heroNews)}
                         >
                           Läs mer
                           <ArrowRight className="ml-2 w-4 h-4" />
                         </Button>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2 text-xs text-white/70">
                           <Clock className="w-3.5 h-3.5" />
                           {formatPublishedLabel(heroNews.publishedAt)}
                         </div>
@@ -446,40 +501,46 @@ const DiscoverNews = () => {
                         </p>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 xl:gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3 xl:gap-4">
                         {filteredNews.map((item) => (
                           <Card
                             key={item.id}
-                            className="rounded-[1.5rem] border-border/50 bg-card hover:bg-muted/30 hover:border-primary/30 transition-all hover:shadow-lg cursor-pointer group"
+                            className="rounded-[1.5rem] border-border/50 bg-card hover:bg-muted/30 hover:border-primary/40 transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer group"
                             onClick={() => setSelectedNews(item)}
                           >
                             <CardContent className="p-4 xl:p-5 flex flex-col h-full gap-3">
                               <div className="flex items-center justify-between gap-2">
-                                <Badge variant="secondary" className="rounded-lg px-2 py-0.5 bg-muted/80 font-medium text-xs">
+                                <Badge
+                                  variant="secondary"
+                                  className={cn(
+                                    'rounded-full px-3 py-1 text-[11px] font-semibold border border-border/60',
+                                    getCategoryBadgeClass(item.category)
+                                  )}
+                                >
                                   {formatCategoryLabel(item.category)}
                                 </Badge>
                                 <a
                                   href={item.url && item.url !== '#' ? item.url : '#'}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 flex-shrink-0"
+                                  className="text-[11px] text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 flex-shrink-0"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  <span className="truncate max-w-[80px]">{item.source}</span>
+                                  <span className="truncate max-w-[80px] font-semibold">{item.source}</span>
                                   <ExternalLink className="w-3 h-3 flex-shrink-0" />
                                 </a>
                               </div>
-                              
+
                               <h4 className="font-bold text-sm xl:text-base leading-snug group-hover:text-primary transition-colors line-clamp-2 flex-1">
                                 {item.headline}
                               </h4>
-                              
+
                               <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                                 {item.summary}
                               </p>
-                              
+
                               <div className="flex items-center justify-between pt-2 mt-auto border-t border-border/50">
-                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                                   <Clock className="w-3 h-3" />
                                   {formatPublishedLabel(item.publishedAt)}
                                 </div>
