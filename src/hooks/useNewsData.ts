@@ -218,103 +218,49 @@ const deduplicateNewsItems = (items: NewsItem[]): NewsItem[] => {
   return Array.from(seen.values());
 };
 
-const parseNewsResponse = (payload: unknown): { news: NewsItem[]; summary: AiMorningBrief | null } => {
-  console.log('[parseNewsResponse] Input payload type:', typeof payload, Array.isArray(payload));
-  
-  if (Array.isArray(payload)) {
-    console.log('[parseNewsResponse] Payload is array, length:', payload.length);
-    const news = payload
-      .map(normalizeNewsItem)
-      .filter((item): item is NewsItem => item !== null);
-    const deduplicatedNews = deduplicateNewsItems(news);
-    console.log('[parseNewsResponse] Normalized news from array:', news.length, 'deduplicated to:', deduplicatedNews.length);
-    return { news: deduplicatedNews, summary: null };
-  }
-
-  if (payload && typeof payload === 'object') {
-    const raw = payload as Record<string, unknown>;
-    console.log('[parseNewsResponse] Payload keys:', Object.keys(raw));
-    console.log('[parseNewsResponse] morningBrief exists:', 'morningBrief' in raw);
-    console.log('[parseNewsResponse] morning_brief exists:', 'morning_brief' in raw);
-    console.log('[parseNewsResponse] news exists:', 'news' in raw);
-    console.log('[parseNewsResponse] news type:', Array.isArray(raw.news) ? `array[${(raw.news as unknown[]).length}]` : typeof raw.news);
-    
-    // Normalize news array
-    let news: NewsItem[] = [];
-    if (Array.isArray(raw.news)) {
-      console.log('[parseNewsResponse] Processing news array, length:', raw.news.length);
-      news = raw.news
-        .map(normalizeNewsItem)
-        .filter((item): item is NewsItem => item !== null);
-      console.log('[parseNewsResponse] Normalized news items:', news.length);
-      if (news.length > 0) {
-        console.log('[parseNewsResponse] Sample news item:', {
-          headline: news[0].headline,
-          category: news[0].category,
-          source: news[0].source,
-        });
-      }
-    } else {
-      console.warn('[parseNewsResponse] news is not an array:', typeof raw.news, raw.news);
-    }
-    
-    // Deduplicate news items before returning
-    const deduplicatedNews = deduplicateNewsItems(news);
-    console.log('[parseNewsResponse] Deduplicated news:', deduplicatedNews.length, '(removed', news.length - deduplicatedNews.length, 'duplicates)');
-    
-    const morningBriefData = raw.morningBrief ?? raw.morning_brief ?? raw.summary ?? raw.brief ?? raw.newsletter;
-    console.log('[parseNewsResponse] morningBriefData:', morningBriefData ? {
-      hasHeadline: typeof (morningBriefData as any)?.headline === 'string',
-      hasOverview: typeof (morningBriefData as any)?.overview === 'string',
-      headline: (morningBriefData as any)?.headline,
-    } : null);
-    
-    const summary = parseMorningBrief(morningBriefData);
-    console.log('[parseNewsResponse] Parsed summary:', summary ? {
-      headline: summary.headline,
-      hasOverview: !!summary.overview,
-      sentiment: summary.sentiment,
-    } : null);
-    
-    console.log('[parseNewsResponse] Final result:', { newsCount: deduplicatedNews.length, hasSummary: !!summary });
-    return { news: deduplicatedNews, summary };
-  }
-
-  console.log('[parseNewsResponse] Payload is not object or array, returning empty');
-  return { news: [], summary: null };
-};
-
 export const useNewsData = (forceRefresh = false) => {
   const [newsData, setNewsData] = useState<NewsItem[]>([]);
   const [morningBrief, setMorningBrief] = useState<AiMorningBrief | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchNewsData = useCallback(async (force = false) => {
+  const fetchNewsData = useCallback(async (_force = false) => {
     try {
       setLoading(true);
       setError(null);
 
-      const { data, error: functionError } = await supabase.functions.invoke('fetch-news-data', {
-        body: force || forceRefresh ? { forceRefresh: true } : {},
-      });
+      const [{ data: newsRows, error: newsError }, { data: morningBriefRow, error: morningBriefError }] = await Promise.all([
+        supabase
+          .from('news_articles')
+          .select('*')
+          .order('published_at', { ascending: false })
+          .limit(20),
+        supabase
+          .from('morning_briefs')
+          .select('id, headline, overview, key_highlights, focus_today, sentiment, sections, generated_at')
+          .order('generated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
 
-      if (functionError) {
-        throw new Error(functionError.message);
+      if (newsError) {
+        throw new Error(newsError.message);
       }
 
-      console.log('[useNewsData] Raw response from backend:', JSON.stringify(data, null, 2));
-      const parsed = parseNewsResponse(data);
-      console.log('[useNewsData] Parsed response:', { 
-        newsCount: parsed.news.length, 
-        morningBrief: parsed.summary ? {
-          headline: parsed.summary.headline,
-          overview: parsed.summary.overview?.substring(0, 100) + '...',
-          sentiment: parsed.summary.sentiment,
-        } : null
-      });
-      setNewsData(parsed.news);
-      setMorningBrief(parsed.summary);
+      if (morningBriefError) {
+        throw new Error(morningBriefError.message);
+      }
+
+      const normalizedNews = deduplicateNewsItems(
+        (newsRows ?? [])
+          .map(normalizeNewsItem)
+          .filter((item): item is NewsItem => item !== null),
+      );
+
+      const parsedMorningBrief = morningBriefRow ? parseMorningBrief(morningBriefRow) : null;
+
+      setNewsData(normalizedNews);
+      setMorningBrief(parsedMorningBrief);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch news data';
       setError(errorMessage);
