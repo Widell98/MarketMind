@@ -30,6 +30,7 @@ import { useNewsData } from '@/hooks/useNewsData';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import ReportDetailDialogContent from '@/components/ReportDetailDialogContent';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
+import { Link } from 'react-router-dom';
 
 const formatCategoryLabel = (category?: string) => {
   if (!category) return 'Marknad';
@@ -169,6 +170,9 @@ const DiscoverNews = () => {
     month: 'long',
     day: 'numeric',
   });
+
+  const buildDiscussionUrl = (headline?: string) =>
+    `/ai-chatt?message=${encodeURIComponent(`Kan vi diskutera nyheten ”${headline || 'den här artikeln'}”?`)}`;
 
   const isWeekend = () => {
     const today = new Date();
@@ -349,6 +353,17 @@ const DiscoverNews = () => {
                               Läs mer
                               <ArrowRight className="ml-2 w-4 h-4" />
                             </Button>
+                            <Button
+                              variant="outline"
+                              className="rounded-full"
+                              size="sm"
+                              asChild
+                            >
+                              <Link to={buildDiscussionUrl(heroNews?.headline)}>
+                                Diskutera med AI
+                                <ArrowRight className="ml-2 w-4 h-4" />
+                              </Link>
+                            </Button>
                             {publishedLabel && (
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <Clock className="w-3.5 h-3.5" />
@@ -473,6 +488,17 @@ const DiscoverNews = () => {
                                 Läs mer
                                 <ArrowRight className="ml-2 w-4 h-4" />
                               </Button>
+                              <Button
+                                variant="outline"
+                                className="rounded-full"
+                                size="sm"
+                                asChild
+                              >
+                                <Link to={buildDiscussionUrl(heroNews.headline)}>
+                                  Diskutera med AI
+                                  <ArrowRight className="ml-2 w-4 h-4" />
+                                </Link>
+                              </Button>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <Clock className="w-3.5 h-3.5" />
                                 {formatPublishedLabel(heroNews.publishedAt)}
@@ -525,6 +551,19 @@ const DiscoverNews = () => {
                               <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
                                 {item.summary}
                               </p>
+
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="rounded-full justify-start px-3"
+                                asChild
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                <Link to={buildDiscussionUrl(item.headline)} className="flex w-full items-center justify-between">
+                                  <span className="text-sm font-semibold">Diskutera med AI</span>
+                                  <ArrowUpRight className="w-4 h-4" />
+                                </Link>
+                              </Button>
 
                               <div className="flex items-center justify-between pt-2 mt-auto border-t border-border/50">
                                 <a
