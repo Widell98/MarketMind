@@ -31,6 +31,14 @@ serve(async (req) => {
         const items = await generateMarketMomentum();
         return jsonResponse(items);
       }
+      case "update-news-only": {
+        const queries = ["stock market news today", "börsen just nu"];
+        const articles = await fetchMultipleTavilySearches(queries, 10, 1);
+        const summarized = await Promise.all(articles.map(summarizeArticle));
+        await saveNewsArticles(summarized);
+
+        return jsonResponse({ message: `Saved ${summarized.length} articles` });
+      }
       case "news":
       default: {
         const forceRefresh = body?.forceRefresh === true;
@@ -607,7 +615,9 @@ async function generateWeeklySummary(): Promise<GeneratedMorningBrief> {
   // 4. Deduplicate summarized news
   const deduplicatedNews = deduplicateNewsItems(summarizedNews);
   console.log(`[generateWeeklySummary] Deduplicated news: ${deduplicatedNews.length} (removed ${summarizedNews.length - deduplicatedNews.length} duplicates)`);
-  
+
+  await saveNewsArticles(deduplicatedNews);
+
   // 5. Create context from week briefs and articles
   const weekBriefsContext = weekBriefs.length > 0
     ? weekBriefs.map((brief, idx) => 
@@ -836,6 +846,8 @@ async function generateMorningBrief(options: GenerateOptions = {}): Promise<Gene
   // 5. Deduplicate summarized news
   const deduplicatedNews = deduplicateNewsItems(summarizedNews);
   console.log(`[generateMorningBrief] Deduplicated news: ${deduplicatedNews.length} (removed ${summarizedNews.length - deduplicatedNews.length} duplicates)`);
+
+  await saveNewsArticles(deduplicatedNews);
 
   // 6. Create context and generate brief
   const tavilyContext = tavilyArticles.length > 0
@@ -1413,4 +1425,23 @@ function normalizeSentiment(value: unknown): "bullish" | "bearish" | "neutral" {
     }
   }
   return "neutral";
+}
+
+async function saveNewsArticles(articles: NewsItem[]) {
+  if (!supabaseClient || articles.length === 0) return;
+
+  const dbRows = articles.map((a) => ({
+    headline: a.headline,
+    summary: a.summary,
+    category: a.category,
+    source: a.source,
+    url: a.url,
+    published_at: a.publishedAt,
+  }));
+
+  const { error } = await supabaseClient
+    .from("news_articles")
+    .upsert(dbRows, { onConflict: "url", ignoreDuplicates: true });
+
+  if (error) console.error("Error saving news:", error);
 }
