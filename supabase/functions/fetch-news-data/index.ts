@@ -854,64 +854,56 @@ async function generateMorningBrief(options: GenerateOptions = {}): Promise<Gene
     ? tavilyArticles.map((a) => `- ${a.title} (${a.source}): ${a.content.slice(0, 300)}...`).join("\n")
     : "";
   
-  const previousDayContext = previousBrief
-    ? `Gårdagens huvudnyhet: ${previousBrief.morningBrief.headline}\n` +
-      `Gårdagens översikt: ${previousBrief.morningBrief.overview}\n` +
-      `Gårdagens teman: ${previousBrief.morningBrief.focusToday.join(", ")}\n`
-    : "";
-
   const systemPrompt =
-    "Du är en svensk finansredaktör som skriver morgonbrev och strukturerade nyhetssammanfattningar baserat på faktiska nyhetsartiklar. Du svarar alltid med giltig JSON.";
+    "Du är chefsanalytiker på en ledande nordisk investmentbank. Du skriver morgonbrev till professionella investerare. Tonen är insiktsfull, objektiv och framåtblickande. Du undviker plattityder.";
 
-  const userPrompt = `Skriv ett detaljerat morgonbrev för datumet ${today.toLocaleDateString("sv-SE")} baserat på följande faktiska nyhetsartiklar.
+  const userPrompt = `Analysera nyhetsläget inför börsöppning ${today.toLocaleDateString("sv-SE")}.
 
-VIKTIGT: Du ska INTE skapa egna nyheter. Använd endast informationen från artiklarna nedan.
+UNDERLAG (Nyheter hämtade senaste dygnet):
+${tavilyContext || "Inga specifika nyheter hittades, gör en generell marknadsspaning."}
 
-${previousDayContext ? `KONTEKST FRÅN GÅRDAGEN:\n---\n${previousDayContext}---\n\nAnvänd detta som bakgrund för att förstå utvecklingen, men fokusera på DAGENS nyheter.\n\n` : ""}Faktiska nyhetsartiklar för idag:
----
-${tavilyContext || "Inga nyhetsartiklar tillgängliga för idag."}
----
+DIN UPPGIFT:
+Skapa ett morgonbrev som ger läsaren ett informationsövertag ("edge").
+1. Identifiera det enskilt viktigaste temat just nu (t.ex. "Ränteoro i USA" eller "Tech-rallyt fortsätter").
+2. Koppla nyheter till påverkan: Om oljan stiger, nämn vilka sektorer som påverkas.
+3. Var konkret med siffror när det finns i texten.
 
-Baserat på dessa artiklar, skapa:
-- En huvudrubrik som sammanfattar den viktigaste nyheten
-- En översikt (3-4 meningar) för Hero-kortet
-- 5 korta nyhetspunkter för "Snabbkollen"
-- 3 teman för "Fokus idag"
-- Exakt 3 fördjupande sektioner (t.ex. Makro, Tech, Marknad) baserat på artiklarna
-- Ett sentiment (bullish/bearish/neutral) baserat på artiklarnas innehåll
-
-Fokusera på händelser och sentiment från ${yesterday.toLocaleDateString("sv-SE")} (gårdagen) och natten till idag.
-
-FORMAT (måste följas exakt):
+FORMAT (JSON):
 {
   "morning_brief": {
-    "headline": "Kort, slagkraftig huvudrubrik (max 6 ord)",
-    "overview": "Engagerande ingress för huvudnyheten (3-4 meningar). Detta visas i det stora Hero-kortet.",
-    "key_highlights": [
-      "Kort nyhetspunkt 1 (max 1 mening)",
-      "Kort nyhetspunkt 2",
-      "Kort nyhetspunkt 3",
-      "Kort nyhetspunkt 4",
-      "Kort nyhetspunkt 5"
-    ],
-    "focus_today": ["Tema 1", "Tema 2", "Tema 3"],
+    "headline": "Kort, slagkraftig rubrik som sammanfattar marknadsläget (Max 6 ord)",
+    "overview": "En stark ingress (3-4 meningar). Börja med det viktigaste. Svara på frågan: 'Vad styr humöret på marknaden just nu?'",
     "sentiment": "bullish"|"bearish"|"neutral",
-    "generated_at": "ISO timestamp",
+    "key_highlights": [
+      "Punkt 1: Det viktigaste som hänt (t.ex. 'Fed lämnar räntan oförändrad')",
+      "Punkt 2: Stor bolagsnyhet eller makrosiffra",
+      "Punkt 3: Annan viktig händelse",
+      "Punkt 4: ...",
+      "Punkt 5: ..."
+    ],
+    "focus_today": ["Tema 1 (t.ex. Inflation)", "Tema 2 (t.ex. Bankrapporter)", "Tema 3"],
+    "agenda": [  // NYTT FÄLT: Hållpunkter
+       "08:00 KPI-siffror Sverige",
+       "14:30 USA Jobbsiffror" 
+       // (Om inga specifika tider finns i texten, lämna tomt eller gissa kvalificerat baserat på kontext)
+    ],
+    "mentioned_tickers": ["VOLV-B", "ERIC-B", "TSLA"], // NYTT FÄLT: Extrahera tickers om de nämns
     "sections": [
       { 
-        "title": "Rubrik för sektion 1 (t.ex. 'Makroläget')", 
-        "body": "Innehållsrik text (2-3 stycken) baserat på artiklarna." 
+        "title": "Marknadskollen", 
+        "body": "Sammanfattning av indexrörelser (USA/Asien) och vad terminerna indikerar." 
       },
-      { "title": "Rubrik för sektion 2", "body": "..." },
-      { "title": "Rubrik för sektion 3", "body": "..." }
+      { 
+        "title": "Dagens Spaning", 
+        "body": "Din analytiker-kommentar. Varför händer detta? Vad ska man titta extra på? (2 stycken)" 
+      },
+      { 
+        "title": "Sverige & Bolag", 
+        "body": "Fokus på svenska aktier och bolagshändelser från nyhetsflödet." 
+      }
     ]
   }
-}
-
-Regler:
-- Använd endast information från de faktiska artiklarna ovan.
-- Var specifik med siffror och fakta från artiklarna.
-- Blanda svenska och internationella perspektiv baserat på artiklarna.`;
+}`;
 
   let morningBrief: MorningBrief;
   
