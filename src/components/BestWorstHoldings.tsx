@@ -4,10 +4,12 @@ import HoldingsHighlightCard from './HoldingsHighlightCard';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 
 const BestWorstHoldings: React.FC = () => {
-  const { holdingsPerformance } = usePortfolioPerformance();
+  const { holdingsPerformance, isMarketOpen } = usePortfolioPerformance();
 
   const topHoldings = React.useMemo(() => {
-    if (!holdingsPerformance || holdingsPerformance.length === 0) return { best: [], worst: [] };
+    if (!isMarketOpen || !holdingsPerformance || holdingsPerformance.length === 0) {
+      return { best: [], worst: [] };
+    }
     const getChange = (holding: (typeof holdingsPerformance)[number]) =>
       holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
 
@@ -23,7 +25,7 @@ const BestWorstHoldings: React.FC = () => {
       best: positiveHoldings.slice(0, 3),
       worst: negativeHoldings.slice(0, 3),
     };
-  }, [holdingsPerformance]);
+  }, [holdingsPerformance, isMarketOpen]);
 
   const formatChangeLabel = (value: number | null | undefined) => {
     if (value === null || value === undefined) return '–';
@@ -65,31 +67,25 @@ const BestWorstHoldings: React.FC = () => {
     };
   });
 
-  if (topHoldings.best.length === 0 && topHoldings.worst.length === 0) {
-    return null;
-  }
+  const emptyText = isMarketOpen ? 'Ingen data' : 'Marknaden är stängd';
 
   return (
     <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
-      {topHoldings.best.length > 0 && (
-        <HoldingsHighlightCard
-          title="Bästa innehav i portföljen"
-          icon={<TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />}
-          iconColorClass="text-emerald-600"
-          items={bestHoldingsItems}
-          emptyText="Ingen data"
-        />
-      )}
+      <HoldingsHighlightCard
+        title="Bästa innehav i portföljen"
+        icon={<TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />}
+        iconColorClass="text-emerald-600"
+        items={bestHoldingsItems}
+        emptyText={emptyText}
+      />
 
-      {topHoldings.worst.length > 0 && (
-        <HoldingsHighlightCard
-          title="Sämsta innehav i portföljen"
-          icon={<TrendingDown className="h-4 w-4 sm:h-5 sm:w-5" />}
-          iconColorClass="text-red-600"
-          items={worstHoldingsItems}
-          emptyText="Ingen data"
-        />
-      )}
+      <HoldingsHighlightCard
+        title="Sämsta innehav i portföljen"
+        icon={<TrendingDown className="h-4 w-4 sm:h-5 sm:w-5" />}
+        iconColorClass="text-red-600"
+        items={worstHoldingsItems}
+        emptyText={emptyText}
+      />
     </div>
   );
 };
