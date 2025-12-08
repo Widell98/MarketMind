@@ -17,7 +17,7 @@ export type ChatDocument = {
   storage_path?: string | null;
 };
 
-const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
+const MAX_FILE_SIZE = 25 * 1024 * 1024;
 const SUPPORTED_TYPES = ['application/pdf', 'text/plain'];
 const FREE_DAILY_DOCUMENT_LIMIT = 1;
 const MAX_UPLOADED_DOCUMENTS = 2;
