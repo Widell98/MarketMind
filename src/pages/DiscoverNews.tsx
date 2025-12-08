@@ -148,10 +148,8 @@ const DiscoverNews = () => {
   
   const heroNews = useMemo(() => {
     if (!newsData || newsData.length === 0) {
-      console.log('[DiscoverNews] No hero news - newsData is empty');
       return null;
     }
-    console.log('[DiscoverNews] Hero news:', { headline: newsData[0].headline, category: newsData[0].category });
     return newsData[0];
   }, [newsData]);
 

@@ -256,11 +256,6 @@ const Index = () => {
           // Try to find Change % from Google Sheets data
           const changePercent = getChangeForTicker(holding.symbol);
 
-          // Debug logging
-          if (import.meta.env.DEV) {
-            console.log(`Holding: ${holding.name}, symbol: ${holding.symbol}, changePercent: ${changePercent}, value: ${holdingValue}`);
-          }
-
           // Only include holdings with valid Change % data from Google Sheets
           if (changePercent !== null && !isNaN(changePercent) && isFinite(changePercent)) {
             // Weight the change by the holding's proportion of the portfolio
@@ -272,18 +267,6 @@ const Index = () => {
             holdingsWithoutData++;
           }
         });
-
-        // Debug logging
-        if (import.meta.env.DEV) {
-          console.log(`Portfolio development calculation (Google Sheets):`, {
-            totalWeightedChange,
-            totalSecuritiesValue,
-            holdingsWithData,
-            holdingsWithoutData,
-            safeTotalPortfolioValue,
-            totalHoldings: actualHoldings.length
-          });
-        }
 
         // Calculate the change value in SEK
         const finalChangePercent = totalWeightedChange;

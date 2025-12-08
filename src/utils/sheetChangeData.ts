@@ -171,10 +171,6 @@ export const fetchSheetChangeData = async (): Promise<Map<string, number>> => {
       }
     }
     
-    if (import.meta.env.DEV) {
-      console.log(`Fetched ${changeDataMap.size} Change % entries from Google Sheets`);
-    }
-    
   } catch (error) {
     console.error('Error fetching Change % data from Google Sheets:', error);
   }

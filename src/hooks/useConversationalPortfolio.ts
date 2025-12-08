@@ -2720,7 +2720,6 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
           // Don't fail the whole operation if saving fails
         } else {
           portfolioRecord = analysisPortfolio;
-          console.log('Portfolio analysis saved successfully:', analysisPortfolio.id);
         }
         
         toast({

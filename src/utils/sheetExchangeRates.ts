@@ -166,10 +166,6 @@ export const fetchExchangeRatesFromSheet = async (): Promise<ExchangeRates> => {
     // Always include SEK with rate 1
     exchangeRates.SEK = 1;
     
-    if (import.meta.env.DEV) {
-      console.log(`Fetched ${Object.keys(exchangeRates).length} exchange rates from Google Sheets:`, exchangeRates);
-    }
-    
   } catch (error) {
     console.error('Error fetching exchange rates from Google Sheets:', error);
   }
