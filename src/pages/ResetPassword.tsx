@@ -40,9 +40,10 @@ const ResetPassword = () => {
         return;
       }
 
-      // Om vi redan har en aktiv session, behöver vi inte byta koden
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
+      // Om vi redan har en aktiv session OCH inga auth-parametrar finns,
+      // betyder det att användaren redan är inloggad och försöker komma åt sidan direkt
+      const { data: { session: existingSession } } = await supabase.auth.getSession();
+      if (existingSession && !authParams.code && !authParams.accessToken) {
         setInitializing(false);
         return;
       }
@@ -54,7 +55,10 @@ const ResetPassword = () => {
         // Scenario 1: PKCE Flow (code)
         if (authParams.code) {
           // VIKTIGT: Kontrollera om vi redan har försökt byta denna kod
-          if (codeProcessed.current) return;
+          if (codeProcessed.current) {
+            setInitializing(false);
+            return;
+          }
           codeProcessed.current = true;
 
           const { error } = await supabase.auth.exchangeCodeForSession(authParams.code);
@@ -62,6 +66,11 @@ const ResetPassword = () => {
             // Om koden redan är använd (t.ex. vid hot reload), kolla om vi faktiskt är inloggade ändå
             const { data: { session: checkSession } } = await supabase.auth.getSession();
             if (!checkSession) throw error;
+          }
+          // VIKTIGT: Efter att sessionen är etablerad, sätt initializing till false
+          // så att formuläret visas. Användaren är nu inloggad men behöver fortfarande sätta nytt lösenord.
+          if (isMounted) {
+            setInitializing(false);
           }
           return;
         }
@@ -74,6 +83,10 @@ const ResetPassword = () => {
           });
 
           if (error) throw error;
+          // VIKTIGT: Efter att sessionen är etablerad, sätt initializing till false
+          if (isMounted) {
+            setInitializing(false);
+          }
           return;
         }
 
