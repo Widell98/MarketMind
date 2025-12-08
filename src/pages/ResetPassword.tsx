@@ -1,5 +1,4 @@
-
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +12,9 @@ const ResetPassword = () => {
   const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [initializing, setInitializing] = useState(true);
+  
+  // Förhindra dubbla anrop i React Strict Mode
+  const codeProcessed = useRef(false);
 
   const authParams = useMemo(() => {
     const hashParams = new URLSearchParams(location.hash.replace(/^#/, ""));
@@ -22,6 +24,8 @@ const ResetPassword = () => {
       code: searchParams.get("code"),
       accessToken: hashParams.get("access_token") ?? searchParams.get("access_token"),
       refreshToken: hashParams.get("refresh_token") ?? searchParams.get("refresh_token"),
+      error: searchParams.get("error") || hashParams.get("error"),
+      errorDescription: searchParams.get("error_description") || hashParams.get("error_description")
     };
   }, [location.hash, location.search]);
 
@@ -29,16 +33,40 @@ const ResetPassword = () => {
     let isMounted = true;
 
     const establishSession = async () => {
+      // Om Supabase redan rapporterar fel i URL:en
+      if (authParams.error) {
+        setErrorMessage(decodeURIComponent(authParams.errorDescription || "Länken är ogiltig eller har gått ut."));
+        setInitializing(false);
+        return;
+      }
+
+      // Om vi redan har en aktiv session, behöver vi inte byta koden
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setInitializing(false);
+        return;
+      }
+
       try {
         setInitializing(true);
         setErrorMessage(null);
 
+        // Scenario 1: PKCE Flow (code)
         if (authParams.code) {
+          // VIKTIGT: Kontrollera om vi redan har försökt byta denna kod
+          if (codeProcessed.current) return;
+          codeProcessed.current = true;
+
           const { error } = await supabase.auth.exchangeCodeForSession(authParams.code);
-          if (error) throw error;
+          if (error) {
+            // Om koden redan är använd (t.ex. vid hot reload), kolla om vi faktiskt är inloggade ändå
+            const { data: { session: checkSession } } = await supabase.auth.getSession();
+            if (!checkSession) throw error;
+          }
           return;
         }
 
+        // Scenario 2: Implicit Flow (access_token i hash)
         if (authParams.accessToken && authParams.refreshToken) {
           const { error } = await supabase.auth.setSession({
             access_token: authParams.accessToken,
@@ -49,17 +77,22 @@ const ResetPassword = () => {
           return;
         }
 
-        throw new Error("This password reset link is invalid or has expired. Request a new reset email.");
+        // Om inga parametrar finns
+        throw new Error("Länken saknar nödvändig information. Vänligen begär ett nytt lösenord.");
       } catch (error) {
-        if (!isMounted) {
-          return;
-        }
+        if (!isMounted) return;
 
+        console.error("Reset password error:", error);
         const message = error instanceof Error
           ? error.message
-          : "We couldn't validate your password reset link.";
+          : "Vi kunde inte verifiera din länk.";
 
-        setErrorMessage(message);
+        // Specialhantering för "expired" så användaren förstår
+        if (message.includes("expired") || message.includes("invalid")) {
+           setErrorMessage("Länken har gått ut eller redan använts. Begär ett nytt lösenord.");
+        } else {
+           setErrorMessage(message);
+        }
       } finally {
         if (isMounted) {
           setInitializing(false);
@@ -85,7 +118,12 @@ const ResetPassword = () => {
     event.preventDefault();
 
     if (!password) {
-      setErrorMessage("Please enter a new password.");
+      setErrorMessage("Vänligen ange ett nytt lösenord.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setErrorMessage("Lösenordet måste vara minst 6 tecken.");
       return;
     }
 
@@ -101,7 +139,7 @@ const ResetPassword = () => {
       setStatus("idle");
       const message = error instanceof Error
         ? error.message
-        : "We couldn't update your password. Please try again.";
+        : "Vi kunde inte uppdatera ditt lösenord. Försök igen.";
       setErrorMessage(message);
     }
   };
@@ -113,45 +151,59 @@ const ResetPassword = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2 text-center">
           <CardTitle className="text-2xl font-semibold text-finance-navy dark:text-gray-100">
-            Reset your password
+            Återställ ditt lösenord
           </CardTitle>
           <CardDescription>
-            Choose a new password to finish resetting your account.
+            Välj ett nytt lösenord för att återställa ditt konto.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {initializing && (
-            <p className="mb-4 text-sm text-muted-foreground">Checking your reset link…</p>
+            <div className="flex justify-center py-4">
+               <p className="text-sm text-muted-foreground">Verifierar din länk...</p>
+            </div>
           )}
-          {errorMessage && (
-            <p className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/40 dark:text-red-200">
+          
+          {!initializing && errorMessage && (
+            <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/40 dark:text-red-200">
               {errorMessage}
-            </p>
+              <Button 
+                variant="link" 
+                className="pl-1 text-red-700 underline dark:text-red-100" 
+                onClick={() => navigate("/login")}
+              >
+                Gå till inloggning
+              </Button>
+            </div>
           )}
+
           {status === "success" ? (
             <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
-              Password updated! You will be redirected to the login page in a moment.
+              Lösenordet uppdaterat! Du omdirigeras till inloggningen strax.
             </p>
           ) : (
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              <div className="space-y-2 text-left">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-200" htmlFor="password">
-                  New password
-                </label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter a new password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  disabled={isDisabled}
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={isDisabled}>
-                {status === "loading" ? "Saving…" : "Save password"}
-              </Button>
-            </form>
+            !initializing && !errorMessage && (
+              <form className="space-y-4" onSubmit={handleSubmit}>
+                <div className="space-y-2 text-left">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-200" htmlFor="password">
+                    Nytt lösenord
+                  </label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Ange nytt lösenord"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    disabled={isDisabled}
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={isDisabled}>
+                  {status === "loading" ? "Sparar..." : "Spara lösenord"}
+                </Button>
+              </form>
+            )
           )}
         </CardContent>
       </Card>
