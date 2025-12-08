@@ -8,7 +8,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   Sparkles,
   Brain,
-  AlertTriangle,
   TrendingUp,
   BarChart3,
   Shield,
@@ -37,7 +36,6 @@ const PortfolioSummaryView = ({ portfolio }: PortfolioSummaryViewProps) => {
     return `${Math.round(value)}%`;
   };
 
-  const displayNextSteps = advisorPlan.next_steps || [];
   const recommendedAssets = advisorPlan.recommended_assets || [];
 
   return (
@@ -224,33 +222,6 @@ const PortfolioSummaryView = ({ portfolio }: PortfolioSummaryViewProps) => {
             </Button>
           </div>
         </div>
-      )}
-
-      {/* Next steps - only show for new portfolios, not for analyses */}
-      {!isAnalysis && displayNextSteps.length > 0 && (
-        <Card className="border-2 border-primary/10 bg-gradient-to-br from-card/90 to-card/50 shadow-lg backdrop-blur-sm">
-          <CardHeader className="flex flex-row items-start gap-3 sm:gap-4 space-y-0 pb-3 sm:pb-4 p-4 sm:p-6">
-            <div className="rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 p-2 sm:p-3 border border-blue-500/20 flex-shrink-0">
-              <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Så går du vidare</p>
-              <CardTitle className="text-lg sm:text-xl font-bold text-foreground">Prioriterade nästa steg</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0 pl-3 sm:pl-4 px-4 sm:px-6 pb-4 sm:pb-6">
-            <ol className="space-y-2 sm:space-y-3 list-none text-sm sm:text-base leading-6 sm:leading-7">
-              {displayNextSteps.map((step, index) => (
-                <li key={`step-${index}`} className="flex items-start gap-3 sm:gap-4 group">
-                  <div className="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center text-xs sm:text-sm font-bold text-primary mt-0.5 group-hover:bg-primary/20 transition-colors">
-                    {index + 1}
-                  </div>
-                  <span className="flex-1 text-foreground pt-0.5 break-words">{step}</span>
-                </li>
-              ))}
-            </ol>
-          </CardContent>
-        </Card>
       )}
 
       {/* Recommended assets - only show for new portfolios, not for analyses */}
