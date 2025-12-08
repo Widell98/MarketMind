@@ -819,10 +819,6 @@ const tavilyArticles = await fetchMultipleTavilySearches(
 
 console.log(`[generateMorningBrief] Fetched total: ${tavilyArticles.length} articles`);
 
-// --- OPTIMERING: BEGRÄNSA ANTALET AI-ANROP ---
-// Sortera ev. på datum om det inte redan är gjort, och ta de 15 första
-const articlesToProcess = tavilyArticles.slice(0, 15); 
-
 // --- STEG D: FILTRERA & SUMMERING (NY LOGIK) ---
   
   // 1. Grovfiltrera bort skräp (Kallelser, korta notiser) INNAN vi slösar AI-tokens
