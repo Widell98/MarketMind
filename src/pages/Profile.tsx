@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ExportSharingSection from '@/components/ExportSharingSection';
-import { TrendingUp, FileText, Plus, Brain, CreditCard, Share2, Trash2, Loader2 } from 'lucide-react';
+import { TrendingUp, FileText, Plus, Brain, CreditCard, Share2, Trash2, Loader2, Briefcase } from 'lucide-react';
 import UserAnalysesSection from '@/components/UserAnalysesSection';
 import SavedOpportunitiesSection from '@/components/SavedOpportunitiesSection';
 import EnhancedProfileHeader from '@/components/EnhancedProfileHeader';
@@ -59,8 +59,8 @@ const Profile = () => {
   const defaultTab = isAdmin ? 'content' : 'riskprofile';
   const allowedTabs = useMemo(
     () => (isAdmin
-      ? ['content', 'riskprofile', 'sharing-activity', 'membership']
-      : ['riskprofile', 'sharing-activity', 'membership']),
+      ? ['content', 'riskprofile', 'portfolios', 'sharing-activity', 'membership']
+      : ['riskprofile', 'portfolios', 'sharing-activity', 'membership']),
     [isAdmin]
   );
 
@@ -285,7 +285,7 @@ const Profile = () => {
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
               <TabsList
                 className={`grid w-full ${
-                  isAdmin ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'
+                  isAdmin ? 'grid-cols-2 md:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'
                 } gap-1 sm:gap-1.5 md:gap-2 lg:gap-3 mb-3 sm:mb-4 md:mb-6 lg:mb-8 bg-muted/20 border border-border/30 rounded-md sm:rounded-lg md:rounded-xl p-0.5 sm:p-1 md:p-1.5 lg:p-2 shadow-sm backdrop-blur-sm`}
               >
                 {isAdmin && (
@@ -297,6 +297,11 @@ const Profile = () => {
                   <Brain className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                   <span className="hidden xs:inline">Riskprofil</span>
                   <span className="xs:hidden">Risk</span>
+                </TabsTrigger>
+                <TabsTrigger value="portfolios" className="flex items-center justify-center gap-1 xs:gap-1.5 sm:gap-2 rounded-md font-medium text-[10px] xs:text-xs sm:text-sm px-1.5 xs:px-2 sm:px-3 py-1.5 sm:py-2">
+                  <Briefcase className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <span className="hidden xs:inline">Portföljer</span>
+                  <span className="xs:hidden">Portf.</span>
                 </TabsTrigger>
                 <TabsTrigger value="sharing-activity" className="flex items-center justify-center gap-1 xs:gap-1.5 sm:gap-2 rounded-md font-medium text-[10px] xs:text-xs sm:text-sm px-1.5 xs:px-2 sm:px-3 py-1.5 sm:py-2">
                   <Share2 className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
@@ -399,10 +404,13 @@ const Profile = () => {
                 showActions
                 onReset={() => setShowResetDialog(true)}
               />
-              <SavedPortfoliosSection />
               <div id="fine-tune-risk">
                 <UserInvestmentAnalysis />
               </div>
+            </TabsContent>
+
+            <TabsContent value="portfolios" className="space-y-4 sm:space-y-6 md:space-y-8">
+              <SavedPortfoliosSection />
             </TabsContent>
 
             <TabsContent value="sharing-activity" className="space-y-4 sm:space-y-6 md:space-y-8">
