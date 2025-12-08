@@ -304,6 +304,11 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         return;
       }
 
+      // Skip lines that are just "--" or similar separators
+      if (trimmedLine === '--' || trimmedLine === '---' || trimmedLine === '——') {
+        return;
+      }
+
       if (trimmedLine.startsWith('###')) {
         flushPendingAsParagraph();
         flushList();

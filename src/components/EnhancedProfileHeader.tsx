@@ -112,30 +112,6 @@ const EnhancedProfileHeader: React.FC<EnhancedProfileHeaderProps> = ({
                     </p>
                   </div>}
 
-                {/* Stats Grid */}
-                <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6">
-                  <div className="text-center p-2 sm:p-3 bg-muted/50 rounded-lg border border-border">
-                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">
-                      {userStats.stockCasesCount + userStats.analysesCount}
-                    </div>
-                    <div className="text-xs sm:text-sm text-muted-foreground font-medium">Inlägg</div>
-                  </div>
-                  
-                  <div className="text-center p-2 sm:p-3 bg-muted/50 rounded-lg border border-border">
-                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">
-                      {profileData?.follower_count || 0}
-                    </div>
-                    <div className="text-xs sm:text-sm text-muted-foreground font-medium">Följare</div>
-                  </div>
-                  
-                  <div className="text-center p-2 sm:p-3 bg-muted/50 rounded-lg border border-border">
-                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">
-                      {profileData?.following_count || 0}
-                    </div>
-                    <div className="text-xs sm:text-sm text-muted-foreground font-medium">Följer</div>
-                  </div>
-                </div>
-
                 {/* Additional Info */}
                 
               </div>

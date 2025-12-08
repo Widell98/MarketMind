@@ -40,11 +40,11 @@ const PortfolioSummaryView = ({ portfolio }: PortfolioSummaryViewProps) => {
 
   return (
     <div className="space-y-4 sm:space-y-6 text-sm sm:text-base leading-relaxed text-foreground animate-in fade-in-50 slide-in-from-bottom-4 duration-500">
-      {/* Main summary card - Enhanced */}
-      <div className="rounded-lg sm:rounded-xl border-2 border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-card p-4 sm:p-6 shadow-lg backdrop-blur-sm">
+      {/* Main summary card - Stilren */}
+      <div className="rounded-lg sm:rounded-xl border border-border/40 p-4 sm:p-6">
         <div className="flex flex-col gap-3 sm:gap-4">
           <div className="flex items-start gap-3 sm:gap-4 flex-1">
-            <div className="rounded-lg sm:rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground p-2 sm:p-3 shadow-md flex-shrink-0">
+            <div className="rounded-lg sm:rounded-xl bg-primary/10 text-primary p-2 sm:p-3 flex-shrink-0">
               {isAnalysis ? (
                 <Brain className="h-5 w-5 sm:h-6 sm:w-6" />
               ) : (
@@ -52,34 +52,18 @@ const PortfolioSummaryView = ({ portfolio }: PortfolioSummaryViewProps) => {
               )}
             </div>
             <div className="space-y-2 flex-1 min-w-0">
-              {advisorPlan.action_summary && (
-                <p className="text-lg sm:text-xl font-bold text-foreground leading-6 sm:leading-7 break-words">{advisorPlan.action_summary}</p>
-              )}
-              {advisorPlan.risk_alignment && !isAnalysis && advisorPlan.risk_alignment !== advisorPlan.action_summary && (
-                <p className="text-xs sm:text-sm leading-5 sm:leading-6 text-foreground/80 break-words">{advisorPlan.risk_alignment}</p>
+              {advisorPlan.risk_alignment && !isAnalysis && (
+                <p className="text-xs sm:text-sm leading-5 sm:leading-6 text-foreground/70 break-words">{advisorPlan.risk_alignment}</p>
               )}
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary font-semibold px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm">
+            <Badge variant="outline" className="border-primary/30 bg-transparent text-primary font-medium px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm">
               {isAnalysis ? '🔍 Portföljanalys' : '✨ Portföljplan'}
             </Badge>
           </div>
         </div>
       </div>
-
-      {/* Why section - Enhanced */}
-      {advisorPlan.risk_alignment && !isAnalysis && (
-        <div className="rounded-lg sm:rounded-xl border border-primary/10 bg-gradient-to-br from-card/80 to-card/40 p-4 sm:p-6 shadow-md backdrop-blur-sm">
-          <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-amber-500/10 flex items-center justify-center border border-amber-500/20 flex-shrink-0">
-              <Brain className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 dark:text-amber-400" />
-            </div>
-            <p className="text-xs sm:text-sm font-bold uppercase tracking-wider text-foreground">Varför denna bedömning?</p>
-          </div>
-          <p className="text-sm sm:text-base leading-6 sm:leading-7 text-foreground/90 pl-0 sm:pl-10 sm:pl-12 break-words">{advisorPlan.risk_alignment}</p>
-        </div>
-      )}
 
       {/* Action buttons - Matching /ai-chatt style */}
       {!isAnalysis && (

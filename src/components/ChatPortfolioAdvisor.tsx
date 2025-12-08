@@ -2242,15 +2242,20 @@ const ChatPortfolioAdvisor = () => {
         localStorage.setItem(storageKey, JSON.stringify(activity));
       }
       
-      // Navigate to index page so user can see portfolio value
-      // The index page will show portfolio value if holdings exist
-      navigate('/');
+      // Navigate to AI chat to continue the conversation
+      navigate('/ai-chatt', {
+        state: {
+          createNewSession: true,
+          sessionName: 'Portföljimplementering',
+          initialMessage: 'Jag har precis slutfört min riskprofil och fått en portföljstrategi. Kan du hjälpa mig implementera strategin och ge mig nästa steg?'
+        }
+      });
 
       // Show success message after navigation
       setTimeout(() => {
         toast({
           title: "Riskprofil sparad!",
-          description: "Din portföljsammanfattning är sparad. Du kan se ditt portföljvärde på startsidan.",
+          description: "Din portföljsammanfattning är sparad. Fortsätt chatta med AI:n för att implementera strategin.",
         });
       }, 500);
       

@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { User, Settings, LogOut, Heart, BarChart3 } from 'lucide-react';
+import { User, Settings, LogOut, BarChart3 } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 
 const ProfileMenu = () => {
@@ -67,12 +67,6 @@ const ProfileMenu = () => {
             <Link to="/profile" className="flex items-center w-full">
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild className="cursor-pointer">
-            <Link to="/watchlist" className="flex items-center w-full">
-              <Heart className="mr-2 h-4 w-4" />
-              <span>Watchlist</span>
             </Link>
           </DropdownMenuItem>
           {isAdmin && (

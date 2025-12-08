@@ -5,14 +5,11 @@ import { Button } from '@/components/ui/button';
 import { usePortfolios } from '@/hooks/usePortfolios';
 import { Portfolio, usePortfolio } from '@/hooks/usePortfolio';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
-import PortfolioSummaryView from '@/components/PortfolioSummaryView';
 import {
   Briefcase,
   Calendar,
   TrendingUp,
   FileText,
-  ChevronDown,
-  ChevronUp,
   RefreshCw,
   Loader2
 } from 'lucide-react';
@@ -23,6 +20,8 @@ import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import PortfolioGeneratedNotification from '@/components/PortfolioGeneratedNotification';
+import { useAdvisorPlan } from '@/utils/advisorPlan';
 
 interface SavedPortfoliosSectionProps {
   onViewPortfolio?: (portfolio: Portfolio) => void;
@@ -34,9 +33,20 @@ const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps
   const { generatePortfolio, loading: portfolioGenerating } = usePortfolio();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [expandedPortfolioId, setExpandedPortfolioId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
+  const [recommendationCount, setRecommendationCount] = useState<number | undefined>(undefined);
+  const [showAllRecommendations, setShowAllRecommendations] = useState(false);
   const { user } = useAuth();
+
+  // Get advisor plan for the first portfolio (if exists) - hooks must be at top level
+  // Always call hooks at top level, even if portfolio might not exist
+  const firstPortfolio = portfolios[0];
+  const advisorPlan = useAdvisorPlan(
+    firstPortfolio?.asset_allocation?.structured_plan,
+    firstPortfolio?.asset_allocation?.ai_strategy,
+    firstPortfolio?.asset_allocation?.ai_strategy_raw
+  );
 
   const formatDate = (dateString: string) => {
     try {
@@ -140,6 +150,17 @@ const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps
       // Refetch portfolios to show the new one
       await refetch();
       
+      // Get recommendation count from the generated portfolio
+      const recommendedStocks = data.portfolio?.recommended_stocks || [];
+      const count = Array.isArray(recommendedStocks) ? recommendedStocks.length : 0;
+      setRecommendationCount(count);
+      
+      // Reset show all recommendations state
+      setShowAllRecommendations(false);
+      
+      // Show notification popup
+      setShowNotification(true);
+      
       toast({
         title: 'Portfölj genererad',
         description: 'Din nya portfölj har skapats med all tillgänglig riskprofil-data och visas nu.',
@@ -216,8 +237,14 @@ const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps
   }
 
   return (
-    <Card className="border-0 rounded-2xl sm:rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-slate-50/50 dark:from-slate-900/90 dark:to-slate-800/50 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
-      <CardContent className="p-4 sm:p-6 md:p-8">
+    <>
+      <PortfolioGeneratedNotification
+        isOpen={showNotification}
+        onClose={() => setShowNotification(false)}
+        recommendationCount={recommendationCount}
+      />
+      <Card className="border-0 rounded-2xl sm:rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-slate-50/50 dark:from-slate-900/90 dark:to-slate-800/50 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
+        <CardContent className="p-4 sm:p-6 md:p-8">
         {portfolios.length > 0 ? (
           <div className="space-y-4">
             <div className="flex justify-end">
@@ -243,11 +270,11 @@ const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps
             </div>
             {(() => {
               const portfolio = portfolios[0];
-              const structuredPlan = portfolio.asset_allocation?.structured_plan;
               
               // Extract summary from structured plan
-              const summary = structuredPlan?.action_summary || structuredPlan?.summary || 
+              const summary = advisorPlan?.action_summary || portfolio.asset_allocation?.structured_plan?.action_summary || portfolio.asset_allocation?.structured_plan?.summary || 
                              'AI-genererad portfölj';
+              const riskAlignment = advisorPlan?.risk_alignment;
 
               const recommendedStocks = portfolio.recommended_stocks || [];
               const stockCount = recommendedStocks.length;
@@ -295,67 +322,63 @@ const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps
                         )}
                       </div>
                       {summary && (
-                        <p className="text-sm sm:text-base leading-relaxed text-foreground/80 mb-5 line-clamp-3">
+                        <p className="text-base sm:text-lg font-bold leading-relaxed text-foreground mb-4">
                           {typeof summary === 'string' ? summary : JSON.stringify(summary)}
                         </p>
                       )}
+                      {riskAlignment && riskAlignment !== summary && (
+                        <p className="text-xs sm:text-sm leading-5 sm:leading-6 text-foreground/70 mb-4 break-words">
+                          {riskAlignment}
+                        </p>
+                      )}
+                      
+                      {recommendedStocks.length > 0 && (
+                        <div className="mb-4">
+                          <p className="text-xs sm:text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Förslag:</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
+                            {(showAllRecommendations ? recommendedStocks : recommendedStocks.slice(0, 6)).map((stock: any, index: number) => (
+                              <div 
+                                key={index} 
+                                className="p-2 sm:p-3 md:p-4 border border-slate-200/60 dark:border-slate-700/60 rounded-lg hover:shadow-md transition-shadow overflow-hidden bg-white/50 dark:bg-slate-800/50"
+                              >
+                                <div className="flex justify-between items-start mb-1 sm:mb-2 gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <h4 className="font-medium text-xs sm:text-sm break-words overflow-wrap-anywhere line-clamp-2">
+                                      {stock.name || stock.symbol}
+                                    </h4>
+                                    {stock.sector && (
+                                      <p className="text-xs text-muted-foreground break-words overflow-wrap-anywhere line-clamp-1 mt-0.5">
+                                        {stock.sector}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <Badge variant="outline" className="text-xs flex-shrink-0 whitespace-nowrap">
+                                    {stock.allocation || '5'}%
+                                  </Badge>
+                                </div>
+                                {stock.reasoning && (
+                                  <p className="text-xs text-muted-foreground mt-1 sm:mt-2 break-words overflow-wrap-anywhere leading-relaxed line-clamp-2">
+                                    {stock.reasoning}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          {recommendedStocks.length > 6 && (
+                            <Button
+                              onClick={() => setShowAllRecommendations(!showAllRecommendations)}
+                              variant="ghost"
+                              size="sm"
+                              className="mt-3 text-xs sm:text-sm text-primary hover:text-primary/80 hover:bg-primary/10"
+                            >
+                              {showAllRecommendations ? 'Visa färre' : `Visa alla (${recommendedStocks.length})`}
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
-                  
-                  {recommendedStocks.length > 0 && (
-                    <div className="mb-5">
-                      <p className="text-xs sm:text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Rekommendationer:</p>
-                      <div className="flex flex-wrap gap-2 sm:gap-3">
-                        {recommendedStocks.slice(0, 5).map((stock: any, index: number) => (
-                          <Badge
-                            key={index}
-                            variant="outline"
-                            className="text-xs rounded-lg px-2.5 py-1 border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-                          >
-                            {stock.name || stock.symbol}
-                            {stock.allocation && ` (${stock.allocation}%)`}
-                          </Badge>
-                        ))}
-                        {recommendedStocks.length > 5 && (
-                          <Badge variant="outline" className="text-xs rounded-lg px-2.5 py-1 border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-800/50">
-                            +{recommendedStocks.length - 5} fler
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  )}
 
-                  <Button
-                    onClick={() => {
-                      if (expandedPortfolioId === portfolio.id) {
-                        setExpandedPortfolioId(null);
-                      } else {
-                        setExpandedPortfolioId(portfolio.id);
-                      }
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="w-full sm:w-auto text-xs sm:text-sm rounded-xl sm:rounded-2xl border-slate-300/50 dark:border-slate-600/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-300"
-                  >
-                    {expandedPortfolioId === portfolio.id ? (
-                      <>
-                        <ChevronUp className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-                        Dölj sammanfattning
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-                        Visa sammanfattning
-                      </>
-                    )}
-                  </Button>
-
-                  {/* Full portfolio summary */}
-                  {expandedPortfolioId === portfolio.id && (
-                    <div className="mt-5 sm:mt-6 pt-5 sm:pt-6 border-t border-slate-200/50 dark:border-slate-700/50">
-                      <PortfolioSummaryView portfolio={portfolio} />
-                    </div>
-                  )}
                 </div>
               );
             })()}
@@ -401,6 +424,7 @@ const SavedPortfoliosSection = ({ onViewPortfolio }: SavedPortfoliosSectionProps
         )}
       </CardContent>
     </Card>
+    </>
   );
 };
 

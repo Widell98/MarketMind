@@ -17,7 +17,6 @@ import {
   BarChart3,
   Menu,
   User,
-  Heart,
   LogOut
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,7 +37,6 @@ const MobileMenuSheet = () => {
 
   const userMenuItems = [
     { name: 'Profil', href: '/profile', icon: User },
-    { name: 'Watchlist', href: '/watchlist', icon: Heart },
     ...(isAdmin ? [{ name: 'Admin Dashboard', href: '/admin/stock-cases', icon: BarChart3 }] : []),
   ];
 
