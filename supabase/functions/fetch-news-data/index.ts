@@ -489,17 +489,19 @@ async function fetchTrendingTopics(): Promise<string[]> {
 async function generateDynamicQueries(trendingTitles: string[]): Promise<string[]> {
   if (trendingTitles.length === 0) return [];
 
+  // 1. BEHÅLL systemPrompt (AI:ns roll)
   const systemPrompt = "Du är en expert på att söka finansiell information. Din uppgift är att skapa specifika sökfrågor för en sökmotor baserat på nyhetsrubriker.";
   
-  const userPrompt = `Baserat på dessa rubriker, skapa 3-4 specifika sökfrågor för att hitta djupgående analyser och detaljer.
-  
+  // 2. UPPDATERA userPrompt (Instruktionen) - Nu fokuserad på djup och makro
+  const userPrompt = `Baserat på dessa rubriker, skapa 3-4 sökfrågor som hittar DJUPGÅENDE ANALYSER och MAKRO-nyheter.
+
   Rubriker:
   ${trendingTitles.join("\n")}
-  
+
   Regler:
-  - Fokusera på de största/viktigaste händelserna
-  - Skapa frågor som letar efter "varför" och "analys" (t.ex. "Why is Nvidia dropping today analysis")
-  - Inkludera alltid en fråga om "Economic calendar today key events"
+  - Undvik "breaking news". Sök efter "analysis", "outlook", "implications".
+  - En fråga ska alltid gälla "Market trend analysis sweden global" (Macro).
+  - En fråga ska gälla en specifik sektor-analys (Mikro).
   - Svara ENDAST med en JSON-array av strängar: ["fråga 1", "fråga 2", ...]`;
 
   try {
@@ -821,21 +823,72 @@ console.log(`[generateMorningBrief] Fetched total: ${tavilyArticles.length} arti
 // Sortera ev. på datum om det inte redan är gjort, och ta de 15 första
 const articlesToProcess = tavilyArticles.slice(0, 15); 
 
-// --- STEG D: SUMMERING ---
-const summaryPromises = articlesToProcess.map(async (article) => { // Ändrat från tavilyArticles
-  try {
-    return await summarizeArticle(article);
-  } catch (error) {
-    return null;
-  }
-});
+// --- STEG D: FILTRERA & SUMMERING (NY LOGIK) ---
+  
+  // 1. Grovfiltrera bort skräp (Kallelser, korta notiser) INNAN vi slösar AI-tokens
+  // (Förutsätter att du lagt till funktionen isLowQualityNews längst ner i filen)
+  const highQualityArticles = tavilyArticles.filter(a => 
+    !isLowQualityNews(a.title, a.content)
+  );
+
+  // 2. Prioritera "Långläsning" (Artiklar med mycket text är ofta analyser)
+  // Sortera så de längsta artiklarna hamnar först
+  highQualityArticles.sort((a, b) => b.content.length - a.content.length);
+
+  // 3. Ta de 12 bästa kandidaterna för summering
+  const articlesToProcess = highQualityArticles.slice(0, 12);
+  
+  console.log(`[generateMorningBrief] Processing ${articlesToProcess.length} high-quality insight articles (filtered from ${tavilyArticles.length})`);
+
+  const summaryPromises = articlesToProcess.map(async (article) => {
+    try {
+      return await summarizeArticle(article);
+    } catch (error) {
+      return null;
+    }
+  });
 
   const results = await Promise.all(summaryPromises);
   const summarizedNews = results.filter((item): item is NewsItem => item !== null);
-  const deduplicatedNews = deduplicateNewsItems(summarizedNews);
+  
+  // Deduplicera
+  const cleanNews = deduplicateNewsItems(summarizedNews);
 
-  // --- STEG E: SKAPA BRIEF (MED FÖRBÄTTRAD PROMPT) ---
-  const tavilyContext = deduplicatedNews.slice(0, 20) // Ta de 20 bästa
+  // --- STEG E: KATEGORISERA & MIXA (NY LOGIK) ---
+  // Vi vill ha en bra mix i "Nyhetsflödet", inte 5 tech-nyheter på rad.
+  
+  const categories = {
+    macro: cleanNews.filter(n => n.category === 'macro' || n.category === 'sweden'),
+    tech: cleanNews.filter(n => n.category === 'tech'),
+    commodities: cleanNews.filter(n => n.category === 'commodities'),
+    company: cleanNews.filter(n => n.category === 'earnings' || n.category === 'global')
+  };
+
+  // Plocka 1 från varje kategori roterande tills vi har max 8 nyheter
+  const balancedNews: NewsItem[] = [];
+  const maxNews = 8;
+  
+  let i = 0;
+  while (balancedNews.length < maxNews && i < 5) { // Loopa några varv
+    if (categories.macro[i]) balancedNews.push(categories.macro[i]);
+    if (categories.company[i]) balancedNews.push(categories.company[i]);
+    if (categories.tech[i]) balancedNews.push(categories.tech[i]);
+    if (categories.commodities[i]) balancedNews.push(categories.commodities[i]);
+    i++;
+  }
+
+  // Om vi har för få, fyll på med resten av de högkvalitativa
+  if (balancedNews.length < 5) {
+     const remaining = cleanNews.filter(n => !balancedNews.includes(n));
+     balancedNews.push(...remaining.slice(0, maxNews - balancedNews.length));
+  }
+  
+  // Slutgiltig lista som visas för användaren
+  const finalNewsSelection = deduplicateNewsItems(balancedNews);
+
+  // --- STEG F: SKAPA BRIEF (MED FÖRBÄTTRAD PROMPT) ---
+  // Vi använder 'cleanNews' (alla analyserade) för kontexten så AI:n vet mer än vad som visas
+  const tavilyContext = cleanNews.slice(0, 20)
     .map((a) => `- ${a.headline} (${a.source}): ${a.summary}`).join("\n\n");
   
   const previousDayContext = previousBrief
@@ -847,7 +900,7 @@ const summaryPromises = articlesToProcess.map(async (article) => { // Ändrat fr
 
   const userPrompt = `Skriv ett morgonbrev för ${today.toLocaleDateString("sv-SE")}.
 
-KONTEXT FRÅN NYHETERNA:
+KONTEXT FRÅN NYHETER OCH ANALYSER:
 ${tavilyContext || "Inga nyheter."}
 
 ${previousDayContext ? `GÅRDAGEN: ${previousDayContext}` : ""}
@@ -895,9 +948,9 @@ FORMAT (JSON):
 
   const runGeneratedAt = new Date().toISOString();
   const normalizedBrief = { ...morningBrief, generatedAt: runGeneratedAt };
-  const digestHash = await computeDigestHash({ morningBrief: normalizedBrief, news: deduplicatedNews });
+  const digestHash = await computeDigestHash({ morningBrief: normalizedBrief, news: finalNewsSelection });
 
-  return { morningBrief: normalizedBrief, news: deduplicatedNews, rawPayload: {}, digestHash };
+  return { morningBrief: normalizedBrief, news: finalNewsSelection, rawPayload: {}, digestHash };
 }
 
 // Liten hjälpfunktion för fallback om allt kraschar
@@ -912,6 +965,24 @@ function createFallbackBrief(articles: any[]): MorningBrief {
         generatedAt: new Date().toISOString(),
         sections: []
     };
+}
+
+function isLowQualityNews(title: string, content: string): boolean {
+  const t = title.toLowerCase();
+  
+  // Lista på ord som indikerar "tråkiga" PM eller för korta nyheter
+  const noiseTriggers = [
+    "kallelse", "inbjudan", "kommuniké", "flaggningsmeddelande", 
+    "kalender", "presentation av", "webcast", "rapport från årsstämma",
+    "handelsstopp", "notering", "utdelning"
+  ];
+
+  if (noiseTriggers.some(trigger => t.includes(trigger))) return true;
+
+  // Filtrera bort extremt korta notiser (ofta bara rubriker)
+  if (content.length < 250) return true;
+
+  return false;
 }
 
 async function generateMarketMomentum() {
