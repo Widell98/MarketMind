@@ -402,16 +402,12 @@ async function categorizeArticle(title: string, content: string): Promise<string
 async function summarizeArticle(article: TavilyArticle): Promise<NewsItem> {
   const category = await categorizeArticle(article.title, article.content);
 
-  // Om OpenAI inte finns, använd originaltitel som fallback
+  // Fallback om ingen API-nyckel finns
   if (!openAIApiKey) {
-    const summary = article.content.length > 200
-      ? article.content.slice(0, 200) + "..."
-      : article.content;
-
     return {
       id: `news_${crypto.randomUUID()}`,
-      headline: article.title, // Fallback
-      summary,
+      headline: article.title,
+      summary: article.content.slice(0, 200) + "...",
       category,
       source: article.source,
       publishedAt: article.published_date ? new Date(article.published_date).toISOString() : new Date().toISOString(),
@@ -420,46 +416,37 @@ async function summarizeArticle(article: TavilyArticle): Promise<NewsItem> {
   }
 
   try {
-    // 1. Uppdaterad System-prompt: Vi ber om JSON med både rubrik och text
     const systemPrompt =
-      "Du är en svensk finansredaktör. Din uppgift är att läsa en råtext och skapa en kort, slagkraftig nyhetsnotis. Du svarar ALLTID med giltig JSON i formatet: { \"headline\": \"...\", \"summary\": \"...\" }.";
+      "Du är en senior finansanalytiker. Svara alltid med giltig JSON: { \"headline\": \"...\", \"summary\": \"...\", \"takeaway\": \"...\" }.";
 
-    // 2. Uppdaterad User-prompt: Instruktioner för att sätta en BRA rubrik
-    const userPrompt = `Analysera följande text och skapa:
-1. En beskrivande rubrik (max 7-8 ord). Den får INTE vara generisk som "Omni Ekonomi" eller "Dagens Nyheter", utan måste beskriva innehållet (t.ex. "Musk köper Tesla-aktier för en miljard").
-2. En sammanfattning på svenska (max 2-3 meningar).
+    // HÄR ÄR FÖRBÄTTRINGEN: Vi ber om en "takeaway"
+    const userPrompt = `Analysera texten och skapa:
+1. En rubrik (max 7 ord).
+2. En sammanfattning (2-3 meningar).
+3. EN "INVESTOR TAKEAWAY": En enda mening som förklarar varför detta är viktigt för en investerare (t.ex. "Detta kan pressa tech-sektorn på kort sikt").
 
 Originaltitel: ${article.title}
-
-Innehåll:
-${article.content.slice(0, 1200)}
+Text: ${article.content.slice(0, 1500)}
 
 Svara med JSON.`;
 
-    // Vi ökar maxTokens lite eftersom vi nu vill ha JSON
-    const rawResponse = await callOpenAI(systemPrompt, userPrompt, 400);
+    const rawResponse = await callOpenAI(systemPrompt, userPrompt, 600);
 
-    // 3. Parsa JSON-svaret (Vi återanvänder din befintliga hjälpfunktion)
     let parsed;
     try {
       parsed = parseJsonPayload(rawResponse);
     } catch (e) {
-      console.warn("JSON parse failed for summary, using raw text fallback");
-      parsed = { headline: article.title, summary: rawResponse };
+      parsed = { headline: article.title, summary: rawResponse, takeaway: "" };
     }
 
-    // Säkerställ att vi har värden, annars fallback
-    const newHeadline = typeof parsed?.headline === "string" && parsed.headline.length > 5
-      ? parsed.headline
-      : article.title;
-        
-    const newSummary = typeof parsed?.summary === "string" && parsed.summary.length > 10
-      ? parsed.summary
-      : (typeof parsed?.headline === "string" ? rawResponse.replace(parsed.headline, "") : rawResponse);
+    const newHeadline = parsed?.headline || article.title;
+    // Vi bakar in takeaway i slutet av summeringen för att visa den snyggt
+    const takeawayText = parsed?.takeaway ? `\n\nAnalys: ${parsed.takeaway}` : "";
+    const newSummary = (parsed?.summary || rawResponse.replace(newHeadline, "")) + takeawayText;
 
     return {
       id: `news_${crypto.randomUUID()}`,
-      headline: newHeadline, // HÄR använder vi nu den AI-genererade rubriken
+      headline: newHeadline,
       summary: newSummary.trim(),
       category,
       source: article.source,
@@ -468,7 +455,6 @@ Svara med JSON.`;
     };
   } catch (error) {
     console.error("Failed to summarize article:", error);
-    // Fallback vid fel
     return {
       id: `news_${crypto.randomUUID()}`,
       headline: article.title,
@@ -482,6 +468,61 @@ Svara med JSON.`;
 }
 
 // --- OpenAI Helper Functions ---
+
+// --- NYA FUNKTIONER FÖR SPANAR-SÖKNING ---
+
+// 1. Hämtar en bred överblick för att se vad som händer just nu
+async function fetchTrendingTopics(): Promise<string[]> {
+  console.log("[fetchTrendingTopics] Scouting for market trends...");
+  // Vi söker brett för att fånga upp "snacket"
+  const scoutQuery = "financial market news headlines today stock market movers global economy breaking news";
+  
+  // Hämta max 8 artiklar för snabb överblick
+  const articles = await fetchTavilyNews(scoutQuery, 8, 1);
+  
+  if (!articles || articles.length === 0) return [];
+
+  return articles.map(a => a.title);
+}
+
+// 2. Använder AI för att omvandla rubriker till smarta sökfrågor
+async function generateDynamicQueries(trendingTitles: string[]): Promise<string[]> {
+  if (trendingTitles.length === 0) return [];
+
+  const systemPrompt = "Du är en expert på att söka finansiell information. Din uppgift är att skapa specifika sökfrågor för en sökmotor baserat på nyhetsrubriker.";
+  
+  const userPrompt = `Baserat på dessa rubriker, skapa 3-4 specifika sökfrågor för att hitta djupgående analyser och detaljer.
+  
+  Rubriker:
+  ${trendingTitles.join("\n")}
+  
+  Regler:
+  - Fokusera på de största/viktigaste händelserna
+  - Skapa frågor som letar efter "varför" och "analys" (t.ex. "Why is Nvidia dropping today analysis")
+  - Inkludera alltid en fråga om "Economic calendar today key events"
+  - Svara ENDAST med en JSON-array av strängar: ["fråga 1", "fråga 2", ...]`;
+
+  try {
+    const raw = await callOpenAI(systemPrompt, userPrompt, 500);
+    const parsed = parseJsonPayload(raw);
+    
+    if (Array.isArray(parsed) && parsed.every(i => typeof i === 'string')) {
+      console.log("[generateDynamicQueries] Generated queries:", parsed);
+      return parsed;
+    } else if (parsed && Array.isArray((parsed as any).queries)) {
+       return (parsed as any).queries;
+    }
+    
+    return [
+      "market analysis today why is market moving",
+      "stock market gainers losers reasoning",
+      "economic calendar key events today"
+    ];
+  } catch (e) {
+    console.error("Failed to generate dynamic queries", e);
+    return ["global market news analysis today", "stock market movers causes"];
+  }
+}
 
 async function callOpenAI(systemPrompt: string, userPrompt: string, maxTokens = 1800): Promise<string> {
   if (!openAIApiKey) {
@@ -736,214 +777,141 @@ async function generateMorningBrief(options: GenerateOptions = {}): Promise<Gene
   const today = new Date();
   const { allowRepeats = false } = options;
   
-  // Check if it's weekend - if so, generate weekly summary
+  // Helg-check
   if (isWeekend(today)) {
     console.log(`[generateMorningBrief] Weekend detected, generating weekly summary`);
     return await generateWeeklySummary();
   }
   
   const yesterday = getPreviousWeekday(today);
-  
-  // 1. Get previous day's brief for context
   const previousBrief = await getPreviousDayBrief(today);
-  console.log(`[generateMorningBrief] Previous day brief found: ${!!previousBrief}`);
   
-  // --- HÄR ÄR DEN NYA LOGIKEN (SVERIGE VS GLOBALT) ---
+  console.log("[generateMorningBrief] Starting SMART generation...");
 
-  // A. Definiera specifika domäner för att garantera svenska nyheter
-  const swedishDomains = [
-   "svd.se", "dn.se", "privataaffarer.se", "breakit.se", "omni.se", "placera.se"
-  ];
+  // --- STEG A: SPANAR-SÖKNING ---
+  // Hitta vad som är hett just nu genom att skanna rubriker
+  const trendingHeadlines = await fetchTrendingTopics();
+  console.log(`[generateMorningBrief] Found ${trendingHeadlines.length} trending headlines.`);
+
+  // --- STEG B: GENERERA DYNAMISKA SÖKFRÅGOR ---
+  // Låt AI bestämma vad vi ska djupdyka i
+  const dynamicQueries = await generateDynamicQueries(trendingHeadlines);
   
-  const globalDomains = [
-    "cnbc.com", "reuters.com", "bloomberg.com", "ft.com", "marketwatch.com", 
-    "techcrunch.com", "wsj.com", "investing.com", "finance.yahoo.com"
-  ];
-
-  // B. Dela upp sökningarna
- const swedishQueries = [
-    "börsen idag stockholm vinnare förlorare placera",
-    "svensk ekonomi nyheter svt ränta",
-    "marknadskollen omni ekonomi",
-    "aktier analys aktiespararna",
-    "svenska storbolag rapport"
+  // Lägg till våra fasta "måste-ha"-sökningar
+  const baseQueries = [
+    "stockholm stock market news today", 
+    "key economic events today sweden usa eu" // Kalender-data
   ];
   
-  const globalQueries = [
-    "us stock market close summary key events",
-    "federal reserve interest rates inflation",
-    "big tech earnings ai nvidia apple microsoft",
-    "oil prices gold commodities market",
-    "european markets ecb rates economy"
-  ];
+  // Kombinera sökfrågor (max 5 dynamiska + bas)
+  const allQueries = [...new Set([...baseQueries, ...dynamicQueries])].slice(0, 7);
+  console.log("[generateMorningBrief] Final search queries:", allQueries);
 
-  // Lägg till uppföljning från gårdagen i den globala sökningen
-  if (previousBrief && previousBrief.morningBrief.headline) {
-     globalQueries.push(`follow-up ${previousBrief.morningBrief.headline}`);
+// --- STEG C: HÄMTA ARTIKLAR ---
+const tavilyArticles = await fetchMultipleTavilySearches(
+  allQueries, 
+  8, 
+  1, 
+  { allowRepeats }
+);
+
+console.log(`[generateMorningBrief] Fetched total: ${tavilyArticles.length} articles`);
+
+// --- OPTIMERING: BEGRÄNSA ANTALET AI-ANROP ---
+// Sortera ev. på datum om det inte redan är gjort, och ta de 15 första
+const articlesToProcess = tavilyArticles.slice(0, 15); 
+
+// --- STEG D: SUMMERING ---
+const summaryPromises = articlesToProcess.map(async (article) => { // Ändrat från tavilyArticles
+  try {
+    return await summarizeArticle(article);
+  } catch (error) {
+    return null;
   }
-
-  // C. Kör sökningarna SEPARAT (Sverige vs Världen)
-  console.log("[generateMorningBrief] Fetching SWEDISH and GLOBAL news separately...");
-  
-  // OBS: Detta kräver att du har uppdaterat 'fetchMultipleTavilySearches' enligt Steg 2!
-  const [swedishArticles, globalArticles] = await Promise.all([
-    fetchMultipleTavilySearches(swedishQueries, 5, 1, { allowRepeats }, swedishDomains),
-    fetchMultipleTavilySearches(globalQueries, 10, 1, { allowRepeats }, globalDomains)
-  ]);
-
-  // D. Slå ihop resultaten (Svenska först så de hamnar högst upp i listan)
-  const majorDomains = new Set([
-    "cnbc.com",
-    "reuters.com",
-    "bloomberg.com",
-    "ft.com",
-    "wsj.com",
-  ]);
-
-  const globalMajorArticles = globalArticles.filter((article) => majorDomains.has(article.domain));
-  const globalAltArticles = globalArticles.filter((article) => !majorDomains.has(article.domain));
-
-  // Fix: Ta max 5 från varje kategori för att TVINGA fram en blandning
-  const tavilyArticles = [
-    ...swedishArticles.slice(0, 5), // Max 5 svenska
-    ...globalAltArticles.slice(0, 5), // Max 5 analys/tech
-    ...globalMajorArticles.slice(0, 5), // Max 5 stora globala (CNBC/Reuters)
-  ];
-  console.log(`[generateMorningBrief] Fetched total: ${tavilyArticles.length} (SE: ${swedishArticles.length}, GL: ${globalArticles.length}, GL-major: ${globalMajorArticles.length}, GL-alt: ${globalAltArticles.length})`);
-
-  // --- HÄRIFRÅN ÄR DET SAMMA PARALLELL-LOGIK SOM VI FIXADE TIDIGARE ---
-
-  // 4. Summarize articles in PARALLEL
-  const articlesToProcess = tavilyArticles;
-  console.log(`[generateMorningBrief] Starting parallel summarization of ${articlesToProcess.length} articles...`);
-
-  const summaryPromises = articlesToProcess.map(async (article) => {
-    try {
-      const summarized = await summarizeArticle(article);
-      console.log(`[generateMorningBrief] Summarized: ${summarized.headline.substring(0, 30)}...`);
-      return summarized;
-    } catch (error) {
-      console.error(`Failed to summarize article: ${article.title}`, error);
-      return null;
-    }
-  });
+});
 
   const results = await Promise.all(summaryPromises);
   const summarizedNews = results.filter((item): item is NewsItem => item !== null);
-  
-  console.log(`[generateMorningBrief] Total summarized news: ${summarizedNews.length}`);
-
-  // 5. Deduplicate summarized news
   const deduplicatedNews = deduplicateNewsItems(summarizedNews);
-  console.log(`[generateMorningBrief] Deduplicated news: ${deduplicatedNews.length} (removed ${summarizedNews.length - deduplicatedNews.length} duplicates)`);
 
-  // 6. Create context and generate brief
-  const tavilyContext = tavilyArticles.length > 0
-    ? tavilyArticles.map((a) => `- ${a.title} (${a.source}): ${a.content.slice(0, 300)}...`).join("\n")
-    : "";
+  // --- STEG E: SKAPA BRIEF (MED FÖRBÄTTRAD PROMPT) ---
+  const tavilyContext = deduplicatedNews.slice(0, 20) // Ta de 20 bästa
+    .map((a) => `- ${a.headline} (${a.source}): ${a.summary}`).join("\n\n");
   
   const previousDayContext = previousBrief
-    ? `Gårdagens huvudnyhet: ${previousBrief.morningBrief.headline}\n` +
-      `Gårdagens översikt: ${previousBrief.morningBrief.overview}\n` +
-      `Gårdagens teman: ${previousBrief.morningBrief.focusToday.join(", ")}\n`
+    ? `Gårdagens huvudnyhet: ${previousBrief.morningBrief.headline}\nTeman: ${previousBrief.morningBrief.focusToday.join(", ")}\n`
     : "";
 
   const systemPrompt =
-    "Du är en svensk finansredaktör som skriver morgonbrev och strukturerade nyhetssammanfattningar baserat på faktiska nyhetsartiklar. Du svarar alltid med giltig JSON.";
+    "Du är en svensk finansredaktör. Du skapar analyserande morgonbrev. Du svarar med giltig JSON.";
 
-  const userPrompt = `Skriv ett detaljerat morgonbrev för datumet ${today.toLocaleDateString("sv-SE")} baserat på följande faktiska nyhetsartiklar.
+  const userPrompt = `Skriv ett morgonbrev för ${today.toLocaleDateString("sv-SE")}.
 
-VIKTIGT: Du ska INTE skapa egna nyheter. Använd endast informationen från artiklarna nedan.
+KONTEXT FRÅN NYHETERNA:
+${tavilyContext || "Inga nyheter."}
 
-${previousDayContext ? `KONTEKST FRÅN GÅRDAGEN:\n---\n${previousDayContext}---\n\nAnvänd detta som bakgrund för att förstå utvecklingen, men fokusera på DAGENS nyheter.\n\n` : ""}Faktiska nyhetsartiklar för idag:
----
-${tavilyContext || "Inga nyhetsartiklar tillgängliga för idag."}
----
+${previousDayContext ? `GÅRDAGEN: ${previousDayContext}` : ""}
 
-Baserat på dessa artiklar, skapa:
-- En huvudrubrik som sammanfattar den viktigaste nyheten
-- En översikt (3-4 meningar) för Hero-kortet
-- 5 korta nyhetspunkter för "Snabbkollen"
-- 3 teman för "Fokus idag"
-- Exakt 3 fördjupande sektioner (t.ex. Makro, Tech, Marknad) baserat på artiklarna
-- Ett sentiment (bullish/bearish/neutral) baserat på artiklarnas innehåll
+INSTRUKTIONER:
+1. **Hero-sektion (Overview):** Fånga den absolut viktigaste händelsen ("The big story"). Förklara *varför* den är viktig.
+2. **Snabbkollen (Key Highlights):** 5 korta punkter. Blanda makro (räntor/inflation) med bolagsnyheter.
+3. **Fokus idag:** Titta efter kalenderhändelser i texten (Rapporter, KPI, Centralbanker) som sker IDAG.
+4. **Fördjupning (Sections):** Skapa exakt 3 sektioner:
+   - Sektion 1: "Marknadsläget" (Hur går börsen, terminer, sentiment).
+   - Sektion 2: "Dagens Djupdykning" (Välj ETT ämne/bolag från nyheterna och analysera det djupare).
+   - Sektion 3: "Makro & Omvärld" (Större trender, USA/Kina/Räntor).
 
-Fokusera på händelser och sentiment från ${yesterday.toLocaleDateString("sv-SE")} (gårdagen) och natten till idag.
-
-FORMAT (måste följas exakt):
+FORMAT (JSON):
 {
   "morning_brief": {
-    "headline": "Kort, slagkraftig huvudrubrik (max 6 ord)",
-    "overview": "Engagerande ingress för huvudnyheten (3-4 meningar). Detta visas i det stora Hero-kortet.",
-    "key_highlights": [
-      "Kort nyhetspunkt 1 (max 1 mening)",
-      "Kort nyhetspunkt 2",
-      "Kort nyhetspunkt 3",
-      "Kort nyhetspunkt 4",
-      "Kort nyhetspunkt 5"
-    ],
-    "focus_today": ["Tema 1", "Tema 2", "Tema 3"],
+    "headline": "Kort rubrik",
+    "overview": "3-4 meningar analys.",
+    "key_highlights": ["Punkt 1", "Punkt 2", ...],
+    "focus_today": ["Hållpunkt 1", "Hållpunkt 2", ...],
     "sentiment": "bullish"|"bearish"|"neutral",
-    "generated_at": "ISO timestamp",
+    "generated_at": "${new Date().toISOString()}",
     "sections": [
-      { 
-        "title": "Rubrik för sektion 1 (t.ex. 'Makroläget')", 
-        "body": "Innehållsrik text (2-3 stycken) baserat på artiklarna." 
-      },
-      { "title": "Rubrik för sektion 2", "body": "..." },
-      { "title": "Rubrik för sektion 3", "body": "..." }
+      { "title": "Marknadsläget", "body": "..." },
+      { "title": "Dagens Djupdykning: [Ämne]", "body": "..." },
+      { "title": "Makro & Omvärld", "body": "..." }
     ]
   }
-}
-
-Regler:
-- Använd endast information från de faktiska artiklarna ovan.
-- Var specifik med siffror och fakta från artiklarna.
-- Blanda svenska och internationella perspektiv baserat på artiklarna.`;
+}`;
 
   let morningBrief: MorningBrief;
   
   if (tavilyArticles.length > 0 && openAIApiKey) {
     try {
-      const raw = await callOpenAI(systemPrompt, userPrompt, 2000);
-      logAiResponse("morning_brief", raw);
+      const raw = await callOpenAI(systemPrompt, userPrompt, 2500);
       const parsed = parseJsonPayload(raw);
-      morningBrief = normalizeMorningBrief((parsed?.morning_brief ?? parsed?.brief ?? parsed?.newsletter ?? {}) as Record<string, unknown>);
+      morningBrief = normalizeMorningBrief((parsed?.morning_brief ?? parsed) as Record<string, unknown>);
     } catch (error) {
-      console.error("Failed to generate morning brief:", error);
-      // Fallback morning brief
-      morningBrief = {
-        id: `brief_${crypto.randomUUID()}`,
-        headline: "Dagens Nyheter",
-        overview: tavilyArticles[0]?.title || "Marknadsläget just nu",
-        keyHighlights: tavilyArticles.slice(0, 5).map(a => a.title),
-        focusToday: ["Nyheter", "Marknad", "Analys"],
-        sentiment: "neutral",
-        generatedAt: new Date().toISOString(),
-        sections: [],
-      };
+      console.error("Failed to generate brief:", error);
+      morningBrief = createFallbackBrief(tavilyArticles);
     }
   } else {
-    // Fallback if no articles or OpenAI unavailable
-    morningBrief = {
-      id: `brief_${crypto.randomUUID()}`,
-      headline: "Dagens Nyheter",
-      overview: "Inga nyheter tillgängliga för idag.",
-      keyHighlights: [],
-      focusToday: ["Nyheter", "Marknad", "Analys"],
-      sentiment: "neutral",
-      generatedAt: new Date().toISOString(),
-      sections: [],
-    };
+    morningBrief = createFallbackBrief([]);
   }
 
   const runGeneratedAt = new Date().toISOString();
   const normalizedBrief = { ...morningBrief, generatedAt: runGeneratedAt };
-
   const digestHash = await computeDigestHash({ morningBrief: normalizedBrief, news: deduplicatedNews });
-  console.log(`[generateMorningBrief] Returning: morningBrief=${!!morningBrief}, newsCount=${deduplicatedNews.length}`);
-  console.log(`[generateMorningBrief] News items sample:`, deduplicatedNews.slice(0, 2).map(n => ({ headline: n.headline, source: n.source })));
+
   return { morningBrief: normalizedBrief, news: deduplicatedNews, rawPayload: {}, digestHash };
+}
+
+// Liten hjälpfunktion för fallback om allt kraschar
+function createFallbackBrief(articles: any[]): MorningBrief {
+    return {
+        id: `brief_${crypto.randomUUID()}`,
+        headline: "Morgonrapport",
+        overview: "Kunde inte generera analys just nu. Se nyhetsflödet nedan.",
+        keyHighlights: articles.slice(0, 5).map(a => a.title || "Nyhet"),
+        focusToday: ["Marknaden", "Nyheter"],
+        sentiment: "neutral",
+        generatedAt: new Date().toISOString(),
+        sections: []
+    };
 }
 
 async function generateMarketMomentum() {
