@@ -69,17 +69,26 @@ const PortfolioOverviewCard: React.FC<PortfolioOverviewCardProps> = ({
               )
             )}
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button asChild variant="outline" size="sm" className="w-full justify-center hover:bg-muted/50 sm:w-auto">
+          <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2 sm:gap-3">
+            <Button
+              asChild
+              className="rounded-xl sm:rounded-2xl px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 shadow-lg hover:shadow-xl bg-foreground text-background text-xs sm:text-sm"
+            >
               <Link to="/ai-chatt">
-                <MessageSquare className="mr-2 h-4 w-4" />
-                AI Chat
+                <MessageSquare className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">AI Chat</span>
+                <span className="xs:hidden">AI</span>
               </Link>
             </Button>
-            <Button asChild size="sm" className="w-full justify-center bg-primary hover:bg-primary/90 sm:w-auto">
+            <Button
+              asChild
+              variant="ghost"
+              className="rounded-xl sm:rounded-2xl px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 shadow-none text-xs sm:text-sm"
+            >
               <Link to="/portfolio-implementation">
-                <BarChart3 className="mr-2 h-4 w-4" />
-                Min Portfölj
+                <BarChart3 className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden md:inline">Min Portfölj</span>
+                <span className="md:hidden">Portfölj</span>
               </Link>
             </Button>
           </div>
