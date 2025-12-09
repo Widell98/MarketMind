@@ -264,24 +264,27 @@ export const parsePortfolioHoldingsFromCSV = (text: string): ParsedCsvHolding[] 
     let detectedType: ParsedCsvHolding['holdingType'] = 'stock'; // Default till stock
 
     if (typeRaw) {
-      const lowerType = typeRaw.toLowerCase();
+      const lowerType = typeRaw.toLowerCase().trim();
       
-      if (/(fond|fund|etf)/.test(lowerType)) {
+      // [!code ++] Specifik hantering för FUNDS och STOCKS
+      if (lowerType === 'funds' || lowerType.includes('fund') || lowerType.includes('fond') || lowerType.includes('etf')) {
         detectedType = 'fund';
+      } else if (lowerType === 'stocks' || lowerType.includes('stock') || lowerType.includes('aktie')) {
+        detectedType = 'stock';
       } else if (/(krypto|crypto|bitcoin|ethereum|btc|eth)/.test(lowerType)) {
         detectedType = 'crypto';
       } else if (/(certifikat|warrant|mini)/.test(lowerType)) {
-        detectedType = 'other'; // Eller stock, beroende på hur du vill ha det
+        detectedType = 'other';
       } else if (/(obligation|bond|ränta)/.test(lowerType)) {
         detectedType = 'bonds';
       } else if (/(fastighet|real estate)/.test(lowerType)) {
         detectedType = 'real_estate';
       } else {
-        // Antag aktie om det inte matchar något annat (t.ex. "Aktie", "Stock", "Svenska aktier")
+        // Fallback: Om det står något annat okänt, anta aktie
         detectedType = 'stock';
       }
     } else {
-        // Om ingen typ-kolumn finns, kan vi försöka gissa baserat på namnet
+        // Om ingen typ-kolumn hittades, gissa på namnet
         const nameVal = getValue('name').toLowerCase();
         if (nameVal.includes('fond') || nameVal.includes('fund') || nameVal.includes('etf')) {
             detectedType = 'fund';
