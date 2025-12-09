@@ -283,11 +283,11 @@ const Profile = () => {
         <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-3 sm:py-4 md:py-6 lg:py-8">
           <div className="space-y-4 sm:space-y-6">
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-              <TabsList
-                className={`grid w-full ${
-                  isAdmin ? 'grid-cols-2 md:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'
-                } gap-1 sm:gap-1.5 md:gap-2 lg:gap-3 mb-3 sm:mb-4 md:mb-6 lg:mb-8 bg-muted/20 border border-border/30 rounded-md sm:rounded-lg md:rounded-xl p-0.5 sm:p-1 md:p-1.5 lg:p-2 shadow-sm backdrop-blur-sm`}
-              >
+             <TabsList
+  className={`grid w-full h-auto ${ // <--- Lägg till h-auto här
+    isAdmin ? 'grid-cols-2 md:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'
+  } gap-1 sm:gap-1.5 md:gap-2 lg:gap-3 mb-3 sm:mb-4 md:mb-6 lg:mb-8 bg-muted/20 border border-border/30 rounded-md sm:rounded-lg md:rounded-xl p-0.5 sm:p-1 md:p-1.5 lg:p-2 shadow-sm backdrop-blur-sm`}
+>
                 {isAdmin && (
                   <TabsTrigger value="content" className="rounded-md font-medium text-[10px] xs:text-xs sm:text-sm px-1.5 xs:px-2 sm:px-3 py-1.5 sm:py-2">
                     Innehåll
