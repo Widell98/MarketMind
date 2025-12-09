@@ -12,7 +12,11 @@ import {
   Search,
   LayoutGrid,
   Table as TableIcon,
-  RefreshCw
+  RefreshCw,
+  Globe,
+  MapPin,
+  TrendingUp,
+  TrendingDown
 } from 'lucide-react';
 import {
   Dialog,
@@ -46,6 +50,8 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { formatCurrency } from '@/utils/currencyUtils';
 import { cn } from '@/lib/utils';
 
 interface TransformedHolding {
@@ -117,88 +123,127 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [addHoldingInitialData, setAddHoldingInitialData] = useState<any | null>(null);
 
-  const filterOptions: Array<{ key: FilterMode; label: string }> = [
-    { key: 'all', label: 'Alla' },
-    { key: 'se', label: 'Sverige' },
-    { key: 'us', label: 'USA' },
-    { key: 'winners', label: 'Vinnare' },
-    { key: 'losers', label: 'Förlorare' },
+  const filterOptions: Array<{ key: FilterMode; label: string; icon: React.ComponentType<{ className?: string }> }> = [
+    { key: 'all', label: 'Alla', icon: Globe },
+    { key: 'se', label: 'Sverige', icon: MapPin },
+    { key: 'us', label: 'USA', icon: MapPin },
+    { key: 'winners', label: 'Vinnare', icon: TrendingUp },
+    { key: 'losers', label: 'Förlorare', icon: TrendingDown },
   ];
 
-  const renderHoldingsActionButtons = () => (
-    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-1.5 md:gap-2">
-      <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 flex-1 min-w-0">
-        {filterOptions.map((option) => (
-          <Button
-            key={option.key}
-            size="sm"
-            variant={filterMode === option.key ? 'secondary' : 'ghost'}
-            className={cn(
-              'text-[10px] xs:text-xs sm:text-sm rounded-full px-2 xs:px-2.5 sm:px-3 md:px-4 font-medium border transition-colors',
-              filterMode === option.key
-                ? 'bg-slate-900 text-slate-50 border-slate-900 hover:bg-slate-800'
-                : 'bg-muted text-muted-foreground border-transparent hover:bg-muted/80'
-            )}
-            onClick={() => setFilterMode(option.key)}
-          >
-            {option.label}
-          </Button>
-        ))}
-        <div className="flex gap-1.5 sm:gap-2 flex-1 max-w-full sm:max-w-md items-center min-w-[150px] xs:min-w-[200px]">
-          <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-muted-foreground" />
-            <Input
-              placeholder="Sök innehav..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-7 sm:pl-8 md:pl-10 text-[10px] xs:text-xs sm:text-sm h-8 sm:h-9 md:h-10"
-            />
+  const renderHoldingsActionButtons = () => {
+    // Count holdings per filter for badges
+    const getFilterCount = (filterKey: FilterMode) => {
+      if (filterKey === 'all') return allHoldings.length;
+      return allHoldings.filter(holding => {
+        if (filterKey === 'se') {
+          const currency = (holding.base_currency || holding.price_currency || holding.currency || '').toUpperCase();
+          const symbol = holding.symbol?.toUpperCase();
+          return currency === 'SEK' || symbol?.endsWith('.ST');
+        }
+        if (filterKey === 'us') {
+          const currency = (holding.base_currency || holding.price_currency || holding.currency || '').toUpperCase();
+          return currency === 'USD';
+        }
+        const performance = holdingPerformanceMap[holding.id];
+        if (!performance || holding.holding_type === 'cash') return false;
+        if (filterKey === 'winners') return performance.profit > 0;
+        if (filterKey === 'losers') return performance.profit < 0;
+        return false;
+      }).length;
+    };
+
+    return (
+      <div className="space-y-4">
+        {/* Filter Tabs and Search - Unified Row */}
+        <div className="flex flex-col gap-3">
+          {/* Filter Tabs */}
+          <Tabs value={filterMode} onValueChange={(value) => setFilterMode(value as FilterMode)} className="w-full">
+            <TabsList className="grid w-full grid-cols-5 gap-1 rounded-xl bg-muted p-1">
+              {filterOptions.map((option) => {
+                const Icon = option.icon;
+                const count = getFilterCount(option.key);
+                return (
+                  <TabsTrigger
+                    key={option.key}
+                    value={option.key}
+                    className="flex flex-col sm:flex-row items-center gap-1 sm:gap-1.5 rounded-lg text-xs sm:text-sm py-2 sm:py-1.5"
+                  >
+                    <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                    <span className="hidden xs:inline truncate">{option.label}</span>
+                    {count > 0 && (
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-background/80 text-foreground min-w-[1.25rem] text-center">
+                        {count}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </Tabs>
+
+          {/* Search and Actions - Unified */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            {/* Search Bar */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Sök innehav..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 pr-9 h-9 sm:h-10 text-sm border-border focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Rensa sökning"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+
+            {/* Action Buttons - Compact */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    size="sm" 
+                    className="h-9 sm:h-10 bg-primary hover:bg-primary/90 text-primary-foreground" 
+                    onClick={() => handleOpenAddHolding()}
+                  >
+                    <Plus className="w-4 h-4 sm:mr-1.5" />
+                    <span className="hidden sm:inline">Lägg till</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Lägg till innehav</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="h-9 sm:h-10" 
+                    onClick={() => setShowAddCashDialog(true)}
+                  >
+                    <Banknote className="w-4 h-4 sm:mr-1.5" />
+                    <span className="hidden sm:inline">Kassa</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Lägg till kassa</TooltipContent>
+              </Tooltip>
+              {importControls && (
+                <div className="flex-shrink-0">
+                  {importControls}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-
-      <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => handleOpenAddHolding()}>
-              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span className="sr-only">Lägg till innehav</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Lägg till innehav</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button size="icon" variant="outline" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => setShowAddCashDialog(true)}>
-              <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span className="sr-only">Lägg till kassa</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Lägg till kassa</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 sm:h-9 sm:w-9 border border-dashed border-border text-muted-foreground"
-            >
-              <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span className="sr-only">Uppdatera prisinformation</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent className="max-w-xs">
-            Klicka på en ticker i listan för att uppdatera priset.
-          </TooltipContent>
-        </Tooltip>
-        {importControls && (
-          <div className="w-full sm:w-auto flex justify-end sm:justify-start">
-            {importControls}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+    );
+  };
 
 
   const holdingPerformanceMap = useMemo<Record<string, HoldingPerformance>>(() => {
@@ -544,12 +589,12 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
   return (
     <TooltipProvider delayDuration={120}>
       <>
-        <Card className="h-fit rounded-lg sm:rounded-xl">
-        <CardHeader className="p-3 sm:p-3 md:p-4 pb-2">
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-            <div className="space-y-0.5">
-              <CardTitle className="text-base sm:text-lg md:text-xl">Innehav</CardTitle>
-              <p className="text-xs text-muted-foreground">
+        <Card className="h-fit rounded-xl sm:rounded-2xl border-border/50 shadow-sm">
+        <CardHeader className="p-4 sm:p-5 md:p-6 pb-3 sm:pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
+            <div className="space-y-1">
+              <CardTitle className="text-lg sm:text-xl md:text-2xl font-heading font-bold">Innehav</CardTitle>
+              <p className="text-xs sm:text-sm text-muted-foreground font-sans">
                 Sök, lägg till eller hantera dina innehav.
               </p>
             </div>
@@ -585,36 +630,175 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-2.5 sm:space-y-3 p-3 sm:p-4 md:p-6 pt-0">
+        <CardContent className="space-y-6 sm:space-y-8 p-4 sm:p-5 md:p-6 pt-0">
           {loading || cashLoading ? (
             <div className="text-center py-8 text-muted-foreground">
               <div className="flex items-center justify-center gap-2">
                 <Package className="w-4 h-4 animate-pulse" />
-                <span>Laddar innehav...</span>
+                <span className="font-sans">Laddar innehav...</span>
               </div>
             </div>
           ) : tabHoldings.length === 0 ? (
             <div className="text-center py-6 sm:py-8">
               <Package className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 opacity-50 text-muted-foreground" />
-              <h3 className="text-base sm:text-lg font-medium mb-2 text-foreground">
+              <h3 className="text-base sm:text-lg font-heading font-semibold mb-2 text-foreground">
                 Inga innehav registrerade
               </h3>
-              <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 max-w-sm mx-auto px-2">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 max-w-sm mx-auto px-2 font-sans">
                 Lägg till dina nuvarande aktier, fonder och kassapositioner för att få en komplett bild av din portfölj och bättre AI-rekommendationer.
               </p>
               <div className="flex flex-col sm:flex-row gap-2 justify-center px-2">
-                <Button className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm w-full sm:w-auto" onClick={() => handleOpenAddHolding()}>
+                <Button className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm w-full sm:w-auto font-sans" onClick={() => handleOpenAddHolding()}>
                   <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Lägg till innehav
                 </Button>
-                <Button variant="outline" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm w-full sm:w-auto" onClick={() => setShowAddCashDialog(true)}>
+                <Button variant="outline" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm w-full sm:w-auto font-sans" onClick={() => setShowAddCashDialog(true)}>
                   <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Lägg till kassa
                 </Button>
               </div>
             </div>
           ) : (
-            <div className="space-y-2.5 sm:space-y-3">
+            <div className="space-y-6 sm:space-y-8">
+              {/* Portfolio Summary Header */}
+              {(totalPortfolioValue > 0 || totalCash > 0) && (() => {
+                const stockCount = allHoldings.filter(h => h.holding_type !== 'cash').length;
+                const totalValue = totalPortfolioValue + totalCash;
+                const portfolioPercentage = totalValue > 0 
+                  ? ((totalPortfolioValue / totalValue) * 100) 
+                  : 0;
+                const cashPercentage = totalValue > 0 
+                  ? (totalCash / totalValue * 100) 
+                  : 0;
+                
+                // Calculate circle SVG paths for pie chart
+                const radius = 60;
+                const centerX = 70;
+                const centerY = 70;
+                const circumference = 2 * Math.PI * radius;
+                
+                // Calculate angles for pie slices
+                const stocksAngle = (portfolioPercentage / 100) * 360;
+                const cashAngle = (cashPercentage / 100) * 360;
+                
+                // Helper function to create arc path
+                const createArcPath = (startAngle: number, endAngle: number) => {
+                  const startRad = ((startAngle - 90) * Math.PI) / 180;
+                  const endRad = ((endAngle - 90) * Math.PI) / 180;
+                  const x1 = centerX + radius * Math.cos(startRad);
+                  const y1 = centerY + radius * Math.sin(startRad);
+                  const x2 = centerX + radius * Math.cos(endRad);
+                  const y2 = centerY + radius * Math.sin(endRad);
+                  const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
+                  
+                  return `M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
+                };
+                
+                return (
+                  <Card className="bg-card border border-border rounded-xl p-4 sm:p-5 md:p-6 shadow-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-6 sm:gap-8">
+                      {/* Pie Chart Circle - Centered on mobile */}
+                      <div className="flex justify-center md:justify-start">
+                        <div className="relative w-28 h-28 sm:w-32 sm:h-32">
+                          <svg className="w-full h-full" viewBox="0 0 140 140">
+                            {/* Stocks slice */}
+                            {portfolioPercentage > 0 && (
+                              <path
+                                d={createArcPath(0, stocksAngle)}
+                                fill="hsl(var(--primary))"
+                                className="transition-all duration-500 ease-out"
+                              />
+                            )}
+                            {/* Cash slice */}
+                            {cashPercentage > 0 && (
+                              <path
+                                d={createArcPath(stocksAngle, stocksAngle + cashAngle)}
+                                fill="hsl(var(--muted-foreground))"
+                                className="transition-all duration-500 ease-out opacity-60"
+                              />
+                            )}
+                            {/* Center hole for donut effect */}
+                            <circle
+                              cx={centerX}
+                              cy={centerY}
+                              r={radius - 12}
+                              fill="hsl(var(--card))"
+                            />
+                          </svg>
+                          {/* Center content */}
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <p className="text-xl sm:text-2xl font-heading font-bold text-foreground">
+                              {stockCount}
+                            </p>
+                            <p className="text-[10px] sm:text-xs text-muted-foreground font-sans">
+                              {stockCount === 1 ? 'aktie' : 'aktier'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Stats Grid - Compact and unified */}
+                      <div className="space-y-4">
+                        {/* Total - Prominent */}
+                        <div className="pb-3 border-b border-border">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <p className="text-xs sm:text-sm text-muted-foreground font-sans uppercase tracking-wide">Totalt portföljvärde</p>
+                            <p className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-foreground">
+                              {formatCurrency(totalValue, 'SEK')}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Breakdown - Compact cards */}
+                        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                          {/* Stocks Card */}
+                          <div className="rounded-lg border border-border/50 bg-muted/30 p-3 sm:p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-2.5 h-2.5 rounded-full bg-primary flex-shrink-0" />
+                              <p className="text-xs text-muted-foreground font-sans font-medium uppercase tracking-wide">Aktier</p>
+                            </div>
+                            <p className="text-base sm:text-lg font-heading font-bold text-foreground mb-1">
+                              {formatCurrency(totalPortfolioValue, 'SEK')}
+                            </p>
+                            <p className="text-xs text-muted-foreground font-sans">
+                              {portfolioPercentage.toFixed(1)}% av totalt
+                            </p>
+                          </div>
+                          
+                          {/* Cash Card */}
+                          {totalCash > 0 ? (
+                            <div className="rounded-lg border border-border/50 bg-muted/30 p-3 sm:p-4">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/60 flex-shrink-0" />
+                                <p className="text-xs text-muted-foreground font-sans font-medium uppercase tracking-wide">Kassa</p>
+                              </div>
+                              <p className="text-base sm:text-lg font-heading font-bold text-foreground mb-1">
+                                {formatCurrency(totalCash, 'SEK')}
+                              </p>
+                              <p className="text-xs text-muted-foreground font-sans">
+                                {cashPercentage.toFixed(1)}% av totalt
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="rounded-lg border border-border/30 bg-muted/10 p-3 sm:p-4 opacity-50">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30 flex-shrink-0" />
+                                <p className="text-xs text-muted-foreground font-sans font-medium uppercase tracking-wide">Kassa</p>
+                              </div>
+                              <p className="text-base sm:text-lg font-heading font-bold text-foreground mb-1">
+                                –
+                              </p>
+                              <p className="text-xs text-muted-foreground font-sans">
+                                Inget registrerat
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })()}
               {holdingsActionButtons}
               {viewMode === 'cards' ? (
                 <div className="space-y-4">
@@ -643,7 +827,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
                   ))}
                 </div>
               ) : (
-                <div className="space-y-2.5 sm:space-y-3">
+                <div className="space-y-4 sm:space-y-6">
                   <HoldingsTable
                     holdings={filteredHoldings}
                     onRefreshPrice={handleUpdateHoldingPrice}
