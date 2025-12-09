@@ -69,6 +69,11 @@ const normalizeHeader = (header: string) => {
 
   if (!normalized) return null;
 
+  // [!code ++] HÄR ÄR DEN SAKNADE DELEN:
+  if (/(typ|type|kategori|category|slag|instrument)/.test(normalized) && !/inköpstyp/.test(normalized)) {
+    return 'type' as const;
+  }
+
   if (/(symbol|ticker)/.test(normalized)) return 'symbol' as const;
   if (/(kortnamn)/.test(normalized)) return 'symbol' as const;
   if (/(isin)/.test(normalized)) return 'symbol' as const;
