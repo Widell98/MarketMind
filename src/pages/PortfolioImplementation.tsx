@@ -188,7 +188,7 @@ const PortfolioImplementation = () => {
           price_currency: holding.currency,
           current_value: currentValue,
           currency: holding.currency,
-          holding_type: 'stock' as const,
+          holding_type: holding.holdingType || 'stock',
           purchase_date: nowIso,
         };
       });

@@ -5,6 +5,7 @@ export interface ParsedCsvHolding {
   purchasePrice: number;
   currency: string;
   currencyProvided: boolean;
+  holdingType?: 'stock' | 'fund' | 'crypto' | 'bonds' | 'real_estate' | 'other';
 }
 
 export const normalizeShareClassTicker = (value: string) => {
@@ -67,6 +68,11 @@ const normalizeHeader = (header: string) => {
   const normalized = header.trim().toLowerCase();
 
   if (!normalized) return null;
+
+  // [!code ++] HÄR ÄR DEN SAKNADE DELEN:
+  if (/(typ|type|kategori|category|slag|instrument)/.test(normalized) && !/inköpstyp/.test(normalized)) {
+    return 'type' as const;
+  }
 
   if (/(symbol|ticker)/.test(normalized)) return 'symbol' as const;
   if (/(kortnamn)/.test(normalized)) return 'symbol' as const;
@@ -161,12 +167,13 @@ export const parsePortfolioHoldingsFromCSV = (text: string): ParsedCsvHolding[] 
   const headerCurrencyHints = headerParts.map(part => extractCurrencyFromHeader(part));
   const hasHeaderRow = mappedHeaders.some(Boolean);
 
-  const columnIndices: Record<'name' | 'symbol' | 'quantity' | 'purchasePrice' | 'currency', number[]> = {
+  const columnIndices: Record<'name' | 'symbol' | 'quantity' | 'purchasePrice' | 'currency'| 'type', number[]> = {
     name: [],
     symbol: [],
     quantity: [],
     purchasePrice: [],
-    currency: []
+    currency: [],
+    type: []
   };
 
   if (hasHeaderRow) {
@@ -234,7 +241,7 @@ export const parsePortfolioHoldingsFromCSV = (text: string): ParsedCsvHolding[] 
       .split(delimiter)
       .map(part => trimQuotes(part).replace(/^\uFEFF/, '').trim());
 
-    const getValue = (field: 'name' | 'symbol' | 'quantity' | 'purchasePrice' | 'currency') => {
+    const getValue = (field: 'name' | 'symbol' | 'quantity' | 'purchasePrice'| 'currency' | 'type') => {
       const rawIndices = columnIndices[field];
       const indices = field === 'purchasePrice' ? prioritizePurchasePriceIndices(rawIndices) : rawIndices;
       if (!indices || indices.length === 0) {
@@ -252,6 +259,37 @@ export const parsePortfolioHoldingsFromCSV = (text: string): ParsedCsvHolding[] 
       const [firstIndex] = indices;
       return typeof firstIndex === 'number' ? parts[firstIndex] ?? '' : '';
     };
+
+    const typeRaw = getValue('type');
+    let detectedType: ParsedCsvHolding['holdingType'] = 'stock'; // Default till stock
+
+    if (typeRaw) {
+      const lowerType = typeRaw.toLowerCase().trim();
+      
+      // [!code ++] Specifik hantering för FUNDS och STOCKS
+      if (lowerType === 'funds' || lowerType.includes('fund') || lowerType.includes('fond') || lowerType.includes('etf')) {
+        detectedType = 'fund';
+      } else if (lowerType === 'stocks' || lowerType.includes('stock') || lowerType.includes('aktie')) {
+        detectedType = 'stock';
+      } else if (/(krypto|crypto|bitcoin|ethereum|btc|eth)/.test(lowerType)) {
+        detectedType = 'crypto';
+      } else if (/(certifikat|warrant|mini)/.test(lowerType)) {
+        detectedType = 'other';
+      } else if (/(obligation|bond|ränta)/.test(lowerType)) {
+        detectedType = 'bonds';
+      } else if (/(fastighet|real estate)/.test(lowerType)) {
+        detectedType = 'real_estate';
+      } else {
+        // Fallback: Om det står något annat okänt, anta aktie
+        detectedType = 'stock';
+      }
+    } else {
+        // Om ingen typ-kolumn hittades, gissa på namnet
+        const nameVal = getValue('name').toLowerCase();
+        if (nameVal.includes('fond') || nameVal.includes('fund') || nameVal.includes('etf')) {
+            detectedType = 'fund';
+        }
+    }
 
     const quantityIndices = columnIndices.quantity;
     let quantity = NaN;
@@ -366,6 +404,7 @@ export const parsePortfolioHoldingsFromCSV = (text: string): ParsedCsvHolding[] 
       purchasePrice,
       currency: resolvedCurrency,
       currencyProvided,
+      holdingType: detectedType,
     });
   }
 
