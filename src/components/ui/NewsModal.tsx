@@ -4,6 +4,7 @@ import { Button } from './button';
 import { Badge } from './badge';
 import { Separator } from './separator';
 import { ExternalLink, Calendar, User, Newspaper } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface NewsItem {
   id: string;
@@ -110,8 +111,8 @@ const NewsModal: React.FC<NewsModalProps> = ({ news, isOpen, onClose }) => {
             <Separator />
             
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              <Button 
-                className="w-full sm:w-auto rounded-full font-semibold" 
+              <Button
+                className="w-full sm:w-auto rounded-full font-semibold"
                 asChild
               >
                 <a 
@@ -122,12 +123,21 @@ const NewsModal: React.FC<NewsModalProps> = ({ news, isOpen, onClose }) => {
                   Läs hela artikeln på {news.source} <ExternalLink className="ml-2 w-4 h-4" />
                 </a>
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full sm:w-auto rounded-full"
                 onClick={onClose}
               >
                 Stäng
+              </Button>
+              <Button
+                variant="secondary"
+                className="w-full sm:w-auto rounded-full"
+                asChild
+              >
+                <Link to={`/ai-chatt?message=${encodeURIComponent(`Kan vi diskutera nyheten ”${news.headline}”?`)}`}>
+                  Diskutera med AI
+                </Link>
               </Button>
             </div>
           </div>
