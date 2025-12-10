@@ -6,6 +6,7 @@ export interface PolymarketOutcome {
   price: number; // 0.0 to 1.0
   volume?: number;
   description?: string;
+  tokenId?: string; // CLOB token ID for fetching historical data
 }
 
 export interface PolymarketMarket {
@@ -42,6 +43,7 @@ export interface PolymarketMarketDetail extends PolymarketMarket {
   archived?: boolean;
   collateralToken?: string;
   outcomesDetails?: PolymarketOutcome[];
+  clobTokenIds?: string[]; // Array of token IDs for CLOB API, indexed by outcome position
 }
 
 export interface PolymarketEvent {
@@ -81,14 +83,12 @@ export interface PolymarketHistoryPoint {
 export interface PolymarketMarketHistory {
   marketId: string;
   marketSlug: string;
-  outcomes: {
-    [outcomeId: string]: PolymarketHistoryPoint[];
-  };
+  points: PolymarketHistoryPoint[]; // Simplified to single array of points
 }
 
-// Helper type for graph data transformation
+// Helper type for graph data transformation (simplified for single price line)
 export interface GraphDataPoint {
   date: string;
-  [outcomeTitle: string]: string | number;
+  price: number; // Price as percentage (0-100)
 }
 

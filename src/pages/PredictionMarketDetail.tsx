@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Loader2, AlertCircle, MessageSquare } from "lucide-react";
 import { usePolymarketMarketDetail, usePolymarketMarketHistory, transformHistoryToGraphData } from "@/hooks/usePolymarket";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { MarketImpactAnalysis } from "@/components/MarketImpactAnalysis";
 
 // Format volume number to display string
@@ -27,12 +27,30 @@ const PredictionMarketDetail = () => {
   const [selectedScenario, setSelectedScenario] = useState<string | null>(null);
 
   const { data: market, isLoading: marketLoading, error: marketError } = usePolymarketMarketDetail(slug || "");
-  const { data: history } = usePolymarketMarketHistory(market || null);
+  const { data: history, isLoading: historyLoading, error: historyError } = usePolymarketMarketHistory(market || null);
 
   // Transform history to graph data
   const graphData = useMemo(() => {
-    if (!history) return [];
-    return transformHistoryToGraphData(history);
+    if (!history) {
+      console.log('PredictionMarketDetail: No history data available');
+      return [];
+    }
+    if (!history.points || !Array.isArray(history.points) || history.points.length === 0) {
+      console.log('PredictionMarketDetail: History points are empty or invalid', {
+        hasPoints: !!history.points,
+        isArray: Array.isArray(history.points),
+        length: history.points?.length || 0,
+        history,
+      });
+      return [];
+    }
+    const transformed = transformHistoryToGraphData(history);
+    console.log('PredictionMarketDetail: Transformed graph data', {
+      pointsCount: history.points.length,
+      transformedCount: transformed.length,
+      firstFew: transformed.slice(0, 3),
+    });
+    return transformed;
   }, [history]);
 
   // Generate date navigation points (simplified - based on resolution date or end date)
@@ -108,18 +126,14 @@ const PredictionMarketDetail = () => {
 
   const volumeDisplay = formatVolume(market.volumeNum || market.volume || 0);
 
-  // Generate colors for outcomes
-  const getOutcomeColor = (index: number, title: string) => {
-    const nameLower = title.toLowerCase();
-    if (nameLower.includes("decrease") || nameLower.includes("cut") || nameLower === "yes") {
-      return "#eab308"; // yellow
-    } else if (nameLower.includes("increase") || nameLower.includes("hike") || nameLower === "no") {
-      return "#3b82f6"; // blue
-    } else {
-      const colors = ["#eab308", "#3b82f6", "#ef4444", "#10b981", "#8b5cf6"];
-      return colors[index % colors.length];
-    }
-  };
+  // Find primary outcome for display
+  const primaryOutcome = market.outcomes.find(o => 
+    o.title.toLowerCase().includes('yes') || 
+    o.title.toLowerCase() === 'yes'
+  ) || market.outcomes[0];
+
+  // Get current price for primary outcome
+  const currentPrice = primaryOutcome ? Math.round(primaryOutcome.price * 100) : 0;
 
   return (
     <Layout>
@@ -182,22 +196,32 @@ const PredictionMarketDetail = () => {
               <CardContent className="p-4 sm:p-6">
                 <div className="mb-4">
                   <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mb-3">
-                    {market.outcomes.map((outcome, index) => (
-                      <div key={outcome.id} className="flex items-center gap-2">
+                    {primaryOutcome && (
+                      <div className="flex items-center gap-2">
                         <div
-                          className="w-2 h-2 sm:w-3 sm:h-3 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: getOutcomeColor(index, outcome.title) }}
+                          className="w-2 h-2 sm:w-3 sm:h-3 rounded-full flex-shrink-0 bg-blue-500"
                         />
                         <span className="whitespace-nowrap">
-                          {outcome.title} {Math.round(outcome.price * 100)}%
+                          Pris: {currentPrice}%
                         </span>
                       </div>
-                    ))}
+                    )}
                     <span className="ml-auto text-muted-foreground whitespace-nowrap">Polymarket</span>
                   </div>
                 </div>
                 
-                {graphData.length > 0 ? (
+                {historyLoading ? (
+                  <div className="h-48 sm:h-64 flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : historyError ? (
+                  <div className="h-48 sm:h-64 flex items-center justify-center text-muted-foreground text-sm">
+                    <div className="text-center">
+                      <AlertCircle className="h-5 w-5 mx-auto mb-2 opacity-50" />
+                      <p>Kunde inte ladda historisk data</p>
+                    </div>
+                  </div>
+                ) : graphData.length > 0 ? (
                   <div className="h-48 sm:h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={graphData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -212,9 +236,10 @@ const PredictionMarketDetail = () => {
                           tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                           axisLine={false}
                           width={40}
+                          tickFormatter={(value) => `${value}%`}
                         />
                         <Tooltip 
-                          formatter={(value: any) => [`${value}%`, '']}
+                          formatter={(value: any) => [`${value}%`, 'Pris']}
                           labelStyle={{ color: 'hsl(var(--foreground))', fontSize: '12px' }}
                           contentStyle={{ 
                             backgroundColor: 'hsl(var(--card))',
@@ -223,28 +248,33 @@ const PredictionMarketDetail = () => {
                             fontSize: '12px'
                           }}
                         />
-                        <Legend 
-                          wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
-                          iconType="line"
+                        <Line
+                          type="monotone"
+                          dataKey="price"
+                          stroke="#3b82f6"
+                          strokeWidth={2}
+                          dot={{ r: 2 }}
+                          activeDot={{ r: 4 }}
+                          name="Pris"
                         />
-                        {market.outcomes.map((outcome, index) => (
-                          <Line
-                            key={outcome.id}
-                            type="monotone"
-                            dataKey={outcome.title}
-                            stroke={getOutcomeColor(index, outcome.title)}
-                            strokeWidth={2}
-                            dot={{ r: 2 }}
-                            activeDot={{ r: 4 }}
-                            name={outcome.title}
-                          />
-                        ))}
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
                 ) : (
                   <div className="h-48 sm:h-64 flex items-center justify-center text-muted-foreground text-sm">
-                    Historisk data är inte tillgänglig
+                    <div className="text-center">
+                      <p>Historisk data är inte tillgänglig</p>
+                      {market && market.outcomes && market.outcomes.length === 0 && (
+                        <p className="text-xs mt-2 opacity-75">Marknaden har inga outcomes</p>
+                      )}
+                      {market && market.outcomes && market.outcomes.length > 0 && (
+                        <p className="text-xs mt-2 opacity-75">
+                          Debug: history={history ? 'exists' : 'null'}, 
+                          points={history?.points?.length || 0}, 
+                          graphData={graphData.length}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
               </CardContent>

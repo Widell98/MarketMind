@@ -6,13 +6,19 @@ import type {
   PolymarketMarketsResponse,
   PolymarketTag,
   PolymarketMarketHistory,
+  PolymarketHistoryPoint,
+  PolymarketOutcome,
   GraphDataPoint,
 } from '@/types/polymarket';
 
 // Helper function to call Polymarket API via Supabase edge function
-const callPolymarketAPI = async (endpoint: string, params?: Record<string, any>): Promise<any> => {
+const callPolymarketAPI = async (
+  endpoint: string, 
+  params?: Record<string, any>,
+  apiType: 'gamma' | 'clob' = 'gamma'
+): Promise<any> => {
   const { data, error } = await supabase.functions.invoke('polymarket-proxy', {
-    body: { endpoint, params },
+    body: { endpoint, params, apiType },
   });
 
   if (error) {
@@ -72,6 +78,16 @@ const transformMarket = (apiMarket: any): PolymarketMarket => {
     const marketId = apiMarket.id || apiMarket.conditionId || apiMarket.marketId || apiMarket.condition_id || '';
     const marketSlug = apiMarket.slug || apiMarket.question_id || apiMarket.questionId || apiMarket.id || marketId;
     
+    // Extract clobTokenIds if available (can be array or comma-separated string) - kept as fallback
+    let clobTokenIdsArray: string[] = [];
+    if (apiMarket.clobTokenIds && Array.isArray(apiMarket.clobTokenIds)) {
+      clobTokenIdsArray = apiMarket.clobTokenIds;
+    } else if (apiMarket.clobTokenIds && typeof apiMarket.clobTokenIds === 'string') {
+      clobTokenIdsArray = apiMarket.clobTokenIds.split(',').map(id => id.trim());
+    } else if (apiMarket.clob_token_ids && Array.isArray(apiMarket.clob_token_ids)) {
+      clobTokenIdsArray = apiMarket.clob_token_ids;
+    }
+    
     return {
       id: marketId,
       slug: marketSlug,
@@ -86,6 +102,11 @@ const transformMarket = (apiMarket: any): PolymarketMarket => {
         const outcomePrice = outcome.price || outcome.lastPrice || outcome.price_24h || 0;
         const outcomeTitle = outcome.title || outcome.name || outcome.outcome || outcome.label || `Outcome ${index + 1}`;
         const outcomeId = outcome.id || outcome.outcome || outcome.token_id || String(index);
+        
+        // Use outcome.id directly as tokenId (primary method per Polymarket docs)
+        // Store clobTokenIds array index as fallback if needed
+        // Note: outcome.id is typically the token ID for CLOB API
+        const tokenId = outcomeId; // outcome.id is already the tokenId in most cases
 
         return {
           id: outcomeId,
@@ -93,6 +114,7 @@ const transformMarket = (apiMarket: any): PolymarketMarket => {
           price: typeof outcomePrice === 'number' ? outcomePrice : parseFloat(String(outcomePrice || 0)) || 0,
           volume: outcome.volume || outcome.volume_24h || undefined,
           description: outcome.description || undefined,
+          tokenId: tokenId, // Store for reference, but outcome.id is used directly
         };
       }),
       endDate: apiMarket.endDate || apiMarket.endDateIso || apiMarket.end_date || apiMarket.end_date_iso || undefined,
@@ -152,14 +174,6 @@ export const fetchPolymarketMarkets = async (params?: {
 
     const data = await callPolymarketAPI('/markets', apiParams);
     
-    console.log('Polymarket API response structure:', {
-      isArray: Array.isArray(data),
-      hasData: !!data.data,
-      hasResults: !!data.results,
-      keys: Object.keys(data),
-      firstItem: Array.isArray(data) ? data[0] : data.data?.[0] || data.results?.[0] || null,
-    });
-    
     // Handle different response structures
     let markets: any[] = [];
     if (Array.isArray(data)) {
@@ -202,23 +216,18 @@ export const fetchPolymarketMarketDetail = async (slugOrId: string): Promise<Pol
     // First try with /markets/slug/{slug} endpoint (recommended by docs)
     try {
       data = await callPolymarketAPI(`/markets/slug/${decodedSlugOrId}`);
-      console.log('Successfully fetched market with slug endpoint:', `/markets/slug/${decodedSlugOrId}`);
     } catch (error: any) {
       lastError = error;
-      console.log(`Failed to fetch with /markets/slug/${decodedSlugOrId}:`, error.message);
       
       // If slug endpoint fails, try the old format /markets/{slug} as fallback
       try {
         data = await callPolymarketAPI(`/markets/${decodedSlugOrId}`);
-        console.log('Successfully fetched market with direct path:', `/markets/${decodedSlugOrId}`);
       } catch (error2: any) {
         lastError = error2;
-        console.log(`Failed to fetch with /markets/${decodedSlugOrId}:`, error2.message);
         
         // If both fail with validation error (422), the identifier might be an ID instead of slug
         // Search for the market in the list to find its slug
         if (error2?.message?.includes('422') || error2?.message?.includes('invalid') || error2?.message?.includes('validation')) {
-          console.log('Identifier might be an ID, searching for market in list...');
           try {
             // Search for markets and find the one matching our slug/id
             const searchData = await callPolymarketAPI('/markets', { 
@@ -252,13 +261,9 @@ export const fetchPolymarketMarketDetail = async (slugOrId: string): Promise<Pol
             
             if (matchingMarket) {
               data = matchingMarket;
-              console.log('Found matching market by searching, using that data');
-            } else {
-              console.log('No matching market found in search results');
             }
           } catch (error3: any) {
             lastError = error3;
-            console.log('Search alternative also failed:', error3.message);
           }
         }
       }
@@ -270,6 +275,16 @@ export const fetchPolymarketMarketDetail = async (slugOrId: string): Promise<Pol
     }
 
     const market = transformMarket(data);
+    
+    // Extract clobTokenIds if available
+    let clobTokenIds: string[] | undefined = undefined;
+    if (data.clobTokenIds && Array.isArray(data.clobTokenIds)) {
+      clobTokenIds = data.clobTokenIds;
+    } else if (data.clobTokenIds && typeof data.clobTokenIds === 'string') {
+      clobTokenIds = data.clobTokenIds.split(',').map(id => id.trim());
+    } else if (data.clob_token_ids && Array.isArray(data.clob_token_ids)) {
+      clobTokenIds = data.clob_token_ids;
+    }
     
     return {
       ...market,
@@ -285,6 +300,7 @@ export const fetchPolymarketMarketDetail = async (slugOrId: string): Promise<Pol
       resolutionSource: data.resolutionSource || undefined,
       collateralToken: data.collateralToken || undefined,
       outcomesDetails: market.outcomes,
+      clobTokenIds: clobTokenIds,
     };
   } catch (error) {
     console.error('Error fetching market detail:', error);
@@ -326,82 +342,26 @@ export const fetchPolymarketTags = async (): Promise<PolymarketTag[]> => {
   }
 };
 
-// Generate mock history data (since Polymarket API may not provide historical data directly)
-// In a real implementation, you might want to cache prices over time or use a different data source
-const generateMockHistory = (
-  market: PolymarketMarketDetail,
-  days: number = 30
-): PolymarketMarketHistory => {
-  const now = new Date();
-  const history: PolymarketMarketHistory = {
-    marketId: market.id,
-    marketSlug: market.slug,
-    outcomes: {},
-  };
 
-  market.outcomes.forEach((outcome) => {
-    const points: any[] = [];
-    const basePrice = outcome.price;
-    
-    // Generate historical points with some variation
-    for (let i = days; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      
-      // Add some random variation to simulate price movement
-      const variation = (Math.random() - 0.5) * 0.2; // ±10% variation
-      const price = Math.max(0, Math.min(1, basePrice + variation));
-      
-      points.push({
-        timestamp: date.toISOString(),
-        price,
-        outcomeId: outcome.id,
-        outcomeTitle: outcome.title,
-      });
-    }
-    
-    history.outcomes[outcome.id] = points;
-  });
-
-  return history;
-};
-
-// Transform history to graph data format
+// Transform history to graph data format (simplified for single price line)
 export const transformHistoryToGraphData = (
-  history: PolymarketMarketHistory
+  history: PolymarketMarketHistory | null | undefined
 ): GraphDataPoint[] => {
-  if (!history.outcomes || Object.keys(history.outcomes).length === 0) {
+  if (!history || !history.points || !Array.isArray(history.points) || history.points.length === 0) {
     return [];
   }
 
-  // Get all timestamps
-  const allTimestamps = new Set<string>();
-  Object.values(history.outcomes).forEach((points) => {
-    points.forEach((point) => {
-      allTimestamps.add(point.timestamp);
-    });
-  });
-
-  const sortedTimestamps = Array.from(allTimestamps).sort();
-
-  // Create data points for each timestamp
-  return sortedTimestamps.map((timestamp) => {
-    const point: GraphDataPoint = {
-      date: new Date(timestamp).toLocaleDateString('sv-SE', { 
+  // Sort points by timestamp and transform to graph data format
+  return history.points
+    .slice()
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    .map((point) => ({
+      date: new Date(point.timestamp).toLocaleDateString('sv-SE', { 
         month: 'short', 
         day: 'numeric' 
       }),
-    };
-
-    Object.entries(history.outcomes).forEach(([outcomeId, points]) => {
-      const pointAtTime = points.find((p) => p.timestamp === timestamp);
-      if (pointAtTime) {
-        point[pointAtTime.outcomeTitle] = Math.round(pointAtTime.price * 100);
-      }
-    });
-
-    return point;
-  });
+      price: Math.round(point.price * 100), // Convert 0-1 to 0-100 percentage
+    }));
 };
 
 // Hook for fetching markets list
@@ -443,16 +403,201 @@ export const usePolymarketTags = () => {
   });
 };
 
-// Hook for market history (with mock data generation for now)
+// Hook for market history using CLOB API - fetches only primary outcome
 export const usePolymarketMarketHistory = (market: PolymarketMarketDetail | null | undefined) => {
+  const hasMarket = !!market;
+  const hasOutcomes = !!market?.outcomes && Array.isArray(market.outcomes) && market.outcomes.length > 0;
+  const isEnabled = hasMarket && hasOutcomes;
+  
+  console.log('usePolymarketMarketHistory: Hook called', {
+    hasMarket,
+    hasOutcomes,
+    isEnabled,
+    marketId: market?.id,
+    marketSlug: market?.slug,
+    outcomesCount: market?.outcomes?.length || 0,
+  });
+  
   return useQuery({
-    queryKey: ['polymarket-market-history', market?.slug],
-    queryFn: () => {
-      if (!market) return null;
-      return generateMockHistory(market, 90); // Last 90 days
+    queryKey: ['polymarket-market-history', market?.slug, market?.id],
+    queryFn: async () => {
+      if (!market || !market.outcomes || !Array.isArray(market.outcomes) || market.outcomes.length === 0) {
+        return null;
+      }
+      
+      // Find primary outcome: prefer "Yes" outcome, otherwise use first outcome
+      const yesOutcome = market.outcomes.find(o => 
+        o.title.toLowerCase().includes('yes') || 
+        o.title.toLowerCase() === 'yes'
+      );
+      const primaryOutcome = yesOutcome || market.outcomes[0];
+      
+      if (!primaryOutcome) {
+        return null;
+      }
+      
+      // Get tokenId for primary outcome
+      // Try outcome.id first (most common), then outcome.tokenId, then clobTokenIds array
+      const outcomeIndex = market.outcomes.indexOf(primaryOutcome);
+      let tokenId = primaryOutcome.id || primaryOutcome.tokenId || market.clobTokenIds?.[outcomeIndex];
+      
+      console.log('usePolymarketMarketHistory: Looking for tokenId', {
+        primaryOutcomeTitle: primaryOutcome.title,
+        outcomeId: primaryOutcome.id,
+        outcomeTokenId: primaryOutcome.tokenId,
+        outcomeIndex,
+        clobTokenIds: market.clobTokenIds,
+        foundTokenId: tokenId,
+        marketConditionId: market.conditionId,
+      });
+      
+      // If outcome.id doesn't work, try using conditionId from market
+      // Some markets use conditionId as base for token IDs
+      if (!tokenId && market.conditionId) {
+        // Try conditionId-based token (sometimes outcomes use conditionId + index)
+        tokenId = market.conditionId;
+        console.log('usePolymarketMarketHistory: Using conditionId as tokenId', tokenId);
+      }
+      
+      if (!tokenId) {
+        // If no tokenId found, generate mock data
+        console.log('usePolymarketMarketHistory: No tokenId found, generating mock data');
+        const mockPoints = generateMockHistoryForOutcome(primaryOutcome, 90);
+        return {
+          marketId: market.id,
+          marketSlug: market.slug,
+          points: mockPoints,
+        };
+      }
+      
+      try {
+        // Call CLOB API prices-history endpoint
+        // Using 'market' parameter (token ID) and 'interval' parameter (e.g., "1d" for daily)
+        console.log('usePolymarketMarketHistory: Calling CLOB API', {
+          endpoint: '/prices-history',
+          market: tokenId,
+          interval: '1d',
+        });
+        
+        const historyData = await callPolymarketAPI('/prices-history', {
+          market: tokenId,
+          interval: '1d', // Daily interval
+        }, 'clob');
+        
+        console.log('usePolymarketMarketHistory: Got response from CLOB API', {
+          isArray: Array.isArray(historyData),
+          length: Array.isArray(historyData) ? historyData.length : 'not array',
+          firstItem: Array.isArray(historyData) && historyData.length > 0 ? historyData[0] : null,
+        });
+        
+        // Transform CLOB API response to our format
+        // CLOB API /prices-history returns array of { t: number, p: number } objects
+        // where t = timestamp (Unix timestamp in seconds), p = price (0-1)
+        if (Array.isArray(historyData) && historyData.length > 0) {
+          console.log('usePolymarketMarketHistory: Transforming history data', {
+            dataLength: historyData.length,
+            samplePoint: historyData[0],
+          });
+          
+          const points: PolymarketHistoryPoint[] = historyData.map((point: any) => {
+            // Handle timestamp - CLOB API returns 't' as Unix timestamp in seconds
+            let timestamp: string;
+            if (typeof point.t === 'number') {
+              // Unix timestamp in seconds, convert to milliseconds then ISO
+              timestamp = new Date(point.t * 1000).toISOString();
+            } else if (typeof point.timestamp === 'number') {
+              // Fallback to timestamp field if 't' is not available
+              timestamp = new Date(point.timestamp * 1000).toISOString();
+            } else if (typeof point.timestamp === 'string') {
+              // Already ISO string
+              timestamp = new Date(point.timestamp).toISOString();
+            } else {
+              // Fallback to current time if invalid
+              timestamp = new Date().toISOString();
+            }
+            
+            // Handle price - CLOB API returns 'p' as price (0-1 decimal)
+            let price: number;
+            if (typeof point.p === 'number') {
+              // Primary format: 'p' field with price as decimal (0-1)
+              price = point.p;
+            } else if (typeof point.price === 'number') {
+              // Fallback to 'price' field if 'p' is not available
+              price = point.price > 1 ? point.price / 100 : point.price;
+            } else {
+              price = parseFloat(point.price || point.p || 0);
+              if (price > 1) price = price / 100;
+            }
+            
+            return {
+              timestamp,
+              price: Math.max(0, Math.min(1, price)), // Ensure price is between 0 and 1
+              outcomeId: primaryOutcome.id,
+              outcomeTitle: primaryOutcome.title,
+            };
+          });
+          
+          console.log('usePolymarketMarketHistory: Transformed points', {
+            pointsCount: points.length,
+            firstPoint: points[0],
+            lastPoint: points[points.length - 1],
+          });
+          
+          return {
+            marketId: market.id,
+            marketSlug: market.slug,
+            points,
+          };
+        }
+        
+        // If API returns empty or invalid data, use mock data
+        console.log('usePolymarketMarketHistory: API returned empty/invalid data, using mock data');
+        const mockPoints = generateMockHistoryForOutcome(primaryOutcome, 90);
+        return {
+          marketId: market.id,
+          marketSlug: market.slug,
+          points: mockPoints,
+        };
+      } catch (error) {
+        // Fallback to mock data if CLOB API fails
+        console.error('usePolymarketMarketHistory: Error fetching history, using mock data', error);
+        const mockPoints = generateMockHistoryForOutcome(primaryOutcome, 90);
+        return {
+          marketId: market.id,
+          marketSlug: market.slug,
+          points: mockPoints,
+        };
+      }
     },
-    enabled: !!market,
+    enabled: isEnabled,
     staleTime: 300000, // 5 minutes
   });
+};
+
+// Helper function to generate mock history for a single outcome (fallback)
+const generateMockHistoryForOutcome = (outcome: PolymarketOutcome, days: number): PolymarketHistoryPoint[] => {
+  const now = new Date();
+  const points: PolymarketHistoryPoint[] = [];
+  const basePrice = outcome.price || 0.5;
+  
+  for (let i = days; i >= 0; i--) {
+    const date = new Date(now);
+    date.setDate(date.getDate() - i);
+    
+    // Use seeded random for consistency
+    const seed = (i * 1000) % 1000;
+    const random = (Math.sin(seed) + 1) / 2;
+    const variation = (random - 0.5) * 0.2;
+    const price = Math.max(0, Math.min(1, basePrice + variation));
+    
+    points.push({
+      timestamp: date.toISOString(),
+      price,
+      outcomeId: outcome.id,
+      outcomeTitle: outcome.title,
+    });
+  }
+  
+  return points;
 };
 

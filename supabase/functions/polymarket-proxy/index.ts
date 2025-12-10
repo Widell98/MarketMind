@@ -6,6 +6,7 @@ const corsHeaders = {
 };
 
 const POLYMARKET_API_BASE = "https://gamma-api.polymarket.com";
+const CLOB_API_BASE = "https://clob.polymarket.com";
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -18,8 +19,8 @@ serve(async (req) => {
     
     console.log("Inkommande request body:", JSON.stringify(body, null, 2)); 
 
-    // Vi hämtar endpoint och params, men använder 'let' så vi kan ändra dem
-    let { endpoint, params } = body;
+    // Vi hämtar endpoint, params och apiType (gamma eller clob)
+    let { endpoint, params, apiType = 'gamma' } = body;
 
     // --- FIX: Tvinga fram "Trending" data om endpoint saknas eller är /events ---
     if (!endpoint || endpoint === "/events") {
@@ -53,9 +54,12 @@ serve(async (req) => {
     }
 
     const queryString = queryParams.toString();
-    const apiUrl = `${POLYMARKET_API_BASE}${endpoint}${queryString ? `?${queryString}` : ''}`;
+    
+    // Välj rätt API base URL baserat på apiType
+    const baseUrl = apiType === 'clob' ? CLOB_API_BASE : POLYMARKET_API_BASE;
+    const apiUrl = `${baseUrl}${endpoint}${queryString ? `?${queryString}` : ''}`;
 
-    console.log(`Proxying request to: ${apiUrl}`);
+    console.log(`Proxying request to ${apiType.toUpperCase()} API: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
       method: "GET",
