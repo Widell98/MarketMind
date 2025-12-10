@@ -1,0 +1,302 @@
+import React, { useState, useMemo } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import Layout from "@/components/Layout";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ArrowLeft, Loader2, AlertCircle, MessageSquare } from "lucide-react";
+import { usePolymarketMarketDetail, usePolymarketMarketHistory, transformHistoryToGraphData } from "@/hooks/usePolymarket";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { MarketImpactAnalysis } from "@/components/MarketImpactAnalysis";
+
+// Format volume number to display string
+const formatVolume = (volumeNum: number): string => {
+  if (volumeNum >= 1_000_000_000) {
+    return `${(volumeNum / 1_000_000_000).toFixed(3)}`;
+  } else if (volumeNum >= 1_000_000) {
+    return `${(volumeNum / 1_000_000).toFixed(1)}`;
+  } else if (volumeNum >= 1_000) {
+    return `${(volumeNum / 1_000).toFixed(1)}`;
+  }
+  return volumeNum.toFixed(0);
+};
+
+const PredictionMarketDetail = () => {
+  const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
+  const [selectedScenario, setSelectedScenario] = useState<string | null>(null);
+
+  const { data: market, isLoading: marketLoading, error: marketError } = usePolymarketMarketDetail(slug || "");
+  const { data: history } = usePolymarketMarketHistory(market || null);
+
+  // Transform history to graph data
+  const graphData = useMemo(() => {
+    if (!history) return [];
+    return transformHistoryToGraphData(history);
+  }, [history]);
+
+  // Generate date navigation points (simplified - based on resolution date or end date)
+  const datePoints = useMemo(() => {
+    if (!market) return [];
+    
+    const dates: string[] = ["Past"];
+    
+    if (market.endDate) {
+      const endDate = new Date(market.endDate);
+      dates.push(endDate.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' }));
+      
+      // Add some future dates for navigation
+      for (let i = 1; i <= 4; i++) {
+        const futureDate = new Date(endDate);
+        futureDate.setDate(futureDate.getDate() + i * 30);
+        dates.push(futureDate.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric', year: futureDate.getFullYear() !== endDate.getFullYear() ? 'numeric' : undefined }));
+      }
+    } else {
+      dates.push("Dec 10", "Jan 28, 2026", "Mar 18, 2026", "Apr 29, 2026");
+    }
+    
+    return dates;
+  }, [market]);
+
+  const [selectedDate, setSelectedDate] = useState(datePoints[1] || "Dec 10");
+
+  // Set first outcome as default selected scenario
+  React.useEffect(() => {
+    if (market && market.outcomes.length > 0 && !selectedScenario) {
+      setSelectedScenario(market.outcomes[0].id);
+    }
+  }, [market, selectedScenario]);
+
+  if (marketLoading) {
+    return (
+      <Layout>
+        <div className="container mx-auto py-8 max-w-7xl space-y-8">
+          <div className="animate-pulse space-y-6">
+            <Skeleton className="h-8 w-64" />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-4">
+                <Skeleton className="h-64 w-full" />
+                <Skeleton className="h-32 w-full" />
+              </div>
+              <div className="space-y-4">
+                <Skeleton className="h-48 w-full" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (marketError || !market) {
+    return (
+      <Layout>
+        <div className="container mx-auto py-8 max-w-7xl">
+          <Card className="p-8 border-red-500/50 bg-red-500/10">
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+              <AlertCircle className="h-4 w-4" />
+              <p>Marknaden kunde inte hittas eller laddas.</p>
+            </div>
+            <Button onClick={() => navigate('/predictions')} className="mt-4">
+              Tillbaka till marknader
+            </Button>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+
+  const volumeDisplay = formatVolume(market.volumeNum || market.volume || 0);
+
+  // Generate colors for outcomes
+  const getOutcomeColor = (index: number, title: string) => {
+    const nameLower = title.toLowerCase();
+    if (nameLower.includes("decrease") || nameLower.includes("cut") || nameLower === "yes") {
+      return "#eab308"; // yellow
+    } else if (nameLower.includes("increase") || nameLower.includes("hike") || nameLower === "no") {
+      return "#3b82f6"; // blue
+    } else {
+      const colors = ["#eab308", "#3b82f6", "#ef4444", "#10b981", "#8b5cf6"];
+      return colors[index % colors.length];
+    }
+  };
+
+  return (
+    <Layout>
+      <div className="container mx-auto py-8 max-w-7xl space-y-8">
+        {/* Back Button */}
+        <Button
+          variant="ghost"
+          onClick={() => navigate('/predictions')}
+          className="mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Tillbaka
+        </Button>
+
+        {/* Header Section */}
+        <div className="flex items-start gap-4 mb-6">
+          {market.imageUrl && (
+            <div className="flex-shrink-0">
+              <img
+                src={market.imageUrl}
+                alt={market.question}
+                className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg object-cover border border-border"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+          <div className="flex-grow min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">{market.question}</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              $ {volumeDisplay}m Vol. • Polymarket
+            </p>
+          </div>
+        </div>
+
+        {/* Date Navigation */}
+        {datePoints.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {datePoints.map((date) => (
+              <Button
+                key={date}
+                variant={selectedDate === date ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedDate(date)}
+                className="flex-shrink-0 whitespace-nowrap"
+              >
+                {date}
+              </Button>
+            ))}
+          </div>
+        )}
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Graph and Scenarios */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Probability Graph */}
+            <Card>
+              <CardContent className="p-4 sm:p-6">
+                <div className="mb-4">
+                  <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mb-3">
+                    {market.outcomes.map((outcome, index) => (
+                      <div key={outcome.id} className="flex items-center gap-2">
+                        <div
+                          className="w-2 h-2 sm:w-3 sm:h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: getOutcomeColor(index, outcome.title) }}
+                        />
+                        <span className="whitespace-nowrap">
+                          {outcome.title} {Math.round(outcome.price * 100)}%
+                        </span>
+                      </div>
+                    ))}
+                    <span className="ml-auto text-muted-foreground whitespace-nowrap">Polymarket</span>
+                  </div>
+                </div>
+                
+                {graphData.length > 0 ? (
+                  <div className="h-48 sm:h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={graphData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                          axisLine={false}
+                        />
+                        <YAxis 
+                          domain={[0, 100]}
+                          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                          axisLine={false}
+                          width={40}
+                        />
+                        <Tooltip 
+                          formatter={(value: any) => [`${value}%`, '']}
+                          labelStyle={{ color: 'hsl(var(--foreground))', fontSize: '12px' }}
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '6px',
+                            fontSize: '12px'
+                          }}
+                        />
+                        <Legend 
+                          wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
+                          iconType="line"
+                        />
+                        {market.outcomes.map((outcome, index) => (
+                          <Line
+                            key={outcome.id}
+                            type="monotone"
+                            dataKey={outcome.title}
+                            stroke={getOutcomeColor(index, outcome.title)}
+                            strokeWidth={2}
+                            dot={{ r: 2 }}
+                            activeDot={{ r: 4 }}
+                            name={outcome.title}
+                          />
+                        ))}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-48 sm:h-64 flex items-center justify-center text-muted-foreground text-sm">
+                    Historisk data är inte tillgänglig
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Scenario Selection Buttons */}
+            <Card>
+              <CardContent className="p-4 sm:p-6">
+                <h2 className="text-base sm:text-lg font-semibold mb-4">Välj scenario</h2>
+                <div className="flex flex-wrap gap-2 sm:gap-3">
+                  {market.outcomes.map((outcome) => (
+                    <Button
+                      key={outcome.id}
+                      variant={selectedScenario === outcome.id ? "default" : "outline"}
+                      onClick={() => setSelectedScenario(outcome.id)}
+                      className="flex-1 min-w-[120px] sm:min-w-[140px] text-sm"
+                    >
+                      {outcome.title}
+                      <span className="ml-2 text-xs opacity-80">
+                        ({Math.round(outcome.price * 100)}%)
+                      </span>
+                    </Button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column - Analysis */}
+          <div className="space-y-4 sm:space-y-6">
+            {/* Market Impact Analysis */}
+            <MarketImpactAnalysis market={market} />
+
+            {/* Analysis Text Box */}
+            <Card>
+              <CardContent className="p-4 sm:p-6">
+                <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span>Analys</span>
+                </h2>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  {market.description || 
+                    "Fed-beslut styr marknader genom att påverka värderingar och likviditet. Räntehöjningar pressar aktier och stärker USD, medan räntesänkningar gynnar tech, fastigheter och krypto. En neutral ränta tolkas positivt eller negativt beroende på tonen. De största rörelserna uppstår när Fed överraskar och marknaden snabbt måste omprissätta framtiden."}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default PredictionMarketDetail;
+
