@@ -14,41 +14,98 @@ serve(async (req) => {
   }
 
   try {
-    // Get the path from the request
-    const url = new URL(req.url);
-    const path = url.pathname.replace("/polymarket-proxy", "");
-    const queryString = url.search;
+    const body = await req.json().catch(() => ({}));
+    
+    console.log("Inkommande request body:", JSON.stringify(body, null, 2)); 
 
-    // Build the full Polymarket API URL
-    const apiUrl = `${POLYMARKET_API_BASE}${path}${queryString}`;
+    // Vi hämtar endpoint och params, men använder 'let' så vi kan ändra dem
+    let { endpoint, params } = body;
+
+    // --- FIX: Tvinga fram "Trending" data om endpoint saknas eller är /events ---
+    if (!endpoint || endpoint === "/events") {
+        endpoint = "/events"; // Default endpoint
+        
+        // Här sätter vi hårda defaults så vi slipper 2020-data
+        params = {
+            closed: false,       // Dölj gamla marknader
+            active: true,        // Visa bara aktiva
+            order: "volume24hr", // Sortera på volym
+            ascending: false,    // Högst volym först
+            limit: 20,           // Hämta 20 st
+            ...params            // Om frontend skickar egna params, skriv över defaults
+        };
+        console.log("Applying default filters for trending markets.");
+    }
+    // --------------------------------------------------------------------------
+
+    // Build query string from params
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          if (Array.isArray(value)) {
+            value.forEach(v => queryParams.append(key, String(v)));
+          } else {
+            queryParams.append(key, String(value));
+          }
+        }
+      });
+    }
+
+    const queryString = queryParams.toString();
+    const apiUrl = `${POLYMARKET_API_BASE}${endpoint}${queryString ? `?${queryString}` : ''}`;
 
     console.log(`Proxying request to: ${apiUrl}`);
 
-    // Forward the request to Polymarket API
     const response = await fetch(apiUrl, {
-      method: req.method,
+      method: "GET",
       headers: {
-        "Content-Type": "application/json",
         "Accept": "application/json",
       },
-      body: req.method !== "GET" && req.method !== "HEAD" ? await req.text() : undefined,
     });
 
-    // Get the response data
-    const data = await response.text();
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Polymarket API error: ${response.status} ${errorText}`);
+      return new Response(
+        JSON.stringify({ 
+          error: `Polymarket API error: ${response.status}`,
+          details: errorText 
+        }),
+        {
+          status: response.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const data = await response.json();
     
-    // Return the response with CORS headers
-    return new Response(data, {
-      status: response.status,
+    // Logga lite info om vad vi fick
+    if (Array.isArray(data)) {
+        console.log(`Fick svar från Polymarket: ${data.length} objekt.`);
+        // Logga titeln på första eventet för att se att det är nytt
+        if (data.length > 0) {
+            console.log("Första eventet:", data[0].title, "| Volym:", data[0].volume);
+        }
+    } else {
+        console.log("Fick svar (ej array):", JSON.stringify(data).substring(0, 100));
+    }
+
+    return new Response(JSON.stringify(data), {
+      status: 200,
       headers: {
         ...corsHeaders,
-        "Content-Type": response.headers.get("Content-Type") || "application/json",
+        "Content-Type": "application/json",
       },
     });
   } catch (error) {
     console.error("Error proxying Polymarket API:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : "Unknown error",
+        details: error instanceof Error ? error.stack : String(error)
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -56,4 +113,3 @@ serve(async (req) => {
     );
   }
 });
-

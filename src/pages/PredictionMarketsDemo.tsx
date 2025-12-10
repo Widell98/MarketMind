@@ -13,10 +13,23 @@ const PredictionMarketsDemo = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Fetch markets with search and filter
+  // Swedish keywords for filtering
+  const swedishKeywords = useMemo(() => [
+    'sverige', 'sweden', 'svensk', 'swedish', 
+    'riksbank', 'riksbanken', 'stockholm', 
+    'omx', 'nasdaq omx', 'omxs30', 'omx stockholm',
+    'svenska', 'svensk ekonomi', 'svensk politik',
+    'svenska kronan', 'sek', 'svensk valuta',
+    'svenska aktier', 'svenska börsen', 'stockholmsbörsen'
+  ], []);
+
+  // Fetch markets with sorting parameters to get TRENDING items
   const { data: markets = [], isLoading: marketsLoading, error: marketsError } = usePolymarketMarkets({
-    limit: 50,
+    limit: 200, // Öka för att få fler marknader att filtrera från
     active: true,
+    closed: false,       // VIKTIGT: Visa inte gamla/stängda marknader
+    order: "volume24hr", // VIKTIGT: Sortera på volym (trending)
+    ascending: false,    // VIKTIGT: Högst volym först
     search: searchQuery || undefined,
     tags: selectedTags.length > 0 ? selectedTags : undefined,
   });
@@ -27,7 +40,7 @@ const PredictionMarketsDemo = () => {
       console.error('Markets error:', marketsError);
     }
     if (markets.length > 0) {
-      console.log('Markets loaded:', markets.length, markets[0]);
+      console.log('Top trending market loaded:', markets[0].question, 'Volume:', markets[0].volume);
     }
   }, [markets, marketsError]);
 
@@ -39,22 +52,92 @@ const PredictionMarketsDemo = () => {
     return searchQuery;
   }, [searchQuery]);
 
-  // Filter markets client-side if needed (API should handle it, but backup)
-  const filteredMarkets = useMemo(() => {
-    if (!debouncedSearch && selectedTags.length === 0) {
-      return markets;
+  // Helper function to ensure tags is always an array
+  const getTagsArray = (tags: any): string[] => {
+    if (Array.isArray(tags)) {
+      return tags;
     }
+    if (typeof tags === 'string') {
+      return [tags];
+    }
+    return [];
+  };
 
-    return markets.filter((market) => {
-      const matchesSearch = !debouncedSearch || 
-        market.question.toLowerCase().includes(debouncedSearch.toLowerCase());
+  // Filter markets - prioritize new Swedish markets when no search/filter is active
+  const filteredMarkets = useMemo(() => {
+    if (!markets.length) return [];
+    
+    const now = new Date();
+    
+    // Filtrera bort gamla marknader (som slutade för mer än 7 dagar sedan)
+    const recentMarkets = markets.filter(market => {
+      // Om marknaden är stängd eller arkiverad, exkludera den
+      if (market.closed || market.archived) return false;
       
-      const matchesTags = selectedTags.length === 0 ||
-        (market.tags && market.tags.some(tag => selectedTags.includes(tag)));
-
-      return matchesSearch && matchesTags;
+      // Om marknaden har endDate, kolla att den inte är för gammal
+      if (market.endDate) {
+        const endDate = new Date(market.endDate);
+        const daysUntilEnd = (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+        // Visa marknader som slutar om minst 1 dag, eller som slutade inom senaste 7 dagarna
+        if (daysUntilEnd < -7) return false; // För gamla marknader
+      }
+      
+      return true;
     });
-  }, [markets, debouncedSearch, selectedTags]);
+    
+    // Om ingen sökning eller filter, prioritera nya svenska marknader
+    if (!debouncedSearch && selectedTags.length === 0) {
+      const swedishMarkets = recentMarkets.filter(market => {
+        const questionLower = (market.question || '').toLowerCase();
+        const tagsArray = getTagsArray(market.tags);
+        const tagsLower = tagsArray.map(t => String(t).toLowerCase()).join(' ');
+        const searchText = `${questionLower} ${tagsLower}`;
+        return swedishKeywords.some(keyword => searchText.includes(keyword));
+      });
+      
+      const otherMarkets = recentMarkets.filter(market => {
+        const questionLower = (market.question || '').toLowerCase();
+        const tagsArray = getTagsArray(market.tags);
+        const tagsLower = tagsArray.map(t => String(t).toLowerCase()).join(' ');
+        const searchText = `${questionLower} ${tagsLower}`;
+        return !swedishKeywords.some(keyword => searchText.includes(keyword));
+      });
+      
+      // Sortera svenska marknader efter volym (trending/aktiva) först
+      swedishMarkets.sort((a, b) => {
+        const volumeA = a.volumeNum || a.volume || 0;
+        const volumeB = b.volumeNum || b.volume || 0;
+        // Prioritera högre volym (mer aktiva marknader)
+        return volumeB - volumeA;
+      });
+      
+      // Sortera övriga marknader också efter volym
+      otherMarkets.sort((a, b) => {
+        const volumeA = a.volumeNum || a.volume || 0;
+        const volumeB = b.volumeNum || b.volume || 0;
+        return volumeB - volumeA;
+      });
+      
+      return [...swedishMarkets, ...otherMarkets];
+    } else {
+      // Om användaren söker eller filtrerar, använd normal filtrering med recentMarkets
+      return recentMarkets.filter((market) => {
+        const matchesSearch = !debouncedSearch || 
+          (market.question || '').toLowerCase().includes(debouncedSearch.toLowerCase());
+        
+        const tagsArray = getTagsArray(market.tags);
+        const matchesTags = selectedTags.length === 0 ||
+          tagsArray.some(tag => selectedTags.includes(String(tag)));
+
+        return matchesSearch && matchesTags;
+      }).sort((a, b) => {
+        // Sortera även sökresultat efter volym
+        const volumeA = a.volumeNum || a.volume || 0;
+        const volumeB = b.volumeNum || b.volume || 0;
+        return volumeB - volumeA;
+      });
+    }
+  }, [markets, debouncedSearch, selectedTags, swedishKeywords]);
 
   const toggleTag = (tagSlug: string) => {
     setSelectedTags(prev => 
@@ -155,7 +238,7 @@ const PredictionMarketsDemo = () => {
                 {filteredMarkets.map((market) => (
                   <PredictionMarketCard
                     key={market.id}
-                    market={market}
+                    market={market} // Ändrat tillbaka här!
                   />
                 ))}
               </div>

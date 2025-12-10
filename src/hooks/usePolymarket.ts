@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import type {
   PolymarketMarket,
   PolymarketMarketDetail,
@@ -8,10 +9,23 @@ import type {
   GraphDataPoint,
 } from '@/types/polymarket';
 
-// Use Vite proxy in development to avoid CORS issues
-const POLYMARKET_API_BASE = import.meta.env.DEV 
-  ? '/api/polymarket' 
-  : 'https://gamma-api.polymarket.com';
+// Helper function to call Polymarket API via Supabase edge function
+const callPolymarketAPI = async (endpoint: string, params?: Record<string, any>): Promise<any> => {
+  const { data, error } = await supabase.functions.invoke('polymarket-proxy', {
+    body: { endpoint, params },
+  });
+
+  if (error) {
+    console.error('Supabase function error:', error);
+    throw new Error(error.message || 'Failed to fetch from Polymarket API');
+  }
+
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+
+  return data;
+};
 
 // Transform API response to our Market type
 const transformMarket = (apiMarket: any): PolymarketMarket => {
@@ -114,29 +128,25 @@ export const fetchPolymarketMarkets = async (params?: {
   tags?: string[];
   search?: string;
   active?: boolean;
+  closed?: boolean;
+  order?: string;
+  ascending?: boolean;
 }): Promise<PolymarketMarket[]> => {
   try {
-    const queryParams = new URLSearchParams();
-    
-    if (params?.limit) queryParams.append('limit', String(params.limit));
-    if (params?.offset) queryParams.append('offset', String(params.offset));
+    // Build params object for the edge function
+    const apiParams: Record<string, any> = {};
+    if (params?.limit) apiParams.limit = params.limit;
+    if (params?.offset) apiParams.offset = params.offset;
     if (params?.tags && params.tags.length > 0) {
-      params.tags.forEach(tag => queryParams.append('tags', tag));
+      apiParams.tags = params.tags;
     }
-    if (params?.search) queryParams.append('search', params.search);
-    if (params?.active !== undefined) queryParams.append('active', String(params.active));
+    if (params?.search) apiParams.search = params.search;
+    if (params?.active !== undefined) apiParams.active = params.active;
+    if (params?.closed !== undefined) apiParams.closed = params.closed;
+    if (params?.order) apiParams.order = params.order;
+    if (params?.ascending !== undefined) apiParams.ascending = params.ascending;
 
-    const url = `${POLYMARKET_API_BASE}/markets${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Polymarket API error:', response.status, errorText);
-      throw new Error(`Failed to fetch markets: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
+    const data = await callPolymarketAPI('/markets', apiParams);
     
     console.log('Polymarket API response structure:', {
       isArray: Array.isArray(data),
@@ -176,68 +186,68 @@ export const fetchPolymarketMarkets = async (params?: {
 
 // Fetch single market detail
 export const fetchPolymarketMarketDetail = async (slug: string): Promise<PolymarketMarketDetail | null> => {
-  const url = `${POLYMARKET_API_BASE}/markets/${slug}`;
-  
-  const response = await fetch(url);
-  
-  if (!response.ok) {
-    if (response.status === 404) {
+  try {
+    const data = await callPolymarketAPI(`/markets/${slug}`);
+    
+    if (!data) {
       return null;
     }
-    throw new Error(`Failed to fetch market detail: ${response.statusText}`);
-  }
 
-  const data = await response.json();
-  const market = transformMarket(data);
-  
-  return {
-    ...market,
-    eventSlug: data.eventSlug || undefined,
-    liquidityNum: typeof data.liquidity === 'number' 
-      ? data.liquidity 
-      : parseFloat(String(data.liquidity || 0).replace(/[^0-9.]/g, '')) || 0,
-    startDate: data.startDate || data.startDateIso || undefined,
-    createdAt: data.createdAt || data.created_at || undefined,
-    updatedAt: data.updatedAt || data.updated_at || undefined,
-    endDateIso: data.endDateIso || data.endDateISO || data.endDate || undefined,
-    resolution: data.resolution || undefined,
-    resolutionSource: data.resolutionSource || undefined,
-    collateralToken: data.collateralToken || undefined,
-    outcomesDetails: market.outcomes,
-  };
+    const market = transformMarket(data);
+    
+    return {
+      ...market,
+      eventSlug: data.eventSlug || undefined,
+      liquidityNum: typeof data.liquidity === 'number' 
+        ? data.liquidity 
+        : parseFloat(String(data.liquidity || 0).replace(/[^0-9.]/g, '')) || 0,
+      startDate: data.startDate || data.startDateIso || undefined,
+      createdAt: data.createdAt || data.created_at || undefined,
+      updatedAt: data.updatedAt || data.updated_at || undefined,
+      endDateIso: data.endDateIso || data.endDateISO || data.endDate || undefined,
+      resolution: data.resolution || undefined,
+      resolutionSource: data.resolutionSource || undefined,
+      collateralToken: data.collateralToken || undefined,
+      outcomesDetails: market.outcomes,
+    };
+  } catch (error) {
+    console.error('Error fetching market detail:', error);
+    // If it's a 404, return null
+    if (error instanceof Error && error.message.includes('404')) {
+      return null;
+    }
+    throw error;
+  }
 };
 
 // Fetch tags
 export const fetchPolymarketTags = async (): Promise<PolymarketTag[]> => {
-  const url = `${POLYMARKET_API_BASE}/tags`;
-  
-  const response = await fetch(url);
-  
-  if (!response.ok) {
-    throw new Error(`Failed to fetch tags: ${response.statusText}`);
+  try {
+    const data = await callPolymarketAPI('/tags');
+    
+    if (Array.isArray(data)) {
+      return data.map((tag: any) => ({
+        id: tag.id || tag.slug || '',
+        name: tag.name || '',
+        slug: tag.slug || tag.id || '',
+        description: tag.description || undefined,
+        marketCount: tag.marketCount || tag.count || undefined,
+      }));
+    } else if (data.data && Array.isArray(data.data)) {
+      return data.data.map((tag: any) => ({
+        id: tag.id || tag.slug || '',
+        name: tag.name || '',
+        slug: tag.slug || tag.id || '',
+        description: tag.description || undefined,
+        marketCount: tag.marketCount || tag.count || undefined,
+      }));
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Error fetching tags:', error);
+    throw error;
   }
-
-  const data = await response.json();
-  
-  if (Array.isArray(data)) {
-    return data.map((tag: any) => ({
-      id: tag.id || tag.slug || '',
-      name: tag.name || '',
-      slug: tag.slug || tag.id || '',
-      description: tag.description || undefined,
-      marketCount: tag.marketCount || tag.count || undefined,
-    }));
-  } else if (data.data && Array.isArray(data.data)) {
-    return data.data.map((tag: any) => ({
-      id: tag.id || tag.slug || '',
-      name: tag.name || '',
-      slug: tag.slug || tag.id || '',
-      description: tag.description || undefined,
-      marketCount: tag.marketCount || tag.count || undefined,
-    }));
-  }
-  
-  return [];
 };
 
 // Generate mock history data (since Polymarket API may not provide historical data directly)
@@ -325,6 +335,9 @@ export const usePolymarketMarkets = (params?: {
   tags?: string[];
   search?: string;
   active?: boolean;
+  closed?: boolean;
+  order?: string;
+  ascending?: boolean;
 }) => {
   return useQuery({
     queryKey: ['polymarket-markets', params],
