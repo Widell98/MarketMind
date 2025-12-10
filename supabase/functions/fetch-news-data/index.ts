@@ -257,6 +257,7 @@ async function fetchTavilyNews(query: string, maxResults = 15, days = 1, domains
   const defaultDomains = [
     "reuters.com",
           "marketwatch.com",
+        "barrons.com",
           "investing.com",
           "cnbc.com",
           "ft.com",
@@ -332,12 +333,17 @@ async function fetchMultipleTavilySearches(
 ): Promise<TavilyArticle[]> {
   console.log(`[fetchMultipleTavilySearches] Starting ${queries.length} searches`);
 
+  const financialContext = " (investment OR stock market OR valuation OR economic impact)";
   const allArticles: TavilyArticle[] = [];
   const { allowRepeats = false } = options;
   const seenUrls = allowRepeats ? null : new Set<string>();
   
   // Skicka med 'domains' till fetchTavilyNews
-  const searchPromises = queries.map(query => fetchTavilyNews(query, maxResultsPerQuery, days, domains));
+const searchPromises = queries.map(query => {
+  // Lägg till kontext om den inte redan är uppenbart finansiell
+  const finalQuery = query + financialContext; 
+  return fetchTavilyNews(finalQuery, maxResultsPerQuery, days, domains);
+});
   
   // ... resten av logiken är samma ...
   const results = await Promise.all(searchPromises);
@@ -416,19 +422,23 @@ async function summarizeArticle(article: TavilyArticle): Promise<NewsItem> {
   }
 
   try {
-    const systemPrompt =
-      "Du är en senior finansanalytiker. Svara alltid med giltig JSON: { \"headline\": \"...\", \"summary\": \"...\", \"takeaway\": \"...\" }.";
+   const userPrompt = `Din uppgift är att agera strikt filter för en finansiell nyhetstjänst.
 
-    // HÄR ÄR FÖRBÄTTRINGEN: Vi ber om en "takeaway"
-    const userPrompt = `Analysera texten och skapa:
-1. En rubrik (max 7 ord).
-2. En sammanfattning (2-3 meningar).
-3. EN "INVESTOR TAKEAWAY": En enda mening som förklarar varför detta är viktigt för en investerare (t.ex. "Detta kan pressa tech-sektorn på kort sikt").
+1. ANALYSERA RELEVANS:
+   - Är detta en ren allmännyhet (t.ex. "Ny iPhone släppt", "Valresultat i X")? -> KASTA (discard: true).
+   - Finns det en tydlig koppling till aktier, marknad, räntor eller investeringsstrategi? -> BEHÅLL.
 
-Originaltitel: ${article.title}
+2. OM RELEVANT, skapa:
+   - En rubrik.
+   - En sammanfattning med fokus på *investeringscase* eller *marknadspåverkan*.
+   - En "Investor Takeaway".
+
 Text: ${article.content.slice(0, 1500)}
 
-Svara med JSON.`;
+Svara med JSON: { "discard": boolean, "headline": "...", "summary": "...", "takeaway": "..." }`;
+
+// Hantera svaret:
+// if (parsed.discard) { console.log("Discarded non-financial news"); return null; }
 
     const rawResponse = await callOpenAI(systemPrompt, userPrompt, 600);
 
@@ -493,16 +503,17 @@ async function generateDynamicQueries(trendingTitles: string[]): Promise<string[
   const systemPrompt = "Du är en expert på att söka finansiell information. Din uppgift är att skapa specifika sökfrågor för en sökmotor baserat på nyhetsrubriker.";
   
   // 2. UPPDATERA userPrompt (Instruktionen) - Nu fokuserad på djup och makro
-  const userPrompt = `Baserat på dessa rubriker, skapa 3-4 sökfrågor som hittar DJUPGÅENDE ANALYSER och MAKRO-nyheter.
+const userPrompt = `Baserat på dessa rubriker, skapa 3 sökfrågor för att hitta FINANSIELL DJUPANALYS.
 
-  Rubriker:
-  ${trendingTitles.join("\n")}
+Regler:
+- Använd ALDRIG generella termer som "news regarding X".
+- Använd ALLTID termer som: "outlook", "valuation", "investment thesis", "market implications", "sector analysis".
+- Exempel: Istället för "kriget i mellanöstern", sök efter "middle east conflict oil price impact analysis".
 
-  Regler:
-  - Undvik "breaking news". Sök efter "analysis", "outlook", "implications".
-  - En fråga ska alltid gälla "Market trend analysis sweden global" (Macro).
-  - En fråga ska gälla en specifik sektor-analys (Mikro).
-  - Svara ENDAST med en JSON-array av strängar: ["fråga 1", "fråga 2", ...]`;
+Rubriker:
+${trendingTitles.join("\n")}
+
+Svara endast med JSON-array av strängar.`;
 
   try {
     const raw = await callOpenAI(systemPrompt, userPrompt, 500);
