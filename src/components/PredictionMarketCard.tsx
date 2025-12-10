@@ -39,7 +39,12 @@ export const PredictionMarketCard: React.FC<PredictionMarketCardProps> = ({
   const volumeDisplay = formatVolume(market.volumeNum || market.volume || 0);
 
   const handleClick = () => {
-    navigate(`/predictions/${market.slug}`);
+    // Use slug for navigation (required by Polymarket API)
+    // If slug is missing, fall back to id but we'll need to search for it
+    const identifier = market.slug || market.id || market.conditionId || '';
+    if (identifier) {
+      navigate(`/predictions/${encodeURIComponent(identifier)}`);
+    }
   };
 
   return (

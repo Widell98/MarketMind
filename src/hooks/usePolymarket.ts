@@ -68,9 +68,13 @@ const transformMarket = (apiMarket: any): PolymarketMarket => {
       }
     }
 
+    // Polymarket API uses different identifiers - try to get the correct one
+    const marketId = apiMarket.id || apiMarket.conditionId || apiMarket.marketId || apiMarket.condition_id || '';
+    const marketSlug = apiMarket.slug || apiMarket.question_id || apiMarket.questionId || apiMarket.id || marketId;
+    
     return {
-      id: apiMarket.id || apiMarket.conditionId || apiMarket.marketId || apiMarket.condition_id || '',
-      slug: apiMarket.slug || apiMarket.question_id || apiMarket.id || '',
+      id: marketId,
+      slug: marketSlug,
       question: apiMarket.question || apiMarket.title || apiMarket.name || '',
       imageUrl: apiMarket.imageUrl || apiMarket.image || apiMarket.image_url || apiMarket.icon || undefined,
       description: apiMarket.description || apiMarket.longDescription || apiMarket.long_description || undefined,
@@ -185,11 +189,83 @@ export const fetchPolymarketMarkets = async (params?: {
 };
 
 // Fetch single market detail
-export const fetchPolymarketMarketDetail = async (slug: string): Promise<PolymarketMarketDetail | null> => {
+export const fetchPolymarketMarketDetail = async (slugOrId: string): Promise<PolymarketMarketDetail | null> => {
   try {
-    const data = await callPolymarketAPI(`/markets/${slug}`);
+    // Decode the identifier in case it's URL encoded
+    const decodedSlugOrId = decodeURIComponent(slugOrId);
+    
+    // According to Polymarket docs, we should use /markets/slug/{slug} for individual markets
+    // But if we have an ID instead of slug, we need to search for the market first
+    let data;
+    let lastError;
+    
+    // First try with /markets/slug/{slug} endpoint (recommended by docs)
+    try {
+      data = await callPolymarketAPI(`/markets/slug/${decodedSlugOrId}`);
+      console.log('Successfully fetched market with slug endpoint:', `/markets/slug/${decodedSlugOrId}`);
+    } catch (error: any) {
+      lastError = error;
+      console.log(`Failed to fetch with /markets/slug/${decodedSlugOrId}:`, error.message);
+      
+      // If slug endpoint fails, try the old format /markets/{slug} as fallback
+      try {
+        data = await callPolymarketAPI(`/markets/${decodedSlugOrId}`);
+        console.log('Successfully fetched market with direct path:', `/markets/${decodedSlugOrId}`);
+      } catch (error2: any) {
+        lastError = error2;
+        console.log(`Failed to fetch with /markets/${decodedSlugOrId}:`, error2.message);
+        
+        // If both fail with validation error (422), the identifier might be an ID instead of slug
+        // Search for the market in the list to find its slug
+        if (error2?.message?.includes('422') || error2?.message?.includes('invalid') || error2?.message?.includes('validation')) {
+          console.log('Identifier might be an ID, searching for market in list...');
+          try {
+            // Search for markets and find the one matching our slug/id
+            const searchData = await callPolymarketAPI('/markets', { 
+              limit: 200,
+              active: true 
+            });
+            
+            // Find the market that matches our slug or id
+            let markets: any[] = [];
+            if (Array.isArray(searchData)) {
+              markets = searchData;
+            } else if (searchData.data && Array.isArray(searchData.data)) {
+              markets = searchData.data;
+            } else if (searchData.results && Array.isArray(searchData.results)) {
+              markets = searchData.results;
+            }
+            
+            // Try to find matching market by conditionId, id, or slug
+            const matchingMarket = markets.find((m: any) => {
+              const mConditionId = m.conditionId || m.condition_id || '';
+              const mId = m.id || m.marketId || '';
+              const mSlug = m.slug || m.question_id || m.questionId || '';
+              
+              // Check all identifiers
+              return (
+                (mConditionId && (mConditionId === decodedSlugOrId || String(mConditionId).toLowerCase() === String(decodedSlugOrId).toLowerCase())) ||
+                (mId && (mId === decodedSlugOrId || String(mId).toLowerCase() === String(decodedSlugOrId).toLowerCase())) ||
+                (mSlug && (mSlug === decodedSlugOrId || String(mSlug).toLowerCase() === String(decodedSlugOrId).toLowerCase()))
+              );
+            });
+            
+            if (matchingMarket) {
+              data = matchingMarket;
+              console.log('Found matching market by searching, using that data');
+            } else {
+              console.log('No matching market found in search results');
+            }
+          } catch (error3: any) {
+            lastError = error3;
+            console.log('Search alternative also failed:', error3.message);
+          }
+        }
+      }
+    }
     
     if (!data) {
+      console.error('Could not fetch market detail. Last error:', lastError);
       return null;
     }
 
@@ -212,8 +288,8 @@ export const fetchPolymarketMarketDetail = async (slug: string): Promise<Polymar
     };
   } catch (error) {
     console.error('Error fetching market detail:', error);
-    // If it's a 404, return null
-    if (error instanceof Error && error.message.includes('404')) {
+    // If it's a 404 or 422, return null
+    if (error instanceof Error && (error.message.includes('404') || error.message.includes('422') || error.message.includes('invalid'))) {
       return null;
     }
     throw error;
