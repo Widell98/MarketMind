@@ -1,4 +1,4 @@
-
+import PredictionMarketsDemo from "./pages/PredictionMarketsDemo";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -73,6 +73,7 @@ function App() {
                     <Route path="/advanced-features" element={<AdvancedFeatures />} />
                     <Route path="/discover" element={<Discover />} />
                     <Route path="/news" element={<DiscoverNews />} />
+                    <Route path="/predictions" element={<PredictionMarketsDemo />} />
                     <Route path="/discover/news" element={<Navigate to="/news" replace />} />
                     {/* Legacy routes for backwards compatibility */}
                     <Route path="/discover-opportunities" element={<Discover />} />
