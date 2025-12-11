@@ -139,7 +139,7 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
             {/* Sammanfattning - visa anpassad om den finns, annars AI-genererad */}
             {displaySummary && (
-              <div className={`p-4 rounded-lg border ${customMetadata?.custom_summary ? 'bg-yellow-50/50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900/30' : 'bg-primary/5 border-primary/10'}`}>
+              <div className="p-4 rounded-lg border bg-primary/5 border-primary/10">
                 <p className="text-sm text-foreground/80 leading-relaxed italic">
                   "{displaySummary}"
                 </p>
