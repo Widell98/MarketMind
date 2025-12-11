@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -24,12 +24,11 @@ const formatVolume = (volumeNum: number): string => {
 const PredictionMarketDetail = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const [selectedScenario, setSelectedScenario] = useState<string | null>(null);
 
   const { data: market, isLoading: marketLoading, error: marketError } = usePolymarketMarketDetail(slug || "");
   const { data: history, isLoading: historyLoading, error: historyError } = usePolymarketMarketHistory(market || null);
 
-  // --- 1. LOGIK & HOOKS (Måste ligga före alla return-satser!) ---
+  // --- 1. LOGIK & HOOKS ---
 
   // Transform history to graph data
   const graphData = useMemo(() => {
@@ -59,38 +58,7 @@ const PredictionMarketDetail = () => {
     return primaryOutcome ? Math.round(primaryOutcome.price * 100) : 0;
   }, [graphData, primaryOutcome]);
 
-  // Generate date navigation points
-  const datePoints = useMemo(() => {
-    if (!market) return ["Past"];
-    
-    const dates: string[] = ["Past"];
-    
-    if (market.endDate) {
-      const endDate = new Date(market.endDate);
-      dates.push(endDate.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' }));
-      
-      for (let i = 1; i <= 4; i++) {
-        const futureDate = new Date(endDate);
-        futureDate.setDate(futureDate.getDate() + i * 30);
-        dates.push(futureDate.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric', year: futureDate.getFullYear() !== endDate.getFullYear() ? 'numeric' : undefined }));
-      }
-    } else {
-      dates.push("Dec 10", "Jan 28, 2026", "Mar 18, 2026", "Apr 29, 2026");
-    }
-    
-    return dates;
-  }, [market]);
-
-  const [selectedDate, setSelectedDate] = useState("Dec 10");
-
-  // Set first outcome as default selected scenario
-  React.useEffect(() => {
-    if (market && market.outcomes.length > 0 && !selectedScenario) {
-      setSelectedScenario(market.outcomes[0].id);
-    }
-  }, [market, selectedScenario]);
-
-  // --- 2. RENDERING (Här får vi returnera JSX) ---
+  // --- 2. RENDERING ---
 
   if (marketLoading) {
     return (
@@ -168,26 +136,9 @@ const PredictionMarketDetail = () => {
           </div>
         </div>
 
-        {/* Date Navigation */}
-        {datePoints.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {datePoints.map((date) => (
-              <Button
-                key={date}
-                variant={selectedDate === date ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedDate(date)}
-                className="flex-shrink-0 whitespace-nowrap"
-              >
-                {date}
-              </Button>
-            ))}
-          </div>
-        )}
-
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Graph and Scenarios */}
+          {/* Left Column - Graph */}
           <div className="lg:col-span-2 space-y-6">
             {/* Probability Graph */}
             <Card>
@@ -273,28 +224,6 @@ const PredictionMarketDetail = () => {
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-
-            {/* Scenario Selection Buttons */}
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <h2 className="text-base sm:text-lg font-semibold mb-4">Välj scenario</h2>
-                <div className="flex flex-wrap gap-2 sm:gap-3">
-                  {market.outcomes.map((outcome) => (
-                    <Button
-                      key={outcome.id}
-                      variant={selectedScenario === outcome.id ? "default" : "outline"}
-                      onClick={() => setSelectedScenario(outcome.id)}
-                      className="flex-1 min-w-[120px] sm:min-w-[140px] text-sm"
-                    >
-                      {outcome.title}
-                      <span className="ml-2 text-xs opacity-80">
-                        ({Math.round(outcome.price * 100)}%)
-                      </span>
-                    </Button>
-                  ))}
-                </div>
               </CardContent>
             </Card>
           </div>
