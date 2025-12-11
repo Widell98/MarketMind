@@ -168,11 +168,13 @@ const transformMarket = (apiMarket: any): PolymarketMarket => {
 };
 
 // Fetch markets list
+// Fil: src/hooks/usePolymarket.ts
+
 export const fetchPolymarketMarkets = async (params?: {
   limit?: number;
   offset?: number;
   tags?: string[];
-  search?: string;
+  search?: string; // Sökordet
   active?: boolean;
   closed?: boolean;
   order?: string;
@@ -180,16 +182,29 @@ export const fetchPolymarketMarkets = async (params?: {
 }): Promise<PolymarketMarket[]> => {
   try {
     const apiParams: Record<string, any> = {};
+    
+    // Kopiera över vanliga parametrar
     if (params?.limit) apiParams.limit = params.limit;
     if (params?.offset) apiParams.offset = params.offset;
     if (params?.tags && params.tags.length > 0) apiParams.tags = params.tags;
-    if (params?.search) apiParams.search = params.search;
     if (params?.active !== undefined) apiParams.active = params.active;
     if (params?.closed !== undefined) apiParams.closed = params.closed;
     if (params?.order) apiParams.order = params.order;
     if (params?.ascending !== undefined) apiParams.ascending = params.ascending;
 
-    const data = await callPolymarketAPI('/markets', apiParams);
+    // --- NY LOGIK FÖR SÖKNING ---
+    let endpoint = '/markets'; // Default endpoint
+
+    // Om vi har en sökterm, byt till sök-endpointen!
+    if (params?.search && params.search.trim().length > 0) {
+      endpoint = '/public-search';
+      apiParams.q = params.search; // API:et vill ha 'q', inte 'search'
+      // Polymarkets sökning stöder inte alltid samma filter som /markets, 
+      // men 'q' söker mot hela databasen.
+    }
+    // -----------------------------
+
+    const data = await callPolymarketAPI(endpoint, apiParams);
     
     let markets: any[] = [];
     if (Array.isArray(data)) {
@@ -197,13 +212,19 @@ export const fetchPolymarketMarkets = async (params?: {
     } else if (data.data && Array.isArray(data.data)) {
       markets = data.data;
     } else {
+      console.warn('Unexpected Polymarket API response structure:', data);
       return [];
     }
     
-    return markets.map(transformMarket).filter(m => m.id && m.question);
+    // Transformera datan
+    const transformedMarkets = markets
+      .map(transformMarket)
+      .filter(market => market.id && market.question);
+    
+    return transformedMarkets;
   } catch (error) {
-    console.error('Error fetching markets:', error);
-    return [];
+    console.error('Error fetching Polymarket markets:', error);
+    return []; // Returnera tom lista vid fel istället för att krascha
   }
 };
 
