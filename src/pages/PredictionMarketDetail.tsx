@@ -1,11 +1,16 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Loader2, AlertCircle, MessageSquare } from "lucide-react";
-import { usePolymarketMarketDetail, usePolymarketMarketHistory, transformHistoryToGraphData } from "@/hooks/usePolymarket";
+import { 
+  usePolymarketMarketDetail, 
+  usePolymarketMarketHistory, 
+  transformHistoryToGraphData,
+  type TimeRange 
+} from "@/hooks/usePolymarket";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { MarketImpactAnalysis } from "@/components/MarketImpactAnalysis";
 
@@ -24,9 +29,14 @@ const formatVolume = (volumeNum: number): string => {
 const PredictionMarketDetail = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  
+  // State för vald tidsperiod
+  const [timeRange, setTimeRange] = useState<TimeRange>("all");
 
   const { data: market, isLoading: marketLoading, error: marketError } = usePolymarketMarketDetail(slug || "");
-  const { data: history, isLoading: historyLoading, error: historyError } = usePolymarketMarketHistory(market || null);
+  
+  // Skicka med vald timeRange till hooken
+  const { data: history, isLoading: historyLoading, error: historyError } = usePolymarketMarketHistory(market || null, timeRange);
 
   // --- LOGIK & HOOKS ---
 
@@ -143,18 +153,37 @@ const PredictionMarketDetail = () => {
             {/* Probability Graph */}
             <Card>
               <CardContent className="p-4 sm:p-6">
-                <div className="mb-4">
-                  <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mb-3">
+                
+                {/* Header med Pris och Tidsval på samma rad (på desktop) */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                  <div className="flex items-center gap-2">
                     {primaryOutcome && (
-                      <div className="flex items-center gap-2">
+                      <>
                         <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full flex-shrink-0 bg-blue-500" />
                         <span className="whitespace-nowrap font-medium text-lg text-foreground">
                           {currentPrice}%
                         </span>
-                        <span className="text-muted-foreground">Sannolikhet</span>
-                      </div>
+                        <span className="text-muted-foreground">Sannolikhet ({primaryOutcome.title})</span>
+                      </>
                     )}
-                    <span className="ml-auto text-muted-foreground whitespace-nowrap">Polymarket</span>
+                  </div>
+
+                  {/* Time Range Selector */}
+                  <div className="flex items-center gap-1 bg-secondary/50 p-1 rounded-lg self-start sm:self-auto">
+                    {(['1h', '6h', '1d', '1w', '1m', 'all'] as TimeRange[]).map((range) => (
+                      <button
+                        key={range}
+                        onClick={() => setTimeRange(range)}
+                        className={`
+                          px-3 py-1 text-xs font-medium rounded-md transition-all
+                          ${timeRange === range 
+                            ? 'bg-background text-foreground shadow-sm' 
+                            : 'text-muted-foreground hover:text-foreground hover:bg-background/50'}
+                        `}
+                      >
+                        {range.toUpperCase()}
+                      </button>
+                    ))}
                   </div>
                 </div>
                 
