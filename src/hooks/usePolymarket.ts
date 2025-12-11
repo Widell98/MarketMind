@@ -36,70 +36,64 @@ const callPolymarketAPI = async (
 };
 
 // Transform API response to our Market type
+//
+
 const transformMarket = (apiMarket: any): PolymarketMarket => {
   try {
-    // 1. Normalisera outcomes till en array av objekt
     let outcomes: any[] = [];
     
+    // Försök hämta outcomes från olika ställen i API-svaret
     if (apiMarket.outcomes && Array.isArray(apiMarket.outcomes)) {
       outcomes = apiMarket.outcomes;
     } else if (typeof apiMarket.outcomes === 'string') {
-      try {
-        outcomes = JSON.parse(apiMarket.outcomes);
-      } catch (e) {
-        console.warn('Failed to parse outcomes string:', e);
-      }
-    } else if (apiMarket.outcomePrices) {
-      let prices: any[] = [];
-      if (Array.isArray(apiMarket.outcomePrices)) {
-        prices = apiMarket.outcomePrices;
-      } else if (typeof apiMarket.outcomePrices === 'string') {
-        try { prices = JSON.parse(apiMarket.outcomePrices); } catch {}
-      }
-      
-      if (prices.length > 0) {
-        outcomes = prices.map((price, i) => ({
-          price: price,
-          title: i === 0 ? 'Yes' : 'No',
-          id: String(i)
-        }));
-      }
+      try { outcomes = JSON.parse(apiMarket.outcomes); } catch {}
+    }
+    
+    // Om outcomes saknas eller saknar priser, kolla 'outcomePrices' (vanligt i sökresultat)
+    if (outcomes.length === 0 || !outcomes[0]?.price) {
+        let prices = apiMarket.outcomePrices;
+        if (typeof prices === 'string') {
+            try { prices = JSON.parse(prices); } catch {}
+        }
+        
+        if (prices) {
+            // Kan vara array ["0.5", "0.5"] eller objekt {"0": "0.5"}
+            const pricesArray = Array.isArray(prices) ? prices : Object.values(prices);
+            
+            // Skapa outcomes baserat på prislistan
+            outcomes = pricesArray.map((p: any, i: number) => ({
+                id: String(i),
+                title: i === 0 ? 'Yes' : 'No', // Default namn
+                price: p // Spara råvärdet, vi konverterar nedan
+            }));
+        }
     }
 
-    // 2. Parsa volym
+    // Parse volume
     let volumeNum = 0;
     if (typeof apiMarket.volume === 'number') {
       volumeNum = apiMarket.volume;
     } else if (apiMarket.volumeNum) {
-      volumeNum = typeof apiMarket.volumeNum === 'number' ? apiMarket.volumeNum : parseFloat(String(apiMarket.volumeNum)) || 0;
-    } else if (apiMarket.volume && typeof apiMarket.volume === 'string') {
+      volumeNum = Number(apiMarket.volumeNum) || 0;
+    } else if (typeof apiMarket.volume === 'string') {
       const volumeStr = apiMarket.volume.replace(/[^0-9.]/g, '');
       volumeNum = parseFloat(volumeStr) || 0;
       if (apiMarket.volume.toLowerCase().includes('m')) volumeNum *= 1_000_000;
-      if (apiMarket.volume.toLowerCase().includes('b')) volumeNum *= 1_000_000_000;
       if (apiMarket.volume.toLowerCase().includes('k')) volumeNum *= 1_000;
     }
 
     const marketId = apiMarket.id || apiMarket.conditionId || apiMarket.marketId || '';
-    const marketSlug = apiMarket.slug || apiMarket.question_id || apiMarket.id || marketId;
     
-    // 3. Extrahera token IDs för historik
+    // CLOB Token IDs
     let clobTokenIdsArray: string[] = [];
-    if (apiMarket.clobTokenIds && Array.isArray(apiMarket.clobTokenIds)) {
-      clobTokenIdsArray = apiMarket.clobTokenIds;
-    } else if (apiMarket.clobTokenIds && typeof apiMarket.clobTokenIds === 'string') {
-      try {
-        clobTokenIdsArray = JSON.parse(apiMarket.clobTokenIds);
-      } catch {
-        clobTokenIdsArray = apiMarket.clobTokenIds.split(',').map((id: string) => id.trim());
-      }
-    } else if (apiMarket.clob_token_ids && Array.isArray(apiMarket.clob_token_ids)) {
-      clobTokenIdsArray = apiMarket.clob_token_ids;
+    if (Array.isArray(apiMarket.clobTokenIds)) clobTokenIdsArray = apiMarket.clobTokenIds;
+    else if (typeof apiMarket.clobTokenIds === 'string') {
+      try { clobTokenIdsArray = JSON.parse(apiMarket.clobTokenIds); } catch {}
     }
-    
+
     return {
       id: marketId,
-      slug: marketSlug,
+      slug: apiMarket.slug || marketId,
       question: apiMarket.question || apiMarket.title || 'Unknown Market',
       imageUrl: apiMarket.imageUrl || apiMarket.image || apiMarket.icon,
       description: apiMarket.description,
@@ -107,53 +101,32 @@ const transformMarket = (apiMarket: any): PolymarketMarket => {
       volumeNum: volumeNum,
       liquidity: Number(apiMarket.liquidity) || 0,
       outcomes: outcomes.map((outcome: any, index: number) => {
-        let outcomePrice = 0;
-        let outcomeTitle = `Outcome ${index + 1}`;
-        let outcomeId = String(index);
-        let outcomeVolume = undefined;
-        let token_id = undefined;
-
-        if (typeof outcome === 'object' && outcome !== null) {
-            outcomePrice = outcome.price || outcome.lastPrice || 0;
-            outcomeTitle = outcome.title || outcome.name || outcome.outcome || (index === 0 ? 'Yes' : 'No');
-            outcomeId = outcome.id || String(index);
-            outcomeVolume = outcome.volume;
-            token_id = outcome.tokenId || outcome.token_id;
-        } else if (['string', 'number'].includes(typeof outcome)) {
-            outcomePrice = Number(outcome);
-            outcomeTitle = index === 0 ? 'Yes' : 'No';
+        // HÄR ÄR NYCKELN: Säkra upp priset till ett nummer
+        let price = 0;
+        const rawPrice = outcome.price || outcome.lastPrice;
+        
+        if (typeof rawPrice === 'number') {
+            price = rawPrice;
+        } else if (typeof rawPrice === 'string') {
+            price = parseFloat(rawPrice);
         }
 
-        const finalTokenId = token_id || clobTokenIdsArray[index];
-
         return {
-          id: outcomeId,
-          title: outcomeTitle,
-          price: Number(outcomePrice) || 0,
-          volume: outcomeVolume,
-          tokenId: finalTokenId,
+          id: outcome.id || String(index),
+          title: outcome.title || outcome.name || (index === 0 ? 'Yes' : 'No'),
+          price: price || 0, // Nu är det garanterat ett nummer (0.0 - 1.0)
+          tokenId: outcome.tokenId || clobTokenIdsArray[index],
         };
       }),
       endDate: apiMarket.endDate || apiMarket.endDateIso,
-      conditionId: apiMarket.conditionId,
-      active: apiMarket.active !== false && apiMarket.closed !== true,
+      active: apiMarket.active !== false,
       closed: apiMarket.closed === true,
-      tags: apiMarket.tags || [],
       clobTokenIds: clobTokenIdsArray,
+      tags: apiMarket.tags || [],
     } as PolymarketMarketDetail;
   } catch (error) {
-    console.error('Error transforming market:', error);
-    return {
-      id: apiMarket.id || 'error',
-      slug: 'error',
-      question: 'Error loading market',
-      volume: 0,
-      volumeNum: 0,
-      liquidity: 0,
-      outcomes: [],
-      active: false,
-      tags: [],
-    };
+    console.error('Transform error:', error);
+    return { id: 'error', slug: 'error', question: 'Error', volume: 0, liquidity: 0, outcomes: [], active: false, tags: [] };
   }
 };
 

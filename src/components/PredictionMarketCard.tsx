@@ -1,153 +1,111 @@
-import React, { useState } from "react";
+import React from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { TrendingUp, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Card } from "@/components/ui/card";
-import { TrendingUp, BarChart3 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { PolymarketMarket } from "@/types/polymarket";
 
-export interface PredictionMarketCardProps {
+interface PredictionMarketCardProps {
   market: PolymarketMarket;
 }
 
-// Format volume number to display string
-const formatVolume = (volumeNum: number): string => {
-  if (volumeNum >= 1_000_000_000) {
-    return `$${(volumeNum / 1_000_000_000).toFixed(2)}B`;
-  } else if (volumeNum >= 1_000_000) {
-    return `$${(volumeNum / 1_000_000).toFixed(1)}m`;
-  } else if (volumeNum >= 1_000) {
-    return `$${(volumeNum / 1_000).toFixed(1)}k`;
-  }
-  return `$${volumeNum.toFixed(0)}`;
-};
-
-// Get category from tags or default
-const getCategory = (tags?: string[]): string => {
-  if (tags && tags.length > 0) {
-    // Capitalize first letter
-    return tags[0].charAt(0).toUpperCase() + tags[0].slice(1);
-  }
-  return "Market";
-};
-
-export const PredictionMarketCard: React.FC<PredictionMarketCardProps> = ({
-  market,
-}) => {
+export const PredictionMarketCard = ({ market }: PredictionMarketCardProps) => {
   const navigate = useNavigate();
-  const [imageError, setImageError] = useState(false);
-  const category = getCategory(market.tags);
-  const volumeDisplay = formatVolume(market.volumeNum || market.volume || 0);
 
-  const handleClick = () => {
-    // Use slug for navigation (required by Polymarket API)
-    // If slug is missing, fall back to id but we'll need to search for it
-    const identifier = market.slug || market.id || market.conditionId || '';
-    if (identifier) {
-      navigate(`/predictions/${encodeURIComponent(identifier)}`);
-    }
+  const formatVolume = (vol: number) => {
+    if (vol >= 1_000_000_000) return `$${(vol / 1_000_000_000).toFixed(1)}B`;
+    if (vol >= 1_000_000) return `$${(vol / 1_000_000).toFixed(1)}M`;
+    if (vol >= 1_000) return `$${(vol / 1_000).toFixed(1)}K`;
+    return `$${vol.toFixed(0)}`;
   };
+
+  // Visa max 2 outcomes
+  const displayOutcomes = market.outcomes.slice(0, 2);
 
   return (
     <Card 
-      className="group relative overflow-hidden transition-all hover:shadow-md hover:border-primary/50 border-border/60 bg-card/50 backdrop-blur-sm cursor-pointer"
-      onClick={handleClick}
+      className="cursor-pointer hover:shadow-md transition-all duration-200 border-border/60 hover:border-primary/50 group overflow-hidden bg-card"
+      onClick={() => navigate(`/predictions/${market.slug}`)}
     >
-      <div className="p-4 flex flex-col sm:flex-row gap-4">
-        
-        {/* Vänster del: Bild och Ikon */}
-        <div className="flex-shrink-0">
-          <div className="relative h-16 w-16 rounded-lg overflow-hidden border border-border/50 bg-muted/50">
-            {market.imageUrl && !imageError ? (
-              <img
-                src={market.imageUrl}
-                alt={market.question}
-                className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                onError={() => setImageError(true)}
+      <CardContent className="p-4 flex gap-4 items-start">
+          {/* Bild */}
+          <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-md bg-muted border border-border/50 relative overflow-hidden mt-1">
+            {market.imageUrl ? (
+              <img 
+                src={market.imageUrl} 
+                alt={market.question} 
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
             ) : (
-              <div className="h-full w-full flex items-center justify-center text-muted-foreground">
-                <BarChart3 className="h-8 w-8" />
-              </div>
+              <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground font-bold">PM</div>
             )}
-            <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-[10px] text-white text-center py-0.5 truncate px-1">
-              {category}
-            </div>
           </div>
-        </div>
 
-        {/* Mitten: Titel och Info */}
-        <div className="flex-grow flex flex-col justify-between min-w-0">
-          <div>
-            <h3 className="font-semibold text-lg leading-tight mb-1 text-foreground group-hover:text-primary transition-colors line-clamp-2">
+          {/* Innehåll */}
+          <div className="flex-grow min-w-0">
+            <h3 className="font-medium text-base leading-tight mb-3 group-hover:text-primary transition-colors line-clamp-2">
               {market.question}
             </h3>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
-              <div className="flex items-center gap-1">
-                <TrendingUp className="h-3 w-3" />
-                <span>Vol. {volumeDisplay}</span>
-              </div>
-              {market.active && !market.closed && (
-                <div className="flex items-center gap-1 text-green-500">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                  </span>
-                  <span>Live</span>
+            
+            {/* NY ODDS-LISTA MED FÄRGADE BARS */}
+            <div className="space-y-2 mb-3">
+              {displayOutcomes.map((outcome, idx) => {
+                // Beräkna procent (0.55 -> 55) och säkra att det är mellan 0-100
+                const percent = Math.min(100, Math.max(0, Math.round((outcome.price || 0) * 100)));
+                
+                const titleLower = outcome.title.toLowerCase();
+                
+                // Bestäm färger baserat på om det är Yes/No eller annat
+                let barColorClass = "bg-secondary"; // Default grå/blå
+                let textColorClass = "text-foreground";
+
+              if (titleLower === 'yes') {
+                    // ÄNDRA HÄR: Från emerald-500 till green-600 för starkare grön
+                    barColorClass = "bg-green-600 dark:bg-green-500";
+                    textColorClass = "text-green-950 dark:text-green-50";
+                } else if (titleLower === 'no') {
+                    // ÄNDRA HÄR: Från rose-500 till red-600 för starkare röd
+                    barColorClass = "bg-red-600 dark:bg-red-500";
+                    textColorClass = "text-red-950 dark:text-red-50";
+                }
+
+                return (
+                  <div key={idx} className="relative h-9 rounded-md overflow-hidden bg-secondary/20 border border-black/5 dark:border-white/5">
+                    {/* 1. Bakgrunds-bar (Fyllnaden) */}
+                    <div 
+                      className={`absolute left-0 top-0 h-full transition-all duration-500 ease-out opacity-25 dark:opacity-30 ${barColorClass}`}
+                      style={{ width: `${percent}%` }}
+                    />
+                    
+                    {/* 2. Text-lager (Ligger ovanpå baren med z-10) */}
+                    <div className={`relative z-10 flex items-center justify-between h-full px-3 text-sm font-medium ${textColorClass}`}>
+                      <span className="truncate mr-2 font-semibold tracking-wide opacity-90">
+                        {outcome.title}
+                      </span>
+                      <span className="font-bold">
+                        {percent}%
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center gap-3 text-xs text-muted-foreground opacity-80">
+                <div className="flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3" />
+                  <span>{formatVolume(market.volume || market.volumeNum || 0)} Vol</span>
                 </div>
-              )}
+                {market.endDate && (
+                  <div className="flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    <span>{new Date(market.endDate).toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' })}</span>
+                  </div>
+                )}
             </div>
           </div>
-        </div>
-
-        {/* Höger del: Odds / Outcomes */}
-        <div className="flex-shrink-0 flex flex-col gap-2 w-full sm:w-48 justify-center">
-          {market.outcomes.slice(0, 2).map((outcome) => {
-            const percentage = Math.round(outcome.price * 100);
-            
-            // Färglogik: Grön för Yes/positiv, Röd för No/negativ, annars standard
-            let barColor = "bg-primary/20"; 
-            let textColor = "text-primary";
-            
-            const nameLower = outcome.title.toLowerCase();
-            if (nameLower === "yes" || nameLower.includes("trump") || nameLower.includes("republican") || nameLower.includes("decrease") || nameLower.includes("cut")) {
-                barColor = "bg-green-500/20";
-                textColor = "text-green-600 dark:text-green-400";
-            } else if (nameLower === "no" || nameLower.includes("harris") || nameLower.includes("democrat") || nameLower.includes("increase") || nameLower.includes("hike")) {
-                barColor = "bg-red-500/20";
-                textColor = "text-red-600 dark:text-red-400";
-            }
-
-            return (
-              <button
-                key={outcome.id}
-                className="relative w-full h-9 rounded bg-secondary/50 hover:bg-secondary transition-colors overflow-hidden group/btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleClick();
-                }}
-              >
-                {/* Progress Bar Bakgrund */}
-                <div
-                  className={cn("absolute top-0 left-0 h-full transition-all duration-500 ease-out", barColor)}
-                  style={{ width: `${percentage}%` }}
-                />
-                
-                {/* Text Innehåll */}
-                <div className="relative z-10 flex items-center justify-between px-3 h-full text-sm font-medium">
-                  <span className="text-muted-foreground group-hover/btn:text-foreground transition-colors truncate">
-                    {outcome.title}
-                  </span>
-                  <span className={cn("ml-2 flex-shrink-0", textColor)}>
-                    {percentage}%
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      </CardContent>
     </Card>
   );
 };
-
-export default PredictionMarketCard;
