@@ -39,38 +39,78 @@ const EditMarketDialog: React.FC<EditMarketDialogProps> = ({
   const { updateMarketMetadata } = useMarketMutations();
 
   // Fetch existing metadata when market changes
-  const { data: existingMetadata, isLoading: isLoadingMetadata } = useQuery({
+  const { data: existingMetadata, isLoading: isLoadingMetadata, error: metadataError } = useQuery({
     queryKey: ['market-metadata', market?.id],
     queryFn: async () => {
-      if (!market?.id) return null;
+      if (!market?.id) {
+        console.log('No market ID provided');
+        return null;
+      }
       
-      const { data, error } = await supabase
-        .from('curated_markets')
-        .select('metadata')
-        .eq('market_id', market.id)
-        .single();
+      console.log('Fetching metadata for market:', market.id);
+      
+      try {
+        const { data, error } = await supabase
+          .from('curated_markets')
+          .select('metadata')
+          .eq('market_id', market.id)
+          .single();
 
-      if (error && error.code !== 'PGRST116') {
-        // PGRST116 is "not found" error
+        if (error) {
+          if (error.code === 'PGRST116') {
+            // PGRST116 is "not found" error - this is expected if market doesn't exist yet
+            console.log('Market not found in curated_markets, returning null');
+            return null;
+          } else {
+            // Other errors should be logged and thrown
+            console.error('Error fetching market metadata:', {
+              error,
+              code: error.code,
+              message: error.message,
+              details: error.details,
+              hint: error.hint,
+            });
+            throw error;
+          }
+        }
+
+        console.log('Fetched metadata:', data?.metadata);
+        
+        // Parse metadata if it exists
+        if (data?.metadata) {
+          const parsed = data.metadata as MarketMetadata;
+          console.log('Parsed metadata:', parsed);
+          return parsed;
+        }
+
+        return null;
+      } catch (error) {
+        console.error('Exception in metadata query:', error);
         throw error;
       }
-
-      return (data?.metadata as MarketMetadata) || null;
     },
     enabled: !!market?.id && isOpen,
+    retry: 1, // Retry once on failure
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
 
   // Populate form when market or existing metadata changes
   useEffect(() => {
-    if (market) {
-      if (existingMetadata !== undefined) {
-        setFormData({
-          custom_summary: existingMetadata?.custom_summary || '',
-          custom_description: existingMetadata?.custom_description || '',
-          admin_notes: existingMetadata?.admin_notes || '',
-        });
+    if (market && !isLoadingMetadata) {
+      console.log('Updating form data with metadata:', existingMetadata);
+      
+      if (existingMetadata !== undefined && existingMetadata !== null) {
+        // Metadata exists, populate form
+        const newFormData = {
+          custom_summary: existingMetadata.custom_summary || '',
+          custom_description: existingMetadata.custom_description || '',
+          admin_notes: existingMetadata.admin_notes || '',
+        };
+        console.log('Setting form data from existing metadata:', newFormData);
+        setFormData(newFormData);
       } else {
-        // Reset form if no metadata exists
+        // No metadata exists, reset form to empty
+        console.log('No existing metadata, resetting form');
         setFormData({
           custom_summary: '',
           custom_description: '',
@@ -78,7 +118,7 @@ const EditMarketDialog: React.FC<EditMarketDialogProps> = ({
         });
       }
     }
-  }, [market, existingMetadata]);
+  }, [market, existingMetadata, isLoadingMetadata]);
 
   const handleInputChange = (field: keyof MarketMetadata, value: string) => {
     setFormData(prev => ({
@@ -137,6 +177,26 @@ const EditMarketDialog: React.FC<EditMarketDialogProps> = ({
         {isLoadingMetadata ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-sm text-muted-foreground">Laddar metadata...</span>
+          </div>
+        ) : metadataError ? (
+          <div className="flex flex-col items-center justify-center py-8 space-y-4">
+            <div className="text-destructive text-sm">
+              <p className="font-medium">Kunde inte ladda metadata</p>
+              <p className="text-xs mt-1 opacity-80">
+                {metadataError instanceof Error ? metadataError.message : 'Ett fel uppstod'}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                // Retry by invalidating the query
+                window.location.reload();
+              }}
+            >
+              Försök igen
+            </Button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
