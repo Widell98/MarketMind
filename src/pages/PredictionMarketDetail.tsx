@@ -222,40 +222,48 @@ const PredictionMarketDetail = () => {
                     </div>
                   </div>
                 ) : graphData.length > 0 ? (
-                  <div className="h-48 sm:h-64 w-full">
+                 <div className="h-48 sm:h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={graphData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                      <LineChart data={graphData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        {/* Polymarket har oftast inga synliga grids */}
+                        {/* <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} /> */}
+                        
                         <XAxis 
                           dataKey="date" 
-                          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                          hide={true} // Polymarket döljer ofta X-axeln i miniatyrer, eller gör den väldigt diskret
                           axisLine={false}
+                          tickLine={false}
                         />
                         <YAxis 
-                          domain={[0, 100]}
-                          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                          axisLine={false}
-                          width={40}
-                          tickFormatter={(value) => `${value}%`}
+                          domain={['dataMin - 5', 'dataMax + 5']} // Dynamisk skala så kurvan fyller rutan
+                          hide={true} // Dölj Y-axeln för renare look (visa bara i tooltip)
                         />
                         <Tooltip 
-                          formatter={(value: any) => [`${value}%`, 'Pris']}
-                          labelStyle={{ color: 'hsl(var(--foreground))', fontSize: '12px' }}
                           contentStyle={{ 
-                            backgroundColor: 'hsl(var(--card))',
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '6px',
-                            fontSize: '12px'
+                            backgroundColor: 'hsl(var(--background))',
+                            borderColor: 'hsl(var(--border))',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                            fontSize: '12px',
+                            padding: '8px 12px'
                           }}
+                          itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: 500 }}
+                          formatter={(value: any) => [`${value}%`, 'Sannolikhet']}
+                          labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: '4px' }}
                         />
                         <Line
-                          type="monotone"
+                          type="monotone" // Mjukare kurva
                           dataKey="price"
-                          stroke="#3b82f6"
+                          stroke="#10b981" // Polymarket grön (eller röd om trenden är ner)
                           strokeWidth={2}
-                          dot={{ r: 2 }}
-                          activeDot={{ r: 4 }}
-                          name="Pris"
+                          dot={false} // Ta bort prickarna på linjen
+                          activeDot={{ r: 4, strokeWidth: 0, fill: '#10b981' }}
                         />
                       </LineChart>
                     </ResponsiveContainer>
