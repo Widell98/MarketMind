@@ -11,11 +11,6 @@ interface PredictionMarketCardProps {
 export const PredictionMarketCard = ({ market }: PredictionMarketCardProps) => {
   const navigate = useNavigate();
 
-  // Debug: Se i konsolen om priser saknas
-  if (!market.outcomes[0]?.price) {
-    console.log("Kort med 0% pris:", market.question, market);
-  }
-
   const formatVolume = (vol: number) => {
     if (vol >= 1_000_000_000) return `$${(vol / 1_000_000_000).toFixed(1)}B`;
     if (vol >= 1_000_000) return `$${(vol / 1_000_000).toFixed(1)}M`;
@@ -23,7 +18,7 @@ export const PredictionMarketCard = ({ market }: PredictionMarketCardProps) => {
     return `$${vol.toFixed(0)}`;
   };
 
-  // Visa bara de 2 första/största utfallen för att hålla kortet snyggt
+  // Visa max 2 outcomes för att hålla kortet snyggt i listan
   const displayOutcomes = market.outcomes.slice(0, 2);
 
   return (
@@ -32,7 +27,7 @@ export const PredictionMarketCard = ({ market }: PredictionMarketCardProps) => {
       onClick={() => navigate(`/predictions/${market.slug}`)}
     >
       <CardContent className="p-4 flex gap-4 items-start">
-          {/* Marknadsbild */}
+          {/* Bild */}
           <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-md bg-muted border border-border/50 relative overflow-hidden mt-1">
             {market.imageUrl ? (
               <img 
@@ -52,24 +47,32 @@ export const PredictionMarketCard = ({ market }: PredictionMarketCardProps) => {
               {market.question}
             </h3>
             
-            {/* Odds-lista (Den snyggare visualiseringen) */}
+            {/* ODDS LISTA */}
             <div className="space-y-1.5 mb-3">
-              {displayOutcomes.map((outcome) => (
-                <div key={outcome.id} className="flex items-center justify-between text-sm p-1.5 rounded bg-secondary/30">
-                  <span className="text-muted-foreground truncate mr-2 font-medium text-xs uppercase tracking-wide">
-                    {outcome.title}
-                  </span>
-                  <span className={`font-bold ${
-                    outcome.title.toLowerCase() === 'yes' ? 'text-green-600 dark:text-green-400' : 
-                    outcome.title.toLowerCase() === 'no' ? 'text-red-600 dark:text-red-400' : 'text-foreground'
-                  }`}>
-                    {Math.round(outcome.price * 100)}%
-                  </span>
-                </div>
-              ))}
+              {displayOutcomes.map((outcome, idx) => {
+                // Beräkna procent (0.55 -> 55)
+                const percent = Math.round((outcome.price || 0) * 100);
+                
+                // Bestäm färg baserat på titel (Yes=Grön, No=Röd)
+                let percentColor = "text-foreground";
+                const titleLower = outcome.title.toLowerCase();
+                if (titleLower === 'yes' || titleLower === 'trump') percentColor = "text-green-600 dark:text-green-400";
+                if (titleLower === 'no' || titleLower === 'harris') percentColor = "text-red-600 dark:text-red-400";
+
+                return (
+                  <div key={idx} className="flex items-center justify-between text-sm p-1.5 rounded bg-secondary/30 border border-transparent hover:border-border/50 transition-colors">
+                    <span className="text-muted-foreground truncate mr-2 font-medium text-xs uppercase tracking-wide">
+                      {outcome.title}
+                    </span>
+                    <span className={`font-bold ${percentColor}`}>
+                      {percent}%
+                    </span>
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Footer info */}
+            {/* Footer */}
             <div className="flex items-center gap-3 text-xs text-muted-foreground opacity-80">
                 <div className="flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" />
