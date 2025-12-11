@@ -4,7 +4,7 @@ import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Loader2, AlertCircle, MessageSquare } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, MessageSquare, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { 
   usePolymarketMarketDetail, 
   usePolymarketMarketHistory, 
@@ -32,6 +32,8 @@ const PredictionMarketDetail = () => {
   
   // State för vald tidsperiod
   const [timeRange, setTimeRange] = useState<TimeRange>("all");
+  // State för att expandera/kollapsa beskrivningstexten
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   const { data: market, isLoading: marketLoading, error: marketError } = usePolymarketMarketDetail(slug || "");
   
@@ -258,21 +260,36 @@ const PredictionMarketDetail = () => {
 
           {/* HÖGER KOLUMN (Sidopanel) */}
           <div className="space-y-4 sm:space-y-6">
-            {/* --- LÄGG TILL DENNA KNAPP HÄR --- */}
-<Button 
-  className="w-full gap-2" 
-  size="lg"
-  onClick={() => navigate('/ai-chatt', { 
-    state: { 
-      createNewSession: true, // Detta krävs för att AIChat ska läsa datan
-      initialMessage: `Jag vill diskutera prediktionsmarknaden: "${market.question}"`, // Texten som hamnar i input-rutan
-      sessionName: market.question // (Valfritt) Sätter namnet på chat-sessionen i historiken
-    } 
-  })}
->
-  <MessageSquare className="h-4 w-4" />
-  Diskutera med AI
-</Button>
+            {/* Polymarket Link Button - Visa bara om vi har en slug */}
+            {market.slug && (
+              <Button 
+                className="w-full gap-2" 
+                size="lg"
+                variant="outline"
+                onClick={() => {
+                  window.open(`https://polymarket.com/event/${market.slug}`, '_blank', 'noopener,noreferrer');
+                }}
+              >
+                <ExternalLink className="h-4 w-4" />
+                Handla på Polymarket
+              </Button>
+            )}
+            
+            {/* Diskutera med AI Button */}
+            <Button 
+              className="w-full gap-2" 
+              size="lg"
+              onClick={() => navigate('/ai-chatt', { 
+                state: { 
+                  createNewSession: true, // Detta krävs för att AIChat ska läsa datan
+                  initialMessage: `Jag vill diskutera prediktionsmarknaden: "${market.question}"`, // Texten som hamnar i input-rutan
+                  sessionName: market.question // (Valfritt) Sätter namnet på chat-sessionen i historiken
+                } 
+              })}
+            >
+              <MessageSquare className="h-4 w-4" />
+              Diskutera med AI
+            </Button>
             {/* Analysis Text Box (Beskrivning) */}
             <Card>
               <CardContent className="p-4 sm:p-6">
@@ -280,10 +297,41 @@ const PredictionMarketDetail = () => {
                   <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5" />
                   <span>Analys</span>
                 </h2>
-                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                  {market.description || 
-                    "Fed-beslut styr marknader genom att påverka värderingar och likviditet. Räntehöjningar pressar aktier och stärker USD, medan räntesänkningar gynnar tech, fastigheter och krypto. En neutral ränta tolkas positivt eller negativt beroende på tonen. De största rörelserna uppstår när Fed överraskar och marknaden snabbt måste omprissätta framtiden."}
-                </p>
+                {(() => {
+                  const description = market.description || 
+                    "Fed-beslut styr marknader genom att påverka värderingar och likviditet. Räntehöjningar pressar aktier och stärker USD, medan räntesänkningar gynnar tech, fastigheter och krypto. En neutral ränta tolkas positivt eller negativt beroende på tonen. De största rörelserna uppstår när Fed överraskar och marknaden snabbt måste omprissätta framtiden.";
+                  const maxLength = 150;
+                  const shouldTruncate = description.length > maxLength;
+                  const displayText = shouldTruncate && !isDescriptionExpanded 
+                    ? description.substring(0, maxLength) + '...'
+                    : description;
+
+                  return (
+                    <>
+                      <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                        {displayText}
+                      </p>
+                      {shouldTruncate && (
+                        <button
+                          onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                          className="mt-2 text-xs sm:text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1 transition-colors"
+                        >
+                          {isDescriptionExpanded ? (
+                            <>
+                              Visa mindre
+                              <ChevronUp className="w-3 h-3 sm:w-4 sm:h-4" />
+                            </>
+                          ) : (
+                            <>
+                              Visa mer
+                              <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4" />
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
               </CardContent>
             </Card>
           </div>
