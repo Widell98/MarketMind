@@ -698,7 +698,7 @@ const Index = () => {
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
                           <Newspaper className="h-5 w-5 text-primary" />
-                          <h2 className="text-base font-semibold text-foreground sm:text-lg">Senaste nyheter</h2>
+                          <h2 className="text-base font-semibold text-foreground sm:text-lg">Nyheter</h2>
                         </div>
                         <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
                           <Link to="/news">
