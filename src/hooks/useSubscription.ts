@@ -19,7 +19,7 @@ interface UsageData {
   predictive_analysis_count: number;
 }
 
-export const FREE_DAILY_AI_MESSAGE_LIMIT = 10;
+export const FREE_DAILY_AI_MESSAGE_LIMIT = 5;
 const DEFAULT_FREE_USAGE_LIMIT = 10;
 
 const usageFieldMap: Record<UsageType, keyof UsageData> = {
