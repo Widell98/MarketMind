@@ -569,6 +569,10 @@ const Index = () => {
                               <div className={`text-5xl font-bold tracking-tight ${isPositiveDayChange ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                 {isPositiveDayChange ? '+' : ''}{dayChangePercent.toFixed(2)}%
                               </div>
+    <div className={`text-lg font-medium mt-1 ${isPositiveDayChange ? 'text-emerald-600/80 dark:text-emerald-400/80' : 'text-rose-600/80 dark:text-rose-400/80'}`}>
+        {formatDailyChangeValue(dayChangeValue)}
+      </div>
+    </div>
                              )}
                           </div>
                           
@@ -581,7 +585,7 @@ const Index = () => {
                         <div className={`absolute -right-4 -bottom-4 h-32 w-32 rounded-full blur-3xl opacity-20 ${isPositiveDayChange ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                       </Card>
 
-                      {/* Highlights Cards - Vad driver rörelsen? */}
+
                       <HoldingsHighlightCard
                         title="Dagens vinnare"
                         icon={<TrendingUp className="h-5 w-5" />}
