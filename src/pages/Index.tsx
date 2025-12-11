@@ -295,6 +295,7 @@ const Index = () => {
   const dayChangeValue = todayDevelopment?.value ?? 0;
   const isPositiveDayChange = dayChangePercent >= 0;
 
+  // Behåller denna logik om du vill använda den senare, men den används inte i den nya vyn
   const summaryCards = React.useMemo<SummaryCard[]>(() => {
     const changeValue = dayChangeValue;
     const changeValueFormatted = changeValue !== 0
@@ -396,6 +397,7 @@ const Index = () => {
       });
     }
   }, [insightsLastUpdated]);
+
   return <Layout>
       <div className="min-h-0 bg-background">
         <div className="w-full max-w-5xl xl:max-w-6xl mx-auto px-3 sm:px-6 py-5 sm:py-9 lg:py-12">
@@ -546,47 +548,62 @@ const Index = () => {
           {user && hasPortfolio && <div className="min-h-0 bg-background">
               <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
                 <div className="space-y-5 sm:space-y-6">
-                  {/* Portfolio Value & Overview Combined */}
-                  <PortfolioOverviewCard
-                    portfolioValue={safeTotalPortfolioValue}
-                    totalReturn={performance.totalReturn}
-                    totalReturnPercentage={performance.totalReturnPercentage}
-                    summaryCards={summaryCards}
-                    loading={loadingTodayDevelopment && summaryCards.length === 0}
-                    dayChangePercent={dayChangePercent}
-                    dayChangeValue={dayChangeValue}
-                    isPositiveDayChange={isPositiveDayChange}
-                  />
 
-                    {/* Dagens förändring och allokering */}
-                    {(dailyHighlights.best.length > 0 || dailyHighlights.worst.length > 0 || performance.totalPortfolioValue > 0 || safeTotalCash > 0) && (
-                      <div className="space-y-3 sm:space-y-4">
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 sm:gap-4">
-                          <HoldingsHighlightCard
-                            title="Bästa innehav idag"
-                            icon={<TrendingUp className="h-5 w-5" />}
-                            iconColorClass="text-emerald-600"
-                            items={bestHighlightItems}
-                            emptyText="Inga innehav på plus idag, testa ai-chatten för att upptäcka nya innehav"
-                          />
-
-                          <HoldingsHighlightCard
-                            title="Sämsta innehav idag"
-                            icon={<TrendingDown className="h-5 w-5" />}
-                            iconColorClass="text-red-600"
-                            items={worstHighlightItems}
-                            emptyText="Ingen dagsdata ännu"
-                          />
-
-                          {(performance.totalPortfolioValue > 0 || safeTotalCash > 0) && (
-                            <AllocationCard
-                              investedPercentage={performance.investedPercentage ?? 0}
-                              cashPercentage={performance.cashPercentage ?? 0}
-                            />
-                          )}
+                  {/* NY SEKTION: Din Portfölj - Ersätter det gamla värdekortet */}
+                  <div className="space-y-3 sm:space-y-4">
+                    <h2 className="text-lg font-semibold text-foreground px-1">Din Portfölj</h2>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                      
+                      {/* Performance Card - Ersätter "Bankkontot" med "Riktning" */}
+                      <Card className="p-6 flex flex-col justify-between relative overflow-hidden border-border/60 shadow-sm">
+                        <div className="relative z-10">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Activity className="h-5 w-5 text-muted-foreground" />
+                            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Utveckling Idag</h3>
+                          </div>
+                          
+                          <div className="mt-4 mb-2">
+                            {loadingTodayDevelopment ? (
+                              <div className="h-10 w-32 bg-muted animate-pulse rounded-md" />
+                            ) : (
+                              <div>
+                                <div className={`text-5xl font-bold tracking-tight ${isPositiveDayChange ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                  {isPositiveDayChange ? '+' : ''}{dayChangePercent.toFixed(2)}%
+                                </div>
+                                <div className={`text-lg font-medium mt-1 ${isPositiveDayChange ? 'text-emerald-600/80 dark:text-emerald-400/80' : 'text-rose-600/80 dark:text-rose-400/80'}`}>
+                                  {formatDailyChangeValue(dayChangeValue)}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <p className="text-sm text-muted-foreground">
+                            {isPositiveDayChange ? 'Portföljen går starkt idag.' : 'En rekyl i marknaden idag.'}
+                          </p>
                         </div>
-                      </div>
-                    )}
+
+                        {/* Background decoration */}
+                        <div className={`absolute -right-4 -bottom-4 h-32 w-32 rounded-full blur-3xl opacity-20 ${isPositiveDayChange ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                      </Card>
+
+                      {/* Highlights Cards - Vad driver rörelsen? */}
+                      <HoldingsHighlightCard
+                        title="Dagens vinnare"
+                        icon={<TrendingUp className="h-5 w-5" />}
+                        iconColorClass="text-emerald-600"
+                        items={bestHighlightItems}
+                        emptyText="Inga uppgångar just nu"
+                      />
+
+                      <HoldingsHighlightCard
+                        title="Dagens förlorare"
+                        icon={<TrendingDown className="h-5 w-5" />}
+                        iconColorClass="text-red-600"
+                        items={worstHighlightItems}
+                        emptyText="Inga nedgångar just nu"
+                      />
+                    </div>
+                  </div>
 
                   {/* News/Morning Brief Section - Moved up */}
                   {morningBrief && (
@@ -681,7 +698,7 @@ const Index = () => {
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
                           <Newspaper className="h-5 w-5 text-primary" />
-                          <h2 className="text-base font-semibold text-foreground sm:text-lg">Senaste nyheter</h2>
+                          <h2 className="text-base font-semibold text-foreground sm:text-lg">Nyheter</h2>
                         </div>
                         <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
                           <Link to="/news">
@@ -726,64 +743,6 @@ const Index = () => {
                       </div>
                     </section>
                   )}
-
-                  {/* <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <h2 className="text-base font-semibold text-foreground sm:text-lg">AI-insikter för dig</h2>
-                        <p className="text-sm text-muted-foreground sm:text-base">Personliga rekommendationer baserade på din portfölj.</p>
-                      </div>
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                        {lastUpdatedLabel && <span className="text-xs text-muted-foreground sm:text-sm">Senast uppdaterad {lastUpdatedLabel}</span>}
-                        <Button type="button" variant="outline" size="sm" onClick={refreshInsights} disabled={insightsLoading} className="w-full justify-center sm:w-auto">
-                          <RefreshCw className={`mr-2 h-4 w-4 ${insightsLoading ? 'animate-spin' : ''}`} />
-                          {insightsLoading ? 'Hämtar...' : 'Uppdatera'}
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="-mx-1 mt-4 flex gap-3 overflow-x-auto pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible">
-                      {insightsLoading && insights.length === 0 ? (
-                        Array.from({ length: 2 }).map((_, index) => (
-                          <div
-                            key={index}
-                            className="min-w-[16rem] animate-pulse rounded-2xl border border-border/60 bg-muted/20 p-4 sm:min-w-0 sm:p-5"
-                          >
-                            <div className="h-5 w-20 rounded-full bg-muted" />
-                            <div className="mt-4 h-4 w-3/4 rounded bg-muted" />
-                            <div className="mt-2 h-3 w-full rounded bg-muted" />
-                            <div className="mt-2 h-3 w-2/3 rounded bg-muted" />
-                          </div>
-                        ))
-                      ) : insights.length > 0 ? (
-                        insights.map((insight, index) => {
-                          const type = (insight.type as keyof typeof insightTypeLabels) ?? 'opportunity';
-                          const badgeClassName = insightBadgeStyles[type] ?? 'bg-primary/10 text-primary';
-                          const label = insightTypeLabels[type] ?? 'AI-insikt';
-                          const title = insight.title || 'AI-insikt';
-                          const message = insight.message || '';
-
-                          return (
-                            <div
-                              key={`${title}-${index}`}
-                              className="min-w-[16rem] flex-1 rounded-2xl border border-border/60 bg-background/80 p-4 sm:min-w-0 sm:p-5"
-                            >
-                              <Badge className={`mb-3 w-fit ${badgeClassName}`}>{label}</Badge>
-                              <p className="text-sm font-semibold text-foreground">{title}</p>
-                              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{message}</p>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <div className="flex min-w-[16rem] flex-col justify-center gap-2 rounded-2xl border border-dashed border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground sm:min-w-0 sm:p-6">
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Sparkles className="h-4 w-4 text-primary" />
-                            <span>Inga AI-insikter ännu</span>
-                          </div>
-                          <p>Tryck på uppdatera för att hämta personliga rekommendationer.</p>
-                        </div>
-                      )}
-                    </div>
-                  </section> */}
                 </div>
               </div>
             </div>}
