@@ -29,7 +29,7 @@ const PredictionMarketsDemo = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useLocalStorage<ViewMode>('predictions-view-mode', 'table');
+  const [viewMode, setViewMode] = useLocalStorage<ViewMode>('predictions-view-mode', 'cards');
   const [sortBy, setSortBy] = useState<SortBy>('volume');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [currentPage, setCurrentPage] = useState(1);
