@@ -11,6 +11,8 @@ import type {
   GraphDataPoint,
 } from '@/types/polymarket';
 
+export type TimeRange = '1h' | '6h' | '1d' | '1w' | '1m' | 'all';
+
 // Helper function to call Polymarket API via Supabase edge function
 const callPolymarketAPI = async (
   endpoint: string, 
@@ -299,11 +301,15 @@ export const usePolymarketTags = () => {
 };
 
 // Hook for market history using CLOB API
-export const usePolymarketMarketHistory = (market: PolymarketMarketDetail | null | undefined) => {
+export const usePolymarketMarketHistory = (
+  market: PolymarketMarketDetail | null | undefined,
+  timeRange: TimeRange = 'all' // Ny parameter
+) => {
   const isEnabled = !!market && !!market.outcomes?.length;
   
   return useQuery({
-    queryKey: ['polymarket-market-history', market?.slug, market?.id],
+    // Lägg till timeRange i queryKey så den laddar om när du byter tid
+    queryKey: ['polymarket-market-history', market?.slug, market?.id, timeRange],
     queryFn: async () => {
       if (!market?.outcomes?.length) return null;
       
@@ -312,12 +318,9 @@ export const usePolymarketMarketHistory = (market: PolymarketMarketDetail | null
       );
       const primaryOutcome = yesOutcome || market.outcomes[0];
       
-      // VIKTIGT: Validera att vi har ett giltigt CLOB Token ID
-      // Ett giltigt ID är en lång sträng (ofta numerisk eller hex). "0" eller "1" är inte giltigt.
       const rawTokenId = primaryOutcome.tokenId || primaryOutcome.id;
       let tokenId = rawTokenId;
 
-      // Fallback: Om token ID saknas på outcome, försök hitta det i marknadens lista
       if ((!tokenId || tokenId.length < 10) && market.clobTokenIds?.length) {
          const index = market.outcomes.indexOf(primaryOutcome);
          if (index >= 0 && market.clobTokenIds[index]) {
@@ -325,9 +328,7 @@ export const usePolymarketMarketHistory = (market: PolymarketMarketDetail | null
          }
       }
 
-      // Om vi fortfarande inte har ett långt, giltigt ID -> använd mock
       if (!tokenId || tokenId.length < 5) {
-        console.warn('Invalid Token ID for history, using mock:', tokenId);
         return {
           marketId: market.id,
           marketSlug: market.slug,
@@ -336,15 +337,47 @@ export const usePolymarketMarketHistory = (market: PolymarketMarketDetail | null
       }
       
       try {
-        console.log('Fetching history for Token ID:', tokenId);
+        // Konfigurera parametrar baserat på tidsintervall
+        const now = Math.floor(Date.now() / 1000);
+        let apiParams: any = { market: tokenId };
+
+        switch (timeRange) {
+          case '1h':
+            apiParams.startTs = now - (60 * 60); // Senaste timmen
+            apiParams.endTs = now;
+            apiParams.fidelity = 1; // 1 minut upplösning (hög detalj)
+            break;
+          case '6h':
+            apiParams.startTs = now - (6 * 60 * 60);
+            apiParams.endTs = now;
+            apiParams.fidelity = 5; // 5 min upplösning
+            break;
+          case '1d':
+            apiParams.startTs = now - (24 * 60 * 60);
+            apiParams.endTs = now;
+            apiParams.fidelity = 10; // 10 min upplösning
+            break;
+          case '1w':
+            apiParams.startTs = now - (7 * 24 * 60 * 60);
+            apiParams.endTs = now;
+            apiParams.fidelity = 60; // 1 timme upplösning
+            break;
+          case '1m':
+            apiParams.startTs = now - (30 * 24 * 60 * 60);
+            apiParams.endTs = now;
+            apiParams.fidelity = 120; // 2 timmar upplösning
+            break;
+          case 'all':
+          default:
+            apiParams.interval = 'max';
+            apiParams.fidelity = 60; // Standard för "All"
+            break;
+        }
+
+        console.log(`Fetching history (${timeRange}) for Token ID:`, tokenId);
         
-        const historyData = await callPolymarketAPI('/prices-history', {
-          market: tokenId,
-          interval: 'max',
-          fidelity: 60,
-        }, 'clob');
+        const historyData = await callPolymarketAPI('/prices-history', apiParams, 'clob');
         
-        // Hantera { history: [...] } eller [...]
         const historyArray = Array.isArray(historyData) ? historyData : (historyData.history || []);
         
         if (Array.isArray(historyArray) && historyArray.length > 0) {
@@ -362,7 +395,6 @@ export const usePolymarketMarketHistory = (market: PolymarketMarketDetail | null
           };
         }
         
-        // Tom array -> mock
         return {
           marketId: market.id,
           marketSlug: market.slug,
@@ -378,7 +410,7 @@ export const usePolymarketMarketHistory = (market: PolymarketMarketDetail | null
       }
     },
     enabled: isEnabled,
-    staleTime: 300000, 
+    staleTime: 60000, // Sänk cachningstiden lite för kortare intervall
   });
 };
 
