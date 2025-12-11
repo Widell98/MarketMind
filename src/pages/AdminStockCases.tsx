@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, ArrowLeft, X, Edit, Trash2, Plus, Save } from 'lucide-react';
+import { Upload, ArrowLeft, X, Edit, Trash2, Plus, Save, Search, TrendingUp, Calendar, CheckCircle2, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import AdminImageHistoryManager from '@/components/AdminImageHistoryManager';
 import AdminAnalysesDashboard from '@/components/AdminAnalysesDashboard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -40,7 +41,10 @@ import {
   STOCK_CASE_IS_INDEX_KEY,
 } from '@/constants/storageKeys';
 import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { usePolymarketMarkets } from '@/hooks/usePolymarket';
 
+// --- TYPES FOR STOCK CASES ---
 type StockCaseWithActions = {
   id: string;
   title: string;
@@ -108,10 +112,195 @@ const createDefaultCaseFormState = (): StockCaseFormState => ({
   category_id: '',
 });
 
+// --- COMPONENT: Prediction Markets Manager (Sub-component) ---
+const PredictionMarketsManager = () => {
+  const queryClient = useQueryClient();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [activeTab, setActiveTab] = useState("all");
+
+  // Debounce logic
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Fetch markets from Polymarket API
+  const { data: apiMarkets, isLoading: apiLoading } = usePolymarketMarkets({
+    limit: 50,
+    order: debouncedSearch ? undefined : "volume24hr",
+    ascending: false,
+    search: debouncedSearch || undefined,
+    active: true,
+    closed: false
+  });
+
+  // Fetch curated markets from Supabase
+  const { data: curatedMarkets } = useQuery({
+    queryKey: ["curated-markets-admin"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("curated_markets")
+        .select("market_id, is_active");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Mutation to toggle market visibility
+  const toggleMarketMutation = useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      if (isActive) {
+        const { error } = await supabase
+          .from("curated_markets")
+          .upsert({ market_id: id, is_active: true }, { onConflict: "market_id" });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("curated_markets")
+          .delete()
+          .eq("market_id", id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["curated-markets-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["curated-markets-public"] });
+    },
+  });
+
+  const isCurated = (marketId: string) => {
+    return curatedMarkets?.some(m => m.market_id === marketId && m.is_active);
+  };
+
+  const displayedMarkets = activeTab === "curated" 
+    ? apiMarkets?.filter(m => isCurated(m.id)) 
+    : apiMarkets;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-4 bg-white dark:bg-card rounded-lg border shadow-sm">
+        <div>
+          <h2 className="text-xl font-bold">Hantera Marknader</h2>
+          <p className="text-muted-foreground text-sm">Sök och välj vilka Polymarket-odds som ska visas.</p>
+        </div>
+        <div className="relative w-full md:w-80">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Sök (t.ex. 'Trump', 'Rate')..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </div>
+
+      <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList>
+          <TabsTrigger value="all">Sökresultat</TabsTrigger>
+          <TabsTrigger value="curated" className="gap-2">
+            Valda
+            <Badge variant="secondary" className="h-5 px-1.5 min-w-5">
+              {curatedMarkets?.length || 0}
+            </Badge>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="all" className="mt-4">
+          <div className="grid gap-3">
+            {apiLoading && !debouncedSearch ? (
+               <div className="py-12 flex justify-center"><Loader2 className="animate-spin text-muted-foreground" /></div>
+            ) : displayedMarkets && displayedMarkets.length > 0 ? (
+              displayedMarkets.map((market) => {
+                const isActive = isCurated(market.id);
+                return (
+                  <MarketAdminCard 
+                    key={market.id} 
+                    market={market} 
+                    isActive={isActive || false}
+                    onToggle={(checked) => toggleMarketMutation.mutate({ id: market.id, isActive: checked })}
+                  />
+                );
+              })
+            ) : (
+              <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-lg border border-dashed">
+                <p>Inga marknader hittades för "{debouncedSearch}"</p>
+                <p className="text-xs mt-2 opacity-70">Sökningen körs mot Polymarkets hela databas.</p>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="curated" className="mt-4">
+           <div className="grid gap-3">
+             {displayedMarkets?.filter(m => isCurated(m.id)).map((market) => (
+               <MarketAdminCard 
+                 key={market.id} 
+                 market={market} 
+                 isActive={true}
+                 onToggle={(checked) => toggleMarketMutation.mutate({ id: market.id, isActive: checked })}
+               />
+             ))}
+              {displayedMarkets?.filter(m => isCurated(m.id)).length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  Inga valda marknader matchar sökningen.
+                </div>
+              )}
+           </div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+const MarketAdminCard = ({ market, isActive, onToggle }: { market: any, isActive: boolean, onToggle: (c: boolean) => void }) => (
+  <Card className={`flex flex-col sm:flex-row items-start sm:items-center p-3 gap-3 transition-all ${isActive ? 'border-green-500/50 bg-green-500/5' : 'hover:bg-accent/50'}`}>
+    <div className="w-10 h-10 shrink-0 rounded overflow-hidden bg-muted">
+      {market.imageUrl ? (
+        <img src={market.imageUrl} alt="" className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-xs font-bold text-muted-foreground">PM</div>
+      )}
+    </div>
+    
+    <div className="flex-grow min-w-0">
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="font-medium text-sm truncate pr-2 text-foreground/90">{market.question}</h3>
+        {isActive && <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />}
+      </div>
+      
+      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1">
+          <TrendingUp className="w-3 h-3" />
+          <span>${Number(market.volume || market.volumeNum || 0).toLocaleString()}</span>
+        </div>
+        {market.endDate && (
+          <div className="flex items-center gap-1">
+            <Calendar className="w-3 h-3" />
+            <span>{new Date(market.endDate).toLocaleDateString('sv-SE')}</span>
+          </div>
+        )}
+      </div>
+    </div>
+
+    <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-border">
+      <span className={`text-xs font-medium ${isActive ? "text-green-600" : "text-muted-foreground"}`}>
+        {isActive ? "Visas" : "Dold"}
+      </span>
+      <Switch
+        checked={isActive}
+        onCheckedChange={onToggle}
+      />
+    </div>
+  </Card>
+);
+
+// --- COMPONENT: Admin Stock Cases (Main Page) ---
 const AdminStockCases = () => {
   const { user } = useAuth();
   const { isAdmin, loading: roleLoading } = useUserRole();
-  const { stockCases: allStockCases, loading: stockCasesLoading } = useStockCases();
   const { createStockCase, uploadImage, deleteStockCase } = useStockCaseOperations();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -296,8 +485,7 @@ const AdminStockCases = () => {
     );
   }
 
-  // Check if user is admin - this will now be handled by the useEffect redirect above
-  // but we keep this as a fallback
+  // Check if user is admin
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -611,7 +799,7 @@ const AdminStockCases = () => {
               </h1>
               <p className="text-gray-600 mt-2">
                 {isAdmin 
-                  ? 'Hantera aktiecases och analyser i systemet' 
+                  ? 'Hantera aktiecases, analyser och marknader på samma ställe.' 
                   : 'Hantera dina egna aktiecases'
                 }
               </p>
@@ -620,11 +808,13 @@ const AdminStockCases = () => {
         </div>
 
         <Tabs defaultValue="stock-cases" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="stock-cases">Aktiecases</TabsTrigger>
             <TabsTrigger value="analyses">Analyser</TabsTrigger>
+            <TabsTrigger value="markets">Marknader</TabsTrigger>
           </TabsList>
           
+          {/* TAB 1: Stock Cases */}
           <TabsContent value="stock-cases" className="space-y-8">
             <div className="flex justify-end">
               <Button
@@ -1008,8 +1198,14 @@ const AdminStockCases = () => {
             </Card>
           </TabsContent>
 
+          {/* TAB 2: Analyses */}
           <TabsContent value="analyses">
             <AdminAnalysesDashboard />
+          </TabsContent>
+          
+          {/* TAB 3: Prediction Markets */}
+          <TabsContent value="markets">
+            <PredictionMarketsManager />
           </TabsContent>
         </Tabs>
       </div>
