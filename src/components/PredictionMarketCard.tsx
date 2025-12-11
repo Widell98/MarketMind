@@ -26,7 +26,7 @@ export const PredictionMarketCard = ({ market }: PredictionMarketCardProps) => {
       className="cursor-pointer hover:shadow-md transition-all duration-200 border-border/60 hover:border-primary/50 group overflow-hidden bg-card"
       onClick={() => navigate(`/predictions/${market.slug}`)}
     >
-      <CardContent className="p-4 flex gap-4 items-start">
+        <CardContent className="p-4 flex gap-4 items-start">
           {/* Bild */}
           <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-md bg-muted border border-border/50 relative overflow-hidden mt-1">
             {market.imageUrl ? (
@@ -105,7 +105,7 @@ export const PredictionMarketCard = ({ market }: PredictionMarketCardProps) => {
                 )}
             </div>
           </div>
-      </CardContent>
+        </CardContent>
     </Card>
   );
 };

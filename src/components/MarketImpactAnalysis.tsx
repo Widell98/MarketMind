@@ -14,6 +14,20 @@ interface ImpactItem {
   reason: string;
 }
 
+interface MarketMetadata {
+  custom_summary?: string;
+  custom_description?: string;
+  admin_notes?: string;
+  custom_positive?: ImpactItem[];
+  custom_negative?: ImpactItem[];
+}
+
+interface ImpactItem {
+  name: string;
+  ticker?: string;
+  reason: string;
+}
+
 interface ImpactAnalysisData {
   summary: string;
   positive: ImpactItem[];
@@ -23,6 +37,30 @@ interface ImpactAnalysisData {
 export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetail | null }) => {
   const navigate = useNavigate(); // Hook för navigering
 
+  // Fetch custom metadata (edited summary)
+  const { data: customMetadata } = useQuery({
+    queryKey: ['market-metadata', market?.id],
+    queryFn: async () => {
+      if (!market?.id) return null;
+      
+      const { data, error } = await supabase
+        .from('curated_markets')
+        .select('metadata')
+        .eq('market_id', market.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 is "not found" error
+        console.error('Error fetching market metadata:', error);
+        return null;
+      }
+
+      return (data?.metadata as MarketMetadata) || null;
+    },
+    enabled: !!market?.id,
+  });
+
+  // Fetch AI-generated analysis
   const { data: analysis, isLoading, error } = useQuery({
     queryKey: ['market-impact', market?.id],
     queryFn: async () => {
@@ -43,6 +81,9 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
     staleTime: 1000 * 60 * 60 * 24, 
   });
 
+  // Use custom summary if available, otherwise use AI-generated
+  const displaySummary = customMetadata?.custom_summary || analysis?.summary;
+
   if (!market) return null;
 
   // Hantera klick på "Diskutera"-knappen
@@ -58,8 +99,12 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
     });
   };
 
-  const hasPositive = analysis?.positive && analysis.positive.length > 0;
-  const hasNegative = analysis?.negative && analysis.negative.length > 0;
+  // Use custom positive/negative if available, otherwise use AI-generated
+  const displayPositive = customMetadata?.custom_positive || analysis?.positive || [];
+  const displayNegative = customMetadata?.custom_negative || analysis?.negative || [];
+  
+  const hasPositive = displayPositive.length > 0;
+  const hasNegative = displayNegative.length > 0;
   const hasAnyStocks = hasPositive || hasNegative;
 
   return (
@@ -90,16 +135,18 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
               <p className="opacity-80 mt-1">Kunde inte generera en analys just nu. Försök igen senare.</p>
             </div>
           </div>
-        ) : analysis ? (
+        ) : (displaySummary || analysis) ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            {/* Sammanfattning */}
-            <div className="bg-primary/5 p-4 rounded-lg border border-primary/10">
-              <p className="text-sm text-foreground/80 leading-relaxed italic">
-                "{analysis.summary}"
-              </p>
-            </div>
+            {/* Sammanfattning - visa anpassad om den finns, annars AI-genererad */}
+            {displaySummary && (
+              <div className="p-4 rounded-lg border bg-primary/5 border-primary/10">
+                <p className="text-sm text-foreground/80 leading-relaxed italic">
+                  "{displaySummary}"
+                </p>
+              </div>
+            )}
 
-            {/* Aktie-listor (Visas bara om det finns data) */}
+            {/* Aktie-listor (Visas om det finns data) */}
             {hasAnyStocks && (
               <div className={`grid gap-6 ${hasPositive && hasNegative ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
                 
@@ -112,7 +159,7 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
                       <span className="font-semibold text-sm text-green-700 dark:text-green-400">Positiv påverkan</span>
                     </div>
                     <div className="space-y-2">
-                      {analysis.positive.map((item, idx) => (
+                      {displayPositive.map((item, idx) => (
                         <ImpactCard key={idx} item={item} type="positive" />
                       ))}
                     </div>
@@ -128,7 +175,7 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
                       <span className="font-semibold text-sm text-red-700 dark:text-red-400">Negativ påverkan</span>
                     </div>
                     <div className="space-y-2">
-                      {analysis.negative.map((item, idx) => (
+                      {displayNegative.map((item, idx) => (
                         <ImpactCard key={idx} item={item} type="negative" />
                       ))}
                     </div>
