@@ -313,10 +313,10 @@ const buildPrompt = (
   "",
   "1. Identifiera bolagsnamnet – exakt som det förekommer i dokumentet (använd inte tolkningar).",
   "2. Identifiera rapporttiteln – exakt enligt dokumentets rubrik eller formella titel.",
-  "3. Formulera en kondenserad och faktadriven sammanfattning (3–4 meningar) som beskriver rapportens kärnbudskap utan tolkningar eller spekulation. Skriv sammanfattningen på svenska även om källmaterialet är på engelska.",
-  "4. Extrahera minst tre kvantitativa nyckelsiffror – etiketter och värden ska vara ordagranna från rapporten. Om rapporten anger förändringstal (t.ex. “+14% y/y”) ska detta placeras i fältet 'trend'.",
-  "5. Identifiera 3–6 objektiva datapunkter som framgår tydligt i rapportens text, exempelvis trender, segmentprestationer eller väsentliga händelser. Dessa datapunkter ska uttryckas på svenska.",
-  "6. Sammanfatta VD-kommentaren i 1–2 meningar om en sådan sektion finns. Om ingen VD-kommentar förekommer ska värdet vara: \"Ingen VD-kommentar identifierad\". Formulera texten på svenska.",
+  "3. KRITISKT: Formulera en kondenserad och faktadriven sammanfattning (3–4 meningar) som beskriver rapportens kärnbudskap utan tolkningar eller spekulation. ALLT TEXTINNEHÅLL MÅSTE VARA PÅ SVENSKA. Om källmaterialet är på engelska, översätt allt till svenska. Exempel: 'The company reported strong growth' → 'Bolaget redovisade stark tillväxt'.",
+  "4. Extrahera minst tre kvantitativa nyckelsiffror – etiketter och värden ska vara ordagranna från rapporten. Om rapporten anger förändringstal (t.ex. "+14% y/y") ska detta placeras i fältet 'trend'. Om etiketter är på engelska, översätt dem till svenska.",
+  "5. KRITISKT: Identifiera 3–6 objektiva datapunkter som framgår tydligt i rapportens text, exempelvis trender, segmentprestationer eller väsentliga händelser. ALLA datapunkter MÅSTE uttryckas på svenska. Översätt från engelska om nödvändigt. Exempel: 'Revenue increased by 15%' → 'Intäkterna ökade med 15%'.",
+  "6. KRITISKT: Sammanfatta VD-kommentaren i 1–2 meningar om en sådan sektion finns. Om ingen VD-kommentar förekommer ska värdet vara: \"Ingen VD-kommentar identifierad\". ALL text MÅSTE vara på svenska. Översätt från engelska om nödvändigt.",
 ].join("\n");
 
    const importantNotes = [
@@ -325,7 +325,18 @@ const buildPrompt = (
   "- Gissa aldrig bolagsnamn eller rapporttitel. Om osäkerhet föreligger, använd exakt det som står tydligast i dokumentets inledning.",
   "- Tolkningar, slutsatser, rekommendationer eller spekulativa utsagor är inte tillåtna.",
   "- Om rapporten innehåller flera segment (exempelvis Retail, Automotive, Software), inkludera endast segmentdata om det uttryckligen anges.",
-  "- Sammanfattningen, nyckelpunkterna och VD-kommentaren ska vara på svenska även om källmaterialet är på engelska. Behåll siffror, valutasymboler och procenttal exakt som de står.",
+  "",
+  "⚠️ KRITISK SPRÅKREGL: ALL TEXT MÅSTE VARA PÅ SVENSKA ⚠️",
+  "- Sammanfattningen (summary) MÅSTE vara på svenska, även om källmaterialet är på engelska.",
+  "- Alla nyckelpunkter (key_points) MÅSTE vara på svenska. Översätt från engelska om nödvändigt.",
+  "- VD-kommentaren (ceo_commentary) MÅSTE vara på svenska. Översätt från engelska om nödvändigt.",
+  "- Nyckeltal-etiketter (key_metrics label) ska översättas till svenska om de är på engelska.",
+  "- Behåll siffror, valutasymboler (SEK, USD, EUR), procenttal och tekniska termer exakt som de står.",
+  "- Exempel på korrekt översättning:",
+  "  • 'Revenue increased significantly' → 'Intäkterna ökade betydligt'",
+  "  • 'Strong performance across all segments' → 'Stark prestation i samtliga segment'",
+  "  • 'The company expects continued growth' → 'Bolaget förväntar sig fortsatt tillväxt'",
+  "",
   "- All output måste vara strikt giltig JSON utan text före eller efter JSON-strukturen.",
 ].join("\n");
 
@@ -358,6 +369,10 @@ const buildPrompt = (
     const promptSections = [
       "Du är en senior finansanalytiker som analyserar års- och kvartalsrapporter.",
       "Du svarar alltid med giltig JSON, aldrig text utanför JSON-strukturen.",
+      "",
+      "⚠️ KRITISKT: ALL TEXTINNEHÅLL I DITT SVAR MÅSTE VARA PÅ SVENSKA ⚠️",
+      "Om källmaterialet är på engelska, översätt ALLT till svenska innan du svarar.",
+      "Detta gäller: sammanfattning, nyckelpunkter, VD-kommentar och nyckeltal-etiketter.",
       "",
       hintsBlock ? `${hintsBlock}${objectives}`.trim() : objectives,
       "",
@@ -547,7 +562,12 @@ serve(async (req) => {
       {
         role: "system",
         content:
-          "Du är en erfaren finansanalytiker som levererar koncisa, professionella rapportsammanfattningar på svenska – även när underlaget är på engelska. Du returnerar alltid strikt giltig JSON utan någon text utanför JSON-strukturen." 
+          "Du är en erfaren finansanalytiker som levererar koncisa, professionella rapportsammanfattningar på svenska – även när underlaget är på engelska. Du returnerar alltid strikt giltig JSON utan någon text utanför JSON-strukturen.\n\n" +
+          "⚠️ KRITISK SPRÅKREGL: ALL TEXT MÅSTE VARA PÅ SVENSKA ⚠️\n" +
+          "- Om källmaterialet är på engelska, översätt ALLT till svenska.\n" +
+          "- Detta gäller: sammanfattning (summary), nyckelpunkter (key_points), VD-kommentar (ceo_commentary) och nyckeltal-etiketter (key_metrics label).\n" +
+          "- Behåll siffror, valutasymboler och procenttal exakt som de står.\n" +
+          "- Exempel: 'Revenue increased' → 'Intäkterna ökade', 'Strong growth' → 'Stark tillväxt'." 
       },
       {
         role: "user",
