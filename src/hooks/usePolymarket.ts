@@ -405,12 +405,15 @@ let tokenId = primaryOutcome.tokenId || primaryOutcome.id || market.clobTokenIds
         console.log('usePolymarketMarketHistory: Calling CLOB API', {
           endpoint: '/prices-history',
           market: tokenId,
-          interval: '1d',
         });
         
-        const historyData = await callPolymarketAPI('/prices-history', {
+       const historyData = await callPolymarketAPI('/prices-history', {
           market: tokenId,
-          interval: '1d', // Daily interval
+          // Använd "fidelity" istället för interval om möjligt för CLOB, 
+          // eller ändra interval till kortare tid.
+          // Polymarket CLOB brukar svara bra på att INTE skicka interval (för auto) 
+          // eller skicka 'max' / '1h'
+          fidelity: 10, // Försök få högre upplösning (var 10e minut ca)
         }, 'clob');
         
         console.log('usePolymarketMarketHistory: Got response from CLOB API', {
