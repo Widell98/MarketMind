@@ -8,10 +8,18 @@ import { TrendingUp, TrendingDown, Loader2, Sparkles, Building2, AlertTriangle, 
 import type { PolymarketMarketDetail } from "@/types/polymarket";
 import { useNavigate } from "react-router-dom"; // Ny import
 
+interface ImpactItem {
+  name: string;
+  ticker?: string;
+  reason: string;
+}
+
 interface MarketMetadata {
   custom_summary?: string;
   custom_description?: string;
   admin_notes?: string;
+  custom_positive?: ImpactItem[];
+  custom_negative?: ImpactItem[];
 }
 
 interface ImpactItem {
@@ -91,8 +99,12 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
     });
   };
 
-  const hasPositive = analysis?.positive && analysis.positive.length > 0;
-  const hasNegative = analysis?.negative && analysis.negative.length > 0;
+  // Use custom positive/negative if available, otherwise use AI-generated
+  const displayPositive = customMetadata?.custom_positive || analysis?.positive || [];
+  const displayNegative = customMetadata?.custom_negative || analysis?.negative || [];
+  
+  const hasPositive = displayPositive.length > 0;
+  const hasNegative = displayNegative.length > 0;
   const hasAnyStocks = hasPositive || hasNegative;
 
   return (
@@ -131,16 +143,11 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
                 <p className="text-sm text-foreground/80 leading-relaxed italic">
                   "{displaySummary}"
                 </p>
-                {customMetadata?.custom_summary && (
-                  <Badge variant="outline" className="mt-2 text-xs bg-yellow-100 dark:bg-yellow-900/40 border-yellow-300 dark:border-yellow-800">
-                    Redigerad av admin
-                  </Badge>
-                )}
               </div>
             )}
 
-            {/* Aktie-listor (Visas om det finns AI-genererad data) */}
-            {hasAnyStocks && analysis && (
+            {/* Aktie-listor (Visas om det finns data) */}
+            {hasAnyStocks && (
               <div className={`grid gap-6 ${hasPositive && hasNegative ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
                 
                 {hasPositive && (
@@ -152,7 +159,7 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
                       <span className="font-semibold text-sm text-green-700 dark:text-green-400">Positiv påverkan</span>
                     </div>
                     <div className="space-y-2">
-                      {analysis.positive.map((item, idx) => (
+                      {displayPositive.map((item, idx) => (
                         <ImpactCard key={idx} item={item} type="positive" />
                       ))}
                     </div>
@@ -168,7 +175,7 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
                       <span className="font-semibold text-sm text-red-700 dark:text-red-400">Negativ påverkan</span>
                     </div>
                     <div className="space-y-2">
-                      {analysis.negative.map((item, idx) => (
+                      {displayNegative.map((item, idx) => (
                         <ImpactCard key={idx} item={item} type="negative" />
                       ))}
                     </div>

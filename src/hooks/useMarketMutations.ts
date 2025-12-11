@@ -2,10 +2,18 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+interface ImpactItem {
+  name: string;
+  ticker?: string;
+  reason: string;
+}
+
 interface MarketMetadata {
   custom_summary?: string;
   custom_description?: string;
   admin_notes?: string;
+  custom_positive?: ImpactItem[];
+  custom_negative?: ImpactItem[];
 }
 
 interface UpdateMarketMetadataParams {
