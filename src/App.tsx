@@ -23,6 +23,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import PortfolioImplementation from "./pages/PortfolioImplementation";
 import PortfolioAdvisor from "./pages/PortfolioAdvisor";
+import AdminPredictionMarkets from "./pages/AdminPredictionMarkets";
 import AIChat from "./pages/AIChat";
 import Learning from "./pages/Learning";
 import SocialIndex from "./pages/SocialIndex";
@@ -71,6 +72,7 @@ function App() {
                     <Route path="/learning" element={<Learning />} />
                     <Route path="/social" element={<SocialIndex />} />
                     <Route path="/admin/stock-cases" element={<AdminStockCases />} />
+                    <Route path="/admin/markets" element={<AdminPredictionMarkets />} />
                     <Route path="/advanced-features" element={<AdvancedFeatures />} />
                     <Route path="/discover" element={<Discover />} />
                     <Route path="/news" element={<DiscoverNews />} />
