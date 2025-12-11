@@ -20,14 +20,15 @@ interface ImpactAnalysisData {
 
 export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetail | null }) => {
   const { data: analysis, isLoading, error } = useQuery({
-    queryKey: ['market-impact', market?.id],
+    queryKey: ['market-impact', market?.id], // Använder redan ID här, bra!
     queryFn: async () => {
       if (!market) return null;
       
       const { data, error } = await supabase.functions.invoke('analyze-prediction-impact', {
         body: {
           question: market.question,
-          description: market.description
+          description: market.description,
+          marketId: market.id // <-- NYTT: Vi skickar med ID för cachning
         }
       });
 
