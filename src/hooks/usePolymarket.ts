@@ -36,27 +36,20 @@ const callPolymarketAPI = async (
 };
 
 // Transform API response to our Market type
-// Transform API response to our Market type
 const transformMarket = (apiMarket: any): PolymarketMarket => {
   try {
     // 1. Normalisera outcomes till en array av objekt
     let outcomes: any[] = [];
     
-    // Fall 1: "outcomes" är redan en array (bästa fallet)
     if (apiMarket.outcomes && Array.isArray(apiMarket.outcomes)) {
       outcomes = apiMarket.outcomes;
-    } 
-    // Fall 2: "outcomes" är en strängifierad JSON (vanligt från Gamma API)
-    else if (typeof apiMarket.outcomes === 'string') {
+    } else if (typeof apiMarket.outcomes === 'string') {
       try {
         outcomes = JSON.parse(apiMarket.outcomes);
       } catch (e) {
         console.warn('Failed to parse outcomes string:', e);
       }
-    }
-    // Fall 3: Vi har bara "outcomePrices" (array av prissträngar/siffror)
-    // T.ex: ["0.53", "0.47"]
-    else if (apiMarket.outcomePrices) {
+    } else if (apiMarket.outcomePrices) {
       let prices: any[] = [];
       if (Array.isArray(apiMarket.outcomePrices)) {
         prices = apiMarket.outcomePrices;
@@ -67,7 +60,7 @@ const transformMarket = (apiMarket: any): PolymarketMarket => {
       if (prices.length > 0) {
         outcomes = prices.map((price, i) => ({
           price: price,
-          title: i === 0 ? 'Yes' : 'No', // Gissning för binära marknader
+          title: i === 0 ? 'Yes' : 'No',
           id: String(i)
         }));
       }
@@ -114,7 +107,6 @@ const transformMarket = (apiMarket: any): PolymarketMarket => {
       volumeNum: volumeNum,
       liquidity: Number(apiMarket.liquidity) || 0,
       outcomes: outcomes.map((outcome: any, index: number) => {
-        // HÄR VAR FELET TIDIGARE: Vi måste hantera om outcome är en enkel siffra/sträng
         let outcomePrice = 0;
         let outcomeTitle = `Outcome ${index + 1}`;
         let outcomeId = String(index);
@@ -128,12 +120,10 @@ const transformMarket = (apiMarket: any): PolymarketMarket => {
             outcomeVolume = outcome.volume;
             token_id = outcome.tokenId || outcome.token_id;
         } else if (['string', 'number'].includes(typeof outcome)) {
-            // Om outcome bara är ett pris (t.ex. "0.65")
             outcomePrice = Number(outcome);
             outcomeTitle = index === 0 ? 'Yes' : 'No';
         }
 
-        // Hitta bästa möjliga token ID för historik
         const finalTokenId = token_id || clobTokenIdsArray[index];
 
         return {
@@ -180,29 +170,67 @@ export const fetchPolymarketMarkets = async (params?: {
 }): Promise<PolymarketMarket[]> => {
   try {
     const apiParams: Record<string, any> = {};
-    if (params?.limit) apiParams.limit = params.limit;
-    if (params?.offset) apiParams.offset = params.offset;
-    if (params?.tags && params.tags.length > 0) apiParams.tags = params.tags;
-    if (params?.search) apiParams.search = params.search;
-    if (params?.active !== undefined) apiParams.active = params.active;
-    if (params?.closed !== undefined) apiParams.closed = params.closed;
-    if (params?.order) apiParams.order = params.order;
-    if (params?.ascending !== undefined) apiParams.ascending = params.ascending;
+    let endpoint = '/markets';
 
-    const data = await callPolymarketAPI('/markets', apiParams);
-    
-    let markets: any[] = [];
-    if (Array.isArray(data)) {
-      markets = data;
-    } else if (data.data && Array.isArray(data.data)) {
-      markets = data.data;
+    // --- SÖK-LOGIK: Byt till /public-search vid sökning ---
+    if (params?.search && params.search.trim().length > 0) {
+      endpoint = '/public-search';
+      apiParams.q = params.search;
+      // Sök-API stöder inte vanliga filter, rensa dem
     } else {
-      return [];
+      // Kopiera vanliga parametrar för /markets
+      if (params?.limit) apiParams.limit = params.limit;
+      if (params?.offset) apiParams.offset = params.offset;
+      if (params?.tags && params.tags.length > 0) apiParams.tags = params.tags;
+      if (params?.active !== undefined) apiParams.active = params.active;
+      if (params?.closed !== undefined) apiParams.closed = params.closed;
+      if (params?.order) apiParams.order = params.order;
+      if (params?.ascending !== undefined) apiParams.ascending = params.ascending;
     }
+
+    const data = await callPolymarketAPI(endpoint, apiParams);
     
-    return markets.map(transformMarket).filter(m => m.id && m.question);
+    let rawItems: any[] = [];
+    
+    // --- EXTRAHERA MARKNADER ---
+    if (endpoint === '/public-search') {
+        // Sökresultat ligger ofta under 'events' eller 'markets'
+        const events = data.events || (Array.isArray(data) ? data : []);
+        
+        // "Packa upp" events till marknader
+        // Om ett sökresultat är ett Event, vill vi visa dess marknader istället för eventet självt
+        events.forEach((item: any) => {
+            if (item.markets && Array.isArray(item.markets) && item.markets.length > 0) {
+                // Lägg till alla marknader från detta event
+                rawItems.push(...item.markets);
+            } else {
+                // Eller lägg till objektet som det är (om det redan är en marknad)
+                rawItems.push(item);
+            }
+        });
+    } else {
+        // Standard endpoint response
+        if (Array.isArray(data)) rawItems = data;
+        else if (data.data && Array.isArray(data.data)) rawItems = data.data;
+        else if (data.results && Array.isArray(data.results)) rawItems = data.results;
+    }
+
+    if (rawItems.length === 0) return [];
+    
+    // Transformera och filtrera
+    const transformedMarkets = rawItems
+      .map(item => {
+        // Fix: Om search result saknar 'question' men har 'title', använd 'title'
+        if (!item.question && (item.title || item.name)) {
+             return transformMarket({ ...item, question: item.title || item.name });
+        }
+        return transformMarket(item);
+      })
+      .filter(market => market.id && market.question);
+    
+    return transformedMarkets;
   } catch (error) {
-    console.error('Error fetching markets:', error);
+    console.error('Error fetching Polymarket markets:', error);
     return [];
   }
 };
@@ -213,9 +241,11 @@ export const fetchPolymarketMarketDetail = async (slugOrId: string): Promise<Pol
     const decodedSlugOrId = decodeURIComponent(slugOrId);
     let data;
     
+    // Försök hämta via slug endpoint
     try {
       data = await callPolymarketAPI(`/markets/slug/${decodedSlugOrId}`);
     } catch (e) {
+      // Fallback: Försök hämta via ID endpoint
       try {
         data = await callPolymarketAPI(`/markets/${decodedSlugOrId}`);
       } catch (e2) {
@@ -254,7 +284,7 @@ export const fetchPolymarketTags = async (): Promise<PolymarketTag[]> => {
   }
 };
 
-// Transform history to graph data format
+// Transform history to graph data
 export const transformHistoryToGraphData = (
   history: PolymarketMarketHistory | null | undefined
 ): GraphDataPoint[] => {
@@ -303,12 +333,11 @@ export const usePolymarketTags = () => {
 // Hook for market history using CLOB API
 export const usePolymarketMarketHistory = (
   market: PolymarketMarketDetail | null | undefined,
-  timeRange: TimeRange = 'all' // Ny parameter
+  timeRange: TimeRange = 'all'
 ) => {
   const isEnabled = !!market && !!market.outcomes?.length;
   
   return useQuery({
-    // Lägg till timeRange i queryKey så den laddar om när du byter tid
     queryKey: ['polymarket-market-history', market?.slug, market?.id, timeRange],
     queryFn: async () => {
       if (!market?.outcomes?.length) return null;
@@ -337,47 +366,43 @@ export const usePolymarketMarketHistory = (
       }
       
       try {
-        // Konfigurera parametrar baserat på tidsintervall
         const now = Math.floor(Date.now() / 1000);
         let apiParams: any = { market: tokenId };
 
         switch (timeRange) {
           case '1h':
-            apiParams.startTs = now - (60 * 60); // Senaste timmen
+            apiParams.startTs = now - (60 * 60);
             apiParams.endTs = now;
-            apiParams.fidelity = 1; // 1 minut upplösning (hög detalj)
+            apiParams.fidelity = 1; 
             break;
           case '6h':
             apiParams.startTs = now - (6 * 60 * 60);
             apiParams.endTs = now;
-            apiParams.fidelity = 5; // 5 min upplösning
+            apiParams.fidelity = 5; 
             break;
           case '1d':
             apiParams.startTs = now - (24 * 60 * 60);
             apiParams.endTs = now;
-            apiParams.fidelity = 10; // 10 min upplösning
+            apiParams.fidelity = 10; 
             break;
           case '1w':
             apiParams.startTs = now - (7 * 24 * 60 * 60);
             apiParams.endTs = now;
-            apiParams.fidelity = 60; // 1 timme upplösning
+            apiParams.fidelity = 60; 
             break;
           case '1m':
             apiParams.startTs = now - (30 * 24 * 60 * 60);
             apiParams.endTs = now;
-            apiParams.fidelity = 120; // 2 timmar upplösning
+            apiParams.fidelity = 120;
             break;
           case 'all':
           default:
             apiParams.interval = 'max';
-            apiParams.fidelity = 60; // Standard för "All"
+            apiParams.fidelity = 60;
             break;
         }
 
-        console.log(`Fetching history (${timeRange}) for Token ID:`, tokenId);
-        
         const historyData = await callPolymarketAPI('/prices-history', apiParams, 'clob');
-        
         const historyArray = Array.isArray(historyData) ? historyData : (historyData.history || []);
         
         if (Array.isArray(historyArray) && historyArray.length > 0) {
@@ -410,7 +435,7 @@ export const usePolymarketMarketHistory = (
       }
     },
     enabled: isEnabled,
-    staleTime: 60000, // Sänk cachningstiden lite för kortare intervall
+    staleTime: 60000,
   });
 };
 
