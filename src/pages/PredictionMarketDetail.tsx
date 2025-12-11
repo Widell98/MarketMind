@@ -258,7 +258,20 @@ const PredictionMarketDetail = () => {
 
           {/* HÖGER KOLUMN (Sidopanel) */}
           <div className="space-y-4 sm:space-y-6">
-            
+            {/* --- LÄGG TILL DENNA KNAPP HÄR --- */}
+  <Button 
+    className="w-full gap-2" 
+    size="lg"
+    onClick={() => navigate('/ai-chatt', { 
+      // Valfritt: Om du vill skicka med vilken marknad det gäller till chatten
+      state: { 
+        context: `Jag vill diskutera prediktionsmarknaden: "${market.question}"` 
+      } 
+    })}
+  >
+    <MessageSquare className="h-4 w-4" />
+    Diskutera med AI
+  </Button>
             {/* Analysis Text Box (Beskrivning) */}
             <Card>
               <CardContent className="p-4 sm:p-6">
