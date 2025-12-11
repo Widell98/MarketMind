@@ -18,7 +18,7 @@ export const PredictionMarketCard = ({ market }: PredictionMarketCardProps) => {
     return `$${vol.toFixed(0)}`;
   };
 
-  // Visa max 2 outcomes för att hålla kortet snyggt i listan
+  // Visa max 2 outcomes
   const displayOutcomes = market.outcomes.slice(0, 2);
 
   return (
@@ -47,26 +47,43 @@ export const PredictionMarketCard = ({ market }: PredictionMarketCardProps) => {
               {market.question}
             </h3>
             
-            {/* ODDS LISTA */}
-            <div className="space-y-1.5 mb-3">
+            {/* NY ODDS-LISTA MED FÄRGADE BARS */}
+            <div className="space-y-2 mb-3">
               {displayOutcomes.map((outcome, idx) => {
-                // Beräkna procent (0.55 -> 55)
-                const percent = Math.round((outcome.price || 0) * 100);
+                // Beräkna procent (0.55 -> 55) och säkra att det är mellan 0-100
+                const percent = Math.min(100, Math.max(0, Math.round((outcome.price || 0) * 100)));
                 
-                // Bestäm färg baserat på titel (Yes=Grön, No=Röd)
-                let percentColor = "text-foreground";
                 const titleLower = outcome.title.toLowerCase();
-                if (titleLower === 'yes' || titleLower === 'trump') percentColor = "text-green-600 dark:text-green-400";
-                if (titleLower === 'no' || titleLower === 'harris') percentColor = "text-red-600 dark:text-red-400";
+                
+                // Bestäm färger baserat på om det är Yes/No eller annat
+                let barColorClass = "bg-secondary"; // Default grå/blå
+                let textColorClass = "text-foreground";
+
+                if (titleLower === 'yes') {
+                    barColorClass = "bg-emerald-500 dark:bg-emerald-400";
+                    textColorClass = "text-emerald-950 dark:text-emerald-50";
+                } else if (titleLower === 'no') {
+                    barColorClass = "bg-rose-500 dark:bg-rose-400";
+                    textColorClass = "text-rose-950 dark:text-rose-50";
+                }
 
                 return (
-                  <div key={idx} className="flex items-center justify-between text-sm p-1.5 rounded bg-secondary/30 border border-transparent hover:border-border/50 transition-colors">
-                    <span className="text-muted-foreground truncate mr-2 font-medium text-xs uppercase tracking-wide">
-                      {outcome.title}
-                    </span>
-                    <span className={`font-bold ${percentColor}`}>
-                      {percent}%
-                    </span>
+                  <div key={idx} className="relative h-9 rounded-md overflow-hidden bg-secondary/20 border border-black/5 dark:border-white/5">
+                    {/* 1. Bakgrunds-bar (Fyllnaden) */}
+                    <div 
+                      className={`absolute left-0 top-0 h-full transition-all duration-500 ease-out opacity-25 dark:opacity-30 ${barColorClass}`}
+                      style={{ width: `${percent}%` }}
+                    />
+                    
+                    {/* 2. Text-lager (Ligger ovanpå baren med z-10) */}
+                    <div className={`relative z-10 flex items-center justify-between h-full px-3 text-sm font-medium ${textColorClass}`}>
+                      <span className="truncate mr-2 font-semibold tracking-wide opacity-90">
+                        {outcome.title}
+                      </span>
+                      <span className="font-bold">
+                        {percent}%
+                      </span>
+                    </div>
                   </div>
                 );
               })}
