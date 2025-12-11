@@ -28,7 +28,7 @@ const PredictionMarketDetail = () => {
   const { data: market, isLoading: marketLoading, error: marketError } = usePolymarketMarketDetail(slug || "");
   const { data: history, isLoading: historyLoading, error: historyError } = usePolymarketMarketHistory(market || null);
 
-  // --- 1. LOGIK & HOOKS ---
+  // --- LOGIK & HOOKS ---
 
   // Transform history to graph data
   const graphData = useMemo(() => {
@@ -48,17 +48,15 @@ const PredictionMarketDetail = () => {
     ) || market.outcomes[0];
   }, [market]);
 
-  // Calculate Current Price: Prioritize the last point in the graph history
+  // Calculate Current Price
   const currentPrice = useMemo(() => {
     if (graphData && graphData.length > 0) {
-      // Ta sista punkten i grafen (senaste historiska priset)
       return graphData[graphData.length - 1].price;
     }
-    // Fallback till metadata om grafen inte laddat än
     return primaryOutcome ? Math.round(primaryOutcome.price * 100) : 0;
   }, [graphData, primaryOutcome]);
 
-  // --- 2. RENDERING ---
+  // --- RENDERING ---
 
   if (marketLoading) {
     return (
@@ -138,8 +136,10 @@ const PredictionMarketDetail = () => {
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Graph */}
+          
+          {/* VÄNSTER KOLUMN (Huvudinnehåll) */}
           <div className="lg:col-span-2 space-y-6">
+            
             {/* Probability Graph */}
             <Card>
               <CardContent className="p-4 sm:p-6">
@@ -147,9 +147,7 @@ const PredictionMarketDetail = () => {
                   <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mb-3">
                     {primaryOutcome && (
                       <div className="flex items-center gap-2">
-                        <div
-                          className="w-2 h-2 sm:w-3 sm:h-3 rounded-full flex-shrink-0 bg-blue-500"
-                        />
+                        <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full flex-shrink-0 bg-blue-500" />
                         <span className="whitespace-nowrap font-medium text-lg text-foreground">
                           {currentPrice}%
                         </span>
@@ -181,8 +179,6 @@ const PredictionMarketDetail = () => {
                             <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                           </linearGradient>
                         </defs>
-                        
-                        {/* Polymarket-stil: Ingen grid, inga axlar */}
                         <XAxis 
                           dataKey="date" 
                           hide={true} 
@@ -190,7 +186,7 @@ const PredictionMarketDetail = () => {
                           tickLine={false}
                         />
                         <YAxis 
-                          domain={['dataMin - 2', 'dataMax + 2']} // Dynamisk zoom för att visa rörelser tydligt
+                          domain={['dataMin - 2', 'dataMax + 2']} 
                           hide={true} 
                         />
                         <Tooltip 
@@ -207,11 +203,11 @@ const PredictionMarketDetail = () => {
                           labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: '4px' }}
                         />
                         <Line
-                          type="monotone" // Mjuk kurva
+                          type="monotone"
                           dataKey="price"
-                          stroke="#10b981" // Polymarket grön
+                          stroke="#10b981"
                           strokeWidth={2}
-                          dot={false} // Inga prickar på linjen
+                          dot={false}
                           activeDot={{ r: 4, strokeWidth: 0, fill: '#10b981' }}
                         />
                       </LineChart>
@@ -226,14 +222,15 @@ const PredictionMarketDetail = () => {
                 )}
               </CardContent>
             </Card>
+
+            {/* Market Impact Analysis - NU HÄR (Under grafen) */}
+            <MarketImpactAnalysis market={market} />
           </div>
 
-          {/* Right Column - Analysis */}
+          {/* HÖGER KOLUMN (Sidopanel) */}
           <div className="space-y-4 sm:space-y-6">
-            {/* Market Impact Analysis */}
-            <MarketImpactAnalysis market={market} />
-
-            {/* Analysis Text Box */}
+            
+            {/* Analysis Text Box (Beskrivning) */}
             <Card>
               <CardContent className="p-4 sm:p-6">
                 <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
@@ -247,6 +244,7 @@ const PredictionMarketDetail = () => {
               </CardContent>
             </Card>
           </div>
+
         </div>
       </div>
     </Layout>
