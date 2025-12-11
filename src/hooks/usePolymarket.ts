@@ -238,6 +238,60 @@ export const transformHistoryToGraphData = (
     }));
 };
 
+// Fetch markets list
+export const fetchPolymarketMarkets = async (params?: {
+  limit?: number;
+  offset?: number;
+  tags?: string[];
+  search?: string;
+  active?: boolean;
+  closed?: boolean;
+  order?: string;
+  ascending?: boolean;
+}): Promise<PolymarketMarket[]> => {
+  try {
+    // Build params object for the edge function
+    const apiParams: Record<string, any> = {};
+    if (params?.limit) apiParams.limit = params.limit;
+    if (params?.offset) apiParams.offset = params.offset;
+    if (params?.tags && params.tags.length > 0) {
+      apiParams.tags = params.tags;
+    }
+    if (params?.search) apiParams.search = params.search;
+    if (params?.active !== undefined) apiParams.active = params.active;
+    if (params?.closed !== undefined) apiParams.closed = params.closed;
+    if (params?.order) apiParams.order = params.order;
+    if (params?.ascending !== undefined) apiParams.ascending = params.ascending;
+
+    const data = await callPolymarketAPI('/markets', apiParams);
+    
+    // Handle different response structures
+    let markets: any[] = [];
+    if (Array.isArray(data)) {
+      markets = data;
+    } else if (data.data && Array.isArray(data.data)) {
+      markets = data.data;
+    } else if (data.results && Array.isArray(data.results)) {
+      markets = data.results;
+    } else if (data.items && Array.isArray(data.items)) {
+      markets = data.items;
+    } else {
+      console.warn('Unexpected Polymarket API response structure:', data);
+      return [];
+    }
+    
+    // Transform all markets, filtering out any that fail to transform
+    const transformedMarkets = markets
+      .map(transformMarket)
+      .filter(market => market.id && market.question); // Filter out invalid markets
+    
+    return transformedMarkets;
+  } catch (error) {
+    console.error('Error fetching Polymarket markets:', error);
+    throw error;
+  }
+};
+
 // Hook for fetching markets list
 export const usePolymarketMarkets = (params?: {
   limit?: number;
