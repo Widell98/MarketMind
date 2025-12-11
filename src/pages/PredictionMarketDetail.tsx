@@ -127,13 +127,20 @@ const PredictionMarketDetail = () => {
   const volumeDisplay = formatVolume(market.volumeNum || market.volume || 0);
 
   // Find primary outcome for display
-  const primaryOutcome = market.outcomes.find(o => 
+const primaryOutcome = market.outcomes.find(o => 
     o.title.toLowerCase().includes('yes') || 
     o.title.toLowerCase() === 'yes'
   ) || market.outcomes[0];
 
-  // Get current price for primary outcome
-  const currentPrice = primaryOutcome ? Math.round(primaryOutcome.price * 100) : 0;
+  // ÄNDRING: Hämta priset från historiken (grafen) för att få senaste riktiga handelspriset
+  const currentPrice = useMemo(() => {
+    // Om vi har grafdata, ta det allra sista värdet (det är det senaste priset)
+    if (graphData && graphData.length > 0) {
+      return graphData[graphData.length - 1].price;
+    }
+    // Fallback: Använd metadatan om grafen inte laddat än
+    return primaryOutcome ? Math.round(primaryOutcome.price * 100) : 0;
+  }, [graphData, primaryOutcome]);
 
   return (
     <Layout>
