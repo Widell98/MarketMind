@@ -329,7 +329,7 @@ const PortfolioImplementation = () => {
                     </div>
                     <div className="space-y-0.5 sm:space-y-1">
                       <p className="text-[10px] xs:text-xs uppercase tracking-[0.18em] text-muted-foreground">Portfölj</p>
-                      <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-semibold tracking-tight text-foreground">
+                      <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-semibold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
                         {t('portfolio.title')}
                       </h1>
                     </div>
@@ -346,7 +346,7 @@ const PortfolioImplementation = () => {
                 <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2 sm:gap-3">
                   <Button
                     onClick={() => handleQuickChat('NEW_SESSION:Portfölj AI:Kan du granska min portfölj och föreslå nästa steg?')}
-                    className="rounded-xl sm:rounded-2xl px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 shadow-lg hover:shadow-xl bg-foreground text-background text-xs sm:text-sm"
+                    className="rounded-xl sm:rounded-2xl px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-primary to-primary/90 text-primary-foreground text-xs sm:text-sm"
                   >
                     <Sparkles className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     <span className="hidden xs:inline">Starta AI-chatt</span>
