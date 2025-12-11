@@ -8,6 +8,12 @@ import { TrendingUp, TrendingDown, Loader2, Sparkles, Building2, AlertTriangle, 
 import type { PolymarketMarketDetail } from "@/types/polymarket";
 import { useNavigate } from "react-router-dom"; // Ny import
 
+interface MarketMetadata {
+  custom_summary?: string;
+  custom_description?: string;
+  admin_notes?: string;
+}
+
 interface ImpactItem {
   name: string;
   ticker?: string;
@@ -23,6 +29,30 @@ interface ImpactAnalysisData {
 export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetail | null }) => {
   const navigate = useNavigate(); // Hook för navigering
 
+  // Fetch custom metadata (edited summary)
+  const { data: customMetadata } = useQuery({
+    queryKey: ['market-metadata', market?.id],
+    queryFn: async () => {
+      if (!market?.id) return null;
+      
+      const { data, error } = await supabase
+        .from('curated_markets')
+        .select('metadata')
+        .eq('market_id', market.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 is "not found" error
+        console.error('Error fetching market metadata:', error);
+        return null;
+      }
+
+      return (data?.metadata as MarketMetadata) || null;
+    },
+    enabled: !!market?.id,
+  });
+
+  // Fetch AI-generated analysis
   const { data: analysis, isLoading, error } = useQuery({
     queryKey: ['market-impact', market?.id],
     queryFn: async () => {
@@ -42,6 +72,9 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
     enabled: !!market && !!market.question,
     staleTime: 1000 * 60 * 60 * 24, 
   });
+
+  // Use custom summary if available, otherwise use AI-generated
+  const displaySummary = customMetadata?.custom_summary || analysis?.summary;
 
   if (!market) return null;
 
@@ -90,17 +123,24 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
               <p className="opacity-80 mt-1">Kunde inte generera en analys just nu. Försök igen senare.</p>
             </div>
           </div>
-        ) : analysis ? (
+        ) : (displaySummary || analysis) ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            {/* Sammanfattning */}
-            <div className="bg-primary/5 p-4 rounded-lg border border-primary/10">
-              <p className="text-sm text-foreground/80 leading-relaxed italic">
-                "{analysis.summary}"
-              </p>
-            </div>
+            {/* Sammanfattning - visa anpassad om den finns, annars AI-genererad */}
+            {displaySummary && (
+              <div className={`p-4 rounded-lg border ${customMetadata?.custom_summary ? 'bg-yellow-50/50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900/30' : 'bg-primary/5 border-primary/10'}`}>
+                <p className="text-sm text-foreground/80 leading-relaxed italic">
+                  "{displaySummary}"
+                </p>
+                {customMetadata?.custom_summary && (
+                  <Badge variant="outline" className="mt-2 text-xs bg-yellow-100 dark:bg-yellow-900/40 border-yellow-300 dark:border-yellow-800">
+                    Redigerad av admin
+                  </Badge>
+                )}
+              </div>
+            )}
 
-            {/* Aktie-listor (Visas bara om det finns data) */}
-            {hasAnyStocks && (
+            {/* Aktie-listor (Visas om det finns AI-genererad data) */}
+            {hasAnyStocks && analysis && (
               <div className={`grid gap-6 ${hasPositive && hasNegative ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
                 
                 {hasPositive && (

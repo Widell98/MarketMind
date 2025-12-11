@@ -4,7 +4,9 @@ import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Loader2, AlertCircle, MessageSquare, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, MessageSquare, ChevronDown, ChevronUp, ExternalLink, Edit } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
+import EditMarketDialog from "@/components/EditMarketDialog";
 import { 
   usePolymarketMarketDetail, 
   usePolymarketMarketHistory, 
@@ -29,6 +31,8 @@ const formatVolume = (volumeNum: number): string => {
 const PredictionMarketDetail = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const { isAdmin } = useUserRole();
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   
   // State för vald tidsperiod
   const [timeRange, setTimeRange] = useState<TimeRange>("all");
@@ -139,10 +143,25 @@ const PredictionMarketDetail = () => {
             </div>
           )}
           <div className="flex-grow min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2">{market.question}</h1>
-            <p className="text-muted-foreground text-sm sm:text-base">
-              $ {volumeDisplay}m Vol. • Polymarket
-            </p>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-grow min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold mb-2">{market.question}</h1>
+                <p className="text-muted-foreground text-sm sm:text-base">
+                  $ {volumeDisplay}m Vol. • Polymarket
+                </p>
+              </div>
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditDialogOpen(true)}
+                  className="flex-shrink-0"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Redigera
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -338,6 +357,11 @@ const PredictionMarketDetail = () => {
 
         </div>
       </div>
+      <EditMarketDialog
+        isOpen={isEditDialogOpen}
+        onClose={() => setIsEditDialogOpen(false)}
+        market={market}
+      />
     </Layout>
   );
 };
