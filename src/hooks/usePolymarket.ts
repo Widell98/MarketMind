@@ -34,33 +34,44 @@ const callPolymarketAPI = async (
 };
 
 // Transform API response to our Market type
+// Transform API response to our Market type
 const transformMarket = (apiMarket: any): PolymarketMarket => {
   try {
-    // Handle different possible API response structures
+    // 1. Normalisera outcomes till en array av objekt
     let outcomes: any[] = [];
     
+    // Fall 1: "outcomes" är redan en array (bästa fallet)
     if (apiMarket.outcomes && Array.isArray(apiMarket.outcomes)) {
       outcomes = apiMarket.outcomes;
-    } else if (apiMarket.outcomePrices && Array.isArray(apiMarket.outcomePrices)) {
-      outcomes = apiMarket.outcomePrices;
-    } else if (apiMarket.prices && Array.isArray(apiMarket.prices)) {
-      outcomes = apiMarket.prices;
-    } else if (apiMarket.tokens && Array.isArray(apiMarket.tokens)) {
-      outcomes = apiMarket.tokens.map((token: any) => ({
-        id: token.outcome || token.id,
-        title: token.outcome || token.name || token.title,
-        price: token.price || 0,
-        token_id: token.token_id 
-      }));
-    } else if (typeof apiMarket.outcomes === 'string') {
-        try {
-          outcomes = JSON.parse(apiMarket.outcomes);
-        } catch (e) {
-          console.warn('Failed to parse outcomes string:', e);
-        }
+    } 
+    // Fall 2: "outcomes" är en strängifierad JSON (vanligt från Gamma API)
+    else if (typeof apiMarket.outcomes === 'string') {
+      try {
+        outcomes = JSON.parse(apiMarket.outcomes);
+      } catch (e) {
+        console.warn('Failed to parse outcomes string:', e);
+      }
+    }
+    // Fall 3: Vi har bara "outcomePrices" (array av prissträngar/siffror)
+    // T.ex: ["0.53", "0.47"]
+    else if (apiMarket.outcomePrices) {
+      let prices: any[] = [];
+      if (Array.isArray(apiMarket.outcomePrices)) {
+        prices = apiMarket.outcomePrices;
+      } else if (typeof apiMarket.outcomePrices === 'string') {
+        try { prices = JSON.parse(apiMarket.outcomePrices); } catch {}
+      }
+      
+      if (prices.length > 0) {
+        outcomes = prices.map((price, i) => ({
+          price: price,
+          title: i === 0 ? 'Yes' : 'No', // Gissning för binära marknader
+          id: String(i)
+        }));
+      }
     }
 
-    // Parse volume
+    // 2. Parsa volym
     let volumeNum = 0;
     if (typeof apiMarket.volume === 'number') {
       volumeNum = apiMarket.volume;
@@ -77,7 +88,7 @@ const transformMarket = (apiMarket: any): PolymarketMarket => {
     const marketId = apiMarket.id || apiMarket.conditionId || apiMarket.marketId || '';
     const marketSlug = apiMarket.slug || apiMarket.question_id || apiMarket.id || marketId;
     
-    // Extract clobTokenIds - Detta är nyckeln till historik!
+    // 3. Extrahera token IDs för historik
     let clobTokenIdsArray: string[] = [];
     if (apiMarket.clobTokenIds && Array.isArray(apiMarket.clobTokenIds)) {
       clobTokenIdsArray = apiMarket.clobTokenIds;
@@ -101,20 +112,34 @@ const transformMarket = (apiMarket: any): PolymarketMarket => {
       volumeNum: volumeNum,
       liquidity: Number(apiMarket.liquidity) || 0,
       outcomes: outcomes.map((outcome: any, index: number) => {
-        const outcomePrice = outcome.price || outcome.lastPrice || 0;
-        const outcomeTitle = outcome.title || outcome.name || `Outcome ${index + 1}`;
-        const outcomeId = outcome.id || String(index);
-        
-        // VIKTIGT: Hitta rätt Token ID för CLOB API
-        // Prioritera ID från clobTokenIds-listan baserat på index
-        const clobTokenId = clobTokenIdsArray[index] || outcome.tokenId || outcome.token_id;
+        // HÄR VAR FELET TIDIGARE: Vi måste hantera om outcome är en enkel siffra/sträng
+        let outcomePrice = 0;
+        let outcomeTitle = `Outcome ${index + 1}`;
+        let outcomeId = String(index);
+        let outcomeVolume = undefined;
+        let token_id = undefined;
+
+        if (typeof outcome === 'object' && outcome !== null) {
+            outcomePrice = outcome.price || outcome.lastPrice || 0;
+            outcomeTitle = outcome.title || outcome.name || outcome.outcome || (index === 0 ? 'Yes' : 'No');
+            outcomeId = outcome.id || String(index);
+            outcomeVolume = outcome.volume;
+            token_id = outcome.tokenId || outcome.token_id;
+        } else if (['string', 'number'].includes(typeof outcome)) {
+            // Om outcome bara är ett pris (t.ex. "0.65")
+            outcomePrice = Number(outcome);
+            outcomeTitle = index === 0 ? 'Yes' : 'No';
+        }
+
+        // Hitta bästa möjliga token ID för historik
+        const finalTokenId = token_id || clobTokenIdsArray[index];
 
         return {
           id: outcomeId,
           title: outcomeTitle,
           price: Number(outcomePrice) || 0,
-          volume: outcome.volume,
-          tokenId: clobTokenId, // Spara detta för history-hooken
+          volume: outcomeVolume,
+          tokenId: finalTokenId,
         };
       }),
       endDate: apiMarket.endDate || apiMarket.endDateIso,
