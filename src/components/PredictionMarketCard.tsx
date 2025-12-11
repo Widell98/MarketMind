@@ -73,7 +73,7 @@ export const PredictionMarketCard = ({ market }: PredictionMarketCardProps) => {
                   <div key={idx} className="relative h-9 rounded-md overflow-hidden bg-secondary/20 border border-black/5 dark:border-white/5">
                     {/* 1. Bakgrunds-bar (Fyllnaden) */}
                     <div 
-                      className={`absolute left-0 top-0 h-full transition-all duration-500 ease-out opacity-40 dark:opacity-30 ${barColorClass}`}
+                      className={`absolute left-0 top-0 h-full transition-all duration-500 ease-out opacity-25 dark:opacity-30 ${barColorClass}`}
                       style={{ width: `${percent}%` }}
                     />
                     
