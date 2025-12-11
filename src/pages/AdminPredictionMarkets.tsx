@@ -3,41 +3,39 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePolymarketMarkets } from "@/hooks/usePolymarket";
 import Layout from "@/components/Layout";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Search, TrendingUp, Calendar, CheckCircle2, ShieldAlert } from "lucide-react";
+import { Loader2, Search, TrendingUp, Calendar, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// Nya importer för säkerhet
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
 const AdminPredictionMarkets = () => {
-  // --- SÄKERHETSKONTROLL (Samma som AdminStockCases) ---
-  const { user } = useAuth();
+  // --- SÄKERHETSKONTROLL (Matchar AdminStockCases exakt) ---
+  const { user, loading: authLoading } = useAuth(); // Vänta även på auth-loading
   const { isAdmin, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    // Om laddning är klar, användaren finns (inloggad), men är INTE admin -> Kasta ut
-    if (!roleLoading && user && !isAdmin) {
-      toast({
-        title: "Åtkomst nekad",
-        description: "Du har inte behörighet att komma åt den här sidan",
-        variant: "destructive",
-      });
-      navigate('/');
+    // Vänta tills både Auth och Roll-checken är helt klara
+    if (!authLoading && !roleLoading) {
+      // Om användaren är inloggad men INTE admin -> Kasta ut
+      if (user && !isAdmin) {
+        toast({
+          title: "Åtkomst nekad",
+          description: "Du har inte behörighet att komma åt den här sidan",
+          variant: "destructive",
+        });
+        navigate('/');
+      }
     }
-    // Om ingen användare är inloggad alls
-    if (!roleLoading && !user) {
-        navigate('/auth');
-    }
-  }, [roleLoading, user, isAdmin, navigate, toast]);
+  }, [authLoading, roleLoading, user, isAdmin, navigate, toast]);
   // -----------------------------------------------------
 
   const queryClient = useQueryClient();
@@ -53,7 +51,7 @@ const AdminPredictionMarkets = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Hämta marknader från Polymarket API
+  // Hämta marknader (API)
   const { data: apiMarkets, isLoading: apiLoading } = usePolymarketMarkets({
     limit: 50,
     order: debouncedSearch ? undefined : "volume24hr",
@@ -63,7 +61,7 @@ const AdminPredictionMarkets = () => {
     closed: false
   });
 
-  // Hämta valda marknader från Supabase
+  // Hämta valda (DB) - Körs bara om vi vet att vi är admin
   const { data: curatedMarkets, isLoading: dbLoading } = useQuery({
     queryKey: ["curated-markets-admin"],
     queryFn: async () => {
@@ -73,10 +71,9 @@ const AdminPredictionMarkets = () => {
       if (error) throw error;
       return data || [];
     },
-    enabled: isAdmin // Hämta bara detta om man är admin
+    enabled: !!isAdmin // Viktigt: Hämta inte data förrän vi vet att vi är admin
   });
 
-  // Mutation för att spara val
   const toggleMarketMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
       if (isActive) {
@@ -106,10 +103,10 @@ const AdminPredictionMarkets = () => {
     ? apiMarkets?.filter(m => isCurated(m.id)) 
     : apiMarkets;
 
-  // --- VISNINGS-LOGIK FÖR LADDNING & SÄKERHET ---
-  
-  // 1. Visar laddningssnurra medan vi kollar behörighet
-  if (roleLoading) {
+  // --- RENDERING AV LADDNING / SÄKERHET ---
+
+  // 1. Visar laddning medan vi kollar vem du är
+  if (authLoading || roleLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -120,21 +117,45 @@ const AdminPredictionMarkets = () => {
     );
   }
 
-  // 2. Visar "Åtkomst nekad" om man inte är admin (fallback om redirect inte hunnit)
-  if (!isAdmin) {
+  // 2. Om du inte är inloggad -> Visa "Åtkomst nekad" (samma design som AdminStockCases)
+  if (!user) {
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-            <div className="text-center p-8 bg-background border rounded-lg shadow-sm">
-                <ShieldAlert className="h-12 w-12 text-destructive mx-auto mb-4" />
-                <h1 className="text-xl font-bold mb-2">Åtkomst nekad</h1>
-                <p className="text-muted-foreground mb-4">Endast administratörer har tillgång till denna sida.</p>
-                <Button onClick={() => navigate('/')}>Tillbaka till startsidan</Button>
-            </div>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-96">
+          <CardContent className="pt-6 text-center">
+            <h2 className="text-xl font-semibold mb-2">Åtkomst nekad</h2>
+            <p className="text-gray-600 mb-4">
+              Du måste vara inloggad för att komma åt denna sida.
+            </p>
+            <Button onClick={() => navigate('/')}>
+              Tillbaka till startsidan
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
-  // 3. Admin-vyn (visas bara om isAdmin === true)
+  // 3. Om du är inloggad men inte admin -> Visa "Åtkomst nekad"
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-96">
+          <CardContent className="pt-6 text-center">
+            <h2 className="text-xl font-semibold mb-2">Åtkomst nekad</h2>
+            <p className="text-gray-600 mb-4">
+              Du har inte administratörsbehörighet för att komma åt denna sida.
+            </p>
+            <Button onClick={() => navigate('/')}>
+              Tillbaka till startsidan
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // 4. Admin-vyn (Visas bara om allt ovan passerats)
   if (apiLoading && !debouncedSearch) {
     return <Layout><div className="h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div></Layout>;
   }
