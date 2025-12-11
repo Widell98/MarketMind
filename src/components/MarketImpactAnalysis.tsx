@@ -3,8 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, Loader2, Sparkles, Building2, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button"; // Ny import
+import { TrendingUp, TrendingDown, Loader2, Sparkles, Building2, AlertTriangle, MessageSquarePlus, ArrowRight } from "lucide-react"; // Nya ikoner
 import type { PolymarketMarketDetail } from "@/types/polymarket";
+import { useNavigate } from "react-router-dom"; // Ny import
 
 interface ImpactItem {
   name: string;
@@ -19,6 +21,8 @@ interface ImpactAnalysisData {
 }
 
 export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetail | null }) => {
+  const navigate = useNavigate(); // Hook för navigering
+
   const { data: analysis, isLoading, error } = useQuery({
     queryKey: ['market-impact', market?.id],
     queryFn: async () => {
@@ -41,13 +45,25 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
 
   if (!market) return null;
 
-  // Kolla om vi har några aktier alls att visa
+  // Hantera klick på "Diskutera"-knappen
+  const handleDiscuss = () => {
+    // Skapa en start-prompt för chatten
+    const initialPrompt = `Jag vill diskutera prediktionsmarknaden: "${market.question}".\n\nBeskrivning: ${market.description || 'Ingen beskrivning tillgänglig.'}\n\nVad anser du om oddsen och hur ser du på det sannolika utfallet?`;
+
+    navigate('/ai-chat', {
+      state: {
+        initialMessage: initialPrompt, // Meddelandet som skickas till AI:n
+        sessionName: market.question   // Namnet på den nya chatten
+      }
+    });
+  };
+
   const hasPositive = analysis?.positive && analysis.positive.length > 0;
   const hasNegative = analysis?.negative && analysis.negative.length > 0;
   const hasAnyStocks = hasPositive || hasNegative;
 
   return (
-    <Card className="h-full border border-border shadow-sm overflow-hidden bg-gradient-to-b from-card to-secondary/10">
+    <Card className="h-full border border-border shadow-sm overflow-hidden bg-gradient-to-b from-card to-secondary/10 flex flex-col">
       <CardHeader className="pb-3 border-b border-border/50 bg-secondary/20">
         <CardTitle className="text-base sm:text-lg flex items-center gap-2 font-medium">
           <div className="p-1.5 bg-yellow-500/10 rounded-md">
@@ -56,7 +72,8 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
           AI-Analys: Marknadseffekt
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6 pt-5 px-4 sm:px-6">
+      
+      <CardContent className="space-y-6 pt-5 px-4 sm:px-6 flex-grow">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground space-y-4">
             <div className="relative">
@@ -75,18 +92,17 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
           </div>
         ) : analysis ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            {/* Sammanfattning - Visas alltid */}
+            {/* Sammanfattning */}
             <div className="bg-primary/5 p-4 rounded-lg border border-primary/10">
               <p className="text-sm text-foreground/80 leading-relaxed italic">
                 "{analysis.summary}"
               </p>
             </div>
 
-            {/* Visa bara gridsystemet om det faktiskt finns aktier att visa */}
+            {/* Aktie-listor (Visas bara om det finns data) */}
             {hasAnyStocks && (
               <div className={`grid gap-6 ${hasPositive && hasNegative ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
                 
-                {/* Vinnare - Rendera bara om det finns items */}
                 {hasPositive && (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 pb-1 border-b border-green-200/30 dark:border-green-900/30">
@@ -103,7 +119,6 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
                   </div>
                 )}
 
-                {/* Förlorare - Rendera bara om det finns items */}
                 {hasNegative && (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 pb-1 border-b border-red-200/30 dark:border-red-900/30">
@@ -130,11 +145,23 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
           </div>
         ) : null}
       </CardContent>
+
+      {/* --- NY KNAPP HÄR --- */}
+      <div className="p-4 bg-secondary/30 border-t border-border/50">
+        <Button 
+          onClick={handleDiscuss} 
+          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md group"
+        >
+          <MessageSquarePlus className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+          Diskutera caset med AI
+          <ArrowRight className="w-4 h-4 ml-auto opacity-70 group-hover:translate-x-1 transition-transform" />
+        </Button>
+      </div>
     </Card>
   );
 };
 
-// Hjälpkomponent (Samma som innan, men inkluderad för komplett fil)
+// Hjälpkomponent (oförändrad men inkluderad för helhet)
 const ImpactCard = ({ item, type }: { item: ImpactItem, type: 'positive' | 'negative' }) => {
   const isPositive = type === 'positive';
   
