@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, Loader2, Sparkles, Building2, AlertTriangle } from "lucide-react";
 import type { PolymarketMarketDetail } from "@/types/polymarket";
-import { Separator } from "@/components/ui/separator";
 
 interface ImpactItem {
   name: string;
@@ -42,6 +41,11 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
 
   if (!market) return null;
 
+  // Kolla om vi har några aktier alls att visa
+  const hasPositive = analysis?.positive && analysis.positive.length > 0;
+  const hasNegative = analysis?.negative && analysis.negative.length > 0;
+  const hasAnyStocks = hasPositive || hasNegative;
+
   return (
     <Card className="h-full border border-border shadow-sm overflow-hidden bg-gradient-to-b from-card to-secondary/10">
       <CardHeader className="pb-3 border-b border-border/50 bg-secondary/20">
@@ -54,10 +58,10 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
       </CardHeader>
       <CardContent className="space-y-6 pt-5 px-4 sm:px-6">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground space-y-4">
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground space-y-4">
             <div className="relative">
               <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
-              <Loader2 className="h-10 w-10 animate-spin text-primary relative z-10" />
+              <Loader2 className="h-8 w-8 animate-spin text-primary relative z-10" />
             </div>
             <p className="text-sm font-medium animate-pulse">Analyserar marknadsscenarion...</p>
           </div>
@@ -71,46 +75,52 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
           </div>
         ) : analysis ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            {/* Sammanfattning */}
+            {/* Sammanfattning - Visas alltid */}
             <div className="bg-primary/5 p-4 rounded-lg border border-primary/10">
               <p className="text-sm text-foreground/80 leading-relaxed italic">
                 "{analysis.summary}"
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Vinnare */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 pb-1 border-b border-green-200/30 dark:border-green-900/30">
-                  <div className="p-1 bg-green-100 dark:bg-green-900/30 rounded-full">
-                    <TrendingUp className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                  </div>
-                  <span className="font-semibold text-sm text-green-700 dark:text-green-400">Positiv påverkan</span>
-                </div>
+            {/* Visa bara gridsystemet om det faktiskt finns aktier att visa */}
+            {hasAnyStocks && (
+              <div className={`grid gap-6 ${hasPositive && hasNegative ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
                 
-                <div className="space-y-2">
-                  {analysis.positive.map((item, idx) => (
-                    <ImpactCard key={idx} item={item} type="positive" />
-                  ))}
-                </div>
-              </div>
-
-              {/* Förlorare */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 pb-1 border-b border-red-200/30 dark:border-red-900/30">
-                  <div className="p-1 bg-red-100 dark:bg-red-900/30 rounded-full">
-                    <TrendingDown className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                {/* Vinnare - Rendera bara om det finns items */}
+                {hasPositive && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 pb-1 border-b border-green-200/30 dark:border-green-900/30">
+                      <div className="p-1 bg-green-100 dark:bg-green-900/30 rounded-full">
+                        <TrendingUp className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                      </div>
+                      <span className="font-semibold text-sm text-green-700 dark:text-green-400">Positiv påverkan</span>
+                    </div>
+                    <div className="space-y-2">
+                      {analysis.positive.map((item, idx) => (
+                        <ImpactCard key={idx} item={item} type="positive" />
+                      ))}
+                    </div>
                   </div>
-                  <span className="font-semibold text-sm text-red-700 dark:text-red-400">Negativ påverkan</span>
-                </div>
+                )}
 
-                <div className="space-y-2">
-                  {analysis.negative.map((item, idx) => (
-                    <ImpactCard key={idx} item={item} type="negative" />
-                  ))}
-                </div>
+                {/* Förlorare - Rendera bara om det finns items */}
+                {hasNegative && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 pb-1 border-b border-red-200/30 dark:border-red-900/30">
+                      <div className="p-1 bg-red-100 dark:bg-red-900/30 rounded-full">
+                        <TrendingDown className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                      </div>
+                      <span className="font-semibold text-sm text-red-700 dark:text-red-400">Negativ påverkan</span>
+                    </div>
+                    <div className="space-y-2">
+                      {analysis.negative.map((item, idx) => (
+                        <ImpactCard key={idx} item={item} type="negative" />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
             
             <div className="flex justify-center pt-2">
               <Badge variant="outline" className="text-[10px] text-muted-foreground bg-background/50 opacity-60 font-normal border-dashed">
@@ -124,7 +134,7 @@ export const MarketImpactAnalysis = ({ market }: { market: PolymarketMarketDetai
   );
 };
 
-// Hjälpkomponent för varje aktiekort
+// Hjälpkomponent (Samma som innan, men inkluderad för komplett fil)
 const ImpactCard = ({ item, type }: { item: ImpactItem, type: 'positive' | 'negative' }) => {
   const isPositive = type === 'positive';
   
