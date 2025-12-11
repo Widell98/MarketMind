@@ -7,11 +7,14 @@ import {
   TableBody,
   TableCell,
 } from '@/components/ui/table';
-import { badgeVariants } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { RefreshCw } from 'lucide-react';
+import { badgeVariants } from '@/components/ui/badge';
+import { RefreshCw, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { formatCurrency, resolveHoldingValue, convertToSEK } from '@/utils/currencyUtils';
 import type { HoldingPerformance } from '@/hooks/usePortfolioPerformance';
+
+type SortBy = 'name' | 'marketValue' | 'performance' | 'dailyChange' | 'share';
+type SortOrder = 'asc' | 'desc';
 
 interface Holding {
   id: string;
@@ -36,6 +39,9 @@ interface HoldingsTableProps {
   refreshingTicker?: string | null;
   holdingPerformanceMap?: Record<string, HoldingPerformance>;
   totalPortfolioValue?: number;
+  sortBy?: SortBy;
+  sortOrder?: SortOrder;
+  onSort?: (column: SortBy) => void;
 }
 
 const HoldingsTable: React.FC<HoldingsTableProps> = ({
@@ -44,7 +50,10 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
   isUpdatingPrice,
   refreshingTicker,
   holdingPerformanceMap,
-  totalPortfolioValue
+  totalPortfolioValue,
+  sortBy = 'name',
+  sortOrder = 'asc',
+  onSort
 }) => {
   const formatRoundedCurrency = (amount: number, currency: string = 'SEK') =>
     new Intl.NumberFormat('sv-SE', {
@@ -55,16 +64,65 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
       minimumFractionDigits: 0,
     }).format(Math.round(amount));
 
+  const handleSort = (column: SortBy) => {
+    if (onSort) {
+      onSort(column);
+    }
+  };
+
+  const SortableHeader = ({ 
+    column, 
+    children, 
+    className 
+  }: { 
+    column: SortBy; 
+    children: React.ReactNode;
+    className?: string;
+  }) => {
+    const isActive = sortBy === column;
+    return (
+      <TableHead 
+        className={cn("cursor-pointer select-none hover:bg-muted/50 transition-colors", className)}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleSort(column);
+        }}
+      >
+        <div className="flex items-center gap-1.5">
+          <span className="font-medium">{children}</span>
+          {isActive ? (
+            sortOrder === 'asc' ? (
+              <ArrowUp className="h-3.5 w-3.5" />
+            ) : (
+              <ArrowDown className="h-3.5 w-3.5" />
+            )
+          ) : (
+            <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground opacity-50" />
+          )}
+        </div>
+      </TableHead>
+    );
+  };
+
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-[110px]">Typ</TableHead>
-          <TableHead className="min-w-[180px]">Namn</TableHead>
-          <TableHead className="text-right">Marknadsvärde</TableHead>
-          <TableHead className="text-right">Utveckling</TableHead>
-          <TableHead className="text-right">Utveckling idag</TableHead>
-          <TableHead className="text-right">Andel</TableHead>
+          <SortableHeader column="name" className="min-w-[180px]">
+            Namn
+          </SortableHeader>
+          <SortableHeader column="marketValue" className="text-right">
+            Marknadsvärde
+          </SortableHeader>
+          <SortableHeader column="performance" className="text-right">
+            Utveckling
+          </SortableHeader>
+          <SortableHeader column="dailyChange" className="text-right">
+            Utveckling idag
+          </SortableHeader>
+          <SortableHeader column="share" className="text-right">
+            Andel
+          </SortableHeader>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -122,29 +180,8 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
             isUpdatingPrice && refreshingTicker && normalizedSymbol && refreshingTicker === normalizedSymbol
           );
 
-          const typeLabel = {
-            stock: 'Aktie',
-            fund: 'Fond',
-            crypto: 'Krypto',
-            real_estate: 'Fastighet',
-            bonds: 'Ränta',
-            cash: 'Kassa',
-            other: 'Övrigt',
-            recommendation: 'Rek.'
-          }[holding.holding_type as keyof typeof typeLabel] || 'Övrigt';
-
           return (
             <TableRow key={holding.id}>
-              <TableCell className="py-3 sm:py-3.5">
-                <span
-                  className={cn(
-                    badgeVariants({ variant: 'outline' }),
-                    'text-xs font-medium capitalize'
-                  )}
-                >
-                  {typeLabel}
-                </span>
-              </TableCell>
               <TableCell className="py-3 sm:py-3.5">
                 <div className="flex flex-col gap-0.5">
                   <span className="font-medium leading-tight text-foreground break-words">{holding.name}</span>

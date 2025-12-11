@@ -12,7 +12,10 @@ import {
   Search,
   LayoutGrid,
   Table as TableIcon,
-  RefreshCw
+  RefreshCw,
+  Filter,
+  ArrowUpDown,
+  X
 } from 'lucide-react';
 import {
   Dialog,
@@ -46,6 +49,13 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 interface TransformedHolding {
@@ -110,12 +120,15 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
   } = usePersistentDialogOpenState(ADD_HOLDING_DIALOG_STORAGE_KEY, 'user-holdings');
   const [showEditHoldingDialog, setShowEditHoldingDialog] = useState(false);
   const [editingHolding, setEditingHolding] = useState<any>(null);
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
   const [refreshingTicker, setRefreshingTicker] = useState<string | null>(null);
   const [holdingToDelete, setHoldingToDelete] = useState<{ id: string; name: string; type: 'cash' | 'holding' } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [addHoldingInitialData, setAddHoldingInitialData] = useState<any | null>(null);
+  const [sortBy, setSortBy] = useState<'name' | 'marketValue' | 'performance' | 'dailyChange' | 'share'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [showFilters, setShowFilters] = useState(false);
 
   const filterOptions: Array<{ key: FilterMode; label: string }> = [
     { key: 'all', label: 'Alla' },
@@ -125,25 +138,12 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
     { key: 'losers', label: 'Förlorare' },
   ];
 
+  const hasActiveFilters = searchTerm.trim() !== "";
+  const activeFiltersCount = searchTerm.trim() !== "" ? 1 : 0;
+
   const renderHoldingsActionButtons = () => (
     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-1.5 md:gap-2">
       <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 flex-1 min-w-0">
-        {filterOptions.map((option) => (
-          <Button
-            key={option.key}
-            size="sm"
-            variant={filterMode === option.key ? 'secondary' : 'ghost'}
-            className={cn(
-              'text-[10px] xs:text-xs sm:text-sm rounded-full px-2 xs:px-2.5 sm:px-3 md:px-4 font-medium border transition-colors',
-              filterMode === option.key
-                ? 'bg-slate-900 text-slate-50 border-slate-900 hover:bg-slate-800'
-                : 'bg-muted text-muted-foreground border-transparent hover:bg-muted/80'
-            )}
-            onClick={() => setFilterMode(option.key)}
-          >
-            {option.label}
-          </Button>
-        ))}
         <div className="flex gap-1.5 sm:gap-2 flex-1 max-w-full sm:max-w-md items-center min-w-[150px] xs:min-w-[200px]">
           <div className="relative flex-1 min-w-0">
             <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-muted-foreground" />
@@ -155,6 +155,21 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
             />
           </div>
         </div>
+        {viewMode === 'cards' && (
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={() => setShowFilters(!showFilters)}
+            className="relative h-8 w-8 sm:h-9 sm:w-9"
+          >
+            <Filter className="h-4 w-4" />
+            {activeFiltersCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+                {activeFiltersCount}
+              </span>
+            )}
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
@@ -530,14 +545,194 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
     return true;
   };
 
-  const filteredGroups = groupHoldings(tabHoldings)
-    .map(group => ({
-      ...group,
-      holdings: group.holdings.filter(holding => matchesSearch(holding) && matchesFilter(holding))
-    }))
-    .filter(group => group.holdings.length > 0);
+  const filteredGroups = useMemo(() => {
+    const groups = groupHoldings(tabHoldings)
+      .map(group => ({
+        ...group,
+        holdings: group.holdings.filter(holding => matchesSearch(holding) && matchesFilter(holding))
+      }))
+      .filter(group => group.holdings.length > 0);
 
-  const filteredHoldings = filteredGroups.flatMap(group => group.holdings);
+    // Sort holdings within each group for cards view
+    return groups.map(group => ({
+      ...group,
+      holdings: [...group.holdings].sort((a, b) => {
+        let aValue: number | string = 0;
+        let bValue: number | string = 0;
+
+        const aPerformance = holdingPerformanceMap[a.id];
+        const bPerformance = holdingPerformanceMap[b.id];
+        const { valueInSEK: aValueInSEK } = resolveHoldingValue(a);
+        const { valueInSEK: bValueInSEK } = resolveHoldingValue(b);
+        const aShare = totalPortfolioValue && totalPortfolioValue > 0 ? (aValueInSEK / totalPortfolioValue) * 100 : 0;
+        const bShare = totalPortfolioValue && totalPortfolioValue > 0 ? (bValueInSEK / totalPortfolioValue) * 100 : 0;
+
+        switch (sortBy) {
+          case 'name':
+            aValue = (a.name || '').toLowerCase();
+            bValue = (b.name || '').toLowerCase();
+            break;
+          case 'marketValue':
+            aValue = aValueInSEK;
+            bValue = bValueInSEK;
+            break;
+          case 'performance':
+            aValue = aPerformance?.profit ?? 0;
+            bValue = bPerformance?.profit ?? 0;
+            break;
+          case 'dailyChange':
+            aValue = a.dailyChangePercent ?? 0;
+            bValue = b.dailyChangePercent ?? 0;
+            break;
+          case 'share':
+            aValue = aShare;
+            bValue = bShare;
+            break;
+          default:
+            aValue = (a.name || '').toLowerCase();
+            bValue = (b.name || '').toLowerCase();
+        }
+
+        if (sortOrder === 'asc') {
+          if (typeof aValue === 'string' && typeof bValue === 'string') {
+            return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+          }
+          return (aValue as number) < (bValue as number) ? -1 : (aValue as number) > (bValue as number) ? 1 : 0;
+        } else {
+          if (typeof aValue === 'string' && typeof bValue === 'string') {
+            return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+          }
+          return (aValue as number) > (bValue as number) ? -1 : (aValue as number) < (bValue as number) ? 1 : 0;
+        }
+      })
+    }));
+  }, [tabHoldings, searchTerm, filterMode, sortBy, sortOrder, holdingPerformanceMap, totalPortfolioValue]);
+
+  // Separate holdings by type
+  const stockHoldings = useMemo(() => {
+    const holdings = filteredGroups.flatMap(group => group.holdings).filter(h => h.holding_type === 'stock');
+    
+    return [...holdings].sort((a, b) => {
+      let aValue: number | string = 0;
+      let bValue: number | string = 0;
+
+      const aPerformance = holdingPerformanceMap[a.id];
+      const bPerformance = holdingPerformanceMap[b.id];
+      const { valueInSEK: aValueInSEK } = resolveHoldingValue(a);
+      const { valueInSEK: bValueInSEK } = resolveHoldingValue(b);
+      const aShare = totalPortfolioValue && totalPortfolioValue > 0 ? (aValueInSEK / totalPortfolioValue) * 100 : 0;
+      const bShare = totalPortfolioValue && totalPortfolioValue > 0 ? (bValueInSEK / totalPortfolioValue) * 100 : 0;
+
+      switch (sortBy) {
+        case 'name':
+          aValue = (a.name || '').toLowerCase();
+          bValue = (b.name || '').toLowerCase();
+          break;
+        case 'marketValue':
+          aValue = aValueInSEK;
+          bValue = bValueInSEK;
+          break;
+        case 'performance':
+          aValue = aPerformance?.profit ?? 0;
+          bValue = bPerformance?.profit ?? 0;
+          break;
+        case 'dailyChange':
+          aValue = a.dailyChangePercent ?? 0;
+          bValue = b.dailyChangePercent ?? 0;
+          break;
+        case 'share':
+          aValue = aShare;
+          bValue = bShare;
+          break;
+        default:
+          aValue = (a.name || '').toLowerCase();
+          bValue = (b.name || '').toLowerCase();
+      }
+
+      if (sortOrder === 'asc') {
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+        }
+        return (aValue as number) < (bValue as number) ? -1 : (aValue as number) > (bValue as number) ? 1 : 0;
+      } else {
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+        }
+        return (aValue as number) > (bValue as number) ? -1 : (aValue as number) < (bValue as number) ? 1 : 0;
+      }
+    });
+  }, [filteredGroups, sortBy, sortOrder, holdingPerformanceMap, totalPortfolioValue]);
+
+  // Other holdings (non-stocks) for separate table sections
+  const otherHoldingsGroups = useMemo(() => {
+    return filteredGroups
+      .map(group => ({
+        ...group,
+        holdings: group.holdings.filter(h => h.holding_type !== 'stock')
+      }))
+      .filter(group => group.holdings.length > 0)
+      .map(group => ({
+        ...group,
+        sortedHoldings: [...group.holdings].sort((a, b) => {
+          let aValue: number | string = 0;
+          let bValue: number | string = 0;
+
+          const aPerformance = holdingPerformanceMap[a.id];
+          const bPerformance = holdingPerformanceMap[b.id];
+          const { valueInSEK: aValueInSEK } = resolveHoldingValue(a);
+          const { valueInSEK: bValueInSEK } = resolveHoldingValue(b);
+          const aShare = totalPortfolioValue && totalPortfolioValue > 0 ? (aValueInSEK / totalPortfolioValue) * 100 : 0;
+          const bShare = totalPortfolioValue && totalPortfolioValue > 0 ? (bValueInSEK / totalPortfolioValue) * 100 : 0;
+
+          switch (sortBy) {
+            case 'name':
+              aValue = (a.name || '').toLowerCase();
+              bValue = (b.name || '').toLowerCase();
+              break;
+            case 'marketValue':
+              aValue = aValueInSEK;
+              bValue = bValueInSEK;
+              break;
+            case 'performance':
+              aValue = aPerformance?.profit ?? 0;
+              bValue = bPerformance?.profit ?? 0;
+              break;
+            case 'dailyChange':
+              aValue = a.dailyChangePercent ?? 0;
+              bValue = b.dailyChangePercent ?? 0;
+              break;
+            case 'share':
+              aValue = aShare;
+              bValue = bShare;
+              break;
+            default:
+              aValue = (a.name || '').toLowerCase();
+              bValue = (b.name || '').toLowerCase();
+          }
+
+          if (sortOrder === 'asc') {
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+              return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+            }
+            return (aValue as number) < (bValue as number) ? -1 : (aValue as number) > (bValue as number) ? 1 : 0;
+          } else {
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+              return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+            }
+            return (aValue as number) > (bValue as number) ? -1 : (aValue as number) < (bValue as number) ? 1 : 0;
+          }
+        })
+      }));
+  }, [filteredGroups, sortBy, sortOrder, holdingPerformanceMap, totalPortfolioValue]);
+
+  const handleTableSort = (column: 'name' | 'marketValue' | 'performance' | 'dailyChange' | 'share') => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('asc');
+    }
+  };
 
   const holdingsActionButtons = renderHoldingsActionButtons();
 
@@ -616,6 +811,47 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
           ) : (
             <div className="space-y-2.5 sm:space-y-3">
               {holdingsActionButtons}
+              
+              {/* Filter Section for Cards View */}
+              {viewMode === 'cards' && showFilters && (
+                <Card className="p-4 space-y-4">
+                  {/* Sorting */}
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex items-center gap-2">
+                      <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium whitespace-nowrap">Sortera efter:</span>
+                      <Select value={sortBy} onValueChange={(value) => setSortBy(value as 'name' | 'marketValue' | 'performance' | 'dailyChange' | 'share')}>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="name">Namn</SelectItem>
+                          <SelectItem value="marketValue">Marknadsvärde</SelectItem>
+                          <SelectItem value="performance">Utveckling</SelectItem>
+                          <SelectItem value="dailyChange">Utveckling idag</SelectItem>
+                          <SelectItem value="share">Andel</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as 'asc' | 'desc')}>
+                        <SelectTrigger className="w-[120px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="desc">
+                            {sortBy === 'name' ? 'Ö-A' : 'Högst först'}
+                          </SelectItem>
+                          <SelectItem value="asc">
+                            {sortBy === 'name' ? 'A-Ö' : 'Lägst först'}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
               {viewMode === 'cards' ? (
                 <div className="space-y-4">
                   {filteredGroups.map((group, index) => (
@@ -643,15 +879,52 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
                   ))}
                 </div>
               ) : (
-                <div className="space-y-2.5 sm:space-y-3">
-                  <HoldingsTable
-                    holdings={filteredHoldings}
-                    onRefreshPrice={handleUpdateHoldingPrice}
-                    isUpdatingPrice={updating}
-                    refreshingTicker={refreshingTicker}
-                    holdingPerformanceMap={holdingPerformanceMap}
-                    totalPortfolioValue={totalPortfolioValue}
-                  />
+                <div className="space-y-6 sm:space-y-8">
+                  {/* Stocks Table */}
+                  {stockHoldings.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="text-lg font-semibold text-foreground px-1">Aktier</h3>
+                      <HoldingsTable
+                        holdings={stockHoldings}
+                        onRefreshPrice={handleUpdateHoldingPrice}
+                        isUpdatingPrice={updating}
+                        refreshingTicker={refreshingTicker}
+                        holdingPerformanceMap={holdingPerformanceMap}
+                        totalPortfolioValue={totalPortfolioValue}
+                        sortBy={sortBy}
+                        sortOrder={sortOrder}
+                        onSort={handleTableSort}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Other holdings tables (funds, cash, etc.) */}
+                  {otherHoldingsGroups.length > 0 && (
+                    <>
+                      {stockHoldings.length > 0 && (
+                        <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border"></div>
+                      )}
+                      {otherHoldingsGroups.map((group, index) => (
+                        <div key={group.key} className="space-y-3">
+                          {index > 0 && (
+                            <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border"></div>
+                          )}
+                          <h3 className="text-lg font-semibold text-foreground px-1">{group.title}</h3>
+                          <HoldingsTable
+                            holdings={group.sortedHoldings}
+                            onRefreshPrice={group.key === 'cash' ? undefined : handleUpdateHoldingPrice}
+                            isUpdatingPrice={updating}
+                            refreshingTicker={refreshingTicker}
+                            holdingPerformanceMap={holdingPerformanceMap}
+                            totalPortfolioValue={totalPortfolioValue}
+                            sortBy={sortBy}
+                            sortOrder={sortOrder}
+                            onSort={handleTableSort}
+                          />
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </div>
               )}
 
