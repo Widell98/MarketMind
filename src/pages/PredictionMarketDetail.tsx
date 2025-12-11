@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Loader2, AlertCircle, MessageSquare } from "lucide-react";
 import { usePolymarketMarketDetail, usePolymarketMarketHistory, transformHistoryToGraphData } from "@/hooks/usePolymarket";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { MarketImpactAnalysis } from "@/components/MarketImpactAnalysis";
 
 // Format volume number to display string
@@ -29,33 +29,39 @@ const PredictionMarketDetail = () => {
   const { data: market, isLoading: marketLoading, error: marketError } = usePolymarketMarketDetail(slug || "");
   const { data: history, isLoading: historyLoading, error: historyError } = usePolymarketMarketHistory(market || null);
 
+  // --- 1. LOGIK & HOOKS (Måste ligga före alla return-satser!) ---
+
   // Transform history to graph data
   const graphData = useMemo(() => {
-    if (!history) {
-      console.log('PredictionMarketDetail: No history data available');
-      return [];
-    }
+    if (!history) return [];
     if (!history.points || !Array.isArray(history.points) || history.points.length === 0) {
-      console.log('PredictionMarketDetail: History points are empty or invalid', {
-        hasPoints: !!history.points,
-        isArray: Array.isArray(history.points),
-        length: history.points?.length || 0,
-        history,
-      });
       return [];
     }
-    const transformed = transformHistoryToGraphData(history);
-    console.log('PredictionMarketDetail: Transformed graph data', {
-      pointsCount: history.points.length,
-      transformedCount: transformed.length,
-      firstFew: transformed.slice(0, 3),
-    });
-    return transformed;
+    return transformHistoryToGraphData(history);
   }, [history]);
 
-  // Generate date navigation points (simplified - based on resolution date or end date)
+  // Find primary outcome safely
+  const primaryOutcome = useMemo(() => {
+    if (!market || !market.outcomes || market.outcomes.length === 0) return null;
+    return market.outcomes.find(o => 
+      o.title.toLowerCase().includes('yes') || 
+      o.title.toLowerCase() === 'yes'
+    ) || market.outcomes[0];
+  }, [market]);
+
+  // Calculate Current Price: Prioritize the last point in the graph history
+  const currentPrice = useMemo(() => {
+    if (graphData && graphData.length > 0) {
+      // Ta sista punkten i grafen (senaste historiska priset)
+      return graphData[graphData.length - 1].price;
+    }
+    // Fallback till metadata om grafen inte laddat än
+    return primaryOutcome ? Math.round(primaryOutcome.price * 100) : 0;
+  }, [graphData, primaryOutcome]);
+
+  // Generate date navigation points
   const datePoints = useMemo(() => {
-    if (!market) return [];
+    if (!market) return ["Past"];
     
     const dates: string[] = ["Past"];
     
@@ -63,7 +69,6 @@ const PredictionMarketDetail = () => {
       const endDate = new Date(market.endDate);
       dates.push(endDate.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' }));
       
-      // Add some future dates for navigation
       for (let i = 1; i <= 4; i++) {
         const futureDate = new Date(endDate);
         futureDate.setDate(futureDate.getDate() + i * 30);
@@ -76,7 +81,7 @@ const PredictionMarketDetail = () => {
     return dates;
   }, [market]);
 
-  const [selectedDate, setSelectedDate] = useState(datePoints[1] || "Dec 10");
+  const [selectedDate, setSelectedDate] = useState("Dec 10");
 
   // Set first outcome as default selected scenario
   React.useEffect(() => {
@@ -84,6 +89,8 @@ const PredictionMarketDetail = () => {
       setSelectedScenario(market.outcomes[0].id);
     }
   }, [market, selectedScenario]);
+
+  // --- 2. RENDERING (Här får vi returnera JSX) ---
 
   if (marketLoading) {
     return (
@@ -125,22 +132,6 @@ const PredictionMarketDetail = () => {
   }
 
   const volumeDisplay = formatVolume(market.volumeNum || market.volume || 0);
-
-  // Find primary outcome for display
-const primaryOutcome = market.outcomes.find(o => 
-    o.title.toLowerCase().includes('yes') || 
-    o.title.toLowerCase() === 'yes'
-  ) || market.outcomes[0];
-
-  // ÄNDRING: Hämta priset från historiken (grafen) för att få senaste riktiga handelspriset
-  const currentPrice = useMemo(() => {
-    // Om vi har grafdata, ta det allra sista värdet (det är det senaste priset)
-    if (graphData && graphData.length > 0) {
-      return graphData[graphData.length - 1].price;
-    }
-    // Fallback: Använd metadatan om grafen inte laddat än
-    return primaryOutcome ? Math.round(primaryOutcome.price * 100) : 0;
-  }, [graphData, primaryOutcome]);
 
   return (
     <Layout>
@@ -208,9 +199,10 @@ const primaryOutcome = market.outcomes.find(o =>
                         <div
                           className="w-2 h-2 sm:w-3 sm:h-3 rounded-full flex-shrink-0 bg-blue-500"
                         />
-                        <span className="whitespace-nowrap">
-                          Pris: {currentPrice}%
+                        <span className="whitespace-nowrap font-medium text-lg text-foreground">
+                          {currentPrice}%
                         </span>
+                        <span className="text-muted-foreground">Sannolikhet</span>
                       </div>
                     )}
                     <span className="ml-auto text-muted-foreground whitespace-nowrap">Polymarket</span>
@@ -229,7 +221,7 @@ const primaryOutcome = market.outcomes.find(o =>
                     </div>
                   </div>
                 ) : graphData.length > 0 ? (
-                 <div className="h-48 sm:h-64 w-full">
+                  <div className="h-48 sm:h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={graphData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
                         <defs>
@@ -238,22 +230,21 @@ const primaryOutcome = market.outcomes.find(o =>
                             <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                           </linearGradient>
                         </defs>
-                        {/* Polymarket har oftast inga synliga grids */}
-                        {/* <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} /> */}
                         
+                        {/* Polymarket-stil: Ingen grid, inga axlar */}
                         <XAxis 
                           dataKey="date" 
-                          hide={true} // Polymarket döljer ofta X-axeln i miniatyrer, eller gör den väldigt diskret
+                          hide={true} 
                           axisLine={false}
                           tickLine={false}
                         />
                         <YAxis 
-                          domain={['dataMin - 5', 'dataMax + 5']} // Dynamisk skala så kurvan fyller rutan
-                          hide={true} // Dölj Y-axeln för renare look (visa bara i tooltip)
+                          domain={['dataMin - 2', 'dataMax + 2']} // Dynamisk zoom för att visa rörelser tydligt
+                          hide={true} 
                         />
                         <Tooltip 
                           contentStyle={{ 
-                            backgroundColor: 'hsl(var(--background))',
+                            backgroundColor: 'hsl(var(--card))',
                             borderColor: 'hsl(var(--border))',
                             borderRadius: '8px',
                             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
@@ -265,11 +256,11 @@ const primaryOutcome = market.outcomes.find(o =>
                           labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: '4px' }}
                         />
                         <Line
-                          type="monotone" // Mjukare kurva
+                          type="monotone" // Mjuk kurva
                           dataKey="price"
-                          stroke="#10b981" // Polymarket grön (eller röd om trenden är ner)
+                          stroke="#10b981" // Polymarket grön
                           strokeWidth={2}
-                          dot={false} // Ta bort prickarna på linjen
+                          dot={false} // Inga prickar på linjen
                           activeDot={{ r: 4, strokeWidth: 0, fill: '#10b981' }}
                         />
                       </LineChart>
@@ -279,16 +270,6 @@ const primaryOutcome = market.outcomes.find(o =>
                   <div className="h-48 sm:h-64 flex items-center justify-center text-muted-foreground text-sm">
                     <div className="text-center">
                       <p>Historisk data är inte tillgänglig</p>
-                      {market && market.outcomes && market.outcomes.length === 0 && (
-                        <p className="text-xs mt-2 opacity-75">Marknaden har inga outcomes</p>
-                      )}
-                      {market && market.outcomes && market.outcomes.length > 0 && (
-                        <p className="text-xs mt-2 opacity-75">
-                          Debug: history={history ? 'exists' : 'null'}, 
-                          points={history?.points?.length || 0}, 
-                          graphData={graphData.length}
-                        </p>
-                      )}
                     </div>
                   </div>
                 )}
@@ -344,4 +325,3 @@ const primaryOutcome = market.outcomes.find(o =>
 };
 
 export default PredictionMarketDetail;
-
