@@ -34,281 +34,155 @@ const callPolymarketAPI = async (
 };
 
 // Transform API response to our Market type
+//
+// Ersätt transformMarket funktionen med denna robusta version:
 const transformMarket = (apiMarket: any): PolymarketMarket => {
   try {
-    // Handle different possible API response structures
-    // Polymarket API might return outcomes in different formats
+    console.log('Transforming market raw data:', {
+      id: apiMarket.id,
+      hasOutcomes: !!apiMarket.outcomes,
+      outcomesType: typeof apiMarket.outcomes,
+      hasTokens: !!apiMarket.tokens
+    });
+
     let outcomes: any[] = [];
     
-    if (apiMarket.outcomes && Array.isArray(apiMarket.outcomes)) {
-      outcomes = apiMarket.outcomes;
-    } else if (apiMarket.outcomePrices && Array.isArray(apiMarket.outcomePrices)) {
-      outcomes = apiMarket.outcomePrices;
-    } else if (apiMarket.prices && Array.isArray(apiMarket.prices)) {
-      outcomes = apiMarket.prices;
-    } else if (apiMarket.tokens && Array.isArray(apiMarket.tokens)) {
-      // Sometimes outcomes are in tokens array
-      outcomes = apiMarket.tokens.map((token: any) => ({
-        id: token.outcome || token.id,
-        title: token.outcome || token.name || token.title,
-        price: token.price || 0,
-      }));
+    // Hantera outcomes som kan vara array ELLER JSON-sträng
+    if (apiMarket.outcomes) {
+      if (Array.isArray(apiMarket.outcomes)) {
+        outcomes = apiMarket.outcomes;
+      } else if (typeof apiMarket.outcomes === 'string') {
+        try {
+          // Ibland kommer outcomes som en sträng: "[{...}]"
+          outcomes = JSON.parse(apiMarket.outcomes);
+        } catch (e) {
+          console.warn('Failed to parse outcomes string:', e);
+        }
+      }
+    } 
+    
+    // Fallback: Kolla andra fält om outcomes saknas
+    if (outcomes.length === 0) {
+      if (apiMarket.outcomePrices && Array.isArray(apiMarket.outcomePrices)) {
+        // Om outcomePrices finns (typiskt en sträng-array av priser), skapa outcomes
+        outcomes = JSON.parse(apiMarket.outcomePrices).map((price: string, i: number) => ({
+          id: String(i),
+          title: i === 0 ? 'Yes' : 'No', // Gissning för binära marknader
+          price: Number(price)
+        }));
+      } else if (apiMarket.tokens && Array.isArray(apiMarket.tokens)) {
+        outcomes = apiMarket.tokens.map((token: any) => ({
+          id: token.outcome || token.id,
+          title: token.outcome || token.name || token.title,
+          price: token.price || 0,
+          tokenId: token.token_id // Spara token_id här om det finns
+        }));
+      }
     }
 
-    // Parse volume - can be string like "$1.2m" or number
+    // Parse volume
     let volumeNum = 0;
     if (typeof apiMarket.volume === 'number') {
       volumeNum = apiMarket.volume;
     } else if (apiMarket.volumeNum) {
-      volumeNum = typeof apiMarket.volumeNum === 'number' ? apiMarket.volumeNum : parseFloat(String(apiMarket.volumeNum)) || 0;
-    } else if (apiMarket.volume && typeof apiMarket.volume === 'string') {
-      // Parse string format like "$1.2m" or "$1,234,567"
+      volumeNum = Number(apiMarket.volumeNum) || 0;
+    } else if (typeof apiMarket.volume === 'string') {
       const volumeStr = apiMarket.volume.replace(/[^0-9.]/g, '');
       volumeNum = parseFloat(volumeStr) || 0;
-      if (apiMarket.volume.toLowerCase().includes('m')) {
-        volumeNum *= 1_000_000;
-      } else if (apiMarket.volume.toLowerCase().includes('b')) {
-        volumeNum *= 1_000_000_000;
-      } else if (apiMarket.volume.toLowerCase().includes('k')) {
-        volumeNum *= 1_000;
+      if (apiMarket.volume.toLowerCase().includes('m')) volumeNum *= 1_000_000;
+      if (apiMarket.volume.toLowerCase().includes('b')) volumeNum *= 1_000_000_000;
+      if (apiMarket.volume.toLowerCase().includes('k')) volumeNum *= 1_000;
+    }
+
+    // Hämta CLOB Token IDs
+    let clobTokenIdsArray: string[] = [];
+    if (Array.isArray(apiMarket.clobTokenIds)) {
+      clobTokenIdsArray = apiMarket.clobTokenIds;
+    } else if (typeof apiMarket.clobTokenIds === 'string') {
+      try {
+        clobTokenIdsArray = JSON.parse(apiMarket.clobTokenIds);
+      } catch {
+        clobTokenIdsArray = apiMarket.clobTokenIds.split(',').map(s => s.trim());
       }
     }
 
-    // Polymarket API uses different identifiers - try to get the correct one
-    const marketId = apiMarket.id || apiMarket.conditionId || apiMarket.marketId || apiMarket.condition_id || '';
-    const marketSlug = apiMarket.slug || apiMarket.question_id || apiMarket.questionId || apiMarket.id || marketId;
-    
-    // Extract clobTokenIds if available (can be array or comma-separated string) - kept as fallback
-    let clobTokenIdsArray: string[] = [];
-    if (apiMarket.clobTokenIds && Array.isArray(apiMarket.clobTokenIds)) {
-      clobTokenIdsArray = apiMarket.clobTokenIds;
-    } else if (apiMarket.clobTokenIds && typeof apiMarket.clobTokenIds === 'string') {
-      clobTokenIdsArray = apiMarket.clobTokenIds.split(',').map(id => id.trim());
-    } else if (apiMarket.clob_token_ids && Array.isArray(apiMarket.clob_token_ids)) {
-      clobTokenIdsArray = apiMarket.clob_token_ids;
-    }
-    
+    const marketId = apiMarket.id || apiMarket.conditionId || '';
+
     return {
       id: marketId,
-      slug: marketSlug,
-      question: apiMarket.question || apiMarket.title || apiMarket.name || '',
-      imageUrl: apiMarket.imageUrl || apiMarket.image || apiMarket.image_url || apiMarket.icon || undefined,
-      description: apiMarket.description || apiMarket.longDescription || apiMarket.long_description || undefined,
+      slug: apiMarket.slug || apiMarket.id,
+      question: apiMarket.question || apiMarket.title || 'Unknown Market',
+      imageUrl: apiMarket.imageUrl || apiMarket.image || apiMarket.icon,
+      description: apiMarket.description,
       volume: volumeNum,
       volumeNum: volumeNum,
-      liquidity: apiMarket.liquidity || apiMarket.liquidityNum || apiMarket.liquidity_num || 0,
+      liquidity: Number(apiMarket.liquidity) || 0,
       outcomes: outcomes.map((outcome: any, index: number) => {
-        // Handle different outcome structures
-        const outcomePrice = outcome.price || outcome.lastPrice || outcome.price_24h || 0;
-        const outcomeTitle = outcome.title || outcome.name || outcome.outcome || outcome.label || `Outcome ${index + 1}`;
-        const outcomeId = outcome.id || outcome.outcome || outcome.token_id || String(index);
+        // Försök hitta det riktiga Token ID:t för historik
+        // 1. outcome.tokenId (från tokens-array)
+        // 2. clobTokenIdsArray[index] (från marknadens lista)
+        // 3. outcome.id (om det ser ut som ett hash/ID)
+        const specificTokenId = outcome.tokenId || clobTokenIdsArray[index] || outcome.id;
         
-        // Use outcome.id directly as tokenId (primary method per Polymarket docs)
-        // Store clobTokenIds array index as fallback if needed
-        // Note: outcome.id is typically the token ID for CLOB API
-        const tokenId = outcomeId; // outcome.id is already the tokenId in most cases
-
         return {
-          id: outcomeId,
-          title: outcomeTitle,
-          price: typeof outcomePrice === 'number' ? outcomePrice : parseFloat(String(outcomePrice || 0)) || 0,
-          volume: outcome.volume || outcome.volume_24h || undefined,
-          description: outcome.description || undefined,
-          tokenId: tokenId, // Store for reference, but outcome.id is used directly
+          id: String(outcome.id || index),
+          title: outcome.title || outcome.name || `Outcome ${index + 1}`,
+          price: Number(outcome.price || 0),
+          volume: outcome.volume,
+          tokenId: specificTokenId // Detta är nyckeln för historik!
         };
       }),
-      endDate: apiMarket.endDate || apiMarket.endDateIso || apiMarket.end_date || apiMarket.end_date_iso || undefined,
-      resolutionDate: apiMarket.resolutionDate || apiMarket.resolution_date || apiMarket.endDate || undefined,
-      conditionId: apiMarket.conditionId || apiMarket.condition_id || apiMarket.id || undefined,
-      active: apiMarket.active !== false && apiMarket.closed !== true && apiMarket.archived !== true,
+      endDate: apiMarket.endDate || apiMarket.endDateIso,
+      conditionId: apiMarket.conditionId,
+      active: apiMarket.active !== false && apiMarket.closed !== true,
       closed: apiMarket.closed === true,
       archived: apiMarket.archived === true,
-      tags: apiMarket.tags || apiMarket.categories || apiMarket.category || [],
-      groupItemTitle: apiMarket.groupItemTitle || apiMarket.group_item_title || undefined,
-      groupItemImageUrl: apiMarket.groupItemImageUrl || apiMarket.group_item_image_url || undefined,
-      groupItemSlug: apiMarket.groupItemSlug || apiMarket.group_item_slug || undefined,
-    };
+      tags: apiMarket.tags || [],
+      clobTokenIds: clobTokenIdsArray // Se till att denna följer med i objektet
+    } as PolymarketMarketDetail; // Type cast för att inkludera extra fält
   } catch (error) {
-    console.error('Error transforming market:', error, apiMarket);
-    // Return a minimal valid market object to prevent crashes
+    console.error('Error transforming market:', error);
     return {
-      id: apiMarket.id || String(Math.random()),
-      slug: apiMarket.slug || apiMarket.id || String(Math.random()),
-      question: apiMarket.question || apiMarket.title || 'Unknown Market',
+      id: apiMarket.id || 'error',
+      slug: 'error',
+      question: 'Error loading market',
       volume: 0,
       volumeNum: 0,
       liquidity: 0,
       outcomes: [],
-      active: true,
-      closed: false,
-      archived: false,
-      tags: [],
+      active: false
     };
-  }
-};
-
-// Fetch markets list
-export const fetchPolymarketMarkets = async (params?: {
-  limit?: number;
-  offset?: number;
-  tags?: string[];
-  search?: string;
-  active?: boolean;
-  closed?: boolean;
-  order?: string;
-  ascending?: boolean;
-}): Promise<PolymarketMarket[]> => {
-  try {
-    // Build params object for the edge function
-    const apiParams: Record<string, any> = {};
-    if (params?.limit) apiParams.limit = params.limit;
-    if (params?.offset) apiParams.offset = params.offset;
-    if (params?.tags && params.tags.length > 0) {
-      apiParams.tags = params.tags;
-    }
-    if (params?.search) apiParams.search = params.search;
-    if (params?.active !== undefined) apiParams.active = params.active;
-    if (params?.closed !== undefined) apiParams.closed = params.closed;
-    if (params?.order) apiParams.order = params.order;
-    if (params?.ascending !== undefined) apiParams.ascending = params.ascending;
-
-    const data = await callPolymarketAPI('/markets', apiParams);
-    
-    // Handle different response structures
-    let markets: any[] = [];
-    if (Array.isArray(data)) {
-      markets = data;
-    } else if (data.data && Array.isArray(data.data)) {
-      markets = data.data;
-    } else if (data.results && Array.isArray(data.results)) {
-      markets = data.results;
-    } else if (data.items && Array.isArray(data.items)) {
-      markets = data.items;
-    } else {
-      console.warn('Unexpected Polymarket API response structure:', data);
-      // Try to return empty array instead of throwing
-      return [];
-    }
-    
-    // Transform all markets, filtering out any that fail to transform
-    const transformedMarkets = markets
-      .map(transformMarket)
-      .filter(market => market.id && market.question); // Filter out invalid markets
-    
-    return transformedMarkets;
-  } catch (error) {
-    console.error('Error fetching Polymarket markets:', error);
-    throw error;
   }
 };
 
 // Fetch single market detail
 export const fetchPolymarketMarketDetail = async (slugOrId: string): Promise<PolymarketMarketDetail | null> => {
   try {
-    // Decode the identifier in case it's URL encoded
     const decodedSlugOrId = decodeURIComponent(slugOrId);
+    let data = await callPolymarketAPI(`/markets/slug/${decodedSlugOrId}`);
     
-    // According to Polymarket docs, we should use /markets/slug/{slug} for individual markets
-    // But if we have an ID instead of slug, we need to search for the market first
-    let data;
-    let lastError;
-    
-    // First try with /markets/slug/{slug} endpoint (recommended by docs)
-    try {
-      data = await callPolymarketAPI(`/markets/slug/${decodedSlugOrId}`);
-    } catch (error: any) {
-      lastError = error;
-      
-      // If slug endpoint fails, try the old format /markets/{slug} as fallback
-      try {
-        data = await callPolymarketAPI(`/markets/${decodedSlugOrId}`);
-      } catch (error2: any) {
-        lastError = error2;
-        
-        // If both fail with validation error (422), the identifier might be an ID instead of slug
-        // Search for the market in the list to find its slug
-        if (error2?.message?.includes('422') || error2?.message?.includes('invalid') || error2?.message?.includes('validation')) {
-          try {
-            // Search for markets and find the one matching our slug/id
-            const searchData = await callPolymarketAPI('/markets', { 
-              limit: 200,
-              active: true 
-            });
-            
-            // Find the market that matches our slug or id
-            let markets: any[] = [];
-            if (Array.isArray(searchData)) {
-              markets = searchData;
-            } else if (searchData.data && Array.isArray(searchData.data)) {
-              markets = searchData.data;
-            } else if (searchData.results && Array.isArray(searchData.results)) {
-              markets = searchData.results;
-            }
-            
-            // Try to find matching market by conditionId, id, or slug
-            const matchingMarket = markets.find((m: any) => {
-              const mConditionId = m.conditionId || m.condition_id || '';
-              const mId = m.id || m.marketId || '';
-              const mSlug = m.slug || m.question_id || m.questionId || '';
-              
-              // Check all identifiers
-              return (
-                (mConditionId && (mConditionId === decodedSlugOrId || String(mConditionId).toLowerCase() === String(decodedSlugOrId).toLowerCase())) ||
-                (mId && (mId === decodedSlugOrId || String(mId).toLowerCase() === String(decodedSlugOrId).toLowerCase())) ||
-                (mSlug && (mSlug === decodedSlugOrId || String(mSlug).toLowerCase() === String(decodedSlugOrId).toLowerCase()))
-              );
-            });
-            
-            if (matchingMarket) {
-              data = matchingMarket;
-            }
-          } catch (error3: any) {
-            lastError = error3;
-          }
-        }
-      }
+    // API:et kan returnera en array om man söker på slug
+    if (Array.isArray(data)) {
+      data = data[0];
     }
-    
-    if (!data) {
-      console.error('Could not fetch market detail. Last error:', lastError);
-      return null;
-    }
+
+    if (!data) return null;
 
     const market = transformMarket(data);
     
-    // Extract clobTokenIds if available
-    let clobTokenIds: string[] | undefined = undefined;
-    if (data.clobTokenIds && Array.isArray(data.clobTokenIds)) {
-      clobTokenIds = data.clobTokenIds;
-    } else if (data.clobTokenIds && typeof data.clobTokenIds === 'string') {
-      clobTokenIds = data.clobTokenIds.split(',').map(id => id.trim());
-    } else if (data.clob_token_ids && Array.isArray(data.clob_token_ids)) {
-      clobTokenIds = data.clob_token_ids;
-    }
-    
+    // Returnera som detalj-objekt
     return {
       ...market,
-      eventSlug: data.eventSlug || undefined,
-      liquidityNum: typeof data.liquidity === 'number' 
-        ? data.liquidity 
-        : parseFloat(String(data.liquidity || 0).replace(/[^0-9.]/g, '')) || 0,
-      startDate: data.startDate || data.startDateIso || undefined,
-      createdAt: data.createdAt || data.created_at || undefined,
-      updatedAt: data.updatedAt || data.updated_at || undefined,
-      endDateIso: data.endDateIso || data.endDateISO || data.endDate || undefined,
-      resolution: data.resolution || undefined,
-      resolutionSource: data.resolutionSource || undefined,
-      collateralToken: data.collateralToken || undefined,
-      outcomesDetails: market.outcomes,
-      clobTokenIds: clobTokenIds,
+      eventSlug: data.eventSlug,
+      liquidityNum: market.liquidity,
+      startDate: data.startDate,
+      endDateIso: data.endDate || data.endDateIso,
+      resolutionSource: data.resolutionSource,
+      clobTokenIds: market.clobTokenIds // Från transformern
     };
   } catch (error) {
     console.error('Error fetching market detail:', error);
-    // If it's a 404 or 422, return null
-    if (error instanceof Error && (error.message.includes('404') || error.message.includes('422') || error.message.includes('invalid'))) {
-      return null;
-    }
-    throw error;
+    return null;
   }
 };
 
@@ -439,7 +313,8 @@ export const usePolymarketMarketHistory = (market: PolymarketMarketDetail | null
       // Get tokenId for primary outcome
       // Try outcome.id first (most common), then outcome.tokenId, then clobTokenIds array
       const outcomeIndex = market.outcomes.indexOf(primaryOutcome);
-      let tokenId = primaryOutcome.id || primaryOutcome.tokenId || market.clobTokenIds?.[outcomeIndex];
+      // Prioritera tokenId eftersom transformMarket lägger det "bästa" ID:t där för CLOB-anrop
+let tokenId = primaryOutcome.tokenId || primaryOutcome.id || market.clobTokenIds?.[outcomeIndex];
       
       console.log('usePolymarketMarketHistory: Looking for tokenId', {
         primaryOutcomeTitle: primaryOutcome.title,
