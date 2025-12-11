@@ -409,11 +409,8 @@ let tokenId = primaryOutcome.tokenId || primaryOutcome.id || market.clobTokenIds
         
        const historyData = await callPolymarketAPI('/prices-history', {
           market: tokenId,
-          // Använd "fidelity" istället för interval om möjligt för CLOB, 
-          // eller ändra interval till kortare tid.
-          // Polymarket CLOB brukar svara bra på att INTE skicka interval (för auto) 
-          // eller skicka 'max' / '1h'
-          fidelity: 10, // Försök få högre upplösning (var 10e minut ca)
+          interval: "max", // "max" ger hela historiken (krävs!)
+          fidelity: 60,    // 60 = 1 datapunkt per timme (bra balans för lång historik)
         }, 'clob');
         
         console.log('usePolymarketMarketHistory: Got response from CLOB API', {
