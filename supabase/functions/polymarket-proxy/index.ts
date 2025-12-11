@@ -9,37 +9,50 @@ const POLYMARKET_API_BASE = "https://gamma-api.polymarket.com";
 const CLOB_API_BASE = "https://clob.polymarket.com";
 
 serve(async (req) => {
-  // Handle CORS preflight
+  // Hantera CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
     const body = await req.json().catch(() => ({}));
-    
-    console.log("Inkommande request body:", JSON.stringify(body, null, 2)); 
-
-    // Vi hämtar endpoint, params och apiType (gamma eller clob)
     let { endpoint, params, apiType = 'gamma' } = body;
 
-    // --- FIX: Tvinga fram "Trending" data om endpoint saknas eller är /events ---
-    if (!endpoint || endpoint === "/events") {
-        endpoint = "/events"; // Default endpoint
-        
-        // Här sätter vi hårda defaults så vi slipper 2020-data
-        params = {
-            closed: false,       // Dölj gamla marknader
-            active: true,        // Visa bara aktiva
-            order: "volume24hr", // Sortera på volym
-            ascending: false,    // Högst volym först
-            limit: 20,           // Hämta 20 st
-            ...params            // Om frontend skickar egna params, skriv över defaults
-        };
-        console.log("Applying default filters for trending markets.");
-    }
-    // --------------------------------------------------------------------------
+    console.log(`[Proxy] Request: ${endpoint} | Type: ${apiType}`, JSON.stringify(params));
 
-    // Build query string from params
+    // 1. Välj API-bas
+    const baseUrl = apiType === 'clob' ? CLOB_API_BASE : POLYMARKET_API_BASE;
+
+    // 2. Validering för historik-anrop (CLOB)
+    // Detta hjälper dig se om frontend skickar tomt ID vilket orsakar tom graf
+    if (apiType === 'clob' && endpoint === '/prices-history') {
+        if (!params?.market) {
+            console.error("[Proxy Error] 'market' (token_id) saknas för historik-anrop!");
+            return new Response(JSON.stringify({ error: "Missing market ID for history" }), {
+                status: 400,
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+        }
+    }
+
+    // 3. Hantera defaults för "Trending" (Gamma)
+    if (apiType === 'gamma' && (!endpoint || endpoint === "/events")) {
+        endpoint = "/events";
+        // Applicera bara defaults om vi inte fått specifika filter
+        if (!params || Object.keys(params).length === 0) {
+            params = {
+                closed: false,
+                active: true,
+                order: "volume24hr",
+                ascending: false,
+                limit: 20,
+                ...params
+            };
+            console.log("[Proxy] Applying trending defaults");
+        }
+    }
+
+    // 4. Bygg query string
     const queryParams = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -53,14 +66,10 @@ serve(async (req) => {
       });
     }
 
-    const queryString = queryParams.toString();
-    
-    // Välj rätt API base URL baserat på apiType
-    const baseUrl = apiType === 'clob' ? CLOB_API_BASE : POLYMARKET_API_BASE;
-    const apiUrl = `${baseUrl}${endpoint}${queryString ? `?${queryString}` : ''}`;
+    const apiUrl = `${baseUrl}${endpoint}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    console.log(`[Proxy] Fetching: ${apiUrl}`);
 
-    console.log(`Proxying request to ${apiType.toUpperCase()} API: ${apiUrl}`);
-
+    // 5. Gör anropet
     const response = await fetch(apiUrl, {
       method: "GET",
       headers: {
@@ -70,7 +79,7 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Polymarket API error: ${response.status} ${errorText}`);
+      console.error(`[Proxy API Error] ${response.status}:`, errorText);
       return new Response(
         JSON.stringify({ 
           error: `Polymarket API error: ${response.status}`,
@@ -85,15 +94,13 @@ serve(async (req) => {
 
     const data = await response.json();
     
-    // Logga lite info om vad vi fick
-    if (Array.isArray(data)) {
-        console.log(`Fick svar från Polymarket: ${data.length} objekt.`);
-        // Logga titeln på första eventet för att se att det är nytt
-        if (data.length > 0) {
-            console.log("Första eventet:", data[0].title, "| Volym:", data[0].volume);
-        }
+    // 6. Logga svarstyp för debugging
+    if (data.history && Array.isArray(data.history)) {
+        console.log(`[Proxy] Mottog historik: ${data.history.length} datapunkter.`);
+    } else if (Array.isArray(data)) {
+        console.log(`[Proxy] Mottog lista: ${data.length} objekt.`);
     } else {
-        console.log("Fick svar (ej array):", JSON.stringify(data).substring(0, 100));
+        console.log("[Proxy] Mottog objekt:", JSON.stringify(data).substring(0, 50) + "...");
     }
 
     return new Response(JSON.stringify(data), {
@@ -103,8 +110,9 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
     });
+
   } catch (error) {
-    console.error("Error proxying Polymarket API:", error);
+    console.error("[Proxy Internal Error]:", error);
     return new Response(
       JSON.stringify({ 
         error: error instanceof Error ? error.message : "Unknown error",
