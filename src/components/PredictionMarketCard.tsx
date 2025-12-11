@@ -59,19 +59,21 @@ export const PredictionMarketCard = ({ market }: PredictionMarketCardProps) => {
                 let barColorClass = "bg-secondary"; // Default grå/blå
                 let textColorClass = "text-foreground";
 
-                if (titleLower === 'yes') {
-                    barColorClass = "bg-emerald-500 dark:bg-emerald-400";
-                    textColorClass = "text-emerald-950 dark:text-emerald-50";
+              if (titleLower === 'yes') {
+                    // ÄNDRA HÄR: Från emerald-500 till green-600 för starkare grön
+                    barColorClass = "bg-green-600 dark:bg-green-500";
+                    textColorClass = "text-green-950 dark:text-green-50";
                 } else if (titleLower === 'no') {
-                    barColorClass = "bg-rose-500 dark:bg-rose-400";
-                    textColorClass = "text-rose-950 dark:text-rose-50";
+                    // ÄNDRA HÄR: Från rose-500 till red-600 för starkare röd
+                    barColorClass = "bg-red-600 dark:bg-red-500";
+                    textColorClass = "text-red-950 dark:text-red-50";
                 }
 
                 return (
                   <div key={idx} className="relative h-9 rounded-md overflow-hidden bg-secondary/20 border border-black/5 dark:border-white/5">
                     {/* 1. Bakgrunds-bar (Fyllnaden) */}
                     <div 
-                      className={`absolute left-0 top-0 h-full transition-all duration-500 ease-out opacity-25 dark:opacity-30 ${barColorClass}`}
+                      className={`absolute left-0 top-0 h-full transition-all duration-500 ease-out opacity-40 dark:opacity-30 ${barColorClass}`}
                       style={{ width: `${percent}%` }}
                     />
                     
