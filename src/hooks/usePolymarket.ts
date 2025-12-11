@@ -37,7 +37,6 @@ const callPolymarketAPI = async (
 const transformMarket = (apiMarket: any): PolymarketMarket => {
   try {
     // Handle different possible API response structures
-    // Polymarket API might return outcomes in different formats
     let outcomes: any[] = [];
     
     if (apiMarket.outcomes && Array.isArray(apiMarket.outcomes)) {
@@ -47,11 +46,11 @@ const transformMarket = (apiMarket: any): PolymarketMarket => {
     } else if (apiMarket.prices && Array.isArray(apiMarket.prices)) {
       outcomes = apiMarket.prices;
     } else if (apiMarket.tokens && Array.isArray(apiMarket.tokens)) {
-      // Sometimes outcomes are in tokens array
       outcomes = apiMarket.tokens.map((token: any) => ({
         id: token.outcome || token.id,
         title: token.outcome || token.name || token.title,
         price: token.price || 0,
+        token_id: token.token_id 
       }));
     } else if (typeof apiMarket.outcomes === 'string') {
         try {
@@ -61,35 +60,33 @@ const transformMarket = (apiMarket: any): PolymarketMarket => {
         }
     }
 
-    // Parse volume - can be string like "$1.2m" or number
+    // Parse volume
     let volumeNum = 0;
     if (typeof apiMarket.volume === 'number') {
       volumeNum = apiMarket.volume;
     } else if (apiMarket.volumeNum) {
       volumeNum = typeof apiMarket.volumeNum === 'number' ? apiMarket.volumeNum : parseFloat(String(apiMarket.volumeNum)) || 0;
     } else if (apiMarket.volume && typeof apiMarket.volume === 'string') {
-      // Parse string format like "$1.2m" or "$1,234,567"
       const volumeStr = apiMarket.volume.replace(/[^0-9.]/g, '');
       volumeNum = parseFloat(volumeStr) || 0;
-      if (apiMarket.volume.toLowerCase().includes('m')) {
-        volumeNum *= 1_000_000;
-      } else if (apiMarket.volume.toLowerCase().includes('b')) {
-        volumeNum *= 1_000_000_000;
-      } else if (apiMarket.volume.toLowerCase().includes('k')) {
-        volumeNum *= 1_000;
-      }
+      if (apiMarket.volume.toLowerCase().includes('m')) volumeNum *= 1_000_000;
+      if (apiMarket.volume.toLowerCase().includes('b')) volumeNum *= 1_000_000_000;
+      if (apiMarket.volume.toLowerCase().includes('k')) volumeNum *= 1_000;
     }
 
-    // Polymarket API uses different identifiers - try to get the correct one
-    const marketId = apiMarket.id || apiMarket.conditionId || apiMarket.marketId || apiMarket.condition_id || '';
-    const marketSlug = apiMarket.slug || apiMarket.question_id || apiMarket.questionId || apiMarket.id || marketId;
+    const marketId = apiMarket.id || apiMarket.conditionId || apiMarket.marketId || '';
+    const marketSlug = apiMarket.slug || apiMarket.question_id || apiMarket.id || marketId;
     
-    // Extract clobTokenIds if available (can be array or comma-separated string) - kept as fallback
+    // Extract clobTokenIds - Detta är nyckeln till historik!
     let clobTokenIdsArray: string[] = [];
     if (apiMarket.clobTokenIds && Array.isArray(apiMarket.clobTokenIds)) {
       clobTokenIdsArray = apiMarket.clobTokenIds;
     } else if (apiMarket.clobTokenIds && typeof apiMarket.clobTokenIds === 'string') {
-      clobTokenIdsArray = apiMarket.clobTokenIds.split(',').map((id: string) => id.trim());
+      try {
+        clobTokenIdsArray = JSON.parse(apiMarket.clobTokenIds);
+      } catch {
+        clobTokenIdsArray = apiMarket.clobTokenIds.split(',').map((id: string) => id.trim());
+      }
     } else if (apiMarket.clob_token_ids && Array.isArray(apiMarket.clob_token_ids)) {
       clobTokenIdsArray = apiMarket.clob_token_ids;
     }
@@ -97,56 +94,47 @@ const transformMarket = (apiMarket: any): PolymarketMarket => {
     return {
       id: marketId,
       slug: marketSlug,
-      question: apiMarket.question || apiMarket.title || apiMarket.name || '',
-      imageUrl: apiMarket.imageUrl || apiMarket.image || apiMarket.image_url || apiMarket.icon || undefined,
-      description: apiMarket.description || apiMarket.longDescription || apiMarket.long_description || undefined,
+      question: apiMarket.question || apiMarket.title || 'Unknown Market',
+      imageUrl: apiMarket.imageUrl || apiMarket.image || apiMarket.icon,
+      description: apiMarket.description,
       volume: volumeNum,
       volumeNum: volumeNum,
-      liquidity: apiMarket.liquidity || apiMarket.liquidityNum || apiMarket.liquidity_num || 0,
+      liquidity: Number(apiMarket.liquidity) || 0,
       outcomes: outcomes.map((outcome: any, index: number) => {
-        // Handle different outcome structures
-        const outcomePrice = outcome.price || outcome.lastPrice || outcome.price_24h || 0;
-        const outcomeTitle = outcome.title || outcome.name || outcome.outcome || outcome.label || `Outcome ${index + 1}`;
-        const outcomeId = outcome.id || outcome.outcome || outcome.token_id || String(index);
+        const outcomePrice = outcome.price || outcome.lastPrice || 0;
+        const outcomeTitle = outcome.title || outcome.name || `Outcome ${index + 1}`;
+        const outcomeId = outcome.id || String(index);
         
-        // Prioritize finding the CLOB token ID
-        const tokenId = outcome.tokenId || outcome.token_id || clobTokenIdsArray[index] || outcomeId;
+        // VIKTIGT: Hitta rätt Token ID för CLOB API
+        // Prioritera ID från clobTokenIds-listan baserat på index
+        const clobTokenId = clobTokenIdsArray[index] || outcome.tokenId || outcome.token_id;
 
         return {
           id: outcomeId,
           title: outcomeTitle,
-          price: typeof outcomePrice === 'number' ? outcomePrice : parseFloat(String(outcomePrice || 0)) || 0,
-          volume: outcome.volume || outcome.volume_24h || undefined,
-          description: outcome.description || undefined,
-          tokenId: tokenId, // Store for reference
+          price: Number(outcomePrice) || 0,
+          volume: outcome.volume,
+          tokenId: clobTokenId, // Spara detta för history-hooken
         };
       }),
-      endDate: apiMarket.endDate || apiMarket.endDateIso || apiMarket.end_date || apiMarket.end_date_iso || undefined,
-      resolutionDate: apiMarket.resolutionDate || apiMarket.resolution_date || apiMarket.endDate || undefined,
-      conditionId: apiMarket.conditionId || apiMarket.condition_id || apiMarket.id || undefined,
-      active: apiMarket.active !== false && apiMarket.closed !== true && apiMarket.archived !== true,
+      endDate: apiMarket.endDate || apiMarket.endDateIso,
+      conditionId: apiMarket.conditionId,
+      active: apiMarket.active !== false && apiMarket.closed !== true,
       closed: apiMarket.closed === true,
-      archived: apiMarket.archived === true,
-      tags: apiMarket.tags || apiMarket.categories || apiMarket.category || [],
-      groupItemTitle: apiMarket.groupItemTitle || apiMarket.group_item_title || undefined,
-      groupItemImageUrl: apiMarket.groupItemImageUrl || apiMarket.group_item_image_url || undefined,
-      groupItemSlug: apiMarket.groupItemSlug || apiMarket.group_item_slug || undefined,
+      tags: apiMarket.tags || [],
       clobTokenIds: clobTokenIdsArray,
     } as PolymarketMarketDetail;
   } catch (error) {
-    console.error('Error transforming market:', error, apiMarket);
-    // Return a minimal valid market object to prevent crashes
+    console.error('Error transforming market:', error);
     return {
-      id: apiMarket.id || String(Math.random()),
-      slug: apiMarket.slug || apiMarket.id || String(Math.random()),
-      question: apiMarket.question || apiMarket.title || 'Unknown Market',
+      id: apiMarket.id || 'error',
+      slug: 'error',
+      question: 'Error loading market',
       volume: 0,
       volumeNum: 0,
       liquidity: 0,
       outcomes: [],
-      active: true,
-      closed: false,
-      archived: false,
+      active: false,
       tags: [],
     };
   }
@@ -164,13 +152,10 @@ export const fetchPolymarketMarkets = async (params?: {
   ascending?: boolean;
 }): Promise<PolymarketMarket[]> => {
   try {
-    // Build params object for the edge function
     const apiParams: Record<string, any> = {};
     if (params?.limit) apiParams.limit = params.limit;
     if (params?.offset) apiParams.offset = params.offset;
-    if (params?.tags && params.tags.length > 0) {
-      apiParams.tags = params.tags;
-    }
+    if (params?.tags && params.tags.length > 0) apiParams.tags = params.tags;
     if (params?.search) apiParams.search = params.search;
     if (params?.active !== undefined) apiParams.active = params.active;
     if (params?.closed !== undefined) apiParams.closed = params.closed;
@@ -179,30 +164,19 @@ export const fetchPolymarketMarkets = async (params?: {
 
     const data = await callPolymarketAPI('/markets', apiParams);
     
-    // Handle different response structures
     let markets: any[] = [];
     if (Array.isArray(data)) {
       markets = data;
     } else if (data.data && Array.isArray(data.data)) {
       markets = data.data;
-    } else if (data.results && Array.isArray(data.results)) {
-      markets = data.results;
-    } else if (data.items && Array.isArray(data.items)) {
-      markets = data.items;
     } else {
-      console.warn('Unexpected Polymarket API response structure:', data);
       return [];
     }
     
-    // Transform all markets, filtering out any that fail to transform
-    const transformedMarkets = markets
-      .map(transformMarket)
-      .filter(market => market.id && market.question); // Filter out invalid markets
-    
-    return transformedMarkets;
+    return markets.map(transformMarket).filter(m => m.id && m.question);
   } catch (error) {
-    console.error('Error fetching Polymarket markets:', error);
-    throw error;
+    console.error('Error fetching markets:', error);
+    return [];
   }
 };
 
@@ -212,38 +186,29 @@ export const fetchPolymarketMarketDetail = async (slugOrId: string): Promise<Pol
     const decodedSlugOrId = decodeURIComponent(slugOrId);
     let data;
     
-    // Try with slug endpoint
     try {
       data = await callPolymarketAPI(`/markets/slug/${decodedSlugOrId}`);
-    } catch (error: any) {
-        // Fallback logic omitted for brevity, but same as before
-        if (error?.message?.includes('404')) return null;
+    } catch (e) {
+      try {
+        data = await callPolymarketAPI(`/markets/${decodedSlugOrId}`);
+      } catch (e2) {
+        return null;
+      }
     }
     
-    // Handle array response from slug endpoint
-    if (Array.isArray(data)) {
-        data = data[0];
-    }
-
+    if (Array.isArray(data)) data = data[0];
     if (!data) return null;
 
     const market = transformMarket(data);
     
     return {
       ...market,
-      eventSlug: data.eventSlug || undefined,
-      liquidityNum: typeof data.liquidity === 'number' 
-        ? data.liquidity 
-        : parseFloat(String(data.liquidity || 0).replace(/[^0-9.]/g, '')) || 0,
-      startDate: data.startDate || data.startDateIso || undefined,
-      createdAt: data.createdAt || data.created_at || undefined,
-      updatedAt: data.updatedAt || data.updated_at || undefined,
-      endDateIso: data.endDateIso || data.endDateISO || data.endDate || undefined,
-      resolution: data.resolution || undefined,
-      resolutionSource: data.resolutionSource || undefined,
-      collateralToken: data.collateralToken || undefined,
-      outcomesDetails: market.outcomes,
-      clobTokenIds: market.clobTokenIds,
+      eventSlug: data.eventSlug,
+      liquidityNum: market.liquidity,
+      startDate: data.startDate,
+      endDateIso: data.endDate || data.endDateIso,
+      resolutionSource: data.resolutionSource,
+      clobTokenIds: market.clobTokenIds
     };
   } catch (error) {
     console.error('Error fetching market detail:', error);
@@ -255,165 +220,115 @@ export const fetchPolymarketMarketDetail = async (slugOrId: string): Promise<Pol
 export const fetchPolymarketTags = async (): Promise<PolymarketTag[]> => {
   try {
     const data = await callPolymarketAPI('/tags');
-    if (Array.isArray(data)) {
-      return data.map((tag: any) => ({
-        id: tag.id || tag.slug || '',
-        name: tag.name || '',
-        slug: tag.slug || tag.id || '',
-        description: tag.description || undefined,
-        marketCount: tag.marketCount || tag.count || undefined,
-      }));
-    } 
+    if (Array.isArray(data)) return data.map((tag: any) => ({ id: tag.id, name: tag.name, slug: tag.slug }));
     return [];
-  } catch (error) {
-    console.error('Error fetching tags:', error);
-    throw error;
+  } catch {
+    return [];
   }
 };
 
-
-// Transform history to graph data format (simplified for single price line)
+// Transform history to graph data format
 export const transformHistoryToGraphData = (
   history: PolymarketMarketHistory | null | undefined
 ): GraphDataPoint[] => {
-  if (!history || !history.points || !Array.isArray(history.points) || history.points.length === 0) {
-    return [];
-  }
+  if (!history?.points?.length) return [];
 
-  // Sort points by timestamp and transform to graph data format
   return history.points
     .slice()
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     .map((point) => ({
       date: new Date(point.timestamp).toLocaleDateString('sv-SE', { 
         month: 'short', 
-        day: 'numeric' 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
       }),
-      price: Math.round(point.price * 100), // Convert 0-1 to 0-100 percentage
+      price: Math.round(point.price * 100),
     }));
 };
 
-// Hook for fetching markets list
-export const usePolymarketMarkets = (params?: {
-  limit?: number;
-  offset?: number;
-  tags?: string[];
-  search?: string;
-  active?: boolean;
-  closed?: boolean;
-  order?: string;
-  ascending?: boolean;
-}) => {
+// Hooks
+export const usePolymarketMarkets = (params?: any) => {
   return useQuery({
     queryKey: ['polymarket-markets', params],
     queryFn: () => fetchPolymarketMarkets(params),
-    staleTime: 60000, // 1 minute
-    refetchInterval: 300000, // 5 minutes
+    staleTime: 60000,
   });
 };
 
-// Hook for fetching market detail
 export const usePolymarketMarketDetail = (slug: string) => {
   return useQuery({
     queryKey: ['polymarket-market', slug],
     queryFn: () => fetchPolymarketMarketDetail(slug),
     enabled: !!slug,
-    staleTime: 60000, // 1 minute
-    refetchInterval: 300000, // 5 minutes
+    staleTime: 60000,
   });
 };
 
-// Hook for fetching tags
 export const usePolymarketTags = () => {
   return useQuery({
     queryKey: ['polymarket-tags'],
     queryFn: fetchPolymarketTags,
-    staleTime: 3600000, // 1 hour (tags don't change often)
+    staleTime: 3600000,
   });
 };
 
-// Hook for market history using CLOB API - fetches only primary outcome
+// Hook for market history using CLOB API
 export const usePolymarketMarketHistory = (market: PolymarketMarketDetail | null | undefined) => {
-  const hasMarket = !!market;
-  const hasOutcomes = !!market?.outcomes && Array.isArray(market.outcomes) && market.outcomes.length > 0;
-  const isEnabled = hasMarket && hasOutcomes;
+  const isEnabled = !!market && !!market.outcomes?.length;
   
   return useQuery({
     queryKey: ['polymarket-market-history', market?.slug, market?.id],
     queryFn: async () => {
-      if (!market || !market.outcomes || !Array.isArray(market.outcomes) || market.outcomes.length === 0) {
-        return null;
-      }
+      if (!market?.outcomes?.length) return null;
       
       const yesOutcome = market.outcomes.find(o => 
-        o.title.toLowerCase().includes('yes') || 
-        o.title.toLowerCase() === 'yes'
+        o.title.toLowerCase() === 'yes' || o.title.toLowerCase().includes('yes')
       );
       const primaryOutcome = yesOutcome || market.outcomes[0];
       
-      if (!primaryOutcome) {
-        return null;
+      // VIKTIGT: Validera att vi har ett giltigt CLOB Token ID
+      // Ett giltigt ID är en lång sträng (ofta numerisk eller hex). "0" eller "1" är inte giltigt.
+      const rawTokenId = primaryOutcome.tokenId || primaryOutcome.id;
+      let tokenId = rawTokenId;
+
+      // Fallback: Om token ID saknas på outcome, försök hitta det i marknadens lista
+      if ((!tokenId || tokenId.length < 10) && market.clobTokenIds?.length) {
+         const index = market.outcomes.indexOf(primaryOutcome);
+         if (index >= 0 && market.clobTokenIds[index]) {
+             tokenId = market.clobTokenIds[index];
+         }
       }
-      
-      // FIX: Prioritera tokenId (från transformMarket) före outcome.id
-      const outcomeIndex = market.outcomes.indexOf(primaryOutcome);
-      let tokenId = primaryOutcome.tokenId || primaryOutcome.id || market.clobTokenIds?.[outcomeIndex];
-      
-      // Fallback: conditionId
-      if (!tokenId && market.conditionId) {
-        tokenId = market.conditionId;
-      }
-      
-      if (!tokenId) {
-        console.log('usePolymarketMarketHistory: No tokenId found, generating mock data');
-        const mockPoints = generateMockHistoryForOutcome(primaryOutcome, 90);
+
+      // Om vi fortfarande inte har ett långt, giltigt ID -> använd mock
+      if (!tokenId || tokenId.length < 5) {
+        console.warn('Invalid Token ID for history, using mock:', tokenId);
         return {
           marketId: market.id,
           marketSlug: market.slug,
-          points: mockPoints,
+          points: generateMockHistoryForOutcome(primaryOutcome, 90),
         };
       }
       
       try {
-        console.log('usePolymarketMarketHistory: Calling CLOB API', { market: tokenId });
+        console.log('Fetching history for Token ID:', tokenId);
         
         const historyData = await callPolymarketAPI('/prices-history', {
           market: tokenId,
-          interval: 'max', // VIKTIGT: Hämta all historik
-          fidelity: 60,    // VIKTIGT: 60 minuters upplösning
+          interval: 'max',
+          fidelity: 60,
         }, 'clob');
         
-        // FIX: Hantera API-svaret korrekt!
-        // API returnerar { history: [...] }, inte en array direkt.
+        // Hantera { history: [...] } eller [...]
         const historyArray = Array.isArray(historyData) ? historyData : (historyData.history || []);
         
         if (Array.isArray(historyArray) && historyArray.length > 0) {
-          console.log(`usePolymarketMarketHistory: Parsed ${historyArray.length} points`);
-          
-          const points: PolymarketHistoryPoint[] = historyArray.map((point: any) => {
-            let timestamp: string;
-            // Hantera tidsstämpel (t = unix seconds)
-            if (typeof point.t === 'number') {
-              timestamp = new Date(point.t * 1000).toISOString();
-            } else {
-              timestamp = new Date().toISOString();
-            }
-            
-            // Hantera pris (p = 0-1)
-            let price: number = 0;
-            if (typeof point.p === 'number') {
-              price = point.p;
-            } else if (typeof point.price === 'number') {
-                price = point.price;
-            }
-            
-            return {
-              timestamp,
-              price: Math.max(0, Math.min(1, price)),
-              outcomeId: primaryOutcome.id,
-              outcomeTitle: primaryOutcome.title,
-            };
-          });
+          const points: PolymarketHistoryPoint[] = historyArray.map((point: any) => ({
+            timestamp: new Date((point.t || point.timestamp) * 1000).toISOString(),
+            price: point.p ?? point.price ?? 0,
+            outcomeId: primaryOutcome.id,
+            outcomeTitle: primaryOutcome.title,
+          }));
           
           return {
             marketId: market.id,
@@ -422,20 +337,18 @@ export const usePolymarketMarketHistory = (market: PolymarketMarketDetail | null
           };
         }
         
-        console.log('usePolymarketMarketHistory: Empty data, using mock');
-        const mockPoints = generateMockHistoryForOutcome(primaryOutcome, 90);
+        // Tom array -> mock
         return {
           marketId: market.id,
           marketSlug: market.slug,
-          points: mockPoints,
+          points: generateMockHistoryForOutcome(primaryOutcome, 90),
         };
       } catch (error) {
-        console.error('usePolymarketMarketHistory: Error fetching history', error);
-        const mockPoints = generateMockHistoryForOutcome(primaryOutcome, 90);
+        console.error('History fetch failed:', error);
         return {
           marketId: market.id,
           marketSlug: market.slug,
-          points: mockPoints,
+          points: generateMockHistoryForOutcome(primaryOutcome, 90),
         };
       }
     },
@@ -444,7 +357,6 @@ export const usePolymarketMarketHistory = (market: PolymarketMarketDetail | null
   });
 };
 
-// Helper function to generate mock history for a single outcome (fallback)
 const generateMockHistoryForOutcome = (outcome: PolymarketOutcome, days: number): PolymarketHistoryPoint[] => {
   const now = new Date();
   const points: PolymarketHistoryPoint[] = [];
@@ -453,19 +365,16 @@ const generateMockHistoryForOutcome = (outcome: PolymarketOutcome, days: number)
   for (let i = days; i >= 0; i--) {
     const date = new Date(now);
     date.setDate(date.getDate() - i);
-    
     const seed = (i * 1000) % 1000;
     const random = (Math.sin(seed) + 1) / 2;
     const variation = (random - 0.5) * 0.2;
-    const price = Math.max(0, Math.min(1, basePrice + variation));
     
     points.push({
       timestamp: date.toISOString(),
-      price,
+      price: Math.max(0, Math.min(1, basePrice + variation)),
       outcomeId: outcome.id,
       outcomeTitle: outcome.title,
     });
   }
-  
   return points;
 };
