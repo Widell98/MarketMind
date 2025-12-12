@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -33,17 +34,26 @@ interface Message {
     requiresConfirmation?: boolean;
   };
 }
+
 interface AIChatProps {
   portfolioId?: string;
   initialStock?: string | null;
   initialMessage?: string | null;
   showExamplePrompts?: boolean;
+  // Nya props för att hantera Polymarket/extern data
+  conversationData?: any;
+  createNewSession?: boolean;
+  sessionName?: string;
 }
+
 const AIChat = ({
   portfolioId,
   initialStock,
   initialMessage,
-  showExamplePrompts = true
+  showExamplePrompts = true,
+  conversationData,
+  createNewSession: shouldCreateNewSession,
+  sessionName
 }: AIChatProps) => {
   const {
     user
@@ -85,6 +95,10 @@ const AIChat = ({
   const [isGuideSession, setIsGuideSession] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const [sidebarView, setSidebarView] = useState<'chat' | 'navigation'>('chat');
+  
+  // State för att hålla koll på context (t.ex. Polymarket-data)
+  const [conversationContext, setConversationContext] = useState<any>(null);
+
   const { t } = useLanguage();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -92,11 +106,19 @@ const AIChat = ({
   const location = useLocation();
   const navigate = useNavigate();
   const isPremium = subscription?.subscribed;
+  
   const draftStorageKey = useMemo(() => {
     const sessionKey = currentSessionId ?? 'new';
     const portfolioKey = portfolioId ?? 'default';
     return `ai-chat-draft:${portfolioKey}:${sessionKey}`;
   }, [currentSessionId, portfolioId]);
+
+  // Uppdatera conversationContext om prop ändras (t.ex. vid navigering)
+  useEffect(() => {
+    if (conversationData) {
+      setConversationContext(conversationData);
+    }
+  }, [conversationData]);
 
   useEffect(() => {
     setSelectedDocumentIds((prev) =>
@@ -171,87 +193,70 @@ const AIChat = ({
       sessionStorage.removeItem(draftStorageKey);
     }
   }, [draftStorageKey, input]);
-  useEffect(() => {
-    // Handle initial stock and message from URL parameters - but only once
-    if (initialStock && initialMessage && !hasProcessedInitialMessage) {
-      const startPrefilledSession = async () => {
-        await createNewSession(initialStock);
 
-        // Pre-fill the input with the initial message instead of sending it
+  // Handle session creation and initial messages from props
+  useEffect(() => {
+    const handleSessionInit = async () => {
+      // Om vi redan bearbetat detta eller om användaren inte är inloggad än, gör inget
+      if (hasProcessedInitialMessage || !user) return;
+
+      // Fall 1: Tvingad ny session (t.ex. från Polymarket)
+      if (shouldCreateNewSession) {
+        await createNewSession(sessionName);
+        
+        if (initialMessage) {
+          setInput(initialMessage);
+          setTimeout(() => {
+            inputRef.current?.focus();
+          }, 100);
+        }
+        
+        // Sätt context om det finns
+        if (conversationData) {
+          setConversationContext(conversationData);
+        }
+
+        setHasProcessedInitialMessage(true);
+        
+        // Rensa URL state för att undvika omladdning av samma session
+        window.history.replaceState({}, document.title);
+        return;
+      }
+
+      // Fall 2: URL parametrar (legacy eller externa länkar)
+      if (initialStock && initialMessage) {
+        await createNewSession(initialStock);
         const decodedMessage = decodeURIComponent(initialMessage);
         setInput(decodedMessage);
         setTimeout(() => {
           inputRef.current?.focus();
         }, 100);
         setHasProcessedInitialMessage(true);
-
+        
+        // Rensa URL parametrar
         if (location.search) {
           const newUrl = `${location.pathname}${location.hash ?? ''}`;
-          navigate(newUrl, { replace: true, state: location.state });
+          navigate(newUrl, { replace: true });
         }
-      };
-
-      void startPrefilledSession();
-    }
-  }, [
-    initialStock,
-    initialMessage,
-    hasProcessedInitialMessage,
-    createNewSession,
-    location.pathname,
-    location.search,
-    location.hash,
-    location.state,
-    navigate
-  ]);
-  const hasHandledNavigationSessionRef = useRef(false);
-
-  useEffect(() => {
-    const navigationState = location.state as {
-      createNewSession?: boolean;
-      sessionName?: string;
-      initialMessage?: string;
-    } | undefined;
-
-    if (navigationState?.createNewSession) {
-      if (hasHandledNavigationSessionRef.current) {
-        return;
       }
+    };
 
-      hasHandledNavigationSessionRef.current = true;
-
-      const {
-        sessionName,
-        initialMessage
-      } = navigationState;
-      const startNewSession = async () => {
-        // Create new session without sending initial message
-        await createNewSession(sessionName);
-
-        if (initialMessage) {
-          // Pre-fill the input with the initial message (user will send it themselves)
-          setInput(initialMessage);
-          setTimeout(() => {
-            inputRef.current?.focus();
-          }, 100);
-        }
-
-        const currentUrl = `${location.pathname}${location.search}${location.hash ?? ''}`;
-        navigate(currentUrl, { replace: true, state: {} });
-      };
-
-      void startNewSession();
-    } else {
-      hasHandledNavigationSessionRef.current = false;
-    }
+    void handleSessionInit();
   }, [
-    location.state,
-    location.pathname,
-    location.search,
-    location.hash,
+    shouldCreateNewSession,
+    sessionName,
+    initialMessage,
+    initialStock,
+    conversationData,
+    hasProcessedInitialMessage,
+    user,
     createNewSession,
-    navigate
+    navigate,
+    location.pathname,
+    location.hash,
+    location.search
   ]);
+
   useEffect(() => {
     const handleCreateStockChat = (event: CustomEvent) => {
       const {
@@ -296,24 +301,31 @@ const AIChat = ({
       window.removeEventListener('prefillChatInput', handlePrefillChatInput as EventListener);
     };
   }, [createNewSession]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedInput = input.trim();
     if (!trimmedInput || isLoading || !user) return;
+    
     const previousInput = input;
     setInput('');
+    
+    // Här skickar vi med conversationContext (Polymarket-data)
     const wasSent = await sendMessage(trimmedInput, {
       documentIds: selectedDocumentIds,
       documents: attachedDocuments.map((doc) => ({ id: doc.id, name: doc.name })),
+      conversationData: conversationContext // Skicka med context
     });
 
     if (!wasSent) {
       setInput(previousInput);
     }
   };
+
   const handleNewSession = useCallback(async () => {
     if (!user) return;
     setIsGuideSession(false);
+    setConversationContext(null); // Rensa context vid ny session
     await createNewSession();
     setInput('');
     setHasProcessedInitialMessage(false); // Reset for new session
@@ -321,12 +333,17 @@ const AIChat = ({
       setSidebarOpen(false);
     }
   }, [user, createNewSession, isMobile]);
+
   const handleLoadSession = useCallback(async (sessionId: string) => {
     await loadSession(sessionId);
+    // Vid laddning av gammal session, bör vi kanske rensa conversationContext
+    // om den inte sparas i databasen för sessionen (vilket den inte gör än i frontend-state)
+    setConversationContext(null); 
     if (isMobile) {
       setSidebarOpen(false);
     }
   }, [loadSession, isMobile]);
+
   const handleExamplePrompt = (prompt: string) => {
     // Exit guide session when user starts using AI chat
     if (isGuideSession) {
@@ -344,6 +361,7 @@ const AIChat = ({
       }, 100);
     }
   };
+
   const handleLoadGuideSession = useCallback(() => {
     // Clear regular chat and show guide
     setIsGuideSession(true);
@@ -352,6 +370,7 @@ const AIChat = ({
       setSidebarOpen(false);
     }
   }, [clearMessages, isMobile]);
+
   const sidebarProps = useMemo(() => ({
     currentSessionId: isGuideSession ? 'guide-session' : currentSessionId,
     onLoadSession: (sessionId: string) => {
@@ -375,6 +394,7 @@ const AIChat = ({
     handleNewSession,
     isMobile,
   ]);
+
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden">
       {user ? (
@@ -739,4 +759,5 @@ const AIChat = ({
     </div>
   );
 };
+
 export default AIChat;
