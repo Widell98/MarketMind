@@ -825,6 +825,7 @@ export const useAIChat = (portfolioId?: string) => {
   type SendMessageOptions = {
     documentIds?: string[];
     documents?: Array<{ id: string; name: string }>;
+    conversationData?: any;
   };
 
   const sendMessage = useCallback(async (content: string, options?: SendMessageOptions): Promise<boolean> => {
@@ -1070,6 +1071,7 @@ export const useAIChat = (portfolioId?: string) => {
         analysisType: 'general',
         detectedProfileUpdates: detectedIntent?.updates ?? undefined,
         detectedProfileSummary: detectedIntent?.summary ?? undefined,
+        conversationData: options?.conversationData ?? undefined,
       };
 
       if (sanitizedDocumentIds.length > 0) {
