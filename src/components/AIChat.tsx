@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -33,17 +34,25 @@ interface Message {
     requiresConfirmation?: boolean;
   };
 }
+
 interface AIChatProps {
   portfolioId?: string;
   initialStock?: string | null;
   initialMessage?: string | null;
   showExamplePrompts?: boolean;
+  conversationData?: any;
+  createNewSession?: boolean;
+  sessionName?: string;
 }
+
 const AIChat = ({
   portfolioId,
   initialStock,
   initialMessage,
-  showExamplePrompts = true
+  showExamplePrompts = true,
+  conversationData,
+  createNewSession: shouldCreateNewSession,
+  sessionName
 }: AIChatProps) => {
   const {
     user
@@ -78,13 +87,20 @@ const AIChat = ({
     deleteDocument,
     hasReachedDocumentLimit,
   } = useChatDocuments();
+  
   const [input, setInput] = useState('');
-  const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false);
+  
+  // ÄNDRING: Använd useRef istället för useState för att förhindra dubbla anrop
+  const hasProcessedInitialMessageRef = useRef(false);
+  
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [isGuideSession, setIsGuideSession] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const [sidebarView, setSidebarView] = useState<'chat' | 'navigation'>('chat');
+  
+  const [conversationContext, setConversationContext] = useState<any>(null);
+
   const { t } = useLanguage();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -92,11 +108,18 @@ const AIChat = ({
   const location = useLocation();
   const navigate = useNavigate();
   const isPremium = subscription?.subscribed;
+  
   const draftStorageKey = useMemo(() => {
     const sessionKey = currentSessionId ?? 'new';
     const portfolioKey = portfolioId ?? 'default';
     return `ai-chat-draft:${portfolioKey}:${sessionKey}`;
   }, [currentSessionId, portfolioId]);
+
+  useEffect(() => {
+    if (conversationData) {
+      setConversationContext(conversationData);
+    }
+  }, [conversationData]);
 
   useEffect(() => {
     setSelectedDocumentIds((prev) =>
@@ -157,10 +180,11 @@ const AIChat = ({
     if (typeof window === 'undefined') return;
 
     const storedDraft = sessionStorage.getItem(draftStorageKey);
-    if (storedDraft && !hasProcessedInitialMessage) {
+    // ÄNDRING: Kolla mot ref istället för state
+    if (storedDraft && !hasProcessedInitialMessageRef.current) {
       setInput(storedDraft);
     }
-  }, [draftStorageKey, hasProcessedInitialMessage]);
+  }, [draftStorageKey]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -171,87 +195,68 @@ const AIChat = ({
       sessionStorage.removeItem(draftStorageKey);
     }
   }, [draftStorageKey, input]);
+
+  // Handle session creation and initial messages
   useEffect(() => {
-    // Handle initial stock and message from URL parameters - but only once
-    if (initialStock && initialMessage && !hasProcessedInitialMessage) {
-      const startPrefilledSession = async () => {
-        await createNewSession(initialStock);
+    const handleSessionInit = async () => {
+      // ÄNDRING: Använd ref för att låsa direkt. Detta stoppar "trippel-skapandet".
+      if (hasProcessedInitialMessageRef.current || !user) return;
 
-        // Pre-fill the input with the initial message instead of sending it
-        const decodedMessage = decodeURIComponent(initialMessage);
-        setInput(decodedMessage);
-        setTimeout(() => {
-          inputRef.current?.focus();
-        }, 100);
-        setHasProcessedInitialMessage(true);
+      // Fall 1: Tvingad ny session (t.ex. från Polymarket)
+      if (shouldCreateNewSession) {
+        // Lås direkt för att förhindra race conditions
+        hasProcessedInitialMessageRef.current = true;
 
-        if (location.search) {
-          const newUrl = `${location.pathname}${location.hash ?? ''}`;
-          navigate(newUrl, { replace: true, state: location.state });
-        }
-      };
-
-      void startPrefilledSession();
-    }
-  }, [
-    initialStock,
-    initialMessage,
-    hasProcessedInitialMessage,
-    createNewSession,
-    location.pathname,
-    location.search,
-    location.hash,
-    location.state,
-    navigate
-  ]);
-  const hasHandledNavigationSessionRef = useRef(false);
-
-  useEffect(() => {
-    const navigationState = location.state as {
-      createNewSession?: boolean;
-      sessionName?: string;
-      initialMessage?: string;
-    } | undefined;
-
-    if (navigationState?.createNewSession) {
-      if (hasHandledNavigationSessionRef.current) {
-        return;
-      }
-
-      hasHandledNavigationSessionRef.current = true;
-
-      const {
-        sessionName,
-        initialMessage
-      } = navigationState;
-      const startNewSession = async () => {
-        // Create new session without sending initial message
         await createNewSession(sessionName);
-
+        
         if (initialMessage) {
-          // Pre-fill the input with the initial message (user will send it themselves)
           setInput(initialMessage);
           setTimeout(() => {
             inputRef.current?.focus();
           }, 100);
         }
+        
+        if (conversationData) {
+          setConversationContext(conversationData);
+        }
+        
+        // Rensa URL state direkt för att undvika omladdning
+        window.history.replaceState({}, document.title);
+        return;
+      }
 
-        const currentUrl = `${location.pathname}${location.search}${location.hash ?? ''}`;
-        navigate(currentUrl, { replace: true, state: {} });
-      };
+      // Fall 2: URL parametrar (legacy eller externa länkar)
+      if (initialStock && initialMessage) {
+        hasProcessedInitialMessageRef.current = true;
+        await createNewSession(initialStock);
+        const decodedMessage = decodeURIComponent(initialMessage);
+        setInput(decodedMessage);
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
+        
+        if (location.search) {
+          const newUrl = `${location.pathname}${location.hash ?? ''}`;
+          navigate(newUrl, { replace: true });
+        }
+      }
+    };
 
-      void startNewSession();
-    } else {
-      hasHandledNavigationSessionRef.current = false;
-    }
+    void handleSessionInit();
   }, [
-    location.state,
-    location.pathname,
-    location.search,
-    location.hash,
+    shouldCreateNewSession,
+    sessionName,
+    initialMessage,
+    initialStock,
+    conversationData,
+    user,
     createNewSession,
-    navigate
+    navigate,
+    location.pathname,
+    location.hash,
+    location.search
   ]);
+
   useEffect(() => {
     const handleCreateStockChat = (event: CustomEvent) => {
       const {
@@ -259,7 +264,6 @@ const AIChat = ({
         message
       } = event.detail;
       const startChat = async () => {
-        // Create new session and pre-fill input instead of auto-sending
         await createNewSession(sessionName);
         setInput(message);
         setTimeout(() => {
@@ -296,42 +300,49 @@ const AIChat = ({
       window.removeEventListener('prefillChatInput', handlePrefillChatInput as EventListener);
     };
   }, [createNewSession]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedInput = input.trim();
     if (!trimmedInput || isLoading || !user) return;
+    
     const previousInput = input;
     setInput('');
+    
     const wasSent = await sendMessage(trimmedInput, {
       documentIds: selectedDocumentIds,
       documents: attachedDocuments.map((doc) => ({ id: doc.id, name: doc.name })),
+      conversationData: conversationContext
     });
 
     if (!wasSent) {
       setInput(previousInput);
     }
   };
+
   const handleNewSession = useCallback(async () => {
     if (!user) return;
     setIsGuideSession(false);
+    setConversationContext(null);
+    hasProcessedInitialMessageRef.current = false; // Reset ref
     await createNewSession();
     setInput('');
-    setHasProcessedInitialMessage(false); // Reset for new session
     if (isMobile) {
       setSidebarOpen(false);
     }
   }, [user, createNewSession, isMobile]);
+
   const handleLoadSession = useCallback(async (sessionId: string) => {
     await loadSession(sessionId);
+    setConversationContext(null); 
     if (isMobile) {
       setSidebarOpen(false);
     }
   }, [loadSession, isMobile]);
+
   const handleExamplePrompt = (prompt: string) => {
-    // Exit guide session when user starts using AI chat
     if (isGuideSession) {
       setIsGuideSession(false);
-      // Create a new regular session when user starts chatting
       handleNewSession();
       setTimeout(() => {
         setInput(prompt);
@@ -344,14 +355,15 @@ const AIChat = ({
       }, 100);
     }
   };
+
   const handleLoadGuideSession = useCallback(() => {
-    // Clear regular chat and show guide
     setIsGuideSession(true);
     clearMessages();
     if (isMobile) {
       setSidebarOpen(false);
     }
   }, [clearMessages, isMobile]);
+
   const sidebarProps = useMemo(() => ({
     currentSessionId: isGuideSession ? 'guide-session' : currentSessionId,
     onLoadSession: (sessionId: string) => {
@@ -375,6 +387,7 @@ const AIChat = ({
     handleNewSession,
     isMobile,
   ]);
+
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden">
       {user ? (
@@ -386,7 +399,6 @@ const AIChat = ({
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
             <header className="grid grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-ai-border/60 px-4 py-3 sm:px-6">
               <div className="flex items-center gap-2">
-                {/* Logo on mobile */}
                 {isMobile && (
                   <Link to="/" className="flex items-center min-w-0 flex-shrink-0 mr-1">
                     <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center transform rotate-3 hover:rotate-0 transition-transform duration-300 flex-shrink-0">
@@ -395,7 +407,6 @@ const AIChat = ({
                   </Link>
                 )}
 
-                {/* Combined menu for mobile */}
                 {isMobile && (
                   <Sheet open={sidebarOpen} onOpenChange={(open) => { setSidebarOpen(open); if (!open) setSidebarView('chat'); }}>
                     <SheetTrigger asChild>
@@ -535,7 +546,6 @@ const AIChat = ({
                   </Sheet>
                 )}
 
-                {/* Desktop sidebar toggle */}
                 {!isMobile && (
                   <Button
                     onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
@@ -549,7 +559,6 @@ const AIChat = ({
               </div>
 
               <div className="flex items-center justify-end gap-2">
-                {/* Theme toggle and profile menu on mobile */}
                 {isMobile && (
                   <>
                     <ThemeToggle />
@@ -557,7 +566,6 @@ const AIChat = ({
                   </>
                 )}
                 
-                {/* Premium/Credits badge */}
                 {isPremium ? (
                   <TooltipProvider delayDuration={120}>
                     <Tooltip>
@@ -739,4 +747,5 @@ const AIChat = ({
     </div>
   );
 };
+
 export default AIChat;
