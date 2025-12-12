@@ -295,20 +295,30 @@ const PredictionMarketDetail = () => {
             )}
             
             {/* Diskutera med AI Button */}
-            <Button 
-              className="w-full gap-2" 
-              size="lg"
-              onClick={() => navigate('/ai-chatt', { 
-                state: { 
-                  createNewSession: true, // Detta krävs för att AIChat ska läsa datan
-                  initialMessage: `Jag vill diskutera prediktionsmarknaden: "${market.question}"`, // Texten som hamnar i input-rutan
-                  sessionName: market.question // (Valfritt) Sätter namnet på chat-sessionen i historiken
-                } 
-              })}
-            >
-              <MessageSquare className="h-4 w-4" />
-              Diskutera med AI
-            </Button>
+           <Button 
+  className="w-full gap-2" 
+  size="lg"
+  onClick={() => navigate('/ai-chatt', { 
+    state: { 
+      createNewSession: true, 
+      initialMessage: `Jag vill diskutera prediktionsmarknaden: "${market.question}"`,
+      sessionName: market.question,
+      // NY KOD HÄR: Skicka med datan strukturera
+      conversationData: {
+        predictionMarket: {
+          id: market.id,
+          question: market.question,
+          probability: currentPrice, // Skickar numret (t.ex. 51 för 51%)
+          volume: volumeDisplay,
+          description: market.description
+        }
+      }
+    } 
+  })}
+>
+  <MessageSquare className="h-4 w-4" />
+  Diskutera med AI
+</Button>
             {/* Analysis Text Box (Beskrivning) */}
             <Card>
               <CardContent className="p-4 sm:p-6">
