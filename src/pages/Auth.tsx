@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -32,6 +33,8 @@ const Auth = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const { user, loading, signIn, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { toast } = useToast();
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -57,6 +60,20 @@ const Auth = () => {
       navigate('/');
     }
   }, [user, loading, navigate]);
+
+  // Lyssna efter lösenordsåterställning och visa notis
+  useEffect(() => {
+    if (location.state?.passwordReset) {
+      toast({
+        title: "Lösenord uppdaterat",
+        description: "Ditt lösenord har ändrats. Vänligen logga in med ditt nya lösenord.",
+        variant: "default",
+      });
+      
+      // Rensa state så notisen inte visas igen om man laddar om sidan
+      window.history.replaceState({}, document.title);
+    }
+  }, [location, toast]);
 
   const onLoginSubmit = async (data: LoginFormValues) => {
     try {
