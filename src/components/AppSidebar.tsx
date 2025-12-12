@@ -29,7 +29,12 @@ const AppSidebar = () => {
     name: t('nav.discover'),
     href: '/discover',
     icon: Sparkles
-  }, {
+  },
+    {
+    name: 'Prediction markets', 
+    href: '/predictions',
+    icon: TrendingUp
+  },                      {
     name: t('nav.news'),
     href: '/news',
     icon: Newspaper
