@@ -418,7 +418,7 @@ const AIChat = ({
                         <Menu className="h-4 w-4" />
                       </Button>
                     </SheetTrigger>
-                    <SheetContent side="left" className="w-full max-w-xs p-0 sm:max-w-sm" hideCloseButton>
+                    <SheetContent side="left" className="w-[85vw] max-w-[300px] p-0 border-r-0" hideCloseButton>
                       {sidebarView === 'chat' ? (
                         <div className="flex flex-col h-full">
                           <div className="px-4 py-3 border-b border-ai-border/60 bg-ai-surface-muted/40 flex items-center justify-between">
@@ -483,6 +483,17 @@ const AIChat = ({
                                 <Sparkles className="w-5 h-5" />
                                 <span>{t('nav.discover')}</span>
                               </Link>
+
+                              <Link
+            to="/predictions"
+            onClick={() => setSidebarOpen(false)}
+            className={cn(
+              'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 w-full border shadow-sm',
+              location.pathname.startsWith('/predictions')
+                ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground border-primary/40'
+                : 'text-muted-foreground border-transparent bg-background/60 hover:text-foreground hover:bg-gradient-to-r hover:from-muted/70 hover:to-muted/40'
+            )}
+          >
                               <Link
                                 to="/news"
                                 onClick={() => setSidebarOpen(false)}
