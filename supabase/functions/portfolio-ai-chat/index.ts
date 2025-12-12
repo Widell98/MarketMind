@@ -639,6 +639,8 @@ const EXTENDED_TAVILY_DOMAINS = Array.from(new Set([
   'barrons.com',
   'forbes.com',
   'economist.com',
+  'polymarket.com', 
+  'kalshi.com'
 ]));
 
 const DEFAULT_EXCLUDED_TAVILY_DOMAINS = [
@@ -1054,6 +1056,19 @@ const buildEntityAwareQuery = ({
   userIntent,
   detectedEntities,
 }: EntityQueryInput): string | null => {
+  
+  // --- NY LOGIK FÖR PREDIKTIONER ---
+  if (userIntent === 'prediction_analysis') {
+    // Rensa bort onödiga ord för att få en ren söksträng
+    const cleanMessage = message
+      .replace(/diskutera|analysera|vad tror du om|prediktionsmarknaden/gi, '')
+      .trim();
+      
+    // Tvinga sökningen att leta efter odds på Polymarket
+    return `${cleanMessage} polymarket odds current probability`;
+  }
+  // ---------------------------------
+
   const entitySet = new Set<string>();
   for (const ticker of tickers.slice(0, 4)) {
     if (ticker) {
