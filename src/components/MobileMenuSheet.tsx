@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,7 +16,8 @@ import {
   BarChart3,
   Menu,
   User,
-  LogOut
+  LogOut,
+  TrendingUp // Ny import för Marknader-ikonen
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -31,6 +31,8 @@ const MobileMenuSheet = () => {
   
   const navigation = [
     { name: 'Hem', href: '/', icon: Home },
+    // Ny länk till Marknader
+    { name: 'Marknader', href: '/predictions', icon: TrendingUp },
     { name: 'AI-Assistent', href: '/ai-chatt', icon: MessageSquare },
     { name: 'Min Portfölj', href: '/portfolio-implementation', icon: BarChart3 },
   ];
@@ -62,8 +64,13 @@ const MobileMenuSheet = () => {
             <Menu className="h-5 w-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-80 px-0">
-          <SheetHeader className="px-6 pb-4 border-b">
+        
+        {/* Uppdaterad className med din design + justerad bredd (w-[85vw] max-w-[300px]) */}
+        <SheetContent 
+          side="left" 
+          className="fixed z-50 gap-4 bg-background p-6 transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500 inset-y-0 left-0 h-full data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm w-[85vw] max-w-[300px] px-0 border-r bg-gradient-to-b from-background via-background to-muted/30 shadow-xl"
+        >
+          <SheetHeader className="px-6 pb-4 border-b border-border/40">
             <SheetTitle className="text-left flex items-center gap-2">
               <span className="text-2xl">🧠</span>
               Market Mind
@@ -74,7 +81,7 @@ const MobileMenuSheet = () => {
             {/* Main Navigation */}
             <nav className="flex-1 px-4 py-6">
               <div className="space-y-2">
-                <h3 className="px-2 text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <h3 className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                   Navigation
                 </h3>
                 {navigation.map((item) => {
@@ -89,7 +96,7 @@ const MobileMenuSheet = () => {
                         'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
                         active
                           ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                          : 'text-foreground/80 hover:bg-muted hover:text-foreground'
                       )}
                     >
                       <Icon className="w-5 h-5" />
@@ -102,7 +109,7 @@ const MobileMenuSheet = () => {
               {/* User Menu - only if logged in */}
               {user && (
                 <div className="mt-8 space-y-2">
-                  <h3 className="px-2 text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <h3 className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                     Konto
                   </h3>
                   {userMenuItems.map((item) => {
@@ -117,7 +124,7 @@ const MobileMenuSheet = () => {
                           'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
                           active
                             ? 'bg-primary text-primary-foreground shadow-sm'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                            : 'text-foreground/80 hover:bg-muted hover:text-foreground'
                         )}
                       >
                         <Icon className="w-5 h-5" />
@@ -131,16 +138,16 @@ const MobileMenuSheet = () => {
 
             {/* User Info & Sign Out */}
             {user && (
-              <div className="px-4 py-6 border-t border-gray-200 dark:border-gray-700">
-                <div className="flex items-center gap-3 px-3 py-2 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
+              <div className="px-4 py-6 border-t border-border/40">
+                <div className="flex items-center gap-3 px-3 py-2 mb-3 bg-muted/30 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-medium border border-primary/20">
                     {user.email?.slice(0, 2).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                      {user.user_metadata?.full_name || 'User'}
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {user.user_metadata?.full_name || 'Användare'}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    <p className="text-xs text-muted-foreground truncate">
                       {user.email}
                     </p>
                   </div>
@@ -149,7 +156,7 @@ const MobileMenuSheet = () => {
                   onClick={handleSignOut}
                   variant="outline" 
                   size="sm" 
-                  className="w-full justify-start gap-2 text-destructive hover:text-destructive"
+                  className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
                 >
                   <LogOut className="w-4 h-4" />
                   Logga ut
@@ -159,8 +166,8 @@ const MobileMenuSheet = () => {
 
             {/* Sign In Button - only if not logged in */}
             {!user && (
-              <div className="px-4 py-6 border-t border-gray-200 dark:border-gray-700">
-                <Button asChild className="w-full">
+              <div className="px-4 py-6 border-t border-border/40">
+                <Button asChild className="w-full bg-primary hover:bg-primary/90">
                   <Link to="/auth">Logga in</Link>
                 </Button>
               </div>
