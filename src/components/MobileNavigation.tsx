@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -12,7 +11,8 @@ import {
   Sparkles,
   Menu,
   User,
-  Newspaper
+  Newspaper,
+  TrendingUp // Ny import
 } from 'lucide-react';
 import {
   Sheet,
@@ -39,6 +39,8 @@ const MobileNavigation = () => {
   const mainNavigation: NavigationItem[] = [
     { name: t('nav.home'), href: '/', icon: Home },
     { name: t('nav.discover'), href: '/discover', icon: Sparkles },
+    // Ny länk här:
+    { name: 'Marknader', href: '/predictions', icon: TrendingUp },
     { name: t('nav.news'), href: '/news', icon: Newspaper },
   ];
 
@@ -130,9 +132,11 @@ const MobileNavigation = () => {
           <span className="sr-only">{t('nav.openNavigation') ?? 'Öppna navigering'}</span>
         </Button>
       </SheetTrigger>
+      
+      {/* Uppdaterad layout: Inte full bredd (w-[85vw] max-w-[300px]) */}
       <SheetContent
         side="left"
-        className="w-full sm:w-96 px-0 border-r bg-gradient-to-b from-background via-background to-muted/30 shadow-xl"
+        className="w-[85vw] max-w-[300px] px-0 border-r bg-gradient-to-b from-background via-background to-muted/30 shadow-xl"
       >
         <div className="px-5 py-4 border-b bg-background/60 backdrop-blur">
           <SheetHeader>
