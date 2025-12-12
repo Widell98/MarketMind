@@ -1,10 +1,13 @@
+import { useEffect } from "react"; // VIKTIG: Saknades
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom"; // VIKTIG: useNavigate saknades
+import { supabase } from "@/integrations/supabase/client"; // VIKTIG: Måste finnas med
+
 import PredictionMarketsDemo from "./pages/PredictionMarketsDemo";
 import PredictionMarketDetail from "./pages/PredictionMarketDetail";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { Analytics } from "@vercel/analytics/next";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -37,6 +40,28 @@ import NotFound from "./pages/NotFound";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 
+// Här är den korrigerade komponenten
+const AuthEventHandler = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth event:", event); // Bra för felsökning
+      if (event === 'PASSWORD_RECOVERY') {
+        // Oavsett var användaren landar, skicka dem till rätt sida
+        navigate('/auth/reset-password'); 
+      }
+    });
+    
+    // Städa upp lyssnaren när komponenten tas bort
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
+
+  return null; // Denna komponent ska inte rendera något synligt
+};
+
 const queryClient = new QueryClient();
 
 function App() {
@@ -54,6 +79,10 @@ function App() {
                   <ErrorBoundary>
                     <BrowserRouter>
                       <Analytics />
+                      
+                      {/* Lyssnaren placeras här, innan Routes */}
+                      <AuthEventHandler />
+                      
                       <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/stock-cases" element={<StockCases />} />
