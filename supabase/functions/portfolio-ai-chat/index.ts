@@ -368,6 +368,21 @@ const buildIntentPrompt = ({ intent, focus = {}, referencesPersonalInvestments, 
       lines.push('OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:', '**Företagsnamn (TICKER)** - Kort motivering (endast börsnoterade bolag)');
       break;
     }
+      case 'prediction_analysis': {
+      lines.push('PREDIKTIONSMARKNADSANALYS:', 
+        '- Betrakta frågan som en analys av sannolikhetsmarknader (t.ex. Polymarket), inte som traditionell betting.',
+        '- Förklara alltid "implicerad sannolikhet" om användaren diskuterar odds (t.ex. odds 2.0 = 50% sannolikhet).',
+        '- Analysera "Wisdom of the Crowd" – vad säger marknadens prissättning om det förväntade utfallet?',
+        '- Jämför gärna marknadens odds mot opinionsmätningar eller nyhetsflöde om relevant data finns.'
+      );
+      if (focus.wantsRisks) {
+        lines.push('- Påpeka att prediktionsmarknader är volatila och kan påverkas av "whales" eller låg likviditet.');
+      }
+      if (focus.wantsRecommendation) {
+        lines.push('- Ge INTE köp-/säljråd för betting. Utvärdera istället om marknaden verkar över- eller underreagera på nyheter.');
+      }
+      break;
+    }
     case 'portfolio_optimization': {
       lines.push('PORTFÖLJOPTIMERINGSUPPGIFT:', '- Identifiera över-/underexponering och föreslå konkreta omviktningar vid behov.', '- Beskriv prioriterade åtgärder i löpande text och använd punktlistor endast för tydliga steg.');
       if (referencesPersonalInvestments) {
@@ -706,6 +721,14 @@ const INTENT_EXAMPLES: Record<IntentType, string[]> = {
     'Kan du analysera Volvo-aktien åt mig?',
     'Vad är din syn på Evolution Gaming just nu?',
     'Hur ser fundamenta ut för Atlas Copco?',
+  ],
+  prediction_analysis: [ 
+    'Vad är oddsen på Polymarket för valet?',
+    'Tror du att Bitcoin når 100k innan nyår enligt marknaden?',
+    'Analysera detta bet',
+    'Vem vinner valet enligt oddsen?',
+    'Är sannolikheten för räntesänkning prisad korrekt?',
+    'Jag vill diskutera prediktionsmarknaden',
   ],
   portfolio_optimization: [
     'Hur kan jag balansera om min portfölj?',
@@ -1694,6 +1717,7 @@ const askLLMIfRealtimeNeeded = async ({
       '   - intraday_price (vill veta aktuell kurs, intradagsrörelser eller "hur går den nu").',
       '   - macro_event (handlar om dagsaktuella marknadshändelser, centralbanker eller makronyheter).',
       '   - portfolio_update (ber om dagsfärsk status för sin portfölj eller innehav).',
+      '   - prediction_market (frågor om odds, Polymarket, sannolikheter för utfall, valresultat).',
       '   - strategy_or_education (förklaringar, historik, långsiktiga strategier).',
       '   - other (allt annat).',
       '2. Avgör om realtidsdata krävs för att besvara frågan pålitligt. Realtidsdata behövs främst för kategorierna latest_news, recent_report, intraday_price, macro_event och portfolio_update.',
