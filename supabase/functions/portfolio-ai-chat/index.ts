@@ -3315,6 +3315,10 @@ serve(async (req) => {
       || isPortfolioOptimizationRequest
       || referencesPersonalInvestments;
 
+    if (conversationData?.predictionMarket) {
+  shouldIncludePersonalContext = false; 
+}
+
     if (isDocumentSummaryRequest) {
       shouldIncludePersonalContext = false;
     }
