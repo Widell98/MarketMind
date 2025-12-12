@@ -18,6 +18,7 @@ const MainNavigation = () => {
   
   const navigation = [
     { name: 'Hem', href: '/', icon: Home },
+    { name: 'Marknader', href: '/predictions', icon: TrendingUp },
     { name: 'AI-Assistent', href: '/ai-chatt', icon: MessageSquare },
     { name: 'Portfölj & Analys', href: '/portfolio-implementation', icon: BarChart3, requiresAuth: true },
     { name: 'Aktiefall', href: '/stock-cases', icon: TrendingUp },
