@@ -122,7 +122,10 @@ const ResetPassword = () => {
 
   useEffect(() => {
     if (status === "success") {
-      const timeout = setTimeout(() => navigate("/login"), 3000);
+      const timeout = setTimeout(() => {
+        // Skickar med state så att Auth.tsx kan visa en toast
+        navigate("/login", { state: { passwordReset: true } });
+      }, 3000);
       return () => clearTimeout(timeout);
     }
   }, [status, navigate]);
@@ -144,8 +147,12 @@ const ResetPassword = () => {
       setStatus("loading");
       setErrorMessage(null);
 
+      // 1. Uppdatera lösenordet
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
+
+      // 2. Logga ut användaren direkt för säkerhets skull och för att tvinga ny inloggning
+      await supabase.auth.signOut();
 
       setStatus("success");
     } catch (error) {
@@ -192,7 +199,7 @@ const ResetPassword = () => {
 
           {status === "success" ? (
             <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
-              Lösenordet uppdaterat! Du omdirigeras till inloggningen strax.
+              Lösenordet uppdaterat! Du loggas nu ut och omdirigeras till inloggningen för att logga in med ditt nya lösenord.
             </p>
           ) : (
             !initializing && !errorMessage && (
