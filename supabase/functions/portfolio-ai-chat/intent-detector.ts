@@ -9,6 +9,7 @@ const ALLOWED_INTENTS: IntentType[] = [
   'news_update',
   'general_advice',
   'document_summary',
+  'prediction_analysis',
 ];
 
 const SYSTEM_PROMPT = [
@@ -55,6 +56,22 @@ const EXAMPLE_CLASSIFICATIONS = [
     assistant: {
       intent: ['document_summary'],
       entities: [],
+      language: 'sv',
+    },
+  },
+  {
+    user: 'Vad tror du om oddsen för att Trump vinner valet?',
+    assistant: {
+      intent: ['prediction_analysis'],
+      entities: ['Trump', 'US Election'],
+      language: 'sv',
+    },
+  },
+  {
+    user: 'Är det värt att betta på att räntan sänks i maj?',
+    assistant: {
+      intent: ['prediction_analysis', 'market_analysis'],
+      entities: ['Ränta', 'Riksbanken'],
       language: 'sv',
     },
   },
