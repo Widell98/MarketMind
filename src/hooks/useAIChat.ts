@@ -822,10 +822,11 @@ export const useAIChat = (portfolioId?: string) => {
     }
   }, [user, toast]);
 
-  type SendMessageOptions = {
-    documentIds?: string[];
-    documents?: Array<{ id: string; name: string }>;
-  };
+ type SendMessageOptions = {
+  documentIds?: string[];
+  documents?: Array<{ id: string; name: string }>;
+  conversationData?: any; // Nytt fält
+};
 
   const sendMessage = useCallback(async (content: string, options?: SendMessageOptions): Promise<boolean> => {
 
@@ -1061,16 +1062,17 @@ export const useAIChat = (portfolioId?: string) => {
       const supabaseUrl = 'https://qifolopsdeeyrevbuxfl.supabase.co';
       const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpZm9sb3BzZGVleXJldmJ1eGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5MzY3MjMsImV4cCI6MjA2MzUxMjcyM30.x89y179_8EDl1NwTryhXfUDMzdxrnfomZfRmhmySMhM';
       
-      const requestPayload: Record<string, unknown> = {
-        message: trimmedContent,
-        userId: user.id,
-        portfolioId: portfolioId,
-        sessionId: targetSessionId,
-        chatHistory: chatHistoryForAPI,
-        analysisType: 'general',
-        detectedProfileUpdates: detectedIntent?.updates ?? undefined,
-        detectedProfileSummary: detectedIntent?.summary ?? undefined,
-      };
+     const requestPayload: Record<string, unknown> = {
+  message: trimmedContent,
+  userId: user.id,
+  portfolioId: portfolioId,
+  sessionId: targetSessionId,
+  chatHistory: chatHistoryForAPI,
+  analysisType: 'general',
+  detectedProfileUpdates: detectedIntent?.updates ?? undefined,
+  detectedProfileSummary: detectedIntent?.summary ?? undefined,
+  conversationData: options?.conversationData ?? undefined 
+};
 
       if (sanitizedDocumentIds.length > 0) {
         requestPayload.documentIds = sanitizedDocumentIds;
