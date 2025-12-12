@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,7 +16,8 @@ import {
   BarChart3,
   Menu,
   User,
-  LogOut
+  LogOut,
+  TrendingUp // Importerad ikon för Marknader
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -31,6 +31,8 @@ const MobileMenuSheet = () => {
   
   const navigation = [
     { name: 'Hem', href: '/', icon: Home },
+    // Ny länk till Marknader
+    { name: 'Marknader', href: '/predictions', icon: TrendingUp },
     { name: 'AI-Assistent', href: '/ai-chatt', icon: MessageSquare },
     { name: 'Min Portfölj', href: '/portfolio-implementation', icon: BarChart3 },
   ];
@@ -62,7 +64,8 @@ const MobileMenuSheet = () => {
             <Menu className="h-5 w-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-80 px-0">
+        {/* Justerad bredd här: 85% av skärmen, max 300px */}
+        <SheetContent side="left" className="w-[85vw] max-w-[300px] px-0">
           <SheetHeader className="px-6 pb-4 border-b">
             <SheetTitle className="text-left flex items-center gap-2">
               <span className="text-2xl">🧠</span>
