@@ -3848,6 +3848,31 @@ serve(async (req) => {
         contextInfo += `\n- Investeringsmål: ${riskProfile.investment_goal}`;
       }
     }
+    if (conversationData?.predictionMarket) {
+      const pm = conversationData.predictionMarket;
+      
+      // Formatera sannolikheten snyggt
+      let probDisplay = 'Okänd';
+      if (typeof pm.probability === 'number') {
+        probDisplay = pm.probability <= 1 
+          ? `${(pm.probability * 100).toFixed(1)}%` 
+          : `${pm.probability.toFixed(1)}%`;
+      } else if (typeof pm.probability === 'string') {
+        probDisplay = pm.probability;
+      }
+
+      contextInfo += `\n\nMARKNADSKONTEXT (Detta är ämnet för diskussionen):
+- Marknadsfråga: "${pm.question || 'Okänd marknad'}"
+- Aktuell sannolikhet (JA-sidan): ${probDisplay}
+- Volym: ${pm.volume || 'Ej angiven'}
+- Beskrivning: ${pm.description || '-'}
+- ID: ${pm.id || '-'}
+
+INSTRUKTION FÖR PREDIKTIONER:
+- Du har fått exakt realtidsdata ovan. Användaren ser detta just nu.
+- Om användaren frågar "vad är oddsen?", svara direkt med ${probDisplay} och analysera vad det innebär.
+- Diskutera om ${probDisplay} verkar högt eller lågt baserat på nyhetsläget.`;
+    }
 
     // Add current portfolio context with latest valuations
     if (shouldIncludePersonalContext && holdings && holdings.length > 0) {
