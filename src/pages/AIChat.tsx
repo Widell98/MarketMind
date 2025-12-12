@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import AIChat from '@/components/AIChat';
 import AIChatLayout from '@/components/AIChatLayout';
@@ -13,19 +13,34 @@ import { AlertCircle, User } from 'lucide-react';
 const AIChatPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation(); // <--- NYTT: För att komma åt state
   const { user } = useAuth();
   const { t } = useLanguage();
   const { riskProfile, loading: riskProfileLoading } = useRiskProfile();
   const { activePortfolio } = usePortfolio();
 
+  // Hämta data från antingen URL eller Navigation State
   const stockName = searchParams.get('stock');
-  const message = searchParams.get('message');
+  const urlMessage = searchParams.get('message');
+  
+  // Extrahera state från PredictionMarketDetail navigeringen
+  const state = location.state as { 
+    initialMessage?: string;
+    conversationData?: any;
+    createNewSession?: boolean;
+    sessionName?: string;
+  } | null;
+
+  const finalMessage = state?.initialMessage || urlMessage;
+  const isPredictionChat = !!state?.conversationData?.predictionMarket;
 
   useEffect(() => {
-    if (user && !riskProfileLoading && !riskProfile) {
+    // Om det är en vanlig chat och riskprofil saknas -> redirect.
+    // MEN om det är en prediction chat -> stanna kvar (behöver ingen profil).
+    if (user && !riskProfileLoading && !riskProfile && !isPredictionChat) {
       navigate('/portfolio-advisor');
     }
-  }, [user, riskProfile, riskProfileLoading, navigate]);
+  }, [user, riskProfile, riskProfileLoading, navigate, isPredictionChat]);
 
   if (user && riskProfileLoading) {
     return (
@@ -42,7 +57,8 @@ const AIChatPage = () => {
     );
   }
 
-  if (user && !riskProfile) {
+  // Visa varning om riskprofil saknas ENDAST om det inte är en prediction chat
+  if (user && !riskProfile && !isPredictionChat) {
     return (
       <Layout>
         <AIChatLayout>
@@ -70,7 +86,11 @@ const AIChatPage = () => {
         <AIChat
           portfolioId={activePortfolio?.id}
           initialStock={stockName}
-          initialMessage={message}
+          initialMessage={finalMessage}
+          // Skicka vidare all data till komponenten
+          conversationData={state?.conversationData} 
+          createNewSession={state?.createNewSession}
+          sessionName={state?.sessionName}
         />
       </AIChatLayout>
     </Layout>
