@@ -54,9 +54,7 @@ const AIChat = ({
   createNewSession: shouldCreateNewSession,
   sessionName
 }: AIChatProps) => {
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const {
@@ -79,6 +77,7 @@ const AIChat = ({
     remainingCredits,
     totalCredits
   } = useAIChat(portfolioId);
+
   const {
     documents: uploadedDocuments,
     isLoading: isLoadingDocuments,
@@ -90,7 +89,7 @@ const AIChat = ({
   
   const [input, setInput] = useState('');
   
-  // ÄNDRING: Använd useRef istället för useState för att förhindra dubbla anrop
+  // FIX: Använd useRef för att förhindra dubbla anrop (löser problemet med 3 chattar)
   const hasProcessedInitialMessageRef = useRef(false);
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -115,6 +114,7 @@ const AIChat = ({
     return `ai-chat-draft:${portfolioKey}:${sessionKey}`;
   }, [currentSessionId, portfolioId]);
 
+  // Uppdatera kontext när props ändras
   useEffect(() => {
     if (conversationData) {
       setConversationContext(conversationData);
@@ -180,7 +180,7 @@ const AIChat = ({
     if (typeof window === 'undefined') return;
 
     const storedDraft = sessionStorage.getItem(draftStorageKey);
-    // ÄNDRING: Kolla mot ref istället för state
+    // Kolla mot ref istället för state
     if (storedDraft && !hasProcessedInitialMessageRef.current) {
       setInput(storedDraft);
     }
@@ -196,13 +196,13 @@ const AIChat = ({
     }
   }, [draftStorageKey, input]);
 
-  // Handle session creation and initial messages
+  // Huvudlogik för session-initiering (löser dubbla anrop)
   useEffect(() => {
     const handleSessionInit = async () => {
-      // ÄNDRING: Använd ref för att låsa direkt. Detta stoppar "trippel-skapandet".
+      // Om vi redan bearbetat detta eller om användaren inte är inloggad än, gör inget
       if (hasProcessedInitialMessageRef.current || !user) return;
 
-      // Fall 1: Tvingad ny session (t.ex. från Polymarket)
+      // Fall 1: Tvingad ny session (t.ex. från Polymarket via props)
       if (shouldCreateNewSession) {
         // Lås direkt för att förhindra race conditions
         hasProcessedInitialMessageRef.current = true;
@@ -259,11 +259,10 @@ const AIChat = ({
 
   useEffect(() => {
     const handleCreateStockChat = (event: CustomEvent) => {
-      const {
-        sessionName,
-        message
-      } = event.detail;
+      const { sessionName, message } = event.detail;
       const startChat = async () => {
+        // Reset ref so we can create a new session via event
+        hasProcessedInitialMessageRef.current = false; 
         await createNewSession(sessionName);
         setInput(message);
         setTimeout(() => {
@@ -273,27 +272,27 @@ const AIChat = ({
 
       void startChat();
     };
+    
     const handleExamplePrompt = (event: CustomEvent) => {
-      const {
-        message
-      } = event.detail;
+      const { message } = event.detail;
       setInput(message);
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
     };
+    
     const handlePrefillChatInput = (event: CustomEvent) => {
-      const {
-        message
-      } = event.detail;
+      const { message } = event.detail;
       setInput(message);
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
     };
+    
     window.addEventListener('createStockChat', handleCreateStockChat as EventListener);
     window.addEventListener('sendExamplePrompt', handleExamplePrompt as EventListener);
     window.addEventListener('prefillChatInput', handlePrefillChatInput as EventListener);
+    
     return () => {
       window.removeEventListener('createStockChat', handleCreateStockChat as EventListener);
       window.removeEventListener('sendExamplePrompt', handleExamplePrompt as EventListener);
@@ -312,7 +311,7 @@ const AIChat = ({
     const wasSent = await sendMessage(trimmedInput, {
       documentIds: selectedDocumentIds,
       documents: attachedDocuments.map((doc) => ({ id: doc.id, name: doc.name })),
-      conversationData: conversationContext
+      conversationData: conversationContext // Skickar med Polymarket-data
     });
 
     if (!wasSent) {
@@ -483,17 +482,21 @@ const AIChat = ({
                                 <Sparkles className="w-5 h-5" />
                                 <span>{t('nav.discover')}</span>
                               </Link>
-
+                              
                               <Link
-            to="/predictions"
-            onClick={() => setSidebarOpen(false)}
-            className={cn(
-              'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 w-full border shadow-sm',
-              location.pathname.startsWith('/predictions')
-                ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground border-primary/40'
-                : 'text-muted-foreground border-transparent bg-background/60 hover:text-foreground hover:bg-gradient-to-r hover:from-muted/70 hover:to-muted/40'
-            )}
-          >
+                                to="/predictions"
+                                onClick={() => setSidebarOpen(false)}
+                                className={cn(
+                                  'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 w-full border shadow-sm',
+                                  location.pathname.startsWith('/predictions')
+                                    ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground border-primary/40'
+                                    : 'text-muted-foreground border-transparent bg-background/60 hover:text-foreground hover:bg-gradient-to-r hover:from-muted/70 hover:to-muted/40'
+                                )}
+                              >
+                                <Brain className="w-5 h-5" /> {/* Du kan byta ikon här */}
+                                <span>Marknader</span>
+                              </Link>
+
                               <Link
                                 to="/news"
                                 onClick={() => setSidebarOpen(false)}
