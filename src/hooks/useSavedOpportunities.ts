@@ -7,7 +7,7 @@ import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 export type SavedOpportunity = {
   id: string;
   user_id: string;
-  item_type: 'stock_case' | 'analysis';
+  item_type: 'stock_case' | 'analysis' | 'prediction_market';
   item_id: string;
   tags: string[];
   notes: string | null;
@@ -15,6 +15,7 @@ export type SavedOpportunity = {
   updated_at: string;
   stock_cases?: any;
   analyses?: any;
+  prediction_markets?: any;
 };
 
 export const useSavedOpportunities = () => {
@@ -64,6 +65,10 @@ export const useSavedOpportunities = () => {
               .eq('id', item.item_id)
               .single();
             relatedData = { analyses: data };
+          } else if (item.item_type === 'prediction_market') {
+            // Prediction markets are stored by their Polymarket ID (string)
+            // We don't fetch details here - that's handled by useSavedPredictionMarkets
+            relatedData = { prediction_markets: { id: item.item_id } };
           }
 
           return {
@@ -86,7 +91,7 @@ export const useSavedOpportunities = () => {
   }, [user]);
 
   const saveOpportunity = async (
-    itemType: 'stock_case' | 'analysis',
+    itemType: 'stock_case' | 'analysis' | 'prediction_market',
     itemId: string,
     tags: string[] = [],
     notes: string | null = null
@@ -145,7 +150,7 @@ export const useSavedOpportunities = () => {
     }
   };
 
-  const isItemSaved = (itemType: 'stock_case' | 'analysis', itemId: string) => {
+  const isItemSaved = (itemType: 'stock_case' | 'analysis' | 'prediction_market', itemId: string) => {
     return savedItems.some(item => item.item_type === itemType && item.item_id === itemId);
   };
 
