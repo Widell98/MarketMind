@@ -6,14 +6,14 @@ import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 const BestWorstHoldings: React.FC = () => {
   const { holdingsPerformance } = usePortfolioPerformance();
 
-  // Hjälpfunktion för att avgöra om marknaden är öppen
+  // Hjälpfunktion för att avgöra om marknaden är öppen baserat på valuta och tid
   const isMarketOpen = (currency: string) => {
     const now = new Date();
     const day = now.getDay(); // 0 = Söndag, 6 = Lördag
     const hours = now.getHours();
     const minutes = now.getMinutes();
 
-    // Helg = stängt
+    // På helger är marknaden stängd
     if (day === 0 || day === 6) return false;
 
     // Normalisera valuta
@@ -21,29 +21,29 @@ const BestWorstHoldings: React.FC = () => {
 
     // SEK (Sverige) öppnar 09:00
     if (curr === 'SEK' || curr === 'SE') {
-      return hours >= 9;
+      return hours >= 9; // Öppet från kl 09:00
     }
 
     // USD (USA) öppnar 15:30 svensk tid
     if (curr === 'USD' || curr === 'US') {
-      return hours > 15 || (hours === 15 && minutes >= 30);
+      return hours > 15 || (hours === 15 && minutes >= 30); // Öppet från kl 15:30
     }
 
-    // För andra valutor, anta öppet för säkerhets skull (eller sätt striktare regler)
+    // För andra valutor, anta öppet eller lägg till fler regler här
     return true;
   };
 
   const topHoldings = React.useMemo(() => {
     if (!holdingsPerformance || holdingsPerformance.length === 0) return { best: [], worst: [], marketsClosed: false };
 
-    // Filtrera fram endast innehav vars marknad är öppen
+    // 1. Filtrera bort innehav där marknaden inte öppnat än
+    // Detta löser problemet med att "gammal data" visas kl 08:35
     const openHoldings = holdingsPerformance.filter(holding => isMarketOpen(holding.currency));
     
-    // Om vi har innehav totalt, men inga är öppna -> Visa "Marknaden stängd"
+    // Om vi har innehav i portföljen, men inga av dem är öppna just nu -> Visa "Marknaden stängd"
     const marketsClosed = holdingsPerformance.length > 0 && openHoldings.length === 0;
 
-    // VIKTIGT: Använd ALLTID dayChangePercentage för dagens vinnare/förlorare.
-    // Vi ska INTE använda profitPercentage (total avkastning) här.
+    // 2. Använd alltid daglig förändring (dayChangePercentage) för sortering
     const getChange = (holding: (typeof holdingsPerformance)[number]) => holding.dayChangePercentage;
 
     const positiveHoldings = openHoldings
@@ -73,7 +73,7 @@ const BestWorstHoldings: React.FC = () => {
     return `${prefix}${value.toLocaleString('sv-SE')} kr`;
   };
 
-  // Om marknaderna är stängda, visa specialkort
+  // Visa specialkort om marknaderna är stängda
   if (topHoldings.marketsClosed) {
      return (
       <div className="grid grid-cols-1 gap-4">
@@ -88,13 +88,12 @@ const BestWorstHoldings: React.FC = () => {
     );
   }
 
-  // Om inga förändringar finns (även om öppet), visa inget
+  // Om inga förändringar finns (men marknaden är öppen), visa inget
   if (topHoldings.best.length === 0 && topHoldings.worst.length === 0) {
     return null;
   }
 
   const bestHoldingsItems = topHoldings.best.map((holding) => {
-    // Här använder vi strikt dayChange
     const change = holding.dayChangePercentage;
     const changeValue = holding.dayChange;
 
@@ -118,7 +117,7 @@ const BestWorstHoldings: React.FC = () => {
       symbol: holding.symbol,
       percentLabel: formatChangeLabel(change),
       valueLabel: formatChangeValue(changeValue),
-      isPositive: (change ?? 0) > 0, // För att styra färgen i kortet
+      isPositive: (change ?? 0) > 0,
     };
   });
 
