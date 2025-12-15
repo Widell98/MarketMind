@@ -25,6 +25,8 @@ interface ChatMessageProps {
       isExchangeRequest?: boolean;
       profileUpdates?: Record<string, unknown>;
       requiresConfirmation?: boolean;
+      stock_suggestions?: Array<{ name: string; ticker: string; reason?: string }>;
+      tavilyFallbackUsed?: boolean;
     };
   };
 }
@@ -180,7 +182,26 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     return uniqueSuggestions.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
   };
 
-  const stockSuggestions = message.role === 'assistant' ? extractStockSuggestions(message.content) : [];
+  // Try to get stock suggestions from structured output first, fallback to regex
+  const stockSuggestions = useMemo(() => {
+    if (message.role !== 'assistant') return [];
+    
+    // First, try to get from structured output (context.stock_suggestions)
+    const contextSuggestions = (message.context as { stock_suggestions?: Array<{ name: string; ticker: string; reason?: string }> } | undefined)?.stock_suggestions;
+    if (contextSuggestions && Array.isArray(contextSuggestions) && contextSuggestions.length > 0) {
+      return contextSuggestions.map(s => ({
+        name: s.name,
+        symbol: s.ticker,
+        reason: s.reason || 'AI-rekommendation',
+      }));
+    }
+    
+    // Fallback to regex extraction for backward compatibility
+    return extractStockSuggestions(message.content);
+  }, [message]);
+
+  // Check if Tavily fallback was used
+  const tavilyFallbackUsed = message.context?.tavilyFallbackUsed === true;
 
   const attachedDocumentNames = useMemo(() => {
     const context = message.context as { documentNames?: unknown; documentIds?: unknown } | undefined;
@@ -503,6 +524,12 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
               )}
 
               <div className="mt-2 space-y-1.5">{formatMessageContent(message.content)}</div>
+              
+              {tavilyFallbackUsed && (
+                <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-300">
+                  <strong>OBS:</strong> Realtidssökning kunde inte genomföras. Svaret baseras på befintlig kunskap och kan sakna senaste nyheter eller kurser.
+                </div>
+              )}
             </div>
 
             {stockSuggestions.length > 0 && (
