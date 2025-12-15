@@ -36,8 +36,6 @@ const callPolymarketAPI = async (
 };
 
 // Transform API response to our Market type
-//
-
 const transformMarket = (apiMarket: any): PolymarketMarket => {
   try {
     let outcomes: any[] = [];
@@ -95,6 +93,7 @@ const transformMarket = (apiMarket: any): PolymarketMarket => {
       id: marketId,
       slug: apiMarket.slug || marketId,
       question: apiMarket.question || apiMarket.title || 'Unknown Market',
+      // Här kan vi prioritera eventTitle om vi vill visa "Parent: Child", men oftast är child question bäst.
       imageUrl: apiMarket.imageUrl || apiMarket.image || apiMarket.icon,
       description: apiMarket.description,
       volume: volumeNum,
@@ -171,13 +170,20 @@ export const fetchPolymarketMarkets = async (params?: {
         const events = data.events || (Array.isArray(data) ? data : []);
         
         // "Packa upp" events till marknader
-        // Om ett sökresultat är ett Event, vill vi visa dess marknader istället för eventet självt
         events.forEach((item: any) => {
             if (item.markets && Array.isArray(item.markets) && item.markets.length > 0) {
                 // Lägg till alla marknader från detta event
-                rawItems.push(...item.markets);
+                // Vi injicerar parent-data (bild, titel) så att barn-marknaderna ser bättre ut
+                const enrichedMarkets = item.markets.map((m: any) => ({
+                    ...m,
+                    // Använd eventets bild om marknaden saknar bild (vanligt för sub-markets)
+                    image: m.image || m.icon || item.image || item.icon,
+                    // Spara undan eventets titel om vi behöver den senare
+                    eventTitle: item.title
+                }));
+                rawItems.push(...enrichedMarkets);
             } else {
-                // Eller lägg till objektet som det är (om det redan är en marknad)
+                // Eller lägg till objektet som det är
                 rawItems.push(item);
             }
         });
