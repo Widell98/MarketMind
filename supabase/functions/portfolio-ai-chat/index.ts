@@ -2917,7 +2917,7 @@ serve(async (req) => {
     if (hasUploadedDocuments && (userIntent === 'document_summary' || detectedIntents.includes('document_summary'))) {
       isDocumentSummaryRequest = true;
     }
-    const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_sell_decisions', 'news_update', 'stock_analysis']);
+    const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_sell_decisions', 'news_update']);
     let shouldIncludePersonalContext = personalIntentTypes.has(userIntent)
       || isPersonalAdviceRequest
       || isPortfolioOptimizationRequest
@@ -2932,6 +2932,13 @@ serve(async (req) => {
     }
 
     if ((userIntent === 'market_analysis' || userIntent === 'general_news')
+      && !referencesPersonalInvestments
+      && !isPersonalAdviceRequest) {
+      shouldIncludePersonalContext = false;
+    }
+
+    // For stock_analysis without explicit portfolio reference, exclude portfolio context
+    if (userIntent === 'stock_analysis'
       && !referencesPersonalInvestments
       && !isPersonalAdviceRequest) {
       shouldIncludePersonalContext = false;
