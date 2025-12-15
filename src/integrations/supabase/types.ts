@@ -1494,6 +1494,62 @@ export type Database = {
         }
         Relationships: []
       }
+      user_prediction_bets: {
+        Row: {
+          id: string
+          user_id: string
+          prediction_market_id: string
+          market_question: string
+          bet_outcome: string
+          bet_odds: number
+          bet_amount: number
+          potential_payout: number
+          market_end_date: string | null
+          notes: string | null
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          prediction_market_id: string
+          market_question: string
+          bet_outcome: string
+          bet_odds: number
+          bet_amount: number
+          potential_payout: number
+          market_end_date?: string | null
+          notes?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          prediction_market_id?: string
+          market_question?: string
+          bet_outcome?: string
+          bet_odds?: number
+          bet_amount?: number
+          potential_payout?: number
+          market_end_date?: string | null
+          notes?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_prediction_bets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       user_learning_modules: {
         Row: {
           id: string

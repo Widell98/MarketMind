@@ -7,6 +7,7 @@ import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolio
 import LoginPromptModal from '@/components/LoginPromptModal';
 import AIRecommendations from '@/components/AIRecommendations';
 import CommunityRecommendations from '@/components/CommunityRecommendations';
+import PredictionMarketsPortfolio from '@/components/PredictionMarketsPortfolio';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAuth } from '@/contexts/AuthContext';
@@ -449,6 +450,11 @@ const PortfolioImplementation = () => {
             <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
               <CommunityRecommendations />
+            </div>
+
+            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
+              <PredictionMarketsPortfolio />
             </div>
           </div>
         </div>

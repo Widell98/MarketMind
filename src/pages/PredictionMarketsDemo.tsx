@@ -1,8 +1,11 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { PredictionMarketCard } from "@/components/PredictionMarketCard";
 import { PredictionMarketsTable } from "@/components/PredictionMarketsTable";
+import { AllMarketsSearch } from "@/components/AllMarketsSearch";
+import { SavedMarketsList } from "@/components/SavedMarketsList";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Filter, Loader2, AlertCircle, LayoutGrid, Table as TableIcon, X, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Select,
@@ -19,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import Layout from "@/components/Layout";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useAuth } from "@/contexts/AuthContext";
 import type { PolymarketMarketDetail } from "@/types/polymarket";
 
 type ViewMode = 'cards' | 'table';
@@ -26,6 +30,8 @@ type SortBy = 'volume' | 'endDate' | 'question' | 'odds';
 type SortOrder = 'asc' | 'desc';
 
 const PredictionMarketsDemo = () => {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'curated' | 'all' | 'saved'>('curated');
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -210,58 +216,73 @@ const PredictionMarketsDemo = () => {
             </p>
           </div>
           
-          {/* Search / Filter Bar */}
-          <div className="flex items-center gap-2 w-full md:w-auto">
-            <div className="relative flex-1 md:w-64">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Sök marknad..." 
-                className="pl-9" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={() => setShowFilters(!showFilters)}
-              className="relative"
-            >
-              <Filter className="h-4 w-4" />
-              {activeFiltersCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
-                  {activeFiltersCount}
-                </span>
-              )}
-            </Button>
-            {/* View Mode Toggle */}
-            <div className="flex items-center gap-1 rounded-lg border border-border/60 bg-muted/40 p-1 shadow-sm">
-              <Button
-                type="button"
-                variant={viewMode === 'cards' ? 'default' : 'ghost'}
-                size="sm"
-                aria-pressed={viewMode === 'cards'}
-                onClick={() => setViewMode('cards')}
-                className="px-3"
+          {/* Search / Filter Bar - Only show for curated tab */}
+          {activeTab === 'curated' && (
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <div className="relative flex-1 md:w-64">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Sök marknad..." 
+                  className="pl-9" 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => setShowFilters(!showFilters)}
+                className="relative"
               >
-                <LayoutGrid className="h-4 w-4" />
+                <Filter className="h-4 w-4" />
+                {activeFiltersCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+                    {activeFiltersCount}
+                  </span>
+                )}
               </Button>
-              <Button
-                type="button"
-                variant={viewMode === 'table' ? 'default' : 'ghost'}
-                size="sm"
-                aria-pressed={viewMode === 'table'}
-                onClick={() => setViewMode('table')}
-                className="px-3"
-              >
-                <TableIcon className="h-4 w-4" />
-              </Button>
+              {/* View Mode Toggle */}
+              <div className="flex items-center gap-1 rounded-lg border border-border/60 bg-muted/40 p-1 shadow-sm">
+                <Button
+                  type="button"
+                  variant={viewMode === 'cards' ? 'default' : 'ghost'}
+                  size="sm"
+                  aria-pressed={viewMode === 'cards'}
+                  onClick={() => setViewMode('cards')}
+                  className="px-3"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant={viewMode === 'table' ? 'default' : 'ghost'}
+                  size="sm"
+                  aria-pressed={viewMode === 'table'}
+                  onClick={() => setViewMode('table')}
+                  className="px-3"
+                >
+                  <TableIcon className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Filter Section */}
-        {showFilters && (
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'curated' | 'all' | 'saved')} className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="curated">Utvalda marknader</TabsTrigger>
+            <TabsTrigger value="all">Sök alla marknader</TabsTrigger>
+            <TabsTrigger value="saved" disabled={!user}>
+              Mina sparade
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Curated Markets Tab */}
+          <TabsContent value="curated" className="mt-6 space-y-6">
+
+            {/* Filter Section */}
+            {showFilters && (
           <Card className="p-4 space-y-4">
             {/* Active Filters & Clear */}
             {hasActiveFilters && (
@@ -315,21 +336,21 @@ const PredictionMarketsDemo = () => {
               </div>
             </div>
 
-          </Card>
-        )}
+            </Card>
+            )}
 
-        {/* Error State */}
-        {error && (
+            {/* Error State */}
+            {error && (
           <Card className="p-4 border-red-500/50 bg-red-500/10">
             <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
               <AlertCircle className="h-4 w-4" />
               <p>Kunde inte ladda marknader. Försök igen senare.</p>
             </div>
-          </Card>
-        )}
+            </Card>
+            )}
 
-        {/* Loading State */}
-        {isLoading && (
+            {/* Loading State */}
+            {isLoading && (
           <div className="grid grid-cols-1 gap-4">
             {[1, 2, 3].map((i) => (
               <Card key={i} className="p-4">
@@ -346,11 +367,11 @@ const PredictionMarketsDemo = () => {
                 </div>
               </Card>
             ))}
-          </div>
-        )}
+            </div>
+            )}
 
-        {/* Markets Display */}
-        {!isLoading && !error && (
+            {/* Markets Display */}
+            {!isLoading && !error && (
           <>
             {filteredMarkets.length > 0 ? (
               <>
@@ -450,8 +471,20 @@ const PredictionMarketsDemo = () => {
                 )}
               </Card>
             )}
-          </>
-        )}
+            </>
+            )}
+          </TabsContent>
+
+          {/* All Markets Search Tab */}
+          <TabsContent value="all" className="mt-6">
+            <AllMarketsSearch />
+          </TabsContent>
+
+          {/* Saved Markets Tab */}
+          <TabsContent value="saved" className="mt-6">
+            <SavedMarketsList />
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );
