@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { TrendingUp, Calendar } from "lucide-react";
+import { TrendingUp, Calendar, ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { PolymarketMarket } from "@/types/polymarket";
 import SaveMarketButton from "@/components/SaveMarketButton";
@@ -22,9 +22,13 @@ export const PredictionMarketCard = ({ market }: PredictionMarketCardProps) => {
   // Visa max 2 outcomes
   const displayOutcomes = market.outcomes.slice(0, 2);
 
+  // Kolla om det är en binär marknad (Ja/Nej) för att styra färgsättningen
+  const isBinary = market.outcomes.length === 2 && 
+                 market.outcomes.some(o => o.title.toLowerCase() === 'yes');
+
   const handleCardClick = (e: React.MouseEvent) => {
-    // Don't navigate if clicking on the save button
-    if ((e.target as HTMLElement).closest('button')) {
+    // Navigera inte om man klickar på knappar eller länkar
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('a')) {
       return;
     }
     navigate(`/predictions/${market.slug}`);
@@ -52,23 +56,48 @@ export const PredictionMarketCard = ({ market }: PredictionMarketCardProps) => {
 
         {/* Innehåll */}
         <div className="flex-grow min-w-0">
+          
+          {/* Visa Event-titel (Parent) om den finns och skiljer sig från frågan */}
+          {market.groupItemTitle && market.groupItemTitle !== market.question && (
+             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1 line-clamp-1">
+               {market.groupItemTitle}
+             </div>
+          )}
+
           <div className="flex items-start justify-between gap-2 mb-3">
             <h3 className="font-medium text-base leading-tight group-hover:text-primary transition-colors line-clamp-2 flex-1">
               {market.question}
             </h3>
-            <div onClick={(e) => e.stopPropagation()}>
-              <SaveMarketButton
-                marketId={market.id}
-                marketTitle={market.question}
-                compact={true}
-                variant="ghost"
-                size="sm"
-                className="shrink-0"
-              />
+            
+            <div className="flex gap-1 items-center">
+                 {/* Extern länk till Polymarket */}
+                 {market.eventSlug && (
+                    <a 
+                       href={`https://polymarket.com/event/${market.eventSlug}`} 
+                       target="_blank" 
+                       rel="noreferrer"
+                       className="text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-md hover:bg-muted"
+                       onClick={(e) => e.stopPropagation()}
+                       title="Öppna på Polymarket"
+                    >
+                       <ExternalLink className="w-4 h-4" />
+                    </a>
+                 )}
+                 
+                 <div onClick={(e) => e.stopPropagation()}>
+                  <SaveMarketButton
+                    marketId={market.id}
+                    marketTitle={market.question}
+                    compact={true}
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0"
+                  />
+                </div>
             </div>
           </div>
             
-            {/* NY ODDS-LISTA MED FÄRGADE BARS */}
+            {/* ODDS-LISTA */}
             <div className="space-y-2 mb-3">
               {displayOutcomes.map((outcome, idx) => {
                 // Beräkna procent (0.55 -> 55) och säkra att det är mellan 0-100
@@ -76,18 +105,22 @@ export const PredictionMarketCard = ({ market }: PredictionMarketCardProps) => {
                 
                 const titleLower = outcome.title.toLowerCase();
                 
-                // Bestäm färger baserat på om det är Yes/No eller annat
-                let barColorClass = "bg-secondary"; // Default grå/blå
+                // Bestäm färger
+                let barColorClass = "bg-primary/20"; // Default för "Multiple Choice" (blåaktig)
                 let textColorClass = "text-foreground";
 
-              if (titleLower === 'yes') {
-                    // ÄNDRA HÄR: Från emerald-500 till green-600 för starkare grön
-                    barColorClass = "bg-green-600 dark:bg-green-500";
-                    textColorClass = "text-green-950 dark:text-green-50";
-                } else if (titleLower === 'no') {
-                    // ÄNDRA HÄR: Från rose-500 till red-600 för starkare röd
-                    barColorClass = "bg-red-600 dark:bg-red-500";
-                    textColorClass = "text-red-950 dark:text-red-50";
+                if (isBinary) {
+                    // Strikt färgschema för Ja/Nej
+                    if (titleLower === 'yes') {
+                        barColorClass = "bg-green-600 dark:bg-green-500";
+                        textColorClass = "text-green-950 dark:text-green-50";
+                    } else if (titleLower === 'no') {
+                        barColorClass = "bg-red-600 dark:bg-red-500";
+                        textColorClass = "text-red-950 dark:text-red-50";
+                    }
+                } else {
+                    // För Multiple Choice: Markera ledaren lite extra
+                    if (idx === 0) barColorClass = "bg-primary/30";
                 }
 
                 return (
