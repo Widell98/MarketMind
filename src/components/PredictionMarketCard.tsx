@@ -1,5 +1,6 @@
 import React from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { PolymarketMarket } from "@/types/polymarket";
@@ -19,114 +20,104 @@ export const PredictionMarketCard = ({ market }: PredictionMarketCardProps) => {
     return `$${vol.toFixed(0)}`;
   };
 
-  // Visa max 2 outcomes
-  const displayOutcomes = market.outcomes.slice(0, 2);
+  const formatProb = (price: number) => Math.round(price * 100);
+
+  // Hitta Yes/No outcomes för grafiken
+  const yesOutcome = market.outcomes.find(o => o.title.toLowerCase() === 'yes') || market.outcomes[0];
+  const noOutcome = market.outcomes.find(o => o.title.toLowerCase() === 'no');
 
   const handleCardClick = (e: React.MouseEvent) => {
-    // Don't navigate if clicking on the save button
-    if ((e.target as HTMLElement).closest('button')) {
-      return;
-    }
+    if ((e.target as HTMLElement).closest('button')) return;
     navigate(`/predictions/${market.slug}`);
   };
 
   return (
     <Card 
-      className="cursor-pointer hover:shadow-md transition-all duration-200 border-border/60 hover:border-primary/50 group overflow-hidden bg-card relative"
+      className="h-full cursor-pointer hover:shadow-lg transition-all duration-300 border-border/60 hover:border-primary/40 flex flex-col group overflow-hidden bg-card"
       onClick={handleCardClick}
     >
-      <CardContent className="p-4 flex gap-4 items-start">
-        {/* Bild */}
-        <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-md bg-muted border border-border/50 relative overflow-hidden mt-1">
-          {market.imageUrl ? (
-            <img 
-              src={market.imageUrl} 
-              alt={market.question} 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground font-bold">PM</div>
-          )}
-        </div>
-
-        {/* Innehåll */}
-        <div className="flex-grow min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-3">
-            <h3 className="font-medium text-base leading-tight group-hover:text-primary transition-colors line-clamp-2 flex-1">
-              {market.question}
-            </h3>
-            <div onClick={(e) => e.stopPropagation()}>
-              <SaveMarketButton
+      {/* Stor Bildsektion */}
+      <div className="relative h-32 w-full overflow-hidden bg-muted/20">
+        {market.imageUrl ? (
+          <img 
+            src={market.imageUrl} 
+            alt={market.question}
+            className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700 ease-out"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-primary/5 text-primary/20">
+            <TrendingUp className="h-10 w-10" />
+          </div>
+        )}
+        
+        {/* Volym Badge i hörnet */}
+        <div className="absolute top-2 right-2 flex gap-2">
+          <Badge variant="secondary" className="bg-background/80 backdrop-blur-md shadow-sm text-xs font-normal border-white/10">
+            Vol: {formatVolume(market.volume || market.volumeNum || 0)}
+          </Badge>
+          <div onClick={(e) => e.stopPropagation()}>
+             <SaveMarketButton
                 marketId={market.id}
                 marketTitle={market.question}
                 compact={true}
-                variant="ghost"
+                variant="secondary"
                 size="sm"
-                className="shrink-0"
+                className="h-5 w-5 bg-background/80 backdrop-blur-md hover:bg-background"
               />
-            </div>
           </div>
-            
-            {/* NY ODDS-LISTA MED FÄRGADE BARS */}
-            <div className="space-y-2 mb-3">
-              {displayOutcomes.map((outcome, idx) => {
-                // Beräkna procent (0.55 -> 55) och säkra att det är mellan 0-100
-                const percent = Math.min(100, Math.max(0, Math.round((outcome.price || 0) * 100)));
-                
-                const titleLower = outcome.title.toLowerCase();
-                
-                // Bestäm färger baserat på om det är Yes/No eller annat
-                let barColorClass = "bg-secondary"; // Default grå/blå
-                let textColorClass = "text-foreground";
+        </div>
+      </div>
 
-              if (titleLower === 'yes') {
-                    // ÄNDRA HÄR: Från emerald-500 till green-600 för starkare grön
-                    barColorClass = "bg-green-600 dark:bg-green-500";
-                    textColorClass = "text-green-950 dark:text-green-50";
-                } else if (titleLower === 'no') {
-                    // ÄNDRA HÄR: Från rose-500 till red-600 för starkare röd
-                    barColorClass = "bg-red-600 dark:bg-red-500";
-                    textColorClass = "text-red-950 dark:text-red-50";
-                }
-
-                return (
-                  <div key={idx} className="relative h-9 rounded-md overflow-hidden bg-secondary/20 border border-black/5 dark:border-white/5">
-                    {/* 1. Bakgrunds-bar (Fyllnaden) */}
-                    <div 
-                      className={`absolute left-0 top-0 h-full transition-all duration-500 ease-out opacity-25 dark:opacity-30 ${barColorClass}`}
-                      style={{ width: `${percent}%` }}
-                    />
-                    
-                    {/* 2. Text-lager (Ligger ovanpå baren med z-10) */}
-                    <div className={`relative z-10 flex items-center justify-between h-full px-3 text-sm font-medium ${textColorClass}`}>
-                      <span className="truncate mr-2 font-semibold tracking-wide opacity-90">
-                        {outcome.title}
-                      </span>
-                      <span className="font-bold">
-                        {percent}%
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center gap-3 text-xs text-muted-foreground opacity-80">
-                <div className="flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" />
-                  <span>{formatVolume(market.volume || market.volumeNum || 0)} Vol</span>
-                </div>
-                {market.endDate && (
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    <span>{new Date(market.endDate).toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' })}</span>
-                  </div>
-                )}
-            </div>
+      <CardHeader className="p-4 pb-2 space-y-1">
+        {/* 1. Visa Event-titel (Parent) om den skiljer sig från frågan */}
+        {market.eventTitle && market.eventTitle !== market.question && (
+          <div className="text-[10px] font-bold text-primary/80 uppercase tracking-widest line-clamp-1">
+            {market.eventTitle}
           </div>
-        </CardContent>
+        )}
+        
+        {/* 2. Visa specifika Frågan */}
+        <h3 className="font-semibold text-lg leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+          {market.question}
+        </h3>
+        
+        {/* Datum */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+          {market.endDate && (
+            <>
+              <Calendar className="h-3 w-3" />
+              <span>
+                Slutar {new Date(market.endDate).toLocaleDateString('sv-SE', { 
+                  day: 'numeric', month: 'short' 
+                })}
+              </span>
+            </>
+          )}
+        </div>
+      </CardHeader>
+
+      <CardContent className="p-4 pt-2 mt-auto">
+        {/* Odds bar */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm font-medium">
+            <span className="text-green-600 dark:text-green-400 font-bold">Yes {formatProb(yesOutcome?.price || 0)}%</span>
+            <span className="text-red-600 dark:text-red-400 font-bold">{noOutcome ? `${formatProb(noOutcome.price)}%` : '-'} No</span>
+          </div>
+          
+          {/* Visual Probability Bar */}
+          <div className="h-2 w-full bg-muted/50 rounded-full overflow-hidden flex">
+            <div 
+              className="h-full bg-green-500/80 transition-all duration-1000 ease-out" 
+              style={{ width: `${formatProb(yesOutcome?.price || 0)}%` }}
+            />
+            <div 
+              className="h-full bg-red-500/80 transition-all duration-1000 ease-out" 
+              style={{ width: `${noOutcome ? formatProb(noOutcome.price) : 0}%` }}
+            />
+          </div>
+        </div>
+      </CardContent>
     </Card>
   );
 };
