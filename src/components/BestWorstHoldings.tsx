@@ -6,44 +6,44 @@ import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 const BestWorstHoldings: React.FC = () => {
   const { holdingsPerformance } = usePortfolioPerformance();
 
-  // Helper function to determine if the market is open for a given currency
+  // Hjälpfunktion för att avgöra om marknaden är öppen
   const isMarketOpen = (currency: string) => {
     const now = new Date();
-    const day = now.getDay();
+    const day = now.getDay(); // 0 = Söndag, 6 = Lördag
     const hours = now.getHours();
     const minutes = now.getMinutes();
 
-    // On weekends, we might want to show Friday's close, but the user asked for "market closed" text.
-    // However, specifically "before 09:00" on a weekday is the main issue.
-    // Let's hide if it's weekday pre-market.
-    const isWeekday = day >= 1 && day <= 5;
+    // Helg = stängt
+    if (day === 0 || day === 6) return false;
 
-    if (!isWeekday) return false;
+    // Normalisera valuta
+    const curr = currency?.toUpperCase();
 
-    // SEK (Sweden) opens at 09:00
-    if (currency === 'SEK' || currency === 'SE') {
+    // SEK (Sverige) öppnar 09:00
+    if (curr === 'SEK' || curr === 'SE') {
       return hours >= 9;
     }
 
-    // USD (US) opens at 15:30 CET (Assuming user is in CET/CEST)
-    if (currency === 'USD') {
+    // USD (USA) öppnar 15:30 svensk tid
+    if (curr === 'USD' || curr === 'US') {
       return hours > 15 || (hours === 15 && minutes >= 30);
     }
 
-    // Default to open for other currencies to be safe
+    // För andra valutor, anta öppet för säkerhets skull (eller sätt striktare regler)
     return true;
   };
 
   const topHoldings = React.useMemo(() => {
     if (!holdingsPerformance || holdingsPerformance.length === 0) return { best: [], worst: [], marketsClosed: false };
 
-    // Filter holdings based on market hours
+    // Filtrera fram endast innehav vars marknad är öppen
     const openHoldings = holdingsPerformance.filter(holding => isMarketOpen(holding.currency));
     
-    // If we have holdings but none are open, flag it
+    // Om vi har innehav totalt, men inga är öppna -> Visa "Marknaden stängd"
     const marketsClosed = holdingsPerformance.length > 0 && openHoldings.length === 0;
 
-    // Use dayChangePercentage primarily for "Today's" winners/losers
+    // VIKTIGT: Använd ALLTID dayChangePercentage för dagens vinnare/förlorare.
+    // Vi ska INTE använda profitPercentage (total avkastning) här.
     const getChange = (holding: (typeof holdingsPerformance)[number]) => holding.dayChangePercentage;
 
     const positiveHoldings = openHoldings
@@ -73,8 +73,28 @@ const BestWorstHoldings: React.FC = () => {
     return `${prefix}${value.toLocaleString('sv-SE')} kr`;
   };
 
+  // Om marknaderna är stängda, visa specialkort
+  if (topHoldings.marketsClosed) {
+     return (
+      <div className="grid grid-cols-1 gap-4">
+        <HoldingsHighlightCard
+          title="Marknaden är stängd"
+          icon={<Clock className="h-4 w-4 sm:h-5 sm:w-5" />}
+          iconColorClass="text-muted-foreground"
+          items={[]}
+          emptyText="Marknaderna har inte öppnat ännu (SE: 09:00, US: 15:30)."
+        />
+      </div>
+    );
+  }
+
+  // Om inga förändringar finns (även om öppet), visa inget
+  if (topHoldings.best.length === 0 && topHoldings.worst.length === 0) {
+    return null;
+  }
+
   const bestHoldingsItems = topHoldings.best.map((holding) => {
-    // Always show daily change for "Today's Winners"
+    // Här använder vi strikt dayChange
     const change = holding.dayChangePercentage;
     const changeValue = holding.dayChange;
 
@@ -98,27 +118,9 @@ const BestWorstHoldings: React.FC = () => {
       symbol: holding.symbol,
       percentLabel: formatChangeLabel(change),
       valueLabel: formatChangeValue(changeValue),
-      isPositive: (change ?? 0) > 0,
+      isPositive: (change ?? 0) > 0, // För att styra färgen i kortet
     };
   });
-
-  if (topHoldings.marketsClosed) {
-     return (
-      <div className="grid grid-cols-1 gap-4">
-        <HoldingsHighlightCard
-          title="Marknaden är stängd"
-          icon={<Clock className="h-4 w-4 sm:h-5 sm:w-5" />}
-          iconColorClass="text-muted-foreground"
-          items={[]}
-          emptyText="Marknaderna har inte öppnat ännu (SE: 09:00, US: 15:30)."
-        />
-      </div>
-    );
-  }
-
-  if (topHoldings.best.length === 0 && topHoldings.worst.length === 0) {
-    return null;
-  }
 
   return (
     <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
