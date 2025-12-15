@@ -43,6 +43,12 @@ const fetchSheetTickers = async () => {
   const tickerIdx = headers.findIndex((h) => /ticker/i.test(h) && !/simple/i.test(h));
   const currencyIdx = headers.findIndex((h) => /(currency|valuta)/i.test(h));
   const priceIdx = headers.findIndex((h) => /(price|senast|last)/i.test(h));
+  const changeIdx = headers.findIndex((h) => 
+    /(change|utveckling|diff)\s*%/i.test(h) || h.trim() === '%'
+  );
+  const sectorIdx = headers.findIndex((h) => 
+    /(sector|sektor|bransch)/i.test(h)
+  );
 
   if (tickerIdx === -1 && simpleTickerIdx === -1) {
     throw new Error("CSV saknar nödvändiga kolumner (Ticker eller Simpel Ticker).");
@@ -50,7 +56,14 @@ const fetchSheetTickers = async () => {
 
   const tickerMap = new Map<
     string,
-    { name: string; symbol: string; currency: string | null; price: number | null }
+    { 
+      name: string; 
+      symbol: string; 
+      currency: string | null; 
+      price: number | null;
+      changePercent: number | null;
+      sector: string | null;
+    }
   >();
 
   for (const cols of dataRows) {
@@ -59,6 +72,8 @@ const fetchSheetTickers = async () => {
     const rawSymbol = tickerIdx !== -1 ? normalizeValue(cols[tickerIdx]) : null;
     const rawCurrency = currencyIdx !== -1 ? normalizeValue(cols[currencyIdx]) : null;
     const rawPrice = priceIdx !== -1 ? normalizeValue(cols[priceIdx]) : null;
+    const rawChange = changeIdx !== -1 ? normalizeValue(cols[changeIdx]) : null;
+    const rawSector = sectorIdx !== -1 ? normalizeValue(cols[sectorIdx]) : null;
 
     const selectedSymbol = rawSimpleSymbol ?? rawSymbol;
     if (!selectedSymbol) continue;
@@ -72,11 +87,19 @@ const fetchSheetTickers = async () => {
       ? parseFloat(rawPrice.replace(/\s/g, "").replace(",", "."))
       : null;
 
+    const changePercent = rawChange 
+      ? parseFloat(rawChange.replace(/\s/g, "").replace(",", ".").replace("%", ""))
+      : null;
+
+    const sector = rawSector ?? null;
+
     tickerMap.set(cleanedSymbol, {
       symbol: cleanedSymbol,
       name: rawName ?? cleanedSymbol,
       currency: rawCurrency ?? null,
       price,
+      changePercent,
+      sector,
     });
   }
 
@@ -163,6 +186,12 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Accept authorization header if provided (for Supabase platform-level auth requirements)
+  // but don't require it since this is a public data endpoint
+  const authHeader = req.headers.get("Authorization");
+  // Note: We accept auth if provided but don't validate it, as this endpoint
+  // serves public ticker data from Google Sheets
 
   let query: string | null = null;
 

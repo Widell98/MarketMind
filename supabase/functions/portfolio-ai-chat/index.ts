@@ -3,6 +3,14 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { IntentType } from './intent-types.ts';
 import { detectUserIntentWithOpenAI } from './intent-detector.ts';
+import { unifiedRouter, type UnifiedRouterResult } from './unified-router.ts';
+import { buildBasePrompt, buildIntentPrompt, buildHeadingDirectives, buildPersonalizationPrompt, type BasePromptOptions, type IntentPromptContext, type PersonalizationPromptInput, type HeadingDirectiveInput, detectMacroThemeFromMessages, getMacroInstruction, isAnalysisAngle, getAnalysisAngleInstruction, isMacroTheme } from './prompt-builder.ts';
+import { fetchUserContext } from './user-context.ts';
+import { fetchTavilyContext, planRealtimeSearchWithLLM, type TavilyContextPayload, type TavilyLLMPlan, type TavilySearchOptions, RECENT_FINANCIAL_DATA_MAX_DAYS, DEFAULT_UNDATED_FINANCIAL_DOMAINS, SWEDISH_PRIORITY_TAVILY_DOMAINS, INTERNATIONAL_PRIORITY_TAVILY_DOMAINS, TRUSTED_TAVILY_DOMAINS, FINANCIAL_RELEVANCE_KEYWORDS } from './tavily-service.ts';
+import { searchPolymarketMarkets, formatPolymarketContext, type PolymarketMarket } from './polymarket-service.ts';
+import { rerankDocumentChunks, selectTopChunks, type DocumentChunk } from './document-reranker.ts';
+import { AI_RESPONSE_SCHEMA, type AIResponse, type StockSuggestion } from './response-schema.ts';
+import type { ChatMessage, MacroTheme, AnalysisAngle, AnalysisFocusSignals, HoldingRecord } from './types.ts';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -45,88 +53,7 @@ const selectChatModel = ({
   return PRIMARY_CHAT_MODEL;
 };
 
-type BasePromptOptions = {
-  shouldOfferFollowUp: boolean;
-  expertiseLevel?: 'beginner' | 'intermediate' | 'advanced' | null;
-  preferredResponseLength?: 'concise' | 'balanced' | 'detailed' | null;
-  respectRiskProfile?: boolean;
-  includeTranslationDirective?: boolean;
-  enableEmojiGuidance?: boolean;
-  enableHeadingGuidance?: boolean;
-  enforceTickerFormat?: boolean;
-};
-
-const CORE_PERSONA_PROMPT = `KÄRNROLL:
-- Du är en licensierad svensk finansiell rådgivare som ger handlingsbara aktie- och portföljinsikter utan att genomföra affärer.
-- Håll tonen professionell men dialogvänlig och visa att du följer användarens profil.`;
-
-const STYLE_GUARDRAILS = `STIL & FORMAT:
-- Bekräfta korta profiluppdateringar innan du ger råd.
-- Använd svensk finansterminologi, väv in Tavily-källor endast när realtidsdata används och låt gränssnittet hantera disclaimern.
-- Föredra stycken om 2–3 meningar och begränsa eventuella punktlistor till högst tre korta rader.`;
-
-const SWEDISH_TRANSLATION_DIRECTIVE = `SPRÅKBRYGGAN:
-- Om användarens senaste fråga är på svenska: översätt den internt till engelska för reasoning och tillbaka till naturlig svenska i svaret.`;
-
-const EMOJI_POLICY_DIRECTIVE = `EMOJI-POLICY:
-- Emojis används endast som diskreta markörer (max en per sektion) och aldrig när du beskriver förluster eller känsliga risker.`;
-
-const HEADING_POLICY_DIRECTIVE = `RUBRIKER:
-- Använd högst två rubriker när de förtydligar svaret och nämn aldrig rubriker som du inte fyller med text.`;
-
-const TICKER_POLICY_DIRECTIVE = `AKTIEFÖRSLAG:
-- Endast börsnoterade bolag och formatet ska vara Företagsnamn (TICKER) följt av en kort motivering.`;
-
-const buildBasePrompt = (options: BasePromptOptions): string => {
-  const sections: string[] = [CORE_PERSONA_PROMPT, STYLE_GUARDRAILS];
-  const personalizationLines: string[] = [];
-
-  if (options.expertiseLevel === 'beginner') {
-    personalizationLines.push('- Förklara viktiga finansterminer enkelt och ge bakgrund om användaren kan behöva det.');
-  } else if (options.expertiseLevel === 'advanced') {
-    personalizationLines.push('- Du kan använda teknisk finansterminologi och fokusera på kärnanalysen utan långa grundförklaringar.');
-  }
-
-  if (options.preferredResponseLength === 'concise') {
-    personalizationLines.push('- Håll svaren korta (2–4 meningar) när frågan är enkel eller faktabaserad.');
-  } else if (options.preferredResponseLength === 'detailed') {
-    personalizationLines.push('- Var generös med detaljer och förklaringar när det tillför värde.');
-  }
-
-  if (options.shouldOfferFollowUp) {
-    personalizationLines.push('- Avsluta med en naturlig, öppen följdfråga när det passar kontexten.');
-  } else {
-    personalizationLines.push('- Hoppa över avslutande följdfrågor om de inte tillför något i just detta svar.');
-  }
-
-  if (options.respectRiskProfile === true) {
-    personalizationLines.push('- Använd riskprofilen denna gång eftersom användaren bad om riskanpassade råd.');
-  } else if (options.respectRiskProfile === false) {
-    personalizationLines.push('- Låt riskprofilen vara åt sidan tills användaren uttryckligen ber om risknivå eller riskhantering.');
-  }
-
-  if (options.includeTranslationDirective) {
-    sections.push(SWEDISH_TRANSLATION_DIRECTIVE);
-  }
-
-  if (options.enableEmojiGuidance) {
-    sections.push(EMOJI_POLICY_DIRECTIVE);
-  }
-
-  if (options.enableHeadingGuidance) {
-    sections.push(HEADING_POLICY_DIRECTIVE);
-  }
-
-  if (options.enforceTickerFormat) {
-    sections.push(TICKER_POLICY_DIRECTIVE);
-  }
-
-  if (personalizationLines.length > 0) {
-    sections.push(`RESPONSPREFERENSER:\n${personalizationLines.join('\n')}`);
-  }
-
-  return sections.join('\n');
-};
+// BasePromptOptions and buildBasePrompt are now imported from prompt-builder.ts
 
 const SWEDISH_LANGUAGE_KEYWORDS = ['och', 'det', 'inte', 'gärna', 'snälla', 'sparande', 'portfölj', 'aktien', 'bolaget', 'köpa', 'sälja'];
 
@@ -150,7 +77,7 @@ const detectSwedishLanguage = (text: string, interpreterLanguage?: string | null
   return score >= 3;
 };
 
-type ChatMessage = { role: 'user' | 'assistant'; content: string };
+// ChatMessage is now imported from types.ts
 
 const RECENT_CHAT_HISTORY_LIMIT = 8;
 const MAX_CHAT_MESSAGE_LENGTH = 1200;
@@ -211,105 +138,25 @@ const prepareChatHistory = (
   return { recentMessages, summaryMessage, totalEntries: normalizedHistory.length };
 };
 
-type MacroTheme = 'inflation' | 'rates' | 'growth';
+// MacroTheme, AnalysisAngle, and AnalysisFocusSignals are now imported from types.ts
+// Macro theme and analysis angle functions are now imported from prompt-builder.ts
 
-type MacroThemeDefinition = {
-  theme: MacroTheme;
-  patterns: RegExp[];
-  instruction: string;
-};
-
-const MACRO_THEME_DEFINITIONS: MacroThemeDefinition[] = [
-  {
-    theme: 'inflation',
-    patterns: [/inflation/i, /prisökning/i, /kpi/i],
-    instruction: '- Lyft hur inflation och prispress påverkar efterfrågan och värderingar när du beskriver makrobilden.'
-  },
-  {
-    theme: 'rates',
-    patterns: [/ränt/i, /riksbank/i, /centralbank/i, /fed/i, /ecb/i],
-    instruction: '- Koppla resonemangen till ränteläget och centralbankernas signaler när användaren fokuserar på det.'
-  },
-  {
-    theme: 'growth',
-    patterns: [/konjunktur/i, /bnp/i, /pmi/i, /arbetsmarknad/i, /tillväxt/i],
-    instruction: '- Beskriv konjunktur- och tillväxttrender samt hur de spiller över på mikro- och sektornivå.'
-  }
-];
-
-const isMacroTheme = (value: unknown): value is MacroTheme =>
-  typeof value === 'string' && MACRO_THEME_DEFINITIONS.some(def => def.theme === value);
-
-const detectMacroThemeInText = (text: string): MacroTheme | null => {
-  if (!text) return null;
-  for (const definition of MACRO_THEME_DEFINITIONS) {
-    if (definition.patterns.some(pattern => pattern.test(text))) {
-      return definition.theme;
-    }
-  }
-  return null;
-};
-
-const detectMacroThemeFromMessages = (messages: string[]): MacroTheme | null => {
-  for (const msg of messages) {
-    const detected = detectMacroThemeInText(msg);
-    if (detected) return detected;
-  }
-  return null;
-};
-
-const getMacroInstruction = (theme: MacroTheme | null | undefined): string | null => {
-  if (!theme) return null;
-  const definition = MACRO_THEME_DEFINITIONS.find(def => def.theme === theme);
-  return definition ? definition.instruction : null;
-};
-
-type AnalysisAngle = 'cash_flow' | 'margin_focus' | 'demand' | 'capital_allocation';
-
-const ANALYSIS_ANGLE_DEFINITIONS: Record<AnalysisAngle, { patterns: RegExp[]; instruction: string }> = {
-  cash_flow: {
-    patterns: [/kassaflöde/i, /cash flow/i, /fritt kassaflöde/i],
-    instruction: '- Betona kassaflöden, skuldsättning och balansräkning när du diskuterar bolagets mikrobild.'
-  },
-  margin_focus: {
-    patterns: [/marginal/i, /lönsamhet/i, /ebit/i, /ebitda/i],
-    instruction: '- Beskriv marginaler och kostnadskontroll för att matcha användarens fokus på lönsamhet.'
-  },
-  demand: {
-    patterns: [/orderbok/i, /pipeline/i, /kundtillväxt/i, /orderingång/i],
-    instruction: '- Kommentera orderläge och efterfrågan så att användaren får tydligt mikro-perspektiv.'
-  },
-  capital_allocation: {
-    patterns: [/återköp/i, /utdelning/i, /kapitalallokering/i, /kapitalstruktur/i],
-    instruction: '- Resonera kring kapitalallokering (utdelningar/återköp) när användaren lyfter utdelningsstrategier.'
-  }
-};
-
-const isAnalysisAngle = (value: unknown): value is AnalysisAngle =>
-  typeof value === 'string' && value in ANALYSIS_ANGLE_DEFINITIONS;
-
+// Helper function to detect analysis angles from text (still needed locally)
 const detectAnalysisAnglesInText = (text: string): AnalysisAngle[] => {
   if (!text) return [];
   const found = new Set<AnalysisAngle>();
-  (Object.keys(ANALYSIS_ANGLE_DEFINITIONS) as AnalysisAngle[]).forEach((angle) => {
-    if (ANALYSIS_ANGLE_DEFINITIONS[angle].patterns.some(pattern => pattern.test(text))) {
+  const anglePatterns: Record<AnalysisAngle, RegExp[]> = {
+    cash_flow: [/kassaflöde/i, /cash flow/i, /fritt kassaflöde/i],
+    margin_focus: [/marginal/i, /lönsamhet/i, /ebit/i, /ebitda/i],
+    demand: [/orderbok/i, /pipeline/i, /kundtillväxt/i, /orderingång/i],
+    capital_allocation: [/återköp/i, /utdelning/i, /kapitalallokering/i, /kapitalstruktur/i],
+  };
+  (Object.keys(anglePatterns) as AnalysisAngle[]).forEach((angle) => {
+    if (anglePatterns[angle].some(pattern => pattern.test(text))) {
       found.add(angle);
     }
   });
   return Array.from(found);
-};
-
-const getAnalysisAngleInstruction = (angle: AnalysisAngle): string =>
-  ANALYSIS_ANGLE_DEFINITIONS[angle]?.instruction ?? '';
-
-type AnalysisFocusSignals = {
-  wantsOverview?: boolean;
-  wantsTriggers?: boolean;
-  wantsRisks?: boolean;
-  wantsValuation?: boolean;
-  wantsFinancials?: boolean;
-  wantsRecommendation?: boolean;
-  wantsAlternatives?: boolean;
 };
 
 const extractAnalysisFocusSignals = (text: string): AnalysisFocusSignals => {
@@ -325,132 +172,8 @@ const extractAnalysisFocusSignals = (text: string): AnalysisFocusSignals => {
   };
 };
 
-type IntentPromptContext = {
-  intent: IntentType;
-  focus?: AnalysisFocusSignals;
-  referencesPersonalInvestments?: boolean;
-  macroTheme?: MacroTheme | null;
-};
-
-const NO_FAKE_SECTION_DIRECTIVE = '- Beskriv bara de delar du faktiskt tar upp och nämn aldrig "X punkter" eller sektioner som inte följs av innehåll.';
-
-const buildIntentPrompt = ({ intent, focus = {}, referencesPersonalInvestments, macroTheme }: IntentPromptContext): string => {
-  const lines: string[] = [];
-
-  switch (intent) {
-    case 'stock_analysis': {
-      const hasExplicitFocus = Object.values(focus).some(Boolean);
-      lines.push('AKTIEANALYSUPPGIFT:', '- Välj endast de analysdelar som efterfrågas och håll motiveringarna tydliga.');
-      if (!hasExplicitFocus) {
-        lines.push('- Vid breda frågor: kombinera företagsöversikt, värdering och rekommendation i 2–3 kompakta stycken.');
-      }
-      if (focus.wantsOverview) {
-        lines.push('- Ge en kort företagsöversikt när användaren saknar kontext.');
-      }
-      if (focus.wantsFinancials) {
-        lines.push('- Summera viktiga siffror (tillväxt, marginaler, kassaflöden) när siffror efterfrågas.');
-      }
-      if (focus.wantsValuation) {
-        lines.push('- Beskriv värderingen (multiplar, prisnivåer) när användaren lyfter riktkurser eller värdering.');
-      }
-      if (focus.wantsRecommendation) {
-        lines.push('- Leverera tydligt köp/sälj/behåll när användaren ber om ett beslut.');
-      }
-      if (focus.wantsTriggers) {
-        lines.push('- Lista 1–2 konkreta triggers eller katalysatorer endast när frågan efterfrågar dem.');
-      }
-      if (focus.wantsRisks) {
-        lines.push('- Beskriv riskbilden kort och koppla den till vad som kan gå fel.');
-      }
-      if (focus.wantsAlternatives) {
-        lines.push('- Föreslå 1–2 relaterade bolag bara när användaren uttryckligen ber om alternativ.');
-      }
-      lines.push('OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:', '**Företagsnamn (TICKER)** - Kort motivering (endast börsnoterade bolag)');
-      break;
-    }
-      case 'prediction_analysis': {
-      lines.push('PREDIKTIONSMARKNADSANALYS:', 
-        '- Betrakta frågan som en analys av sannolikhetsmarknader (t.ex. Polymarket), inte som traditionell betting.',
-        '- Förklara alltid "implicerad sannolikhet" om användaren diskuterar odds (t.ex. odds 2.0 = 50% sannolikhet).',
-        '- Analysera "Wisdom of the Crowd" – vad säger marknadens prissättning om det förväntade utfallet?',
-        '- Jämför gärna marknadens odds mot opinionsmätningar eller nyhetsflöde om relevant data finns.'
-      );
-      if (focus.wantsRisks) {
-        lines.push('- Påpeka att prediktionsmarknader är volatila och kan påverkas av "whales" eller låg likviditet.');
-      }
-      if (focus.wantsRecommendation) {
-        lines.push('- Ge INTE köp-/säljråd för betting. Utvärdera istället om marknaden verkar över- eller underreagera på nyheter.');
-      }
-      break;
-    }
-    case 'portfolio_optimization': {
-      lines.push('PORTFÖLJOPTIMERINGSUPPGIFT:', '- Identifiera över-/underexponering och föreslå konkreta omviktningar vid behov.', '- Beskriv prioriterade åtgärder i löpande text och använd punktlistor endast för tydliga steg.');
-      if (referencesPersonalInvestments) {
-        lines.push('- Knyt råden till användarens faktiska innehav, kassareserver och månadssparande.');
-      }
-      if (focus.wantsRisks) {
-        lines.push('- Kommentera hur omviktningarna påverkar portföljens risk.');
-      }
-      break;
-    }
-    case 'buy_sell_decisions': {
-      lines.push('KÖP/SÄLJ-BESLUTSUPPGIFT:', '- Bedöm tajming utifrån data och sentiment och väg korta pro/cons.', '- Rekommendera positionsstorlek eller stegvisa åtgärder när användaren vill agera.');
-      if (focus.wantsRisks) {
-        lines.push('- Förklara nedsida/uppsida tydligt innan du ger rekommendation.');
-      }
-      break;
-    }
-    case 'market_analysis': {
-      lines.push('MARKNADSANALYSUPPGIFT:', '- Ge en koncentrerad makroöversikt i 1–2 sektioner och koppla till sentiment.');
-      const macroInstruction = getMacroInstruction(macroTheme);
-      if (macroInstruction) {
-        lines.push(macroInstruction);
-      }
-      if (referencesPersonalInvestments) {
-        lines.push('- När användaren ber om det: förklara hur trenderna påverkar deras portfölj eller mål.');
-      }
-      lines.push('- Föreslå 1–2 bevakningspunkter eller justeringar om frågan kräver det.');
-      break;
-    }
-    case 'general_news': {
-      lines.push('NYHETSBREV:', '- Sammanfatta marknaden i högst två sektioner (t.ex. globalt + sektorer).', '- Varje sektion ska vara ett stycke på 2–3 meningar utan separata punktlistor.', '- Fråga om användaren vill koppla nyheterna till sin portfölj när det känns naturligt.');
-      break;
-    }
-    case 'news_update': {
-      lines.push('NYHETSBEVAKNING:', '- Gruppéra de viktigaste nyheterna per bolag, sektor eller tema och väv in Tavily-källor endast när de används.', '- Beskriv hur varje nyhet påverkar strategi eller innehav och föreslå konkreta uppföljningssteg.');
-      if (!referencesPersonalInvestments) {
-        lines.push('- Om användaren inte nämner portföljen: håll fokus på själva nyheterna och erbjud att koppla dem vid behov.');
-      }
-      break;
-    }
-    case 'document_summary': {
-      lines.push('DOKUMENTSAMMANFATTNING:', '- Utgå strikt från uppladdade dokument, destillera syfte och nyckelpunkter och lägg till sidreferenser när det går.', '- Skippa rubriker som du inte fyller och återge inga långa citat.');
-      break;
-    }
-    default: {
-      lines.push('ALLMÄN INVESTERINGSRÅDGIVNING:', '- Svara i ett eller två stycken och anpassa förslag till användarens mål.', '- Ta bara upp riskprofilen om användaren uttryckligen efterfrågar det.', '- När aktieförslag behövs: **Företagsnamn (TICKER)** - Kort motivering och endast börsnoterade bolag.');
-      if (focus.wantsRecommendation) {
-        lines.push('- Ge konkreta förslag när användaren ber om det, annars håll dig till observationer.');
-      }
-      break;
-    }
-  }
-
-  lines.push(NO_FAKE_SECTION_DIRECTIVE);
-  return lines.join('\n');
-};
-
-type HeadingDirectiveInput = {
-  intent: IntentType;
-};
-
-const HEADING_VARIATIONS: Record<string, string[]> = {
-  analysis: ['**Analys 🔍**', '**Grundlig analys 🔎**', '**Analys & Insikt 💡**'],
-  recommendation: ['**Håll koll på detta:**'],
-  risks: ['**Risker ⚠️**', '**Riskbild ⚡**', '**Risker & Bevaka 🔔**'],
-  news: ['**Nyheter 📰**', '**Marknadsnytt 🗞️**', '**Senaste nytt 📣**'],
-  actions: ['**Åtgärder ✅**', '**Nästa steg 🧭**', '**Föreslagna åtgärder 🛠️**']
-};
+// buildIntentPrompt, buildHeadingDirectives, and buildPersonalizationPrompt are now imported from prompt-builder.ts
+// IntentPromptContext, HeadingDirectiveInput, and PersonalizationPromptInput types are also imported
 
 const DOCUMENT_CONTEXT_MATCH_COUNT = 8;
 const DOCUMENT_SUMMARY_CONTEXT_MAX_CHARS_PER_DOCUMENT = 60000;
@@ -471,118 +194,6 @@ const DOCUMENT_SUMMARY_PATTERNS: RegExp[] = [
   /övergripande bild/i,
   /helhetsbild/i,
 ];
-
-const pickRandom = (values: string[]): string => {
-  if (values.length === 0) return '';
-  const index = Math.floor(Math.random() * values.length);
-  return values[index];
-};
-
-const buildHeadingDirectives = ({ intent }: HeadingDirectiveInput): string => {
-  const directives: string[] = [];
-
-  if (intent === 'stock_analysis') {
-    const analysisHeading = pickRandom(HEADING_VARIATIONS.analysis);
-    const recommendationHeading = pickRandom(HEADING_VARIATIONS.recommendation);
-    const riskHeading = pickRandom(HEADING_VARIATIONS.risks);
-
-    directives.push(
-      '- Om du behöver rubriker för tydlighet, välj högst två av följande alternativ och använd dem endast när du direkt följer upp med innehåll:',
-      `  • Möjlig analysrubrik: ${analysisHeading}`,
-      `  • Möjlig rekommendationsrubrik: ${recommendationHeading}`,
-      `  • Möjlig riskrubrik: ${riskHeading}`,
-      '- Lämna helt rubrikerna om svaret blir mer naturligt i styckeform och nämn dem inte på annat sätt.'
-    );
-  } else if (intent === 'news_update' || intent === 'general_news') {
-    const newsHeading = pickRandom(HEADING_VARIATIONS.news);
-    const actionsHeading = pickRandom(HEADING_VARIATIONS.actions);
-    directives.push(
-      '- Använd rubriker bara om de hjälper läsaren – annars skriv löpande text:',
-      `  • Nyhetsrubrik att välja vid behov: ${newsHeading}`,
-      `  • Åtgärdsrubrik att välja vid behov: ${actionsHeading}`,
-      '- Hoppa helt över rubriker som du inte tänker använda direkt – inga referenser till tomma sektioner.'
-    );
-  }
-
-  if (directives.length === 0) {
-    return '';
-  }
-
-  return directives.join('\n');
-};
-
-type PersonalizationPromptInput = {
-  aiMemory?: Record<string, unknown> | null;
-  favoriteSectors?: string[] | null;
-  currentGoals?: string[] | null;
-  recentMessages?: string[] | null;
-  macroTheme?: MacroTheme | null;
-  analysisAngles?: AnalysisAngle[] | null;
-};
-
-const buildPersonalizationPrompt = ({
-  aiMemory,
-  favoriteSectors,
-  currentGoals,
-  recentMessages,
-  macroTheme,
-  analysisAngles,
-}: PersonalizationPromptInput): string => {
-  const sections: string[] = [];
-
-  if (aiMemory?.communication_style === 'concise') {
-    sections.push('- Använd korta meningar och håll presentationen stram när frågan inte kräver djupanalys.');
-  } else if (aiMemory?.communication_style === 'detailed') {
-    sections.push('- Ge utförliga förklaringar och resonemang – användaren uppskattar detaljnivå.');
-  }
-
-  if (Array.isArray(favoriteSectors) && favoriteSectors.length > 0) {
-    sections.push(`- Knyt eventuella förslag till användarens favoritsektorer: ${favoriteSectors.join(', ')}.`);
-  }
-
-  if (Array.isArray(currentGoals) && currentGoals.length > 0) {
-    sections.push(`- Säkerställ att råden stödjer målen: ${currentGoals.join(', ')}.`);
-  }
-
-  const normalizedGoals = Array.isArray(currentGoals)
-    ? currentGoals
-      .map(goal => (typeof goal === 'string' ? goal.toLowerCase() : null))
-      .filter((goal): goal is string => Boolean(goal))
-    : [];
-
-  if (normalizedGoals.some(goal => goal.includes('pension'))) {
-    sections.push('- Lyft hur råden passar ett långsiktigt pensionsmål och koppla till makrotrender som påverkar värdetillväxt.');
-  }
-  if (normalizedGoals.some(goal => goal.includes('passiv inkomst') || goal.includes('utdel'))) {
-    sections.push('- Prioritera kassaflöde, utdelningsstabilitet och balansräkning när du föreslår bolag.');
-  }
-  if (normalizedGoals.some(goal => goal.includes('barnspar'))) {
-    sections.push('- Betona stabilitet och tidshorisont för barns sparande snarare än kortsiktig avkastning.');
-  }
-
-  const riskComfortData = (aiMemory?.risk_comfort_patterns as Record<string, unknown> | null) ?? null;
-  const macroSource = macroTheme
-    || (isMacroTheme(riskComfortData?.macro_focus_topic as string) ? riskComfortData?.macro_focus_topic as MacroTheme : null)
-    || detectMacroThemeFromMessages(Array.isArray(recentMessages) ? recentMessages : []);
-  const macroInstruction = getMacroInstruction(macroSource);
-  if (macroInstruction) {
-    sections.push(macroInstruction);
-  }
-
-  const memoryAnglesSource = Array.isArray((riskComfortData as Record<string, unknown> | null)?.analysis_focus_preferences)
-    ? (riskComfortData as { analysis_focus_preferences: unknown[] }).analysis_focus_preferences
-    : (Array.isArray((aiMemory as Record<string, unknown> | null)?.analysis_focus_preferences)
-      ? (aiMemory as { analysis_focus_preferences: unknown[] }).analysis_focus_preferences
-      : []);
-  const memoryAngles = memoryAnglesSource.filter(isAnalysisAngle);
-  const combinedAngles = new Set<AnalysisAngle>([
-    ...(analysisAngles ?? []),
-    ...memoryAngles,
-  ]);
-  combinedAngles.forEach(angle => sections.push(getAnalysisAngleInstruction(angle)));
-
-  return sections.length > 0 ? sections.join('\n') : '';
-};
 
 const SWEDISH_TAVILY_DOMAINS = [
   'di.se',
@@ -761,6 +372,11 @@ const INTENT_EXAMPLES: Record<IntentType, string[]> = {
     'Hur bör jag tänka kring långsiktigt sparande?',
     'Har du några investeringsidéer för en nybörjare?',
     'Vilka aktier passar en balanserad strategi?',
+  ],
+  document_summary: [
+    'Kan du sammanfatta det bifogade dokumentet?',
+    'Vad står det i den uppladdade filen?',
+    'Ge mig en översikt av dokumentet',
   ],
 };
 
@@ -1174,6 +790,8 @@ type SheetTickerEdgeItem = {
   name?: string | null;
   price?: number | null;
   currency?: string | null;
+  changePercent?: number | null;
+  sector?: string | null;
 };
 
 type SheetTickerEdgeResponse = {
@@ -2540,53 +2158,50 @@ serve(async (req) => {
 
     console.log('Supabase client initialized');
 
-    // Fetch all user data in parallel for better performance
-    const [
-      { data: aiMemory },
-      { data: riskProfile },
-      { data: portfolio },
-      { data: holdings },
-      { data: subscriber }
-    ] = await Promise.all([
-      supabase
-        .from('user_ai_memory')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle(),
-      supabase
-        .from('user_risk_profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from('user_portfolios')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .maybeSingle(),
-      supabase
-        .from('user_holdings')
-        .select('*')
-        .eq('user_id', userId),
-      supabase
-        .from('subscribers')
-        .select('subscribed')
-        .eq('user_id', userId)
-        .maybeSingle()
+    // Get authorization header from incoming request to forward to list-sheet-tickers
+    const authHeader = req.headers.get('Authorization');
+    const invokeHeaders = authHeader ? { Authorization: authHeader } : {};
+
+    // Fetch all independent data in parallel for better performance
+    const [userContext, sheetTickerResult] = await Promise.all([
+      fetchUserContext(supabase, userId),
+      supabase.functions.invoke('list-sheet-tickers', {
+        headers: invokeHeaders,
+      }).catch((error) => {
+        console.error('Failed to fetch Google Sheets tickers:', error);
+        return { data: null, error };
+      }),
     ]);
+
+    const aiMemory = userContext.aiMemory;
+    const riskProfile = userContext.riskProfile;
+    const portfolio = userContext.portfolio;
+    const holdings = userContext.holdings;
+    const subscriber = userContext.subscriber;
 
     const aiMemoryRiskComfort = (aiMemory?.risk_comfort_patterns as Record<string, unknown> | null) ?? null;
 
     let sheetTickerSymbols: string[] = [];
     let sheetTickerNames: string[] = [];
     let sheetTickerCurrencyMap = new Map<string, string>();
+    let sheetTickerPriceMap = new Map<string, { 
+      price: number; 
+      currency: string; 
+      name: string;
+      change?: number | null;
+      changePercent?: number | null;
+      high?: number | null;
+      low?: number | null;
+      open?: number | null;
+      previousClose?: number | null;
+      sector?: string | null;
+    }>();
+    let sheetCompanyNameToTickerMap = new Map<string, string[]>(); // Maps company names to ticker symbols
     let swedishTickerSymbols: string[] = [];
     let swedishCompanyNamesNormalized: string[] = [];
 
     try {
-      const { data: sheetTickerData, error: sheetTickerError } = await supabase.functions.invoke('list-sheet-tickers');
+      const { data: sheetTickerData, error: sheetTickerError } = sheetTickerResult;
 
       if (sheetTickerError) {
         console.error('Failed to fetch Google Sheets tickers:', sheetTickerError);
@@ -2609,6 +2224,11 @@ serve(async (req) => {
           const currencyNormalized = typeof item.currency === 'string'
             ? item.currency.trim().toUpperCase()
             : null;
+          const rawPrice = typeof item.price === 'number' && Number.isFinite(item.price)
+            ? item.price
+            : null;
+          const rawName = typeof item.name === 'string' ? item.name : null;
+          
           if (rawSymbol) {
             const trimmedSymbol = rawSymbol.trim();
             const withoutPrefix = trimmedSymbol.includes(':')
@@ -2625,10 +2245,51 @@ serve(async (req) => {
                   swedishSymbolSet.add(finalSymbol);
                 }
               }
+              // Store price information if available
+              if (rawPrice !== null && currencyNormalized && rawName) {
+                const rawChangePercent = typeof item.changePercent === 'number' 
+                  ? item.changePercent 
+                  : null;
+                const rawSector = typeof item.sector === 'string' 
+                  ? item.sector 
+                  : null;
+                
+                sheetTickerPriceMap.set(finalSymbol, {
+                  price: rawPrice,
+                  currency: currencyNormalized,
+                  name: rawName,
+                  changePercent: rawChangePercent,
+                  sector: rawSector,
+                });
+              }
+              
+              // Map company name to ticker symbol (if we have a name)
+              if (rawName) {
+                const normalizedWhitespaceName = rawName.replace(/\s+/g, ' ').trim();
+                if (normalizedWhitespaceName.length > 0) {
+                  const normalizedName = normalizedWhitespaceName.toLowerCase();
+                  
+                  if (!sheetCompanyNameToTickerMap.has(normalizedName)) {
+                    sheetCompanyNameToTickerMap.set(normalizedName, []);
+                  }
+                  if (!sheetCompanyNameToTickerMap.get(normalizedName)!.includes(finalSymbol)) {
+                    sheetCompanyNameToTickerMap.get(normalizedName)!.push(finalSymbol);
+                  }
+                  
+                  const diacriticsStripped = removeDiacritics(normalizedWhitespaceName).trim();
+                  if (diacriticsStripped.length > 0 && diacriticsStripped !== normalizedWhitespaceName) {
+                    const diacriticsName = diacriticsStripped.toLowerCase();
+                    if (!sheetCompanyNameToTickerMap.has(diacriticsName)) {
+                      sheetCompanyNameToTickerMap.set(diacriticsName, []);
+                    }
+                    if (!sheetCompanyNameToTickerMap.get(diacriticsName)!.includes(finalSymbol)) {
+                      sheetCompanyNameToTickerMap.get(diacriticsName)!.push(finalSymbol);
+                    }
+                  }
+                }
+              }
             }
           }
-
-          const rawName = typeof item.name === 'string' ? item.name : null;
           if (rawName) {
             const normalizedWhitespaceName = rawName.replace(/\s+/g, ' ').trim();
             if (normalizedWhitespaceName.length > 0) {
@@ -2937,6 +2598,13 @@ serve(async (req) => {
     const isStockAnalysisRequest = /(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) &&
       /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity)/i.test(message);
 
+    // Stoppord: vanliga svenska ord som kan misstas för tickers
+    const SWEDISH_STOP_WORDS = new Set([
+      'DOM', 'DET', 'DEN', 'VAR', 'HAR', 'KAN', 'SKA', 'VID', 'MED', 
+      'OCH', 'ATT', 'SOM', 'ELLER', 'MEN', 'INTE', 'FÖR', 'PÅ', 'AV', 
+      'TILL', 'OM', 'ÄR', 'VI', 'DE', 'DU', 'JAG', 'HON', 'HAN'
+    ]);
+
     const extractTickerSymbols = (input: string): string[] => {
       const normalizedInput = removeDiacritics(input);
       const tickerMatches = Array.from(normalizedInput.matchAll(/\b([A-Za-z0-9]{1,6})\b/g));
@@ -2950,6 +2618,12 @@ serve(async (req) => {
         if (!rawToken) continue;
 
         const normalizedSymbol = rawToken.toUpperCase();
+        
+        // Hoppa över stoppord
+        if (SWEDISH_STOP_WORDS.has(normalizedSymbol)) {
+          continue;
+        }
+        
         const isUppercaseInMessage = rawToken === rawToken.toUpperCase();
 
         if (sheetTickerSymbolSet.size > 0) {
@@ -3155,6 +2829,61 @@ serve(async (req) => {
     const detectedTickers = extractTickerSymbols(message);
     const primaryDetectedTicker = detectedTickers.length > 0 ? detectedTickers[0] : null;
 
+    // Fetch prices for detected tickers immediately (if not already in Google Sheets)
+    if (detectedTickers.length > 0) {
+      console.log('Fetching prices for detected tickers:', detectedTickers);
+      
+      for (const ticker of detectedTickers) {
+        const normalizedTicker = ticker.toUpperCase().replace(/[^A-Za-z0-9]/g, '');
+        
+        // First check if we already have the price from Google Sheets
+        const existingPriceData = sheetTickerPriceMap.get(normalizedTicker);
+        
+        if (!existingPriceData) {
+          // Ticker not found in Google Sheets, fetch from Finnhub via get-ticker-price
+          try {
+            console.log(`Ticker ${ticker} not found in Google Sheets, fetching from Finnhub via get-ticker-price`);
+            const authHeader = req.headers.get('Authorization');
+            const invokeHeaders = authHeader ? { Authorization: authHeader } : {};
+            
+            // ANROP TILL GET-TICKER-PRICE ISTÄLLET FÖR LIST-SHEET-TICKERS
+            const { data: liveData, error: liveError } = await supabase.functions.invoke('get-ticker-price', {
+              headers: invokeHeaders,
+              body: { 
+                symbol: normalizedTicker,
+                includeProfile: true // För att få valuta om möjligt
+              },
+            });
+            
+            if (!liveError && liveData && typeof liveData.price === 'number') {
+              const currency = liveData.currency || 'USD'; // Fallback till USD om valuta saknas
+              
+              // Spara i mappen så det kommer med i kontexten
+              sheetTickerPriceMap.set(normalizedTicker, {
+                price: liveData.price,
+                currency: currency,
+                name: ticker, // Finnhub quote ger inte namn, så vi använder tickern som namn
+                change: typeof liveData.change === 'number' ? liveData.change : null,
+                changePercent: typeof liveData.changePercent === 'number' ? liveData.changePercent : null,
+                high: typeof liveData.high === 'number' ? liveData.high : null,
+                low: typeof liveData.low === 'number' ? liveData.low : null,
+                open: typeof liveData.open === 'number' ? liveData.open : null,
+                previousClose: typeof liveData.previousClose === 'number' ? liveData.previousClose : null,
+              });
+              
+              console.log(`Found live price for ${ticker} from Finnhub: ${liveData.price} ${currency}${typeof liveData.changePercent === 'number' ? ` (${liveData.changePercent >= 0 ? '+' : ''}${liveData.changePercent.toFixed(2)}%)` : ''}`);
+            } else {
+              console.warn(`Failed to fetch price for ${ticker} from Finnhub:`, liveError || 'No price in response');
+            }
+          } catch (error) {
+            console.error(`Error fetching price for ${ticker}:`, error);
+          }
+        } else {
+          console.log(`Using existing price for ${ticker} from Google Sheets: ${existingPriceData.price} ${existingPriceData.currency}`);
+        }
+      }
+    }
+
     const hasTickerSymbolMention = (() => {
       if (detectedTickers.length === 0) return false;
 
@@ -3211,37 +2940,139 @@ serve(async (req) => {
     const userHasPortfolio = Array.isArray(holdings) &&
       holdings.some((holding: HoldingRecord) => holding?.holding_type !== 'recommendation');
 
-    // ENHANCED INTENT ROUTING SYSTEM
-    type IntentSelection = {
-      primaryIntent: IntentType;
-      intents: IntentType[];
-      entities: string[];
-      language: string | null;
-      source: 'interpreter' | 'fallback';
-    };
+    // UNIFIED ROUTER: Single LLM call for intent, realtime decision, and Tavily planning
+    // Build a preliminary entity-aware query for context (unified router can refine it)
+    const preliminaryEntityAwareQuery = detectedTickers.length > 0 || sheetTickerNames.length > 0
+      ? buildEntityAwareQuery({
+          message,
+          tickers: detectedTickers,
+          companyNames: sheetTickerNames,
+          hasRealTimeTrigger: false, // Will be updated from unified result
+          userIntent: 'general_advice', // Placeholder, will be updated
+          detectedEntities: [],
+        })
+      : null;
 
-    const detectIntent = async (message: string): Promise<IntentSelection> => {
+    const unifiedResult = await unifiedRouter({
+      message,
+      recentMessages: recentUserMessages,
+      hasPortfolio: userHasPortfolio,
+      hasUploadedDocuments,
+      detectedTickers,
+      entityAwareQuery: preliminaryEntityAwareQuery,
+      openAIApiKey,
+      model: INLINE_INTENT_MODEL,
+    });
+
+    // Extract results from unified router
+    let userIntent = unifiedResult.intent;
+    let detectedIntents = unifiedResult.intents;
+    let interpretedEntities = unifiedResult.entities;
+    let interpretedLanguage = unifiedResult.language;
+    let intentSource: 'unified' | 'fallback' = unifiedResult.source === 'unified' ? 'unified' : 'fallback';
+    let hasRealTimeTrigger = unifiedResult.needsRealtime;
+    let realTimeQuestionType = unifiedResult.questionType;
+    let recommendationPreference = unifiedResult.recommendationPreference;
+    let llmTavilyPlan: TavilyLLMPlan = unifiedResult.tavilySearch;
+
+    // Match company names from interpretedEntities to tickers
+    if (interpretedEntities.length > 0 && sheetCompanyNameToTickerMap.size > 0) {
+      const additionalTickers = new Set<string>();
+      
+      for (const entity of interpretedEntities) {
+        if (!entity || typeof entity !== 'string') continue;
+        
+        // Try exact match first
+        const normalizedEntity = entity.toLowerCase().trim();
+        const matchedTickers = sheetCompanyNameToTickerMap.get(normalizedEntity);
+        
+        if (matchedTickers && matchedTickers.length > 0) {
+          matchedTickers.forEach(ticker => additionalTickers.add(ticker));
+          console.log(`Matched company name "${entity}" to tickers: ${matchedTickers.join(', ')}`);
+        } else {
+          // Try partial match (e.g., "Volvo AB" should match "Volvo")
+          for (const [companyName, tickers] of sheetCompanyNameToTickerMap.entries()) {
+            if (normalizedEntity.includes(companyName) || companyName.includes(normalizedEntity)) {
+              tickers.forEach(ticker => additionalTickers.add(ticker));
+              console.log(`Matched company name "${entity}" (partial) to tickers: ${tickers.join(', ')}`);
+              break;
+            }
+          }
+        }
+      }
+      
+      // Add matched tickers to detectedTickers if not already present
+      if (additionalTickers.size > 0) {
+        const newTickers = Array.from(additionalTickers).filter(ticker => !detectedTickers.includes(ticker));
+        if (newTickers.length > 0) {
+          detectedTickers.push(...newTickers);
+          console.log(`Added ${newTickers.length} tickers from company name matching: ${newTickers.join(', ')}`);
+          
+          // Fetch prices for newly matched tickers
+          for (const ticker of newTickers) {
+            const normalizedTicker = ticker.toUpperCase().replace(/[^A-Za-z0-9]/g, '');
+            
+            // First check if we already have the price from Google Sheets
+            const existingPriceData = sheetTickerPriceMap.get(normalizedTicker);
+            
+            if (!existingPriceData) {
+              // Ticker not found in Google Sheets, fetch from Finnhub via get-ticker-price
+              try {
+                console.log(`Ticker ${ticker} not found in Google Sheets, fetching from Finnhub via get-ticker-price`);
+                const authHeader = req.headers.get('Authorization');
+                const invokeHeaders = authHeader ? { Authorization: authHeader } : {};
+                
+                const { data: liveData, error: liveError } = await supabase.functions.invoke('get-ticker-price', {
+                  headers: invokeHeaders,
+                  body: { 
+                    symbol: normalizedTicker,
+                    includeProfile: true
+                  },
+                });
+                
+                if (!liveError && liveData && typeof liveData.price === 'number') {
+                  const currency = liveData.currency || 'USD';
+                  
+                  sheetTickerPriceMap.set(normalizedTicker, {
+                    price: liveData.price,
+                    currency: currency,
+                    name: ticker,
+                    change: typeof liveData.change === 'number' ? liveData.change : null,
+                    changePercent: typeof liveData.changePercent === 'number' ? liveData.changePercent : null,
+                    high: typeof liveData.high === 'number' ? liveData.high : null,
+                    low: typeof liveData.low === 'number' ? liveData.low : null,
+                    open: typeof liveData.open === 'number' ? liveData.open : null,
+                    previousClose: typeof liveData.previousClose === 'number' ? liveData.previousClose : null,
+                  });
+                  
+                  console.log(`Found live price for ${ticker} from Finnhub: ${liveData.price} ${currency}${typeof liveData.changePercent === 'number' ? ` (${liveData.changePercent >= 0 ? '+' : ''}${liveData.changePercent.toFixed(2)}%)` : ''}`);
+                } else {
+                  console.warn(`Failed to fetch price for ${ticker} from Finnhub:`, liveError || 'No price in response');
+                }
+              } catch (error) {
+                console.error(`Error fetching price for ${ticker}:`, error);
+              }
+            } else {
+              console.log(`Using existing price for ${ticker} from Google Sheets: ${existingPriceData.price} ${existingPriceData.currency}`);
+            }
+          }
+        }
+      }
+    }
+
+    // Fallback to old system if unified router failed or returned fallback
+    if (intentSource === 'fallback' || !userIntent || userIntent === 'general_advice') {
+      console.log('Unified router returned fallback, using legacy intent detection');
       const interpreterResult = await detectUserIntentWithOpenAI(message, openAIApiKey);
       const interpreterIntents = interpreterResult?.intents ?? [];
       const interpreterEntities = interpreterResult?.entities ?? [];
       const interpreterLanguage = interpreterResult?.language ?? null;
 
       let primaryIntent = interpreterIntents[0];
-      let intentSource: 'interpreter' | 'fallback' = 'interpreter';
-      let resolvedIntents = interpreterIntents.slice();
-
-      const interpreterMarkedSummary = interpreterIntents.includes('document_summary');
-      if (hasUploadedDocuments && interpreterMarkedSummary) {
-        primaryIntent = 'document_summary';
-        resolvedIntents = ['document_summary'];
-      }
-
       if (!primaryIntent) {
         const embeddingIntent = await classifyIntentWithEmbeddings(message, supabase, openAIApiKey);
         if (embeddingIntent) {
           primaryIntent = embeddingIntent;
-          intentSource = 'fallback';
-          resolvedIntents = [embeddingIntent];
         }
       }
 
@@ -3249,17 +3080,13 @@ serve(async (req) => {
         const llmIntent = await classifyIntentWithLLM(message, openAIApiKey);
         if (llmIntent) {
           primaryIntent = llmIntent;
-          intentSource = 'fallback';
-          resolvedIntents = [llmIntent];
         }
       }
 
       if (!primaryIntent) {
         if (hasUploadedDocuments && summaryPatternTriggered) {
           primaryIntent = 'document_summary';
-        } else if (isStockMentionRequest ||
-            (/(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) &&
-            /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5})/i.test(message))) {
+        } else if (isStockMentionRequest) {
           primaryIntent = 'stock_analysis';
         } else {
           const newsIntent = await evaluateNewsIntentWithOpenAI({
@@ -3267,49 +3094,50 @@ serve(async (req) => {
             hasPortfolio: userHasPortfolio,
             apiKey: openAIApiKey,
           });
-
-          if (newsIntent) {
-            primaryIntent = newsIntent;
-          } else if (/(?:portfölj|portfolio)/i.test(message) && /(?:optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma|rebalansera)/i.test(message)) {
-            primaryIntent = 'portfolio_optimization';
-          } else if (/(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|position|handel)/i.test(message)) {
-            primaryIntent = 'buy_sell_decisions';
-          } else if (/(?:marknad|index|trend|prognos|ekonomi|räntor|inflation|börsen)/i.test(message)) {
-            primaryIntent = 'market_analysis';
-          } else {
-            primaryIntent = 'general_advice';
-          }
+          primaryIntent = newsIntent || 'general_advice';
         }
+      }
 
+      userIntent = primaryIntent ?? 'general_advice';
+      detectedIntents = interpreterIntents.length > 0 ? interpreterIntents : [userIntent];
+      interpretedEntities = interpreterEntities;
+      interpretedLanguage = interpreterLanguage;
         intentSource = 'fallback';
-        resolvedIntents = [primaryIntent];
-      }
 
-      if (hasUploadedDocuments && (summaryPatternTriggered || resolvedIntents.includes('document_summary'))) {
-        primaryIntent = 'document_summary';
-        intentSource = interpreterMarkedSummary ? intentSource : 'fallback';
-        resolvedIntents = ['document_summary'];
-      }
+      // Fallback realtime assessment
+      const realTimeAssessment = await determineRealTimeSearchNeed({
+        message,
+        userIntent,
+        recentMessages: recentUserMessages,
+        openAIApiKey,
+      });
+      hasRealTimeTrigger = realTimeAssessment.needsRealtime;
+      realTimeQuestionType = realTimeAssessment.questionType;
+      recommendationPreference = realTimeAssessment.recommendationPreference;
 
-      if (resolvedIntents.length === 0) {
-        resolvedIntents = [primaryIntent ?? 'general_advice'];
-      }
+      // Fallback Tavily planning
+      const entityAwareQuery = buildEntityAwareQuery({
+        message,
+        tickers: detectedTickers,
+        companyNames: sheetTickerNames,
+        hasRealTimeTrigger,
+        userIntent,
+        detectedEntities: interpretedEntities,
+      });
 
-      return {
-        primaryIntent: primaryIntent ?? 'general_advice',
-        intents: resolvedIntents,
-        entities: interpreterEntities,
-        language: interpreterLanguage,
-        source: intentSource,
-      };
-    };
-
-    const { primaryIntent: userIntent, intents: detectedIntents, entities: interpretedEntities, language: interpretedLanguage, source: intentSource } = await detectIntent(message);
+      llmTavilyPlan = await planRealtimeSearchWithLLM({
+        message,
+        entityAwareQuery,
+        userIntent,
+        recentMessages: recentUserMessages,
+        openAIApiKey,
+      });
+    }
 
     if (hasUploadedDocuments && (userIntent === 'document_summary' || detectedIntents.includes('document_summary'))) {
       isDocumentSummaryRequest = true;
     }
-    const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_sell_decisions', 'news_update', 'stock_analysis']);
+    const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_sell_decisions', 'news_update']);
     let shouldIncludePersonalContext = personalIntentTypes.has(userIntent)
       || isPersonalAdviceRequest
       || isPortfolioOptimizationRequest
@@ -3329,6 +3157,13 @@ serve(async (req) => {
       shouldIncludePersonalContext = false;
     }
 
+    // For stock_analysis without explicit portfolio reference, exclude portfolio context
+    if (userIntent === 'stock_analysis'
+      && !referencesPersonalInvestments
+      && !isPersonalAdviceRequest) {
+      shouldIncludePersonalContext = false;
+    }
+
     console.log('Detected user intent:', userIntent, 'source:', intentSource, 'all intents:', detectedIntents.join(', '));
     if (interpretedEntities.length > 0) {
       console.log('Interpreter entities:', interpretedEntities.join(', '));
@@ -3337,17 +3172,8 @@ serve(async (req) => {
       console.log('Interpreter language guess:', interpretedLanguage);
     }
 
-    const realTimeAssessment = await determineRealTimeSearchNeed({
-      message,
-      userIntent,
-      recentMessages: recentUserMessages,
-      openAIApiKey,
-    });
-    const hasRealTimeTrigger = realTimeAssessment.needsRealtime;
-    const realTimeQuestionType = realTimeAssessment.questionType;
-    const recommendationPreference = realTimeAssessment.recommendationPreference;
-    if (realTimeAssessment.signals.length > 0) {
-      console.log('Real-time assessment signals:', realTimeAssessment.signals.join(', '), 'LLM used:', realTimeAssessment.usedLLM);
+    if (unifiedResult.realtimeReason) {
+      console.log('Realtime reason:', unifiedResult.realtimeReason);
     }
 
     if (realTimeQuestionType) {
@@ -3358,6 +3184,11 @@ serve(async (req) => {
       console.log('LLM recommendation preference:', recommendationPreference);
     }
 
+    if (llmTavilyPlan.reason) {
+      console.log('LLM Tavily-plan:', llmTavilyPlan.reason);
+    }
+
+
     const isSimplePersonalAdviceRequest = (
       isPersonalAdviceRequest || isPortfolioOptimizationRequest
     ) &&
@@ -3365,24 +3196,31 @@ serve(async (req) => {
       !hasRealTimeTrigger &&
       detectedTickers.length === 0;
 
-    const entityAwareQuery = buildEntityAwareQuery({
-      message,
-      tickers: detectedTickers,
-      companyNames: sheetTickerNames,
-      hasRealTimeTrigger,
-      userIntent,
-      detectedEntities: interpretedEntities,
-    });
-
-    const llmTavilyPlan = await planRealtimeSearchWithLLM({
-      message,
-      entityAwareQuery,
-      userIntent,
-      recentMessages: recentUserMessages,
-      openAIApiKey,
-    });
-    if (llmTavilyPlan.reason) {
-      console.log('LLM Tavily-plan:', llmTavilyPlan.reason);
+    // Fetch Polymarket data for prediction_analysis intent
+    let polymarketContext = '';
+    if (userIntent === 'prediction_analysis' || detectedIntents.includes('prediction_analysis')) {
+      console.log('Fetching Polymarket data for prediction analysis');
+      try {
+        // Build entity-aware query for Polymarket search
+        const entityAwareQueryForPolymarket = buildEntityAwareQuery({
+          message,
+          tickers: detectedTickers,
+          companyNames: sheetTickerNames,
+          hasRealTimeTrigger: hasRealTimeTrigger,
+          userIntent,
+          detectedEntities: interpretedEntities,
+        });
+        const searchQuery = entityAwareQueryForPolymarket || message;
+        const polymarketResults = await searchPolymarketMarkets(searchQuery, 5);
+        if (polymarketResults.markets.length > 0) {
+          polymarketContext = formatPolymarketContext(polymarketResults.markets, searchQuery);
+          console.log(`Found ${polymarketResults.markets.length} Polymarket markets`);
+        } else {
+          console.log('No Polymarket markets found for query');
+        }
+      } catch (error) {
+        console.error('Error fetching Polymarket data:', error);
+      }
     }
 
     const shouldFetchTavily = !hasUploadedDocuments && !isDocumentSummaryRequest && !isSimplePersonalAdviceRequest && llmTavilyPlan.shouldSearch;
@@ -3526,11 +3364,21 @@ serve(async (req) => {
         });
       }
 
+      // Build entity-aware query for Tavily if needed
+      const entityAwareQueryForTavily = buildEntityAwareQuery({
+        message,
+        tickers: detectedTickers,
+        companyNames: sheetTickerNames,
+        hasRealTimeTrigger,
+        userIntent,
+        detectedEntities: interpretedEntities,
+      });
+
       const buildDefaultTavilyOptions = (): TavilySearchOptions => {
         const options: TavilySearchOptions = {
           query: (llmTavilyPlan.query && llmTavilyPlan.query.length > 2)
             ? llmTavilyPlan.query
-            : entityAwareQuery ?? undefined,
+            : entityAwareQueryForTavily ?? undefined,
           includeDomains: prioritizedIncludeDomains,
           excludeDomains: DEFAULT_EXCLUDED_TAVILY_DOMAINS,
           includeRawContent: shouldUseAdvancedDepth,
@@ -3585,6 +3433,11 @@ serve(async (req) => {
 
       if (tavilyContext.formattedContext) {
         console.log('Tavily-kontent hämtad och läggs till i kontexten.');
+      } else if ((tavilyContext as any).fallbackUsed) {
+        console.log('Tavily-sökning misslyckades eller tog för lång tid, använder fallback utan realtidsdata.');
+        // Add a note to the system prompt that we're using fallback
+        const fallbackNote = '\n\nOBSERVERA: Realtidssökning kunde inte genomföras på grund av timeout eller fel. Svara baserat på din befintliga kunskap och nämn att du inte har tillgång till senaste nyheterna eller kurserna just nu.';
+        // This will be added to contextInfo later
       }
     }
 
@@ -3870,6 +3723,36 @@ serve(async (req) => {
     if (conversationData?.predictionMarket) {
       const pm = conversationData.predictionMarket;
       
+      // Helper functions for formatting
+      const formatNumber = (num: number | string | undefined): string => {
+        if (num === undefined || num === null) return 'N/A';
+        const n = typeof num === 'string' ? parseFloat(num) : num;
+        if (isNaN(n)) return 'N/A';
+        if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(2)}B`;
+        if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+        if (n >= 1_000) return `${(n / 1_000).toFixed(2)}K`;
+        return n.toFixed(0);
+      };
+
+      const formatLiquidity = (liq: number | string | undefined): string => {
+        if (liq === undefined || liq === null) return 'Ej angiven';
+        return formatNumber(liq);
+      };
+
+      const formatDate = (dateStr: string | undefined): string => {
+        if (!dateStr) return '';
+        try {
+          const date = new Date(dateStr);
+          return date.toLocaleDateString('sv-SE', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          });
+        } catch {
+          return dateStr;
+        }
+      };
+      
       // Formatera sannolikheten snyggt
       let probDisplay = 'Okänd';
       if (typeof pm.probability === 'number') {
@@ -3880,17 +3763,61 @@ serve(async (req) => {
         probDisplay = pm.probability;
       }
 
-      contextInfo += `\n\nMARKNADSKONTEXT (Detta är ämnet för diskussionen):
+      // Formatera outcomes
+      const outcomesText = pm.outcomes && Array.isArray(pm.outcomes) && pm.outcomes.length > 0
+        ? pm.outcomes.map((o: any) => 
+            `  - ${o.title || 'Okänd'}: ${typeof o.price === 'number' ? o.price.toFixed(1) : o.price || 'N/A'}%`
+          ).join('\n')
+        : '  - Ingen data tillgänglig';
+      
+      // Formatera prishistorik
+      const historyText = pm.priceHistory ? `
+- Prisutveckling:
+  - Nuvarande: ${pm.priceHistory.current || 0}%
+  - 24h högsta: ${pm.priceHistory.high24h || 0}%
+  - 24h lägsta: ${pm.priceHistory.low24h || 0}%
+  - Förändring 24h: ${pm.priceHistory.change24h > 0 ? '+' : ''}${pm.priceHistory.change24h?.toFixed(1) || 0}%
+  - Trend: ${pm.priceHistory.trend === 'up' ? 'Uppåt' : pm.priceHistory.trend === 'down' ? 'Nedåt' : 'Stabil'}` : '';
+      
+      // Formatera metadata
+      const metadataLines: string[] = [];
+      if (pm.endDate) {
+        metadataLines.push(`- Slutdatum: ${formatDate(pm.endDate)}`);
+      }
+      if (pm.tags && Array.isArray(pm.tags) && pm.tags.length > 0) {
+        metadataLines.push(`- Taggar: ${pm.tags.join(', ')}`);
+      }
+      if (pm.liquidity !== undefined && pm.liquidity !== null) {
+        metadataLines.push(`- Likviditet: ${formatLiquidity(pm.liquidity)}`);
+      }
+      if (pm.closed === true) {
+        metadataLines.push(`- Status: Stängd`);
+      } else if (pm.active === true || pm.active === undefined) {
+        metadataLines.push(`- Status: Aktiv`);
+      }
+      const metadataText = metadataLines.length > 0 ? metadataLines.join('\n') : '';
+
+      contextInfo += `\n\nPREDIKTIONSMARKNAD (Detta är ämnet för diskussionen):
 - Marknadsfråga: "${pm.question || 'Okänd marknad'}"
-- Aktuell sannolikhet (JA-sidan): ${probDisplay}
-- Volym: ${pm.volume || 'Ej angiven'}
 - Beskrivning: ${pm.description || '-'}
-- ID: ${pm.id || '-'}
+- Marknads-ID: ${pm.id || '-'}
+${pm.slug ? `- Slug: ${pm.slug}` : ''}
+
+OUTCOMES OCH SANNOLIKHETER:
+${outcomesText}${historyText}
+
+MARKNADSDATA:
+- Volym: ${pm.volume || 'Ej angiven'}${pm.volumeNum ? ` (${formatNumber(pm.volumeNum)})` : ''}
+${metadataText}
 
 INSTRUKTION FÖR PREDIKTIONER:
 - Du har fått exakt realtidsdata ovan. Användaren ser detta just nu.
-- Om användaren frågar "vad är oddsen?", svara direkt med ${probDisplay} och analysera vad det innebär.
-- Diskutera om ${probDisplay} verkar högt eller lågt baserat på nyhetsläget.`;
+- Om användaren frågar "vad är oddsen?" eller "vad är sannolikheten?", svara direkt med ${probDisplay} och analysera vad det innebär.
+- Använd prishistoriken för att diskutera trender och förändringar.
+- Jämför nuvarande sannolikhet med historiska nivåer (högsta/lägsta) för att ge kontext.
+- Diskutera om ${probDisplay} verkar högt eller lågt baserat på nyhetsläget och trender.
+- Om det finns flera outcomes, diskutera alla alternativ, inte bara primära.
+- Använd taggar och metadata för att ge mer kontext om marknaden.`;
     }
 
     // Add current portfolio context with latest valuations
@@ -4139,7 +4066,101 @@ INSTRUKTION FÖR PREDIKTIONER:
       }
     }
 
+    // Add ticker price information if any tickers were detected
+    if (detectedTickers.length > 0 && sheetTickerPriceMap.size > 0) {
+      const tickerPriceInfo: string[] = [];
+      const yahooPriceInfo: string[] = [];
+      
+      for (const ticker of detectedTickers) {
+        const normalizedTicker = ticker.toUpperCase().replace(/[^A-Za-z0-9]/g, '');
+        const priceData = sheetTickerPriceMap.get(normalizedTicker);
+        
+        if (priceData) {
+          const formattedPrice = priceData.price.toLocaleString('sv-SE', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          });
+          
+          let priceLine = `- ${priceData.name} (${ticker}): ${formattedPrice} ${priceData.currency}`;
+          
+          // Prioritize changePercent from Google Sheets if available, otherwise use Finnhub data
+          // Check if we have changePercent from Google Sheets (no 'change' field means it's from Google Sheets)
+          if (priceData.changePercent !== null && priceData.changePercent !== undefined && 
+              (priceData.change === null || priceData.change === undefined)) {
+            // This is from Google Sheets (only has changePercent, no change field)
+            const changeSign = priceData.changePercent >= 0 ? '+' : '';
+            priceLine += ` (Idag: ${changeSign}${priceData.changePercent.toFixed(2)}%)`;
+          } else if (priceData.change !== null && priceData.change !== undefined && 
+                     priceData.changePercent !== null && priceData.changePercent !== undefined) {
+            // This is from Finnhub (has both change and changePercent)
+            const changeSign = priceData.change >= 0 ? '+' : '';
+            const changeFormatted = priceData.change.toLocaleString('sv-SE', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            });
+            priceLine += ` (${changeSign}${changeFormatted} ${priceData.currency}, ${changeSign}${priceData.changePercent.toFixed(2)}%)`;
+          } else if (priceData.changePercent !== null && priceData.changePercent !== undefined) {
+            // Fallback: only changePercent available (could be from either source)
+            const changeSign = priceData.changePercent >= 0 ? '+' : '';
+            priceLine += ` (Idag: ${changeSign}${priceData.changePercent.toFixed(2)}%)`;
+          }
+          
+          // Add sector from Google Sheets if available
+          if (priceData.sector) {
+            priceLine += ` | Sektor: ${priceData.sector}`;
+          }
+          
+          if (priceData.high && priceData.low) {
+            const highFormatted = priceData.high.toLocaleString('sv-SE', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            });
+            const lowFormatted = priceData.low.toLocaleString('sv-SE', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            });
+            priceLine += ` | Dagens intervall: ${lowFormatted} - ${highFormatted} ${priceData.currency}`;
+          }
+          
+          if (priceData.open) {
+            const openFormatted = priceData.open.toLocaleString('sv-SE', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            });
+            priceLine += ` | Öppning: ${openFormatted} ${priceData.currency}`;
+          }
+          
+          if (priceData.previousClose) {
+            const prevCloseFormatted = priceData.previousClose.toLocaleString('sv-SE', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            });
+            priceLine += ` | Stängning igår: ${prevCloseFormatted} ${priceData.currency}`;
+          }
+          
+          // Check if this ticker was in the original Google Sheets list
+          const wasInOriginalSet = sheetTickerSymbols.includes(normalizedTicker);
+          if (wasInOriginalSet) {
+            tickerPriceInfo.push(priceLine);
+          } else {
+            // This price was fetched from Finnhub (live price)
+            yahooPriceInfo.push(priceLine);
+          }
+        }
+      }
+      
+      if (tickerPriceInfo.length > 0) {
+        contextInfo += `\n\nAKTIEKURSER FRÅN GOOGLE SHEETS:\n${tickerPriceInfo.join('\n')}\n\nVIKTIGT: Dessa priser är FAKTA. När användaren nämner dessa tickers eller frågar om priser, presentera ENDAST dessa faktiska priser naturligt och direkt. Inkludera ALLTID dagsutveckling (förändring i procent, markerat som "Idag: +X%") om den finns tillgänglig i listan ovan. Om användaren frågar "hur har dom gått idag?" eller "hur går [ticker] idag?", använd dagsutvecklingen från listan ovan. Inkludera också relevanta nyckeltal som dagens högsta/lägsta, öppningskurs och stängningskurs från föregående dag om de finns. Presentera informationen naturligt, t.ex. "Volvo (VOLV B) står i 245,50 SEK (Idag: +0,95%). Dagens intervall: 243,20 - 246,80 SEK. Öppning: 244,00 SEK." Om sektor finns i listan, inkludera den också när det är relevant. Spekulera INTE eller hitta på priser - använd bara de priser som finns här. Nämn INTE varifrån priserna kommer (inte "enligt prislista", "enligt Google Sheets" etc.) - presentera bara priset direkt.`;
+      }
+      
+      if (yahooPriceInfo.length > 0) {
+        contextInfo += `\n\nAKTUELLA LIVE-KURSER FRÅN FINNHUB (realtidsdata):\n${yahooPriceInfo.join('\n')}\n\nVIKTIGT: Dessa priser är FAKTA och aktuella realtidskurser. När användaren nämner dessa tickers eller frågar om priser, presentera ENDAST dessa faktiska priser naturligt och direkt. Inkludera ALLTID dagsutveckling (förändring i absolut värde och procent) om den finns tillgänglig. Inkludera också relevanta nyckeltal som dagens högsta/lägsta, öppningskurs och stängningskurs från föregående dag om de finns. Presentera informationen naturligt, t.ex. "Apple (AAPL) står i 185,64 USD (+1,23 USD, +0,67%). Dagens intervall: 184,50 - 186,20 USD. Öppning: 184,80 USD." Om användaren frågar "vad står [ticker] i?" eller "hur går [ticker] nu?" eller "hur har dom gått idag?", svara direkt med det faktiska priset och dagsutvecklingen. Spekulera INTE eller hitta på priser - använd bara de priser som finns här. Nämn INTE varifrån priserna kommer (inte "enligt Finnhub", "enligt prislista" etc.) - presentera bara priset direkt.`;
+      }
+    }
+
     let documentContextHandled = false;
+    // Initialize document matches variable for telemetry (needs to be in outer scope)
+    let documentMatchesForTelemetry: any[] = [];
 
     if (filteredDocumentIds.length > 0) {
       if (isDocumentSummaryRequest) {
@@ -4263,51 +4284,80 @@ INSTRUKTION FÖR PREDIKTIONER:
           if (queryEmbedding) {
             const { data: documentMatches, error: documentMatchError } = await supabase.rpc('match_chat_document_chunks', {
               p_query_embedding: queryEmbedding,
-              p_match_count: DOCUMENT_CONTEXT_MATCH_COUNT,
+              p_match_count: DOCUMENT_CONTEXT_MATCH_COUNT * 2, // Get more chunks for re-ranking
               p_user_id: userId,
               p_document_ids: filteredDocumentIds.length > 0 ? filteredDocumentIds : null,
             });
+            
+            // Store for telemetry
+            documentMatchesForTelemetry = Array.isArray(documentMatches) ? documentMatches : [];
 
             if (documentMatchError) {
               console.error('Document match RPC failed', documentMatchError);
             } else if (Array.isArray(documentMatches) && documentMatches.length > 0) {
-              const groupedMatches = new Map<string, { name: string; entries: Array<{ content: string; metadata: { page_number?: number }; similarity: number | null }> }>();
-
-              (documentMatches as Array<{
+              // Re-rank chunks for better relevance
+              const chunks: DocumentChunk[] = (documentMatches as Array<{
                 document_id: string;
                 document_name?: string | null;
                 content: string;
                 metadata?: { page_number?: number } | null;
                 similarity?: number | null;
-              }>).forEach((match) => {
-                if (!match.document_id) {
+                chunk_index?: number | null;
+              }>).map(match => ({
+                document_id: match.document_id,
+                document_name: match.document_name,
+                content: match.content,
+                metadata: match.metadata as { page_number?: number } | null,
+                similarity: typeof match.similarity === 'number' ? match.similarity : null,
+                chunk_index: typeof match.chunk_index === 'number' ? match.chunk_index : null,
+              }));
+
+              const rerankedChunks = await rerankDocumentChunks(chunks, message, openAIApiKey);
+              const topChunks = selectTopChunks(rerankedChunks, DOCUMENT_CONTEXT_MATCH_COUNT, 0.3);
+              
+              // Store document processing info for telemetry (will be used later)
+              documentMatchesForTelemetry = documentMatches;
+
+              const groupedMatches = new Map<string, { name: string; entries: Array<{ content: string; metadata: { page_number?: number }; similarity: number | null; rerankScore?: number }> }>();
+
+              topChunks.forEach((chunk) => {
+                if (!chunk.document_id) {
                   return;
                 }
 
-                const existing = groupedMatches.get(match.document_id) ?? {
-                  name: typeof match.document_name === 'string' && match.document_name.trim().length > 0
-                    ? match.document_name.trim()
+                const existing = groupedMatches.get(chunk.document_id) ?? {
+                  name: typeof chunk.document_name === 'string' && chunk.document_name.trim().length > 0
+                    ? chunk.document_name.trim()
                     : 'Dokument',
                   entries: [],
                 };
 
                 existing.entries.push({
-                  content: match.content,
-                  metadata: (match.metadata ?? {}) as { page_number?: number },
-                  similarity: typeof match.similarity === 'number' ? match.similarity : null,
+                  content: chunk.content,
+                  metadata: (chunk.metadata ?? {}) as { page_number?: number },
+                  similarity: chunk.similarity ?? null,
+                  rerankScore: chunk.rerankScore,
                 });
 
-                groupedMatches.set(match.document_id, existing);
+                groupedMatches.set(chunk.document_id, existing);
               });
 
               const documentContextLines: string[] = [];
               let sourceCounter = 1;
 
               for (const [, value] of groupedMatches) {
-                const topEntries = value.entries.slice(0, 3);
+                // Sort entries by rerank score if available
+                const sortedEntries = value.entries.sort((a, b) => {
+                  const scoreA = a.rerankScore ?? a.similarity ?? 0;
+                  const scoreB = b.rerankScore ?? b.similarity ?? 0;
+                  return scoreB - scoreA;
+                });
+
+                const topEntries = sortedEntries.slice(0, 3);
                 topEntries.forEach((entry) => {
                   const pageNumber = typeof entry.metadata?.page_number === 'number' ? entry.metadata.page_number : undefined;
-                  const similarityText = entry.similarity !== null ? ` (Relevans ${(entry.similarity * 100).toFixed(1)}%)` : '';
+                  const score = entry.rerankScore ?? entry.similarity ?? null;
+                  const similarityText = score !== null ? ` (Relevans ${(score * 100).toFixed(1)}%)` : '';
                   const header = `${value.name}${pageNumber ? ` – Sida ${pageNumber}` : ''}${similarityText}`;
                   documentContextLines.push(`Källa ${sourceCounter}: ${header}\n${entry.content}`);
                   sourceCounter += 1;
@@ -4424,8 +4474,13 @@ ${importantLines.join('\n')}
     });
 
     const hasMarketData = tavilyContext.formattedContext.length > 0;
+    const tavilyFallbackUsed = (tavilyContext as any).fallbackUsed === true;
     let tavilySourceInstruction = '';
-    if (tavilyContext.sources.length > 0) {
+    
+    if (tavilyFallbackUsed && !hasMarketData) {
+      // Add fallback note to system prompt when Tavily fails
+      tavilySourceInstruction = `\n\nVIKTIGT: Realtidssökning kunde inte genomföras på grund av timeout eller fel. Svara baserat på din befintliga kunskap och nämn tydligt i slutet av ditt svar att du inte har tillgång till senaste nyheterna eller kurserna just nu.`;
+    } else if (tavilyContext.sources.length > 0) {
       const formattedSourcesList = tavilyContext.sources
         .map((url, index) => `${index + 1}. ${url}`)
         .join('\n');
@@ -4434,14 +4489,56 @@ ${importantLines.join('\n')}
 
     // Build messages array with enhanced context
     const messages = [
-      { role: 'system', content: contextInfo + tavilyContext.formattedContext + tavilySourceInstruction },
+      { role: 'system', content: contextInfo + tavilyContext.formattedContext + tavilySourceInstruction + (polymarketContext ? `\n\n${polymarketContext}` : '') },
       ...(summaryMessage ? [summaryMessage] : []),
       ...preparedChatHistory,
       { role: 'user', content: message }
     ];
 
-    // Enhanced telemetry logging
+    // Enhanced telemetry logging with decision tracking
     const requestId = crypto.randomUUID();
+    const decisionLog = {
+      intent: {
+        primary: userIntent,
+        all: detectedIntents,
+        source: intentSource,
+        confidence: null, // Confidence not available from unified router
+      },
+      realtime: {
+        needed: hasRealTimeTrigger,
+        questionType: realTimeQuestionType ?? null,
+        tavilyPlan: llmTavilyPlan.shouldSearch ? {
+          query: llmTavilyPlan.query,
+          topic: llmTavilyPlan.topic,
+          depth: llmTavilyPlan.depth,
+          reason: llmTavilyPlan.reason,
+        } : null,
+        tavilySuccess: !tavilyFallbackUsed && hasMarketData,
+        tavilyFallback: tavilyFallbackUsed,
+      },
+      polymarket: {
+        fetched: polymarketContext.length > 0,
+        marketsFound: polymarketContext.length > 0 ? 'yes' : 'no',
+      },
+      documents: {
+        hasDocuments: hasUploadedDocuments,
+        documentCount: filteredDocumentIds.length,
+        chunksRetrieved: documentMatchesForTelemetry.length,
+        rerankingUsed: documentMatchesForTelemetry.length > 3,
+      },
+      model: {
+        selected: model,
+        reason: hasRealTimeTrigger ? 'realtime_trigger' : 
+                isDocumentSummaryRequest ? 'document_summary' :
+                isSimplePersonalAdviceRequest ? 'simple_advice' : 'default',
+      },
+      entities: {
+        tickers: detectedTickers,
+        companies: interpretedEntities,
+        language: interpretedLanguage ?? 'unknown',
+      },
+    };
+
     const telemetryData = {
       requestId,
       userId,
@@ -4450,10 +4547,27 @@ ${importantLines.join('\n')}
       model,
       timestamp: new Date().toISOString(),
       hasMarketData,
-      isPremium
+      isPremium,
+      decisionLog,
     };
 
     console.log('TELEMETRY START:', telemetryData);
+
+    // Save decision log to database
+    try {
+      await supabase
+        .from('ai_chat_decision_logs')
+        .insert({
+          request_id: requestId,
+          user_id: userId,
+          session_id: sessionId,
+          decision_data: decisionLog,
+          created_at: new Date().toISOString(),
+        });
+    } catch (error) {
+      console.error('Failed to save decision log:', error);
+      // Don't fail the request if logging fails
+    }
 
     // Save user message to database first
     if (sessionId) {
@@ -4495,6 +4609,7 @@ ${importantLines.join('\n')}
           model,
           messages,
           stream: false,
+          response_format: { type: 'json_schema', json_schema: AI_RESPONSE_SCHEMA },
         }),
       });
 
@@ -4506,7 +4621,23 @@ ${importantLines.join('\n')}
       }
 
       const nonStreamData = await nonStreamResp.json();
-      const aiMessage = nonStreamData.choices?.[0]?.message?.content || '';
+      const rawContent = nonStreamData.choices?.[0]?.message?.content || '';
+      
+      // Parse structured JSON response
+      let parsedResponse: AIResponse;
+      let aiMessage: string;
+      let stockSuggestions: StockSuggestion[] = [];
+      
+      try {
+        parsedResponse = JSON.parse(rawContent) as AIResponse;
+        aiMessage = parsedResponse.response || rawContent;
+        stockSuggestions = parsedResponse.stock_suggestions || [];
+      } catch (parseError) {
+        // Fallback if JSON parsing fails
+        console.warn('Failed to parse structured response, using raw content:', parseError);
+        aiMessage = rawContent;
+        stockSuggestions = [];
+      }
 
       // Update AI memory and optionally save to chat history
       await updateAIMemory(supabase, userId, message, aiMessage, aiMemory, userIntent);
@@ -4535,6 +4666,8 @@ ${importantLines.join('\n')}
       return new Response(
         JSON.stringify({
           response: aiMessage,
+          stock_suggestions: stockSuggestions,
+          tavilyFallbackUsed: tavilyFallbackUsed,
           requiresConfirmation: profileChangeDetection.requiresConfirmation,
           profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null
         }),
@@ -4543,17 +4676,28 @@ ${importantLines.join('\n')}
     }
 
     // Default: streaming SSE response
+    // For streaming, we don't use structured output to enable real-time text streaming
+    // Instead, we add format instructions to the prompt and parse stock suggestions from text
+    const streamingMessages = [
+      ...messages.slice(0, -1), // All messages except the last user message
+      {
+        role: 'user' as const,
+        content: `${messages[messages.length - 1].content}\n\nVIKTIGT: Om du föreslår aktier, formatera dem som: **Företagsnamn (TICKER)** - Kort motivering.`
+      }
+    ];
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model,
-        messages,
-        stream: true,
-      }),
+        body: JSON.stringify({
+          model,
+          messages: streamingMessages,
+          stream: true,
+          // No structured output for streaming - enables real-time text streaming
+        }),
     });
 
     if (!response.ok) {
@@ -4574,6 +4718,7 @@ ${importantLines.join('\n')}
           }
 
           let aiMessage = '';
+          let stockSuggestions: StockSuggestion[] = [];
           
           while (true) {
             const { done, value } = await reader.read();
@@ -4586,6 +4731,22 @@ ${importantLines.join('\n')}
               if (line.startsWith('data: ')) {
                 const data = line.slice(6);
                 if (data === '[DONE]') {
+                  // Extract stock suggestions from the final message using regex
+                  if (aiMessage && !stockSuggestions.length) {
+                    try {
+                      // Try to extract stock suggestions from the message text
+                      const suggestionPattern = /\*\*([^*()]+?)\s*\(([A-Z0-9]{1,6}(?:[.-][A-Z0-9]{1,3})?)\)\*\*(?:\s*[-–—:]\s*(.*?))?(?=\n|$)/gi;
+                      const matches = Array.from(aiMessage.matchAll(suggestionPattern));
+                      stockSuggestions = matches.map(match => ({
+                        name: match[1].trim(),
+                        ticker: match[2].toUpperCase(),
+                        reason: match[3]?.trim() || 'AI-rekommendation',
+                      })).slice(0, 10); // Limit to 10 suggestions
+                    } catch (e) {
+                      console.warn('Failed to extract stock suggestions:', e);
+                    }
+                  }
+                  
                   // Update AI memory
                   await updateAIMemory(supabase, userId, message, aiMessage, aiMemory, userIntent);
                   
@@ -4617,22 +4778,45 @@ ${importantLines.join('\n')}
                       });
                   }
                   
+                  // Send final message with stock suggestions
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                    done: true,
+                    stock_suggestions: stockSuggestions,
+                    tavilyFallbackUsed: tavilyFallbackUsed,
+                    profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+                    requiresConfirmation: profileChangeDetection.requiresConfirmation
+                  })}\n\n`));
+                  
                   controller.close();
                   return;
                 }
 
                 try {
                   const parsed = JSON.parse(data);
+                  
+                  // Stream content directly (no structured output for streaming)
                   if (parsed.choices?.[0]?.delta?.content) {
                     const content = parsed.choices[0].delta.content;
                     aiMessage += content;
                     
-                    // Stream content to client
+                    // Stream content immediately to client
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
                       content,
                       profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
                       requiresConfirmation: profileChangeDetection.requiresConfirmation
                     })}\n\n`));
+                  } else if (parsed.choices?.[0]?.message?.content) {
+                    // Complete response received (shouldn't happen in streaming, but handle it)
+                    const fullContent = parsed.choices[0].message.content;
+                    const newContent = fullContent.slice(aiMessage.length);
+                    if (newContent.length > 0) {
+                      aiMessage = fullContent;
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                        content: newContent,
+                        profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+                        requiresConfirmation: profileChangeDetection.requiresConfirmation
+                      })}\n\n`));
+                    }
                   }
                 } catch (e) {
                   // Ignore JSON parse errors for non-JSON lines

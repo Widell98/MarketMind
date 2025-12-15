@@ -308,16 +308,16 @@ const buildPrompt = (
         .join("\n")}\n\n`
     : "";
 
- const objectives = [
-  "Genomför följande uppgifter baserat uteslutande på fakta i rapporttexten:",
-  "",
-  "1. Identifiera bolagsnamnet – exakt som det förekommer i dokumentet (använd inte tolkningar).",
-  "2. Identifiera rapporttiteln – exakt enligt dokumentets rubrik eller formella titel.",
-  "3. KRITISKT: Formulera en kondenserad och faktadriven sammanfattning (3–4 meningar) som beskriver rapportens kärnbudskap utan tolkningar eller spekulation. ALLT TEXTINNEHÅLL MÅSTE VARA PÅ SVENSKA. Om källmaterialet är på engelska, översätt allt till svenska. Exempel: 'The company reported strong growth' → 'Bolaget redovisade stark tillväxt'.",
-  "4. Extrahera minst tre kvantitativa nyckelsiffror – etiketter och värden ska vara ordagranna från rapporten. Om rapporten anger förändringstal (t.ex. "+14% y/y") ska detta placeras i fältet 'trend'. Om etiketter är på engelska, översätt dem till svenska.",
-  "5. KRITISKT: Identifiera 3–6 objektiva datapunkter som framgår tydligt i rapportens text, exempelvis trender, segmentprestationer eller väsentliga händelser. ALLA datapunkter MÅSTE uttryckas på svenska. Översätt från engelska om nödvändigt. Exempel: 'Revenue increased by 15%' → 'Intäkterna ökade med 15%'.",
-  "6. KRITISKT: Sammanfatta VD-kommentaren i 1–2 meningar om en sådan sektion finns. Om ingen VD-kommentar förekommer ska värdet vara: \"Ingen VD-kommentar identifierad\". ALL text MÅSTE vara på svenska. Översätt från engelska om nödvändigt.",
-].join("\n");
+    const objectives = [
+      "Genomför följande uppgifter baserat uteslutande på fakta i rapporttexten:",
+      "",
+      "1. Identifiera bolagsnamnet – exakt som det förekommer i dokumentet (använd inte tolkningar).",
+      "2. Identifiera rapporttiteln – exakt enligt dokumentets rubrik eller formella titel.",
+      "3. KRITISKT: Formulera en kondenserad och faktadriven sammanfattning (3–4 meningar) som beskriver rapportens kärnbudskap utan tolkningar eller spekulation. ALLT TEXTINNEHÅLL MÅSTE VARA PÅ SVENSKA. Om källmaterialet är på engelska, översätt allt till svenska. Exempel: 'The company reported strong growth' → 'Bolaget redovisade stark tillväxt'.",
+      "4. Extrahera minst tre kvantitativa nyckelsiffror – etiketter och värden ska vara ordagranna från rapporten. Om rapporten anger förändringstal (t.ex. \"+14% y/y\") ska detta placeras i fältet 'trend'. Om etiketter är på engelska, översätt dem till svenska.",
+      "5. KRITISKT: Identifiera 3–6 objektiva datapunkter som framgår tydligt i rapportens text, exempelvis trender, segmentprestationer eller väsentliga händelser. ALLA datapunkter MÅSTE uttryckas på svenska. Översätt från engelska om nödvändigt. Exempel: 'Revenue increased by 15%' → 'Intäkterna ökade med 15%'.",
+      "6. KRITISKT: Sammanfatta VD-kommentaren i 1–2 meningar om en sådan sektion finns. Om ingen VD-kommentar förekommer ska värdet vara: \"Ingen VD-kommentar identifierad\". ALL text MÅSTE vara på svenska. Översätt från engelska om nödvändigt.",
+    ].join("\n");
 
    const importantNotes = [
   "VIKTIGA PRINCIPER:",

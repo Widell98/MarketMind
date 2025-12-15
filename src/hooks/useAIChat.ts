@@ -1167,6 +1167,42 @@ export const useAIChat = (portfolioId?: string) => {
                     profileUpdates = parsed.profileUpdates;
                     requiresConfirmation = parsed.requiresConfirmation;
                   }
+
+                  // Check for stock suggestions (structured output)
+                  if (parsed.stock_suggestions && Array.isArray(parsed.stock_suggestions)) {
+                    const updatedMessage: Message = {
+                      ...aiMessage,
+                      context: {
+                        ...aiMessage.context,
+                        stock_suggestions: parsed.stock_suggestions,
+                        tavilyFallbackUsed: parsed.tavilyFallbackUsed || false,
+                      },
+                    };
+                    aiMessage = updatedMessage;
+                    setMessages(prev => prev.map(msg =>
+                      msg.id === aiMessageId
+                        ? updatedMessage
+                        : msg
+                    ));
+                    updatePendingState(targetSessionId, requestId, { aiMessage: updatedMessage });
+                  }
+
+                  // Check for Tavily fallback notification
+                  if (parsed.tavilyFallbackUsed) {
+                    const updatedMessage: Message = {
+                      ...aiMessage,
+                      context: {
+                        ...aiMessage.context,
+                        tavilyFallbackUsed: true,
+                      },
+                    };
+                    aiMessage = updatedMessage;
+                    setMessages(prev => prev.map(msg =>
+                      msg.id === aiMessageId
+                        ? updatedMessage
+                        : msg
+                    ));
+                  }
                 } catch (e) {
                   // Ignore JSON parse errors
                 }
