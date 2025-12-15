@@ -28,6 +28,40 @@ export interface UserHolding {
   dailyChangeValueSEK?: number | null;
 }
 
+const hasMarketOpened = (market?: string): boolean => {
+  if (!market) return true; // Visa alltid om marknad saknas
+  
+  const lowerMarket = market.toLowerCase();
+  
+  // Krypto är alltid öppet
+  if (lowerMarket === 'crypto') return true;
+
+  const now = new Date();
+  const day = now.getDay(); // 0 = Söndag, 6 = Lördag
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+
+  // Om det är helg (Lördag eller Söndag), visa 0 (stängd)
+  if (day === 0 || day === 6) return false;
+
+  // USA (Öppnar 15:30 svensk tid)
+  if (['us', 'usa', 'nasdaq', 'nyse', 'amex'].includes(lowerMarket)) {
+    if (hour < 15) return false;
+    if (hour === 15 && minute < 30) return false;
+    return true;
+  }
+
+  // Sverige/Norden (Öppnar 09:00)
+  if (['se', 'sto', 'stockholm', 'sverige', 'sweden', 'omx'].includes(lowerMarket)) {
+    if (hour < 9) return false;
+    return true;
+  }
+
+  // Lägg till fler marknader här vid behov (t.ex. Tyskland/Frankrike öppnar också 09:00 oftast)
+  
+  return true; // Default true för övriga marknader
+};
+
 export const useUserHoldings = () => {
   const [holdings, setHoldings] = useState<UserHolding[]>([]);
   const [actualHoldings, setActualHoldings] = useState<UserHolding[]>([]);
@@ -37,7 +71,7 @@ export const useUserHoldings = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
-  const { getChangeForTicker } = useDailyChangeData();
+const { getChangeForTicker } = useDailyChangeData();
 
   const enrichHoldingsWithChangeData = useCallback((items: UserHolding[]): UserHolding[] => {
     return items.map((holding) => {
@@ -49,7 +83,14 @@ export const useUserHoldings = () => {
         };
       }
 
-      const changePercent = getChangeForTicker(holding.symbol ?? undefined) ?? holding.daily_change_pct ?? null;
+let changePercent = getChangeForTicker(holding.symbol ?? undefined) ?? holding.daily_change_pct ?? null;
+      
+      // LOGIK FÖR MARKNADSÖPPETTIDER:
+      // Om marknaden inte öppnat än, tvinga ändringen till 0
+      if (!hasMarketOpened(holding.market)) {
+        changePercent = 0;
+      }
+
       const { valueInSEK } = resolveHoldingValue(holding);
       const dailyChangeValueSEK = changePercent !== null ? (valueInSEK * changePercent) / 100 : null;
 
