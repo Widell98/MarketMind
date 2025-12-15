@@ -6,7 +6,7 @@ import { SavedMarketsList } from "@/components/SavedMarketsList";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Filter, Loader2, AlertCircle, LayoutGrid, Table as TableIcon, X, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Filter, AlertCircle, LayoutGrid, Table as TableIcon, X, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -14,10 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-// Importera supabase client och fetch-funktionen för enstaka marknad
 import { supabase } from "@/integrations/supabase/client"; 
 import { usePolymarketTags, fetchPolymarketMarketDetail } from "@/hooks/usePolymarket";
-import { useQuery } from "@tanstack/react-query"; // Behövs för att hämta curations
+import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import Layout from "@/components/Layout";
@@ -25,9 +24,9 @@ import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useAuth } from "@/contexts/AuthContext";
 import type { PolymarketMarketDetail } from "@/types/polymarket";
 
-type ViewMode = 'cards' | 'table';
-type SortBy = 'volume' | 'endDate' | 'question' | 'odds';
-type SortOrder = 'asc' | 'desc';
+export type ViewMode = 'cards' | 'table';
+export type SortBy = 'volume' | 'endDate' | 'question' | 'odds';
+export type SortOrder = 'asc' | 'desc';
 
 const PredictionMarketsDemo = () => {
   const { user } = useAuth();
@@ -49,49 +48,42 @@ const PredictionMarketsDemo = () => {
       const { data, error } = await supabase
         .from("curated_markets")
         .select("market_id")
-        .eq("is_active", true); // Hämta bara aktiva
+        .eq("is_active", true);
 
       if (error) throw error;
-      return data.map((d) => d.market_id); // Returnera en array av strängar ["id1", "id2"]
+      return data.map((d) => d.market_id);
     },
   });
 
   // 2. Hämta detaljer för dessa specifika marknader från Polymarket
   const { data: markets = [], isLoading: marketsDetailsLoading } = useQuery({
     queryKey: ["polymarket-curated-details", curatedIds],
-    // Kör bara om vi har ID:n att hämta
     enabled: curatedIds.length > 0,
     queryFn: async () => {
-      // Hämta varje marknad parallellt
       const promises = curatedIds.map((id) => fetchPolymarketMarketDetail(id));
       const results = await Promise.all(promises);
-      
-      // Filtrera bort eventuella null-värden (om API:et failar på en specifik)
       return results.filter((m): m is PolymarketMarketDetail => m !== null);
     },
-    // Spara i cachen lite längre så vi inte spammar API:et
-    staleTime: 1000 * 60 * 5, // 5 minuter
+    staleTime: 1000 * 60 * 5, 
   });
 
   const isLoading = curatedLoading || marketsDetailsLoading;
   const error = curatedError;
 
-  // Fetch available tags (för filter-knappar)
+  // Fetch available tags
   const { data: tags = [] } = usePolymarketTags();
 
-  // Debounced search (enkel variant)
   const debouncedSearch = useMemo(() => {
     return searchQuery;
   }, [searchQuery]);
 
-  // Helper function to ensure tags is always an array
   const getTagsArray = (tags: any): string[] => {
     if (Array.isArray(tags)) return tags;
     if (typeof tags === 'string') return [tags];
     return [];
   };
 
-  // 3. Filtrera och sortera de hämtade (redan utvalda) marknaderna
+  // 3. Filtrera och sortera de hämtade marknaderna (Curated logic)
   const filteredMarkets = useMemo(() => {
     if (!markets.length) return [];
     
@@ -106,7 +98,6 @@ const PredictionMarketsDemo = () => {
       return matchesSearch && matchesTags;
     });
 
-    // Sortering
     return filtered.sort((a, b) => {
       let aValue: number | string = 0;
       let bValue: number | string = 0;
@@ -125,7 +116,6 @@ const PredictionMarketsDemo = () => {
           bValue = (b.question || '').toLowerCase();
           break;
         case 'odds':
-          // Högsta Yes-odds först (eller första outcome om ingen Yes finns)
           const aYesOutcome = a.outcomes.find(o => o.title.toLowerCase() === 'yes');
           const bYesOutcome = b.outcomes.find(o => o.title.toLowerCase() === 'yes');
           aValue = aYesOutcome ? (aYesOutcome.price || 0) : (a.outcomes[0]?.price || 0);
@@ -166,7 +156,7 @@ const PredictionMarketsDemo = () => {
   const hasActiveFilters = searchQuery.trim() !== "" || selectedTags.length > 0;
   const activeFiltersCount = (searchQuery.trim() !== "" ? 1 : 0) + selectedTags.length;
 
-  // Pagination calculations
+  // Pagination for curated view
   const totalPages = Math.max(1, Math.ceil(filteredMarkets.length / ITEMS_PER_PAGE));
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
@@ -174,19 +164,16 @@ const PredictionMarketsDemo = () => {
     ? filteredMarkets.slice(startIndex, endIndex)
     : filteredMarkets;
 
-  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedTags, sortBy, sortOrder, viewMode]);
+  }, [searchQuery, selectedTags, sortBy, sortOrder, viewMode, activeTab]);
 
   const handlePageChange = (direction: 'prev' | 'next' | number) => {
     if (typeof direction === 'number') {
       setCurrentPage(direction);
     } else {
       setCurrentPage((prev) => {
-        if (direction === 'prev') {
-          return Math.max(1, prev - 1);
-        }
+        if (direction === 'prev') return Math.max(1, prev - 1);
         return Math.min(totalPages, prev + 1);
       });
     }
@@ -194,14 +181,14 @@ const PredictionMarketsDemo = () => {
 
   const handleTableSort = (column: SortBy) => {
     if (sortBy === column) {
-      // Toggle sort order if clicking the same column
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
-      // Set new column and default to desc
       setSortBy(column);
       setSortOrder('desc');
     }
   };
+
+  const showSharedFilters = activeTab === 'curated' || activeTab === 'all';
 
   return (
     <Layout>
@@ -216,13 +203,13 @@ const PredictionMarketsDemo = () => {
             </p>
           </div>
           
-          {/* Search / Filter Bar - Only show for curated tab */}
-          {activeTab === 'curated' && (
+          {/* Shared Search / Filter Bar */}
+          {showSharedFilters && (
             <div className="flex items-center gap-2 w-full md:w-auto">
               <div className="relative flex-1 md:w-64">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input 
-                  placeholder="Sök marknad..." 
+                  placeholder={activeTab === 'all' ? "Sök alla marknader..." : "Sök utvalda..."}
                   className="pl-9" 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -278,206 +265,185 @@ const PredictionMarketsDemo = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Curated Markets Tab */}
-          <TabsContent value="curated" className="mt-6 space-y-6">
-
-            {/* Filter Section */}
-            {showFilters && (
-          <Card className="p-4 space-y-4">
-            {/* Active Filters & Clear */}
-            {hasActiveFilters && (
-              <div className="flex items-center justify-between pb-2 border-b">
-                <span className="text-sm text-muted-foreground">
-                  {activeFiltersCount} aktiv{activeFiltersCount !== 1 ? 'a' : ''} filter
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearAllFilters}
-                  className="h-7 text-xs"
-                >
-                  <X className="h-3 w-3 mr-1" />
-                  Rensa alla
-                </Button>
-              </div>
-            )}
-
-            {/* Sorting */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex items-center gap-2">
-                <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium whitespace-nowrap">Sortera efter:</span>
-                <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortBy)}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="volume">Volym</SelectItem>
-                    <SelectItem value="endDate">Slutdatum</SelectItem>
-                    <SelectItem value="question">Fråga (A-Ö)</SelectItem>
-                    <SelectItem value="odds">Odds</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2">
-                <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as SortOrder)}>
-                  <SelectTrigger className="w-[120px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="desc">
-                      {sortBy === 'question' ? 'Ö-A' : 'Högst först'}
-                    </SelectItem>
-                    <SelectItem value="asc">
-                      {sortBy === 'question' ? 'A-Ö' : 'Lägst först'}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            </Card>
-            )}
-
-            {/* Error State */}
-            {error && (
-          <Card className="p-4 border-red-500/50 bg-red-500/10">
-            <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-              <AlertCircle className="h-4 w-4" />
-              <p>Kunde inte ladda marknader. Försök igen senare.</p>
-            </div>
-            </Card>
-            )}
-
-            {/* Loading State */}
-            {isLoading && (
-          <div className="grid grid-cols-1 gap-4">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="p-4">
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Skeleton className="h-16 w-16 rounded-lg" />
-                  <div className="flex-grow space-y-2">
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-4 w-1/2" />
+          {/* Shared Filter Controls Area */}
+          {showSharedFilters && showFilters && (
+            <div className="mt-6 mb-0">
+              <Card className="p-4 space-y-4">
+                {/* Active Filters & Clear */}
+                {hasActiveFilters && (
+                  <div className="flex items-center justify-between pb-2 border-b">
+                    <span className="text-sm text-muted-foreground">
+                      {activeFiltersCount} aktiv{activeFiltersCount !== 1 ? 'a' : ''} filter
+                    </span>
+                    <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-7 text-xs">
+                      <X className="h-3 w-3 mr-1" />
+                      Rensa alla
+                    </Button>
                   </div>
-                  <div className="flex flex-col gap-2 w-full sm:w-48">
-                    <Skeleton className="h-9 w-full" />
-                    <Skeleton className="h-9 w-full" />
+                )}
+
+                {/* Sorting */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex items-center gap-2">
+                    <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium whitespace-nowrap">Sortera efter:</span>
+                    <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortBy)}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="volume">Volym</SelectItem>
+                        <SelectItem value="endDate">Slutdatum</SelectItem>
+                        <SelectItem value="question">Fråga (A-Ö)</SelectItem>
+                        <SelectItem value="odds">Odds</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as SortOrder)}>
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="desc">
+                          {sortBy === 'question' ? 'Ö-A' : 'Högst först'}
+                        </SelectItem>
+                        <SelectItem value="asc">
+                          {sortBy === 'question' ? 'A-Ö' : 'Lägst först'}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </Card>
-            ))}
             </div>
+          )}
+
+          {/* Curated Markets Tab Content */}
+          <TabsContent value="curated" className="mt-6 space-y-6">
+            {error && (
+              <Card className="p-4 border-red-500/50 bg-red-500/10">
+                <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                  <AlertCircle className="h-4 w-4" />
+                  <p>Kunde inte ladda marknader. Försök igen senare.</p>
+                </div>
+              </Card>
             )}
 
-            {/* Markets Display */}
-            {!isLoading && !error && (
-          <>
-            {filteredMarkets.length > 0 ? (
-              <>
-                {viewMode === 'cards' ? (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4">
-                      {paginatedMarkets.map((market) => (
-                        <PredictionMarketCard
-                          key={market.id}
-                          market={market}
-                        />
-                      ))}
-                    </div>
-                    {/* Pagination for cards view */}
-                    {totalPages > 1 && (
-                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
-                        <p className="text-sm text-muted-foreground">
-                          Visar {startIndex + 1}-{Math.min(endIndex, filteredMarkets.length)} av {filteredMarkets.length} marknader
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handlePageChange('prev')}
-                            disabled={currentPage === 1}
-                          >
-                            <ChevronLeft className="h-4 w-4 mr-1" />
-                            Föregående
-                          </Button>
-                          <div className="flex items-center gap-1">
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                              // Show first page, last page, current page, and pages around current
-                              if (
-                                page === 1 ||
-                                page === totalPages ||
-                                (page >= currentPage - 1 && page <= currentPage + 1)
-                              ) {
-                                return (
-                                  <Button
-                                    key={page}
-                                    variant={currentPage === page ? "default" : "outline"}
-                                    size="sm"
-                                    onClick={() => handlePageChange(page)}
-                                    className="min-w-[2.5rem]"
-                                  >
-                                    {page}
-                                  </Button>
-                                );
-                              } else if (
-                                page === currentPage - 2 ||
-                                page === currentPage + 2
-                              ) {
-                                return (
-                                  <span key={page} className="px-2 text-muted-foreground">
-                                    ...
-                                  </span>
-                                );
-                              }
-                              return null;
-                            })}
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handlePageChange('next')}
-                            disabled={currentPage === totalPages}
-                          >
-                            Nästa
-                            <ChevronRight className="h-4 w-4 ml-1" />
-                          </Button>
-                        </div>
+            {isLoading && (
+              <div className="grid grid-cols-1 gap-4">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="p-4">
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <Skeleton className="h-16 w-16 rounded-lg" />
+                      <div className="flex-grow space-y-2">
+                        <Skeleton className="h-6 w-3/4" />
+                        <Skeleton className="h-4 w-1/2" />
                       </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {!isLoading && !error && (
+              <>
+                {filteredMarkets.length > 0 ? (
+                  <>
+                    {viewMode === 'cards' ? (
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4">
+                          {paginatedMarkets.map((market) => (
+                            <PredictionMarketCard key={market.id} market={market} />
+                          ))}
+                        </div>
+                        {/* Pagination */}
+                        {totalPages > 1 && (
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
+                            <p className="text-sm text-muted-foreground">
+                              Visar {startIndex + 1}-{Math.min(endIndex, filteredMarkets.length)} av {filteredMarkets.length} marknader
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handlePageChange('prev')}
+                                disabled={currentPage === 1}
+                              >
+                                <ChevronLeft className="h-4 w-4 mr-1" />
+                                Föregående
+                              </Button>
+                              <div className="flex items-center gap-1">
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                                  if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
+                                    return (
+                                      <Button
+                                        key={page}
+                                        variant={currentPage === page ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => handlePageChange(page)}
+                                        className="min-w-[2.5rem]"
+                                      >
+                                        {page}
+                                      </Button>
+                                    );
+                                  } else if (page === currentPage - 2 || page === currentPage + 2) {
+                                    return <span key={page} className="px-2 text-muted-foreground">...</span>;
+                                  }
+                                  return null;
+                                })}
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handlePageChange('next')}
+                                disabled={currentPage === totalPages}
+                              >
+                                Nästa
+                                <ChevronRight className="h-4 w-4 ml-1" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <PredictionMarketsTable 
+                        markets={paginatedMarkets}
+                        sortBy={sortBy}
+                        sortOrder={sortOrder}
+                        onSort={handleTableSort}
+                      />
                     )}
                   </>
                 ) : (
-                  <PredictionMarketsTable 
-                    markets={paginatedMarkets}
-                    sortBy={sortBy}
-                    sortOrder={sortOrder}
-                    onSort={handleTableSort}
-                  />
+                  <Card className="p-8 text-center">
+                    <p className="text-muted-foreground">
+                      {searchQuery || selectedTags.length > 0
+                        ? "Inga marknader matchade dina filter."
+                        : curatedIds.length === 0 
+                            ? "Inga utvalda marknader att visa än." 
+                            : "Inga marknader tillgängliga just nu."}
+                    </p>
+                    {curatedIds.length === 0 && (
+                       <p className="text-xs text-muted-foreground mt-2">
+                           (Tips: Gå till /admin/markets för att välja marknader)
+                       </p>
+                    )}
+                  </Card>
                 )}
               </>
-            ) : (
-              <Card className="p-8 text-center">
-                <p className="text-muted-foreground">
-                  {searchQuery || selectedTags.length > 0
-                    ? "Inga marknader matchade dina filter."
-                    : curatedIds.length === 0 
-                        ? "Inga utvalda marknader att visa än." 
-                        : "Inga marknader tillgängliga just nu."}
-                </p>
-                {curatedIds.length === 0 && (
-                   <p className="text-xs text-muted-foreground mt-2">
-                       (Tips: Gå till /admin/markets för att välja marknader)
-                   </p>
-                )}
-              </Card>
-            )}
-            </>
             )}
           </TabsContent>
 
           {/* All Markets Search Tab */}
           <TabsContent value="all" className="mt-6">
-            <AllMarketsSearch />
+            <AllMarketsSearch 
+              searchQuery={searchQuery}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              viewMode={viewMode}
+              onSortChange={handleTableSort}
+            />
           </TabsContent>
 
           {/* Saved Markets Tab */}
