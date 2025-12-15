@@ -13,6 +13,7 @@ type FinnhubPriceResponse = {
   profileFetched?: boolean;
 };
 
+// ... (logFinnhubInvocationWarning, logFinnhubInvocationError, parseNumeric, normalizeValue, stripSymbolPrefix, getSymbolVariants, findTickerMatch, buildTickerVariantLookup, normalizeNameKey - behålls oförändrade)
 const logFinnhubInvocationWarning = (...args: unknown[]) => {
   if (import.meta.env.DEV) {
     console.warn(...args);
@@ -166,6 +167,7 @@ export interface HoldingPerformance {
   dayChange: number;
   dayChangePercentage: number;
   hasPurchasePrice: boolean;
+  currency: string;
 }
 
 interface PriceUpdateSummary {
@@ -349,6 +351,7 @@ export const usePortfolioPerformance = () => {
           dayChange,
           dayChangePercentage,
           hasPurchasePrice,
+          currency: holding.currency || priceCurrency || 'SEK',
         });
 
         totalValue += currentValue;
@@ -449,6 +452,7 @@ export const usePortfolioPerformance = () => {
   };
 
   const updateAllPrices = async (): Promise<PriceUpdateSummary | null> => {
+    // ... (resten av funktionen updateAllPrices behålls oförändrad)
     if (!user || updating) {
       return null;
     }
@@ -774,6 +778,7 @@ export const usePortfolioPerformance = () => {
   };
 
   const updatePrices = async (ticker?: string): Promise<PriceUpdateSummary | null> => {
+      // ... (resten av funktionen updatePrices behålls oförändrad)
     if (!user || updating) {
       return null;
     }
