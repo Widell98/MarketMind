@@ -1,9 +1,9 @@
+// src/hooks/usePolymarket.ts
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type {
   PolymarketMarket,
   PolymarketMarketDetail,
-  PolymarketMarketsResponse,
   PolymarketTag,
   PolymarketMarketHistory,
   PolymarketHistoryPoint,
@@ -36,33 +36,30 @@ const callPolymarketAPI = async (
 };
 
 // Transform API response to our Market type
-const transformMarket = (apiMarket: any): PolymarketMarket => {
+// Vi lägger till parentEventTitle som en valfri parameter här
+const transformMarket = (apiMarket: any, parentEventTitle?: string): PolymarketMarket => {
   try {
     let outcomes: any[] = [];
     
-    // Försök hämta outcomes från olika ställen i API-svaret
+    // Försök hämta outcomes
     if (apiMarket.outcomes && Array.isArray(apiMarket.outcomes)) {
       outcomes = apiMarket.outcomes;
     } else if (typeof apiMarket.outcomes === 'string') {
       try { outcomes = JSON.parse(apiMarket.outcomes); } catch {}
     }
     
-    // Om outcomes saknas eller saknar priser, kolla 'outcomePrices' (vanligt i sökresultat)
+    // Fallback för outcomes (vanligt i sökresultat)
     if (outcomes.length === 0 || !outcomes[0]?.price) {
         let prices = apiMarket.outcomePrices;
         if (typeof prices === 'string') {
             try { prices = JSON.parse(prices); } catch {}
         }
-        
         if (prices) {
-            // Kan vara array ["0.5", "0.5"] eller objekt {"0": "0.5"}
             const pricesArray = Array.isArray(prices) ? prices : Object.values(prices);
-            
-            // Skapa outcomes baserat på prislistan
             outcomes = pricesArray.map((p: any, i: number) => ({
                 id: String(i),
-                title: i === 0 ? 'Yes' : 'No', // Default namn
-                price: p // Spara råvärdet, vi konverterar nedan
+                title: i === 0 ? 'Yes' : 'No', 
+                price: p 
             }));
         }
     }
@@ -82,25 +79,29 @@ const transformMarket = (apiMarket: any): PolymarketMarket => {
 
     const marketId = apiMarket.id || apiMarket.conditionId || apiMarket.marketId || '';
     
-    // CLOB Token IDs
     let clobTokenIdsArray: string[] = [];
     if (Array.isArray(apiMarket.clobTokenIds)) clobTokenIdsArray = apiMarket.clobTokenIds;
     else if (typeof apiMarket.clobTokenIds === 'string') {
       try { clobTokenIdsArray = JSON.parse(apiMarket.clobTokenIds); } catch {}
     }
 
+    // LOGIK FÖR TITLAR:
+    // 1. Använd parentEventTitle om den finns (från sökning)
+    // 2. Annars fallback på apiMarket data
+    const eventTitle = parentEventTitle || apiMarket.eventTitle || apiMarket.groupItemTitle;
+    const question = apiMarket.question || apiMarket.title || 'Unknown Market';
+
     return {
       id: marketId,
       slug: apiMarket.slug || marketId,
-      question: apiMarket.question || apiMarket.title || 'Unknown Market',
-      // Här kan vi prioritera eventTitle om vi vill visa "Parent: Child", men oftast är child question bäst.
+      question: question,
+      eventTitle: eventTitle, // Spara titeln
       imageUrl: apiMarket.imageUrl || apiMarket.image || apiMarket.icon,
       description: apiMarket.description,
       volume: volumeNum,
       volumeNum: volumeNum,
       liquidity: Number(apiMarket.liquidity) || 0,
       outcomes: outcomes.map((outcome: any, index: number) => {
-        // HÄR ÄR NYCKELN: Säkra upp priset till ett nummer
         let price = 0;
         const rawPrice = outcome.price || outcome.lastPrice;
         
@@ -113,7 +114,7 @@ const transformMarket = (apiMarket: any): PolymarketMarket => {
         return {
           id: outcome.id || String(index),
           title: outcome.title || outcome.name || (index === 0 ? 'Yes' : 'No'),
-          price: price || 0, // Nu är det garanterat ett nummer (0.0 - 1.0)
+          price: price || 0,
           tokenId: outcome.tokenId || clobTokenIdsArray[index],
         };
       }),
@@ -144,13 +145,10 @@ export const fetchPolymarketMarkets = async (params?: {
     const apiParams: Record<string, any> = {};
     let endpoint = '/markets';
 
-    // --- SÖK-LOGIK: Byt till /public-search vid sökning ---
     if (params?.search && params.search.trim().length > 0) {
       endpoint = '/public-search';
       apiParams.q = params.search;
-      // Sök-API stöder inte vanliga filter, rensa dem
     } else {
-      // Kopiera vanliga parametrar för /markets
       if (params?.limit) apiParams.limit = params.limit;
       if (params?.offset) apiParams.offset = params.offset;
       if (params?.tags && params.tags.length > 0) apiParams.tags = params.tags;
@@ -164,67 +162,47 @@ export const fetchPolymarketMarkets = async (params?: {
     
     let rawItems: any[] = [];
     
-    // --- EXTRAHERA MARKNADER ---
     if (endpoint === '/public-search') {
-        // Sökresultat ligger ofta under 'events' eller 'markets'
         const events = data.events || (Array.isArray(data) ? data : []);
         
-        // "Packa upp" events till marknader
+        // Här packar vi upp Events och skickar med titeln till barnen
         events.forEach((item: any) => {
             if (item.markets && Array.isArray(item.markets) && item.markets.length > 0) {
-                // Lägg till alla marknader från detta event
-                // Vi injicerar parent-data (bild, titel) så att barn-marknaderna ser bättre ut
-                const enrichedMarkets = item.markets.map((m: any) => ({
-                    ...m,
-                    // Använd eventets bild om marknaden saknar bild (vanligt för sub-markets)
-                    image: m.image || m.icon || item.image || item.icon,
-                    // Spara undan eventets titel om vi behöver den senare
-                    eventTitle: item.title
-                }));
+                const enrichedMarkets = item.markets.map((m: any) => {
+                    // Vi berikar API-objektet innan transform
+                    const enriched = {
+                        ...m,
+                        // Ärva bild om barnet saknar det
+                        image: m.image || m.icon || item.image || item.icon,
+                    };
+                    // Skicka med eventets titel som argument 2
+                    return transformMarket(enriched, item.title);
+                });
                 rawItems.push(...enrichedMarkets);
             } else {
-                // Eller lägg till objektet som det är
-                rawItems.push(item);
+                rawItems.push(transformMarket(item));
             }
         });
     } else {
-        // Standard endpoint response
-        if (Array.isArray(data)) rawItems = data;
-        else if (data.data && Array.isArray(data.data)) rawItems = data.data;
-        else if (data.results && Array.isArray(data.results)) rawItems = data.results;
+        if (Array.isArray(data)) rawItems = data.map(item => transformMarket(item));
+        else if (data.data && Array.isArray(data.data)) rawItems = data.data.map(item => transformMarket(item));
+        else if (data.results && Array.isArray(data.results)) rawItems = data.results.map(item => transformMarket(item));
     }
 
-    if (rawItems.length === 0) return [];
-    
-    // Transformera och filtrera
-    const transformedMarkets = rawItems
-      .map(item => {
-        // Fix: Om search result saknar 'question' men har 'title', använd 'title'
-        if (!item.question && (item.title || item.name)) {
-             return transformMarket({ ...item, question: item.title || item.name });
-        }
-        return transformMarket(item);
-      })
-      .filter(market => market.id && market.question);
-    
-    return transformedMarkets;
+    return rawItems.filter(market => market.id && market.question && market.id !== 'error');
   } catch (error) {
     console.error('Error fetching Polymarket markets:', error);
     return [];
   }
 };
 
-// Fetch single market detail
 export const fetchPolymarketMarketDetail = async (slugOrId: string): Promise<PolymarketMarketDetail | null> => {
   try {
     const decodedSlugOrId = decodeURIComponent(slugOrId);
     let data;
-    
-    // Försök hämta via slug endpoint
     try {
       data = await callPolymarketAPI(`/markets/slug/${decodedSlugOrId}`);
     } catch (e) {
-      // Fallback: Försök hämta via ID endpoint
       try {
         data = await callPolymarketAPI(`/markets/${decodedSlugOrId}`);
       } catch (e2) {
@@ -252,7 +230,6 @@ export const fetchPolymarketMarketDetail = async (slugOrId: string): Promise<Pol
   }
 };
 
-// Fetch tags
 export const fetchPolymarketTags = async (): Promise<PolymarketTag[]> => {
   try {
     const data = await callPolymarketAPI('/tags');
@@ -263,12 +240,10 @@ export const fetchPolymarketTags = async (): Promise<PolymarketTag[]> => {
   }
 };
 
-// Transform history to graph data
 export const transformHistoryToGraphData = (
   history: PolymarketMarketHistory | null | undefined
 ): GraphDataPoint[] => {
   if (!history?.points?.length) return [];
-
   return history.points
     .slice()
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
@@ -283,7 +258,6 @@ export const transformHistoryToGraphData = (
     }));
 };
 
-// Hooks
 export const usePolymarketMarkets = (params?: any) => {
   return useQuery({
     queryKey: ['polymarket-markets', params],
@@ -309,76 +283,39 @@ export const usePolymarketTags = () => {
   });
 };
 
-// Hook for market history using CLOB API
 export const usePolymarketMarketHistory = (
   market: PolymarketMarketDetail | null | undefined,
   timeRange: TimeRange = 'all'
 ) => {
   const isEnabled = !!market && !!market.outcomes?.length;
-  
   return useQuery({
     queryKey: ['polymarket-market-history', market?.slug, market?.id, timeRange],
     queryFn: async () => {
       if (!market?.outcomes?.length) return null;
-      
-      const yesOutcome = market.outcomes.find(o => 
-        o.title.toLowerCase() === 'yes' || o.title.toLowerCase().includes('yes')
-      );
-      const primaryOutcome = yesOutcome || market.outcomes[0];
-      
-      const rawTokenId = primaryOutcome.tokenId || primaryOutcome.id;
+      const yesOutcome = market.outcomes.find(o => o.title.toLowerCase() === 'yes') || market.outcomes[0];
+      const rawTokenId = yesOutcome.tokenId || yesOutcome.id;
       let tokenId = rawTokenId;
 
       if ((!tokenId || tokenId.length < 10) && market.clobTokenIds?.length) {
-         const index = market.outcomes.indexOf(primaryOutcome);
-         if (index >= 0 && market.clobTokenIds[index]) {
-             tokenId = market.clobTokenIds[index];
-         }
+         const index = market.outcomes.indexOf(yesOutcome);
+         if (index >= 0 && market.clobTokenIds[index]) tokenId = market.clobTokenIds[index];
       }
 
+      // Mocka historia om inget token ID finns
       if (!tokenId || tokenId.length < 5) {
-        return {
-          marketId: market.id,
-          marketSlug: market.slug,
-          points: generateMockHistoryForOutcome(primaryOutcome, 90),
-        };
+        return { marketId: market.id, marketSlug: market.slug, points: [] };
       }
       
       try {
         const now = Math.floor(Date.now() / 1000);
         let apiParams: any = { market: tokenId };
-
         switch (timeRange) {
-          case '1h':
-            apiParams.startTs = now - (60 * 60);
-            apiParams.endTs = now;
-            apiParams.fidelity = 1; 
-            break;
-          case '6h':
-            apiParams.startTs = now - (6 * 60 * 60);
-            apiParams.endTs = now;
-            apiParams.fidelity = 5; 
-            break;
-          case '1d':
-            apiParams.startTs = now - (24 * 60 * 60);
-            apiParams.endTs = now;
-            apiParams.fidelity = 10; 
-            break;
-          case '1w':
-            apiParams.startTs = now - (7 * 24 * 60 * 60);
-            apiParams.endTs = now;
-            apiParams.fidelity = 60; 
-            break;
-          case '1m':
-            apiParams.startTs = now - (30 * 24 * 60 * 60);
-            apiParams.endTs = now;
-            apiParams.fidelity = 120;
-            break;
-          case 'all':
-          default:
-            apiParams.interval = 'max';
-            apiParams.fidelity = 60;
-            break;
+          case '1h': apiParams.startTs = now - 3600; apiParams.fidelity = 1; break;
+          case '6h': apiParams.startTs = now - 21600; apiParams.fidelity = 5; break;
+          case '1d': apiParams.startTs = now - 86400; apiParams.fidelity = 10; break;
+          case '1w': apiParams.startTs = now - 604800; apiParams.fidelity = 60; break;
+          case '1m': apiParams.startTs = now - 2592000; apiParams.fidelity = 120; break;
+          default: apiParams.interval = 'max'; apiParams.fidelity = 60; break;
         }
 
         const historyData = await callPolymarketAPI('/prices-history', apiParams, 'clob');
@@ -388,54 +325,18 @@ export const usePolymarketMarketHistory = (
           const points: PolymarketHistoryPoint[] = historyArray.map((point: any) => ({
             timestamp: new Date((point.t || point.timestamp) * 1000).toISOString(),
             price: point.p ?? point.price ?? 0,
-            outcomeId: primaryOutcome.id,
-            outcomeTitle: primaryOutcome.title,
+            outcomeId: yesOutcome.id,
+            outcomeTitle: yesOutcome.title,
           }));
-          
-          return {
-            marketId: market.id,
-            marketSlug: market.slug,
-            points,
-          };
+          return { marketId: market.id, marketSlug: market.slug, points };
         }
-        
-        return {
-          marketId: market.id,
-          marketSlug: market.slug,
-          points: generateMockHistoryForOutcome(primaryOutcome, 90),
-        };
+        return { marketId: market.id, marketSlug: market.slug, points: [] };
       } catch (error) {
         console.error('History fetch failed:', error);
-        return {
-          marketId: market.id,
-          marketSlug: market.slug,
-          points: generateMockHistoryForOutcome(primaryOutcome, 90),
-        };
+        return { marketId: market.id, marketSlug: market.slug, points: [] };
       }
     },
     enabled: isEnabled,
     staleTime: 60000,
   });
-};
-
-const generateMockHistoryForOutcome = (outcome: PolymarketOutcome, days: number): PolymarketHistoryPoint[] => {
-  const now = new Date();
-  const points: PolymarketHistoryPoint[] = [];
-  const basePrice = outcome.price || 0.5;
-  
-  for (let i = days; i >= 0; i--) {
-    const date = new Date(now);
-    date.setDate(date.getDate() - i);
-    const seed = (i * 1000) % 1000;
-    const random = (Math.sin(seed) + 1) / 2;
-    const variation = (random - 0.5) * 0.2;
-    
-    points.push({
-      timestamp: date.toISOString(),
-      price: Math.max(0, Math.min(1, basePrice + variation)),
-      outcomeId: outcome.id,
-      outcomeTitle: outcome.title,
-    });
-  }
-  return points;
 };
