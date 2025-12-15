@@ -1,4 +1,4 @@
-// Polymarket Gamma API Types
+// src/types/polymarket.ts
 
 export interface PolymarketOutcome {
   id: string;
@@ -6,13 +6,14 @@ export interface PolymarketOutcome {
   price: number; // 0.0 to 1.0
   volume?: number;
   description?: string;
-  tokenId?: string; // CLOB token ID for fetching historical data
+  tokenId?: string;
 }
 
 export interface PolymarketMarket {
   id: string;
   slug: string;
   question: string;
+  eventTitle?: string; // <-- NYTT FÄLT HÄR
   imageUrl?: string;
   description?: string;
   volume: number;
@@ -43,7 +44,7 @@ export interface PolymarketMarketDetail extends PolymarketMarket {
   archived?: boolean;
   collateralToken?: string;
   outcomesDetails?: PolymarketOutcome[];
-  clobTokenIds?: string[]; // Array of token IDs for CLOB API, indexed by outcome position
+  clobTokenIds?: string[];
 }
 
 export interface PolymarketEvent {
@@ -83,12 +84,10 @@ export interface PolymarketHistoryPoint {
 export interface PolymarketMarketHistory {
   marketId: string;
   marketSlug: string;
-  points: PolymarketHistoryPoint[]; // Simplified to single array of points
+  points: PolymarketHistoryPoint[];
 }
 
-// Helper type for graph data transformation (simplified for single price line)
 export interface GraphDataPoint {
   date: string;
-  price: number; // Price as percentage (0-100)
+  price: number;
 }
-
