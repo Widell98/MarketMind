@@ -2,7 +2,9 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { IntentType } from './intent-types.ts';
-import { detectUserIntentWithOpenAI } from './intent-detector.ts';
+// VIKTIGT: Se till att conversation-planner.ts är skapad i samma mapp
+import { planConversationWithOpenAI } from './conversation-planner.ts';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -15,6 +17,7 @@ const PRIMARY_CHAT_MODEL = Deno.env.get('OPENAI_PORTFOLIO_MODEL')
 const LIGHTWEIGHT_CHAT_MODEL = Deno.env.get('OPENAI_PORTFOLIO_LIGHT_MODEL')
   || 'gpt-4o-mini';
 
+// Används inte längre för intents, men kan vara bra att ha kvar som fallback-konstant
 const INLINE_INTENT_MODEL = Deno.env.get('OPENAI_INTENT_MODEL')
   || PRIMARY_CHAT_MODEL;
 
@@ -511,299 +514,8 @@ const buildHeadingDirectives = ({ intent }: HeadingDirectiveInput): string => {
   return directives.join('\n');
 };
 
-type PersonalizationPromptInput = {
-  aiMemory?: Record<string, unknown> | null;
-  favoriteSectors?: string[] | null;
-  currentGoals?: string[] | null;
-  recentMessages?: string[] | null;
-  macroTheme?: MacroTheme | null;
-  analysisAngles?: AnalysisAngle[] | null;
-};
-
-const buildPersonalizationPrompt = ({
-  aiMemory,
-  favoriteSectors,
-  currentGoals,
-  recentMessages,
-  macroTheme,
-  analysisAngles,
-}: PersonalizationPromptInput): string => {
-  const sections: string[] = [];
-
-  if (aiMemory?.communication_style === 'concise') {
-    sections.push('- Använd korta meningar och håll presentationen stram när frågan inte kräver djupanalys.');
-  } else if (aiMemory?.communication_style === 'detailed') {
-    sections.push('- Ge utförliga förklaringar och resonemang – användaren uppskattar detaljnivå.');
-  }
-
-  if (Array.isArray(favoriteSectors) && favoriteSectors.length > 0) {
-    sections.push(`- Knyt eventuella förslag till användarens favoritsektorer: ${favoriteSectors.join(', ')}.`);
-  }
-
-  if (Array.isArray(currentGoals) && currentGoals.length > 0) {
-    sections.push(`- Säkerställ att råden stödjer målen: ${currentGoals.join(', ')}.`);
-  }
-
-  const normalizedGoals = Array.isArray(currentGoals)
-    ? currentGoals
-      .map(goal => (typeof goal === 'string' ? goal.toLowerCase() : null))
-      .filter((goal): goal is string => Boolean(goal))
-    : [];
-
-  if (normalizedGoals.some(goal => goal.includes('pension'))) {
-    sections.push('- Lyft hur råden passar ett långsiktigt pensionsmål och koppla till makrotrender som påverkar värdetillväxt.');
-  }
-  if (normalizedGoals.some(goal => goal.includes('passiv inkomst') || goal.includes('utdel'))) {
-    sections.push('- Prioritera kassaflöde, utdelningsstabilitet och balansräkning när du föreslår bolag.');
-  }
-  if (normalizedGoals.some(goal => goal.includes('barnspar'))) {
-    sections.push('- Betona stabilitet och tidshorisont för barns sparande snarare än kortsiktig avkastning.');
-  }
-
-  const riskComfortData = (aiMemory?.risk_comfort_patterns as Record<string, unknown> | null) ?? null;
-  const macroSource = macroTheme
-    || (isMacroTheme(riskComfortData?.macro_focus_topic as string) ? riskComfortData?.macro_focus_topic as MacroTheme : null)
-    || detectMacroThemeFromMessages(Array.isArray(recentMessages) ? recentMessages : []);
-  const macroInstruction = getMacroInstruction(macroSource);
-  if (macroInstruction) {
-    sections.push(macroInstruction);
-  }
-
-  const memoryAnglesSource = Array.isArray((riskComfortData as Record<string, unknown> | null)?.analysis_focus_preferences)
-    ? (riskComfortData as { analysis_focus_preferences: unknown[] }).analysis_focus_preferences
-    : (Array.isArray((aiMemory as Record<string, unknown> | null)?.analysis_focus_preferences)
-      ? (aiMemory as { analysis_focus_preferences: unknown[] }).analysis_focus_preferences
-      : []);
-  const memoryAngles = memoryAnglesSource.filter(isAnalysisAngle);
-  const combinedAngles = new Set<AnalysisAngle>([
-    ...(analysisAngles ?? []),
-    ...memoryAngles,
-  ]);
-  combinedAngles.forEach(angle => sections.push(getAnalysisAngleInstruction(angle)));
-
-  return sections.length > 0 ? sections.join('\n') : '';
-};
-
-const SWEDISH_TAVILY_DOMAINS = [
-  'di.se',
-  'affarsvarlden.se',
-  'placera.se',
-  'www.placera.se',
-  'www.placera.se/skribenter/199',
-  'placera.se/skribenter/199',
-  'privataaffarer.se',
-  'svd.se',
-  'dn.se',
-  'efn.se',
-  'breakit.se',
-  'news.cision.com',
-];
-
-const INTERNATIONAL_TAVILY_DOMAINS = [
-  'reuters.com',
-  'bloomberg.com',
-  'ft.com',
-  'cnbc.com',
-  'wsj.com',
-  'marketwatch.com',
-  'finance.yahoo.com',
-  'investing.com',
-  'morningstar.com',
-  'marketscreener.com',
-  'seekingalpha.com',
-  'benzinga.com',
-  'globenewswire.com',
-  'sec.gov',
-];
-
-const TRUSTED_TAVILY_DOMAINS = Array.from(new Set([
-  ...SWEDISH_TAVILY_DOMAINS,
-  ...INTERNATIONAL_TAVILY_DOMAINS,
-]));
-
-const SWEDISH_PRIORITY_TAVILY_DOMAINS = Array.from(new Set([
-  ...SWEDISH_TAVILY_DOMAINS,
-  ...INTERNATIONAL_TAVILY_DOMAINS,
-]));
-
-const INTERNATIONAL_PRIORITY_TAVILY_DOMAINS = Array.from(new Set([
-  ...INTERNATIONAL_TAVILY_DOMAINS,
-  ...SWEDISH_TAVILY_DOMAINS,
-]));
-
-const EXTENDED_TAVILY_DOMAINS = Array.from(new Set([
-  ...TRUSTED_TAVILY_DOMAINS,
-  'marketbeat.com',
-  'stockanalysis.com',
-  'themotleyfool.com',
-  'barrons.com',
-  'forbes.com',
-  'economist.com',
-  'polymarket.com', 
-  'kalshi.com'
-]));
-
-const DEFAULT_EXCLUDED_TAVILY_DOMAINS = [
-  'reddit.com',
-  'www.reddit.com',
-  'quora.com',
-  'twitter.com',
-  'x.com',
-  'facebook.com',
-  'instagram.com',
-  'tiktok.com',
-  'youtube.com',
-  'linkedin.com',
-  'medium.com',
-  'stocktwits.com',
-  'discord.com',
-  'pinterest.com',
-];
-
-const RECENT_NEWS_MAX_DAYS = 3;
-const RECENT_MARKET_NEWS_MAX_DAYS = 7;
-const RECENT_FINANCIAL_DATA_MAX_DAYS = 45;
-const DEFAULT_UNDATED_FINANCIAL_DOMAINS = ['stockanalysis.com'];
-
-const FINANCIAL_RELEVANCE_KEYWORDS = [
-  'aktie',
-  'aktien',
-  'aktier',
-  'börs',
-  'marknad',
-  'marknaden',
-  'stock',
-  'stocks',
-  'share',
-  'shares',
-  'equity',
-  'equities',
-  'revenue',
-  'omsättning',
-  'earnings',
-  'vinster',
-  'profit',
-  'net income',
-  'eps',
-  'utdelning',
-  'dividend',
-  'guidance',
-  'forecast',
-  'prognos',
-  'resultat',
-  'rapport',
-  'kvartal',
-  'quarter',
-  'valuation',
-  'värdering',
-  'cash flow',
-  'kassaflöde',
-  'yield',
-  'ränta',
-  'interest',
-  'inflation',
-  'ekonomi',
-  'economy',
-  'market',
-  'markets',
-  'investor',
-  'investment',
-  'analyst',
-  'nyckeltal',
-  'price',
-  'pris',
-];
-
 const OPENAI_EMBEDDING_MODEL = 'text-embedding-3-small';
-const INTENT_EMBEDDING_CACHE_KEY = 'intent_centroids_v1';
-const EMBEDDING_SIMILARITY_THRESHOLD = 0.78;
-
-const INTENT_EXAMPLES: Record<IntentType, string[]> = {
-  stock_analysis: [
-    'Kan du analysera Volvo-aktien åt mig?',
-    'Vad är din syn på Evolution Gaming just nu?',
-    'Hur ser fundamenta ut för Atlas Copco?',
-  ],
-  prediction_analysis: [ 
-    'Vad är oddsen på Polymarket för valet?',
-    'Tror du att Bitcoin når 100k innan nyår enligt marknaden?',
-    'Analysera detta bet',
-    'Vem vinner valet enligt oddsen?',
-    'Är sannolikheten för räntesänkning prisad korrekt?',
-    'Jag vill diskutera prediktionsmarknaden',
-  ],
-  portfolio_optimization: [
-    'Hur kan jag balansera om min portfölj?',
-    'Vilken viktning bör jag ha mellan teknik och hälsovård?',
-    'Behöver jag justera min portfölj för att minska risken?',
-  ],
-  buy_sell_decisions: [
-    'Ska jag sälja mina H&M-aktier nu?',
-    'Är det läge att köpa mer Investor?',
-    'Borde jag minska positionen i Tesla?',
-  ],
-  market_analysis: [
-    'Vad händer på börsen den här veckan?',
-    'Hur påverkar inflationen marknaden just nu?',
-    'Kan du ge en översikt över makrotrenderna?',
-  ],
-  general_news: [
-    'Ge mig en marknadssammanfattning för idag.',
-    'Vilka är de största nyheterna på börsen den här veckan?',
-    'Vad har hänt på marknaden nyligen?',
-  ],
-  news_update: [
-    'Hur påverkade dagens rapporter min portfölj?',
-    'Vad är senaste nytt om mina innehav?',
-    'Finns det nyheter från igår som påverkar mina aktier?',
-  ],
-  general_advice: [
-    'Hur bör jag tänka kring långsiktigt sparande?',
-    'Har du några investeringsidéer för en nybörjare?',
-    'Vilka aktier passar en balanserad strategi?',
-  ],
-};
-
-type IntentCentroidMap = Record<IntentType, number[]>;
-
-let inMemoryIntentCentroids: IntentCentroidMap | null = null;
 const messageEmbeddingCache = new Map<string, number[]>();
-
-const averageVectors = (vectors: number[][]): number[] => {
-  if (vectors.length === 0) return [];
-  const dimension = vectors[0].length;
-  const sums = new Array(dimension).fill(0);
-
-  for (const vector of vectors) {
-    for (let i = 0; i < dimension; i += 1) {
-      sums[i] += vector[i];
-    }
-  }
-
-  return sums.map(value => value / vectors.length);
-};
-
-const cosineSimilarity = (a: number[], b: number[]): number => {
-  if (a.length === 0 || b.length === 0 || a.length !== b.length) {
-    return -1;
-  }
-
-  let dot = 0;
-  let normA = 0;
-  let normB = 0;
-
-  for (let i = 0; i < a.length; i += 1) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-
-  if (normA === 0 || normB === 0) {
-    return -1;
-  }
-
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
-};
 
 const fetchEmbedding = async (text: string, openAIApiKey: string): Promise<number[] | null> => {
   if (messageEmbeddingCache.has(text)) {
@@ -839,269 +551,6 @@ const fetchEmbedding = async (text: string, openAIApiKey: string): Promise<numbe
   }
 
   return null;
-};
-
-const fetchCentroidsFromSupabase = async (supabase: any): Promise<IntentCentroidMap | null> => {
-  try {
-    const { data, error } = await supabase
-      .from('kv_store')
-      .select('value')
-      .eq('key', INTENT_EMBEDDING_CACHE_KEY)
-      .maybeSingle();
-
-    if (error) {
-      console.warn('Failed to load intent centroids from kv_store:', error.message ?? error);
-      return null;
-    }
-
-    if (data?.value) {
-      if (typeof data.value === 'string') {
-        return JSON.parse(data.value);
-      }
-      return data.value as IntentCentroidMap;
-    }
-  } catch (error) {
-    console.warn('Unexpected error when loading centroids:', error);
-  }
-
-  return null;
-};
-
-const persistCentroidsToSupabase = async (supabase: any, centroids: IntentCentroidMap): Promise<void> => {
-  try {
-    const payload = {
-      key: INTENT_EMBEDDING_CACHE_KEY,
-      value: JSON.stringify(centroids),
-    };
-
-    const { error } = await supabase
-      .from('kv_store')
-      .upsert(payload, { onConflict: 'key' });
-
-    if (error) {
-      console.warn('Failed to persist intent centroids:', error.message ?? error);
-    }
-  } catch (error) {
-    console.warn('Unexpected error when persisting centroids:', error);
-  }
-};
-
-const loadIntentCentroids = async (
-  supabase: any,
-  openAIApiKey: string,
-): Promise<IntentCentroidMap | null> => {
-  if (inMemoryIntentCentroids) {
-    return inMemoryIntentCentroids;
-  }
-
-  const cached = await fetchCentroidsFromSupabase(supabase);
-  if (cached) {
-    inMemoryIntentCentroids = cached;
-    return cached;
-  }
-
-  const centroids: Partial<IntentCentroidMap> = {};
-
-  for (const [intent, examples] of Object.entries(INTENT_EXAMPLES) as [IntentType, string[]][]) {
-    const vectors: number[][] = [];
-    for (const example of examples) {
-      const embedding = await fetchEmbedding(example, openAIApiKey);
-      if (embedding) {
-        vectors.push(embedding);
-      }
-    }
-
-    if (vectors.length > 0) {
-      centroids[intent] = averageVectors(vectors);
-    }
-  }
-
-  const result = centroids as IntentCentroidMap;
-  inMemoryIntentCentroids = result;
-
-  await persistCentroidsToSupabase(supabase, result);
-
-  return result;
-};
-
-const classifyIntentWithEmbeddings = async (
-  message: string,
-  supabase: any,
-  openAIApiKey: string,
-): Promise<IntentType | null> => {
-  if (message.trim().length < 3) {
-    return null;
-  }
-
-  const centroids = await loadIntentCentroids(supabase, openAIApiKey);
-  if (!centroids) {
-    return null;
-  }
-
-  const messageEmbedding = await fetchEmbedding(message, openAIApiKey);
-  if (!messageEmbedding) {
-    return null;
-  }
-
-  let bestIntent: IntentType | null = null;
-  let bestScore = -1;
-
-  for (const [intent, centroid] of Object.entries(centroids) as [IntentType, number[]][]) {
-    const score = cosineSimilarity(messageEmbedding, centroid);
-    if (score > bestScore) {
-      bestScore = score;
-      bestIntent = intent;
-    }
-  }
-
-  if (bestIntent && bestScore >= EMBEDDING_SIMILARITY_THRESHOLD) {
-    console.log('Intent classified via embeddings:', bestIntent, 'score:', bestScore.toFixed(3));
-    return bestIntent;
-  }
-
-  console.log('Embedding classification below threshold. Best intent:', bestIntent, 'score:', bestScore.toFixed(3));
-  return null;
-};
-
-const classifyIntentWithLLM = async (
-  message: string,
-  openAIApiKey: string,
-): Promise<IntentType | null> => {
-  try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${openAIApiKey}`,
-      },
-      body: JSON.stringify({
-        model: LIGHTWEIGHT_CHAT_MODEL,
-        temperature: 0,
-        max_completion_tokens: 5,
-        messages: [
-          {
-            role: 'system',
-            content: 'Klassificera användarens fråga som en av följande kategorier: stock_analysis, news_update, general_news, market_analysis, portfolio_optimization, buy_sell_decisions, general_advice. Svara endast med etiketten.',
-          },
-          {
-            role: 'user',
-            content: message,
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      console.warn('LLM intent classification failed with status', response.status);
-      return null;
-    }
-
-    const data = await response.json();
-    const content = data?.choices?.[0]?.message?.content?.trim()?.toLowerCase?.();
-    const label = (content ?? '').replace(/[^a-z_]/g, '') as IntentType;
-    if ((INTENT_EXAMPLES as Record<string, string[]>)[label]) {
-      console.log('Intent classified via LLM:', label);
-      return label;
-    }
-  } catch (error) {
-    console.warn('LLM intent classification error:', error);
-  }
-
-  return null;
-};
-
-const extractEntityCandidates = (
-  message: string,
-  knownNames: string[] = [],
-): string[] => {
-  const entities = new Set<string>();
-
-  const capitalizedPattern = /\b([A-ZÅÄÖ][\wÅÄÖåäö-]+(?:\s+[A-ZÅÄÖ][\wÅÄÖåäö-]+){0,2})\b/g;
-  let match: RegExpExecArray | null;
-  while ((match = capitalizedPattern.exec(message)) !== null) {
-    const candidate = match[1];
-    if (candidate && candidate.length > 2) {
-      entities.add(candidate.trim());
-    }
-  }
-
-  const lowerMessage = message.toLowerCase();
-  for (const name of knownNames) {
-    if (typeof name !== 'string') continue;
-    const normalizedName = name.trim();
-    if (!normalizedName) continue;
-    const simple = normalizedName.toLowerCase();
-    if (lowerMessage.includes(simple)) {
-      entities.add(normalizedName);
-    }
-  }
-
-  return Array.from(entities).slice(0, 5);
-};
-
-type EntityQueryInput = {
-  message: string;
-  tickers: string[];
-  companyNames: string[];
-  hasRealTimeTrigger: boolean;
-  userIntent: IntentType;
-  detectedEntities?: string[];
-};
-
-const buildEntityAwareQuery = ({
-  message,
-  tickers,
-  companyNames,
-  hasRealTimeTrigger,
-  userIntent,
-  detectedEntities,
-}: EntityQueryInput): string | null => {
-  
-  // --- NY LOGIK FÖR PREDIKTIONER ---
-  if (userIntent === 'prediction_analysis') {
-    // Rensa bort onödiga ord för att få en ren söksträng
-    const cleanMessage = message
-      .replace(/diskutera|analysera|vad tror du om|prediktionsmarknaden/gi, '')
-      .trim();
-      
-    // Tvinga sökningen att leta efter odds på Polymarket
-    return `${cleanMessage} polymarket odds current probability`;
-  }
-  // ---------------------------------
-
-  const entitySet = new Set<string>();
-  for (const ticker of tickers.slice(0, 4)) {
-    if (ticker) {
-      entitySet.add(ticker.toUpperCase());
-    }
-  }
-
-  if (Array.isArray(detectedEntities)) {
-    detectedEntities.forEach(entity => {
-      if (typeof entity === 'string' && entity.trim()) {
-        const formatted = entity.trim();
-        const maybeTicker = formatted.length <= 8 ? formatted.toUpperCase() : formatted;
-        entitySet.add(maybeTicker);
-      }
-    });
-  }
-
-  for (const name of extractEntityCandidates(message, companyNames)) {
-    entitySet.add(name);
-  }
-
-  if (entitySet.size === 0) {
-    return hasRealTimeTrigger || userIntent === 'news_update' || userIntent === 'general_news'
-      ? `${message} senaste nyheter`
-      : null;
-  }
-
-  const entities = Array.from(entitySet).slice(0, 4);
-  const descriptor = hasRealTimeTrigger || userIntent === 'news_update' || userIntent === 'general_news'
-    ? 'senaste nyheter och rapporter'
-    : 'fördjupad analys';
-
-  return `${entities.join(' ')} ${descriptor}`;
 };
 
 const EXCHANGE_RATES: Record<string, number> = {
@@ -1266,16 +715,14 @@ const RETURN_KEYWORD_PATTERNS = [
   /resultat/i,
   /vinst/i,
   /förlust/i,
-  // NYTT: Fångar "hur mycket är X upp/ner" utan att kräva ordet "jag"
   /hur.*mycket.*(?:är|ligger|gick).*(?:upp|ner|plus|minus)/i, 
-  /hur.*mycket.*(?:är|ligger|gick).*jag.*upp/i, // Behåll den gamla för säkerhets skull
+  /hur.*mycket.*(?:är|ligger|gick).*jag.*upp/i,
   /ligger.*(?:plus|minus)/i,
   /hur.*går.*det.*för/i,
   /hur.*har.*presterat/i,
   /vad.*är.*min.*vinst/i,
   /hur.*mycket.*tjänat/i,
   /hur.*mycket.*förlorat/i,
-  // NYTT: Fångar explicita frågor om inköpskurs/GAV
   /inköpskurs/i,
   /gav/i,
   /genomsnittlig.*anskaffningsvärde/i,
@@ -1324,7 +771,6 @@ const detectReturnQuestion = (
 ): ReturnQuestionAnalysis => {
   const lowerMessage = message.toLowerCase();
   
-  // Check if it's a return-related question at all
   const hasReturnKeywords = RETURN_KEYWORD_PATTERNS.some(pattern => pattern.test(message));
 
   if (!hasReturnKeywords) {
@@ -1336,7 +782,6 @@ const detectReturnQuestion = (
     };
   }
 
-  // Check for total return questions
   const isTotalQuestion = TOTAL_RETURN_PATTERNS.some(pattern => pattern.test(message));
   if (isTotalQuestion) {
     return {
@@ -1347,7 +792,6 @@ const detectReturnQuestion = (
     };
   }
 
-  // Check for ranking/comparison questions (vilka innehav har gett mest avkastning)
   const isRankingQuestion = RANKING_RETURN_PATTERNS.some(pattern => pattern.test(message));
   if (isRankingQuestion) {
     return {
@@ -1358,7 +802,6 @@ const detectReturnQuestion = (
     };
   }
 
-  // Check for all holdings questions
   const isAllHoldingsQuestion = ALL_HOLDINGS_PATTERNS.some(pattern => pattern.test(message));
   if (isAllHoldingsQuestion) {
     return {
@@ -1369,15 +812,12 @@ const detectReturnQuestion = (
     };
   }
 
-  // Extract mentioned tickers and company names
   const mentionedTickers = detectedTickers || [];
   const mentionedCompanyNames = detectedEntities.filter(entity => {
-    // Filter out tickers (usually short uppercase strings)
     const isLikelyTicker = /^[A-Z0-9]{1,6}$/.test(entity);
     return !isLikelyTicker && entity.length > 2;
   });
 
-  // If specific tickers or companies are mentioned, it's a specific question
   if (mentionedTickers.length > 0 || mentionedCompanyNames.length > 0) {
     return {
       isReturnQuestion: true,
@@ -1387,7 +827,6 @@ const detectReturnQuestion = (
     };
   }
 
-  // Default to total if return keywords found but no specific pattern
   return {
     isReturnQuestion: true,
     questionType: 'total',
@@ -1414,11 +853,9 @@ const matchHoldingsToQuestion = (
   }
 
   if (questionAnalysis.questionType === 'ranking') {
-    // Return all holdings with purchase price, sorted by return percentage (highest first)
     return holdingsWithReturns
       .filter(item => item.hasPurchasePrice && item.returnPercentage !== null)
       .sort((a, b) => {
-        // Sort by return percentage descending (highest return first)
         const returnA = a.returnPercentage ?? 0;
         const returnB = b.returnPercentage ?? 0;
         return returnB - returnA;
@@ -1426,13 +863,11 @@ const matchHoldingsToQuestion = (
   }
 
   if (questionAnalysis.questionType === 'all') {
-    // Return all holdings with purchase price, sorted by value
     return holdingsWithReturns
       .filter(item => item.hasPurchasePrice && item.returnPercentage !== null)
       .sort((a, b) => b.value.valueInSEK - a.value.valueInSEK);
   }
 
-  // Specific question - match by ticker or company name
   const matchedHoldings: HoldingWithReturn[] = [];
 
   for (const holdingData of holdingsWithReturns) {
@@ -1444,13 +879,11 @@ const matchHoldingsToQuestion = (
     const symbol = typeof holding.symbol === 'string' ? holding.symbol.toUpperCase() : null;
     const name = typeof holding.name === 'string' ? holding.name.toLowerCase() : null;
 
-    // Check ticker match
     const tickerMatch = questionAnalysis.mentionedTickers.some(ticker => {
       const normalizedTicker = ticker.toUpperCase();
       return symbol === normalizedTicker;
     });
 
-    // Check company name match
     const nameMatch = questionAnalysis.mentionedCompanyNames.some(entity => {
       const normalizedEntity = entity.toLowerCase();
       if (!name) return false;
@@ -1463,409 +896,6 @@ const matchHoldingsToQuestion = (
   }
 
   return matchedHoldings;
-};
-
-type RealTimeAssessment = {
-  needsRealtime: boolean;
-  signals: string[];
-  questionType?: string;
-  recommendationPreference?: RecommendationPreference;
-  usedLLM: boolean;
-};
-
-type NewsIntentEvaluationParams = {
-  message: string;
-  hasPortfolio: boolean;
-  apiKey: string;
-};
-
-type NewsIntentLabel = 'news_update' | 'general_news' | 'none';
-
-const NEWS_INTENT_SCHEMA = {
-  name: 'news_intent_selection',
-  schema: {
-    type: 'object',
-    properties: {
-      intent: {
-        type: 'string',
-        enum: ['news_update', 'general_news', 'none'],
-        default: 'none',
-      },
-    },
-    required: ['intent'],
-    additionalProperties: false,
-  },
-} as const;
-
-const evaluateNewsIntentWithOpenAI = async ({
-  message,
-  hasPortfolio,
-  apiKey,
-}: NewsIntentEvaluationParams): Promise<IntentType | null> => {
-  if (!apiKey || !message || !message.trim()) {
-    return null;
-  }
-
-  try {
-    const systemPrompt = `Du hjälper en svensk finansiell assistent att välja rätt typ av nyhetssvar.\n- Välj \"news_update\" om användaren sannolikt vill ha en uppdatering om sina innehav eller portfölj.\n- Välj \"general_news\" om användaren vill ha ett brett marknadsbrev eller nyhetssvep.\n- Returnera \"none\" om inget av alternativen passar.\nSvara alltid med giltig JSON.`;
-
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      {
-        role: 'user',
-        content: `Meddelande: "${message.trim()}"\nHar användaren portföljdata hos oss: ${hasPortfolio ? 'ja' : 'nej'}\nVilket nyhetssvar förväntas?`,
-      },
-    ];
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: INLINE_INTENT_MODEL,
-        temperature: 0,
-        response_format: { type: 'json_schema', json_schema: NEWS_INTENT_SCHEMA },
-        messages,
-      }),
-    });
-
-    if (!response.ok) {
-      console.warn('News intent evaluation failed', response.status, await response.text());
-      return null;
-    }
-
-    const data = await response.json();
-    const rawContent = data?.choices?.[0]?.message?.content;
-
-    if (!rawContent || typeof rawContent !== 'string') {
-      return null;
-    }
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(rawContent);
-    } catch (error) {
-      console.warn('Failed to parse news intent response:', error);
-      return null;
-    }
-
-    const intentRaw = typeof (parsed as any)?.intent === 'string' ? (parsed as any).intent as NewsIntentLabel : 'none';
-
-    if (intentRaw === 'news_update' || intentRaw === 'general_news') {
-      return intentRaw;
-    }
-
-    return null;
-  } catch (error) {
-    console.warn('News intent evaluator error:', error);
-    return null;
-  }
-};
-
-type StockIntentEvaluationParams = {
-  message: string;
-  detectedTickers: string[];
-  heuristicsTriggered: boolean;
-  hasStockContext: boolean;
-  analysisCue: boolean;
-  apiKey: string;
-};
-
-type StockIntentEvaluationResult = {
-  classification: 'stock_focus' | 'non_stock';
-  rationale?: string;
-};
-
-const STOCK_INTENT_SCHEMA = {
-  name: 'stock_intent_classification',
-  schema: {
-    type: 'object',
-    properties: {
-      classification: {
-        type: 'string',
-        enum: ['stock_focus', 'non_stock'],
-        default: 'non_stock',
-      },
-      rationale: {
-        type: 'string',
-        maxLength: 200,
-      },
-    },
-    required: ['classification'],
-    additionalProperties: false,
-  },
-} as const;
-
-const evaluateStockIntentWithOpenAI = async ({
-  message,
-  detectedTickers,
-  heuristicsTriggered,
-  hasStockContext,
-  analysisCue,
-  apiKey,
-}: StockIntentEvaluationParams): Promise<StockIntentEvaluationResult | null> => {
-  const trimmedMessage = message.trim();
-
-  if (!apiKey || !trimmedMessage) {
-    return null;
-  }
-
-  try {
-    const systemPrompt = `Du hjälper en svensk finansiell assistent att avgöra hur svaret ska formuleras.\n- Välj \"stock_focus\" om användaren förväntar sig resonemang om ett specifikt bolag eller dess aktie.\n- Välj \"non_stock\" om frågan främst gäller portföljer, sparande, index, makro eller andra bredare ämnen.\n- Använd signalerna men gör en egen helhetsbedömning.\n- Svara alltid med giltig JSON enligt schemat.`;
-
-    const tickerLine = detectedTickers.length > 0
-      ? detectedTickers.join(', ')
-      : 'inga';
-
-    const userContent = [
-      `Meddelande: "${trimmedMessage}"`,
-      `Identifierade tickers: ${tickerLine}`,
-      `Heuristik markerade som aktiefråga: ${heuristicsTriggered ? 'ja' : 'nej'}`,
-      `Investerings- eller bolagskontext hittad: ${hasStockContext ? 'ja' : 'nej'}`,
-      `Direkt analysfraser hittade: ${analysisCue ? 'ja' : 'nej'}`,
-      'Avgör om detta ska besvaras som en aktiespecifik fråga.',
-    ].join('\n');
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: INLINE_INTENT_MODEL,
-        temperature: 0,
-        response_format: { type: 'json_schema', json_schema: STOCK_INTENT_SCHEMA },
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userContent },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      console.warn('Stock intent evaluation failed', response.status, await response.text());
-      return null;
-    }
-
-    const data = await response.json();
-    const rawContent = data?.choices?.[0]?.message?.content;
-
-    if (!rawContent || typeof rawContent !== 'string') {
-      return null;
-    }
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(rawContent);
-    } catch (error) {
-      console.warn('Failed to parse stock intent response:', error);
-      return null;
-    }
-
-    const classificationRaw = typeof (parsed as any)?.classification === 'string'
-      ? (parsed as any).classification as string
-      : 'non_stock';
-
-    if (classificationRaw !== 'stock_focus' && classificationRaw !== 'non_stock') {
-      return null;
-    }
-
-    const rationaleRaw = typeof (parsed as any)?.rationale === 'string'
-      ? (parsed as any).rationale.trim()
-      : '';
-
-    return {
-      classification: classificationRaw,
-      rationale: rationaleRaw.length > 0 ? rationaleRaw : undefined,
-    };
-  } catch (error) {
-    console.warn('Stock intent evaluator error:', error);
-    return null;
-  }
-};
-
-type RealTimeDecisionInput = {
-  message: string;
-  userIntent?: IntentType;
-  recentMessages?: string[];
-  openAIApiKey: string;
-};
-
-type RecommendationPreference = 'yes' | 'no';
-
-type RealTimeDecision = {
-  decision: boolean;
-  rationale?: string;
-  questionType?: string;
-  recommendationPreference?: RecommendationPreference;
-  usedModel: boolean;
-};
-
-const askLLMIfRealtimeNeeded = async ({
-  message,
-  userIntent,
-  recentMessages,
-  openAIApiKey,
-}: RealTimeDecisionInput): Promise<RealTimeDecision> => {
-  try {
-    const contextLines: string[] = [];
-
-    if (userIntent) {
-      contextLines.push(`Identifierad intent: ${userIntent}.`);
-    }
-
-    if (recentMessages && recentMessages.length > 0) {
-      const recentSnippet = recentMessages
-        .map((entry, index) => `${index + 1}. ${entry}`)
-        .join('\n');
-      contextLines.push(`Tidigare relaterade användarmeddelanden:\n${recentSnippet}`);
-    }
-
-    const userPromptSections = [
-      'Du analyserar vilken typ av fråga en användare ställer i en finansiell chatt.',
-      '1. Klassificera frågan i en av följande kategorier:',
-      '   - latest_news (ber om senaste nyheter, uppdateringar eller rubriker).',
-      '   - recent_report (hänvisar till färska rapporter, kvartalsrapporter eller earnings calls).',
-      '   - intraday_price (vill veta aktuell kurs, intradagsrörelser eller "hur går den nu").',
-      '   - macro_event (handlar om dagsaktuella marknadshändelser, centralbanker eller makronyheter).',
-      '   - portfolio_update (ber om dagsfärsk status för sin portfölj eller innehav).',
-      '   - prediction_market (frågor om odds, Polymarket, sannolikheter för utfall, valresultat).',
-      '   - strategy_or_education (förklaringar, historik, långsiktiga strategier).',
-      '   - other (allt annat).',
-      '2. Avgör om realtidsdata krävs för att besvara frågan pålitligt. Realtidsdata behövs främst för kategorierna latest_news, recent_report, intraday_price, macro_event och portfolio_update.',
-      '3. Motivera kort på svenska varför realtidsdata behövs eller inte.',
-      '4. Avgör om användaren uttryckligen ber om investeringsrekommendationer, konkreta portföljåtgärder eller köp/sälj-råd.',
-      contextLines.join('\n\n'),
-      `Nuvarande användarmeddelande:\n"""${message}"""`,
-      'Returnera JSON i formatet {"realtime": "yes" eller "no", "reason": "...", "question_type": "...", "recommendations": "yes" eller "no"}.',
-    ].filter(Boolean);
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${openAIApiKey}`,
-      },
-      body: JSON.stringify({
-        model: INLINE_INTENT_MODEL,
-        temperature: 0,
-        max_completion_tokens: 60,
-        messages: [
-          {
-            role: 'system',
-            content: 'Du avgör om en investeringsfråga behöver realtidsdata. Var konservativ med ja-svar och motivera kort på svenska.',
-          },
-          {
-            role: 'user',
-            content: userPromptSections.join('\n\n'),
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      console.warn('Realtime LLM check failed with status', response.status);
-      return { decision: false, usedModel: false };
-    }
-
-    const data = await response.json();
-    const text = data?.choices?.[0]?.message?.content?.trim();
-
-    if (!text) {
-      return { decision: false, usedModel: true };
-    }
-
-    try {
-      const parsed = JSON.parse(text);
-      const decisionText = String(parsed?.realtime ?? '').toLowerCase();
-      const decision = decisionText === 'yes' || decisionText === 'ja';
-      const rationale = typeof parsed?.reason === 'string' ? parsed.reason.trim() : undefined;
-      const questionType = typeof parsed?.question_type === 'string'
-        ? parsed.question_type.trim().toLowerCase()
-        : undefined;
-      const recommendationPreferenceRaw = typeof parsed?.recommendations === 'string'
-        ? parsed.recommendations.trim().toLowerCase()
-        : undefined;
-      const recommendationPreference: RecommendationPreference | undefined =
-        recommendationPreferenceRaw === 'yes' || recommendationPreferenceRaw === 'no'
-          ? recommendationPreferenceRaw
-          : undefined;
-      return { decision, rationale, questionType, recommendationPreference, usedModel: true };
-    } catch (jsonError) {
-      console.warn('Failed to parse realtime LLM response as JSON:', jsonError, 'Raw response:', text);
-      const normalized = text.toLowerCase();
-      const decision = normalized.includes('ja') || normalized.includes('yes');
-      return {
-        decision,
-        rationale: text,
-        questionType: undefined,
-        recommendationPreference: undefined,
-        usedModel: true,
-      };
-    }
-  } catch (error) {
-    console.warn('Realtime LLM check encountered an error:', error);
-    return { decision: false, recommendationPreference: undefined, usedModel: false };
-  }
-};
-
-const determineRealTimeSearchNeed = async ({
-  message,
-  userIntent,
-  recentMessages,
-  openAIApiKey,
-}: RealTimeDecisionInput): Promise<RealTimeAssessment> => {
-  const signals: string[] = [];
-
-  const {
-    decision,
-    rationale,
-    questionType,
-    recommendationPreference,
-    usedModel,
-  } = await askLLMIfRealtimeNeeded({
-    message,
-    userIntent,
-    recentMessages,
-    openAIApiKey,
-  });
-
-  if (questionType) {
-    signals.push(`llm:question_type:${questionType}`);
-  }
-
-  if (recommendationPreference) {
-    signals.push(`llm:recommendations:${recommendationPreference}`);
-  }
-
-  if (rationale) {
-    signals.push(`llm:${rationale}`);
-  } else {
-    signals.push(decision ? 'llm:yes' : 'llm:no');
-  }
-
-  if (!usedModel) {
-    const newsIntents = new Set<IntentType>(['news_update', 'general_news', 'stock_analysis', 'market_analysis']);
-    if (userIntent && newsIntents.has(userIntent)) {
-      signals.push('fallback:intent_requires_realtime');
-      return {
-        needsRealtime: true,
-        signals,
-        usedLLM: false,
-      };
-    }
-  }
-
-  return {
-    needsRealtime: decision,
-    signals,
-    questionType,
-    recommendationPreference,
-    usedLLM: usedModel,
-  };
 };
 
 type TavilySearchResult = {
@@ -1891,26 +921,6 @@ type TavilyContextPayload = {
 
 type TavilySearchDepth = 'basic' | 'advanced';
 
-type TavilyLocalePreference = 'se' | 'global';
-
-type TavilyLLMPlanInput = {
-  message: string;
-  entityAwareQuery?: string | null;
-  userIntent?: IntentType;
-  recentMessages?: string[];
-  openAIApiKey: string;
-};
-
-type TavilyLLMPlan = {
-  shouldSearch: boolean;
-  query?: string;
-  topic?: TavilyTopic;
-  depth?: TavilySearchDepth;
-  freshnessDays?: number;
-  preferredLocales?: TavilyLocalePreference[];
-  reason?: string;
-};
-
 type TavilySearchOptions = {
   query?: string;
   includeDomains?: string[];
@@ -1924,177 +934,6 @@ type TavilySearchOptions = {
   timeoutMs?: number;
   requireRecentDays?: number;
   allowUndatedFromDomains?: string[];
-};
-
-const TAVILY_ROUTER_TOOL = {
-  type: 'function',
-  function: {
-    name: 'tavily_search',
-    description: 'Planera en Tavily-sökning för dagsaktuell finans- eller marknadskontext innan rådgivaren svarar användaren.',
-    parameters: {
-      type: 'object',
-      properties: {
-        query: {
-          type: 'string',
-          description: 'Kortfattad sökfras som hjälper Tavily att hitta relevanta nyheter eller rapporter.'
-        },
-        topic: {
-          type: 'string',
-          enum: ['general', 'news', 'finance'],
-          description: 'Välj "news" för rubriker, "finance" för bolagsspecifika uppdateringar eller "general" vid osäkerhet.'
-        },
-        depth: {
-          type: 'string',
-          enum: ['basic', 'advanced'],
-          description: 'Ange "advanced" när du behöver längre utdrag eller råinnehåll.'
-        },
-        freshnessDays: {
-          type: 'integer',
-          minimum: 1,
-          maximum: 30,
-          description: 'Maximalt antal dagar bakåt som källorna får vara.'
-        },
-        preferredLocales: {
-          type: 'array',
-          items: {
-            type: 'string',
-            enum: ['se', 'global'],
-          },
-          description: 'Prioriterade geografiska marknader, t.ex. Sverige (se) eller globalt.'
-        },
-        reason: {
-          type: 'string',
-          description: 'Kort svensk motivering till varför realtidsdata behövs.'
-        }
-      },
-      required: ['query'],
-    },
-  },
-} as const;
-
-const planRealtimeSearchWithLLM = async ({
-  message,
-  entityAwareQuery,
-  userIntent,
-  recentMessages,
-  openAIApiKey,
-}: TavilyLLMPlanInput): Promise<TavilyLLMPlan> => {
-  try {
-    const routerContext: string[] = [];
-    if (userIntent) {
-      routerContext.push(`Identifierad intent: ${userIntent}.`);
-    }
-    if (entityAwareQuery && entityAwareQuery.trim().length > 0) {
-      routerContext.push(`Föreslagen sökfras: ${entityAwareQuery.trim()}`);
-    }
-    if (recentMessages && recentMessages.length > 0) {
-      routerContext.push('Tidigare relaterade frågor:\n' + recentMessages.map((entry, index) => `${index + 1}. ${entry}`).join('\n'));
-    }
-
-    const routerPrompt = [
-      'Du avgör om nästa svar behöver dagsaktuella källor innan rådgivaren svarar kunden.',
-      'Om färska nyheter, intradagspris eller senaste rapporter krävs → anropa tavily_search exakt en gång.',
-      'Om äldre kunskap räcker → svara med JSON på formatet {"decision":"skip","reason":"kort svensk motivering"}.',
-      'Ange alltid en motivering (på svenska) antingen i JSON:et eller i fältet reason när du anropar verktyget.',
-      routerContext.join('\n\n'),
-      `Användarens fråga:\n"""${message}"""`,
-    ].filter(Boolean).join('\n\n');
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${openAIApiKey}`,
-      },
-      body: JSON.stringify({
-        model: INLINE_INTENT_MODEL,
-        temperature: 0,
-        max_completion_tokens: 180,
-        tool_choice: 'auto',
-        tools: [TAVILY_ROUTER_TOOL],
-        messages: [
-          {
-            role: 'system',
-            content: 'Du är en researchplanerare som bara ska trigga Tavily vid behov av realtidsdata och annars förklara varför det inte behövs.',
-          },
-          { role: 'user', content: routerPrompt },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      console.warn('LLM Tavily-router misslyckades med status', response.status);
-      return { shouldSearch: false };
-    }
-
-    const data = await response.json();
-    const choice = data?.choices?.[0]?.message;
-
-    const toolCall = choice?.tool_calls?.find((call: any) => call?.function?.name === 'tavily_search');
-    if (toolCall) {
-      try {
-        const argsRaw = toolCall.function?.arguments ?? '{}';
-        const args = JSON.parse(argsRaw);
-        const locales = Array.isArray(args?.preferredLocales)
-          ? args.preferredLocales
-            .map((value: string) => (value === 'se' || value === 'global') ? value : null)
-            .filter(Boolean) as TavilyLocalePreference[]
-          : undefined;
-        const depth = args?.depth === 'advanced' || args?.depth === 'basic'
-          ? args.depth
-          : undefined;
-        const topic = args?.topic === 'news' || args?.topic === 'finance' || args?.topic === 'general'
-          ? args.topic
-          : undefined;
-        const freshnessDaysRaw = typeof args?.freshnessDays === 'number'
-          ? args.freshnessDays
-          : typeof args?.freshnessDays === 'string'
-            ? Number(args.freshnessDays)
-            : undefined;
-        const freshnessDays = Number.isFinite(freshnessDaysRaw)
-          ? Math.min(30, Math.max(1, Math.round(Number(freshnessDaysRaw))))
-          : undefined;
-        return {
-          shouldSearch: true,
-          query: typeof args?.query === 'string' ? args.query.trim() : undefined,
-          topic,
-          depth,
-          freshnessDays,
-          preferredLocales: locales,
-          reason: typeof args?.reason === 'string' ? args.reason.trim() : undefined,
-        };
-      } catch (error) {
-        console.warn('Kunde inte tolka Tavily-verktygsargument:', error);
-        return { shouldSearch: true };
-      }
-    }
-
-    const fallbackContent = typeof choice?.content === 'string' ? choice.content.trim() : '';
-    if (fallbackContent) {
-      try {
-        const parsed = JSON.parse(fallbackContent);
-        const normalizedDecision = typeof parsed?.decision === 'string'
-          ? parsed.decision.toLowerCase()
-          : '';
-        const shouldSearch = normalizedDecision === 'search' || normalizedDecision === 'ja' || normalizedDecision === 'yes';
-        return {
-          shouldSearch,
-          reason: typeof parsed?.reason === 'string' ? parsed.reason.trim() : undefined,
-        };
-      } catch (error) {
-        const normalized = fallbackContent.toLowerCase();
-        if (normalized.includes('search') || normalized.includes('realtid') || normalized.includes('tavily')) {
-          return { shouldSearch: true, reason: fallbackContent };
-        }
-        return { shouldSearch: false, reason: fallbackContent };
-      }
-    }
-
-    return { shouldSearch: false };
-  } catch (error) {
-    console.warn('Fel i LLM-planeringen för Tavily:', error);
-    return { shouldSearch: false };
-  }
 };
 
 type StockDetectionPattern = {
@@ -3181,26 +2020,6 @@ serve(async (req) => {
 
     let isStockMentionRequest = stockMentionsInMessage || isStockAnalysisRequest || (isFinancialDataRequest && detectedTickers.length > 0);
 
-    if (openAIApiKey) {
-      const stockIntentAssessment = await evaluateStockIntentWithOpenAI({
-        message,
-        detectedTickers,
-        heuristicsTriggered: isStockMentionRequest,
-        hasStockContext,
-        analysisCue: isStockAnalysisRequest,
-        apiKey: openAIApiKey,
-      });
-
-      if (stockIntentAssessment) {
-        console.log('Stock intent classification:', stockIntentAssessment.classification);
-        if (stockIntentAssessment.rationale) {
-          console.log('Stock intent rationale:', stockIntentAssessment.rationale);
-        }
-
-        isStockMentionRequest = stockIntentAssessment.classification === 'stock_focus';
-      }
-    }
-
     // Check if user wants personal investment advice/recommendations
     const isPersonalAdviceRequest = /(?:rekommendation|förslag|vad ska jag|bör jag|passar mig|min portfölj|mina intressen|för mig|personlig|skräddarsy|baserat på|investera|köpa|sälja|portföljanalys|investeringsstrategi)/i.test(message);
     const isPortfolioOptimizationRequest = /portfölj/i.test(message) && /optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma/i.test(message);
@@ -3211,114 +2030,45 @@ serve(async (req) => {
     const userHasPortfolio = Array.isArray(holdings) &&
       holdings.some((holding: HoldingRecord) => holding?.holding_type !== 'recommendation');
 
-    // ENHANCED INTENT ROUTING SYSTEM
-    type IntentSelection = {
-      primaryIntent: IntentType;
-      intents: IntentType[];
-      entities: string[];
-      language: string | null;
-      source: 'interpreter' | 'fallback';
-    };
+    // --- NY MASTER PLANNER LOGIK ---
+    
+    // Förbered historik för planeraren (bara texten)
+    const historyForPlanner = recentUserMessages; 
 
-    const detectIntent = async (message: string): Promise<IntentSelection> => {
-      const interpreterResult = await detectUserIntentWithOpenAI(message, openAIApiKey);
-      const interpreterIntents = interpreterResult?.intents ?? [];
-      const interpreterEntities = interpreterResult?.entities ?? [];
-      const interpreterLanguage = interpreterResult?.language ?? null;
+    console.log('Anropar Master Planner...');
+    const plan = await planConversationWithOpenAI(
+      message,
+      historyForPlanner,
+      userHasPortfolio,
+      hasUploadedDocuments, 
+      openAIApiKey
+    );
 
-      let primaryIntent = interpreterIntents[0];
-      let intentSource: 'interpreter' | 'fallback' = 'interpreter';
-      let resolvedIntents = interpreterIntents.slice();
+    console.log('Master Planner Result:', JSON.stringify(plan, null, 2));
 
-      const interpreterMarkedSummary = interpreterIntents.includes('document_summary');
-      if (hasUploadedDocuments && interpreterMarkedSummary) {
-        primaryIntent = 'document_summary';
-        resolvedIntents = ['document_summary'];
-      }
-
-      if (!primaryIntent) {
-        const embeddingIntent = await classifyIntentWithEmbeddings(message, supabase, openAIApiKey);
-        if (embeddingIntent) {
-          primaryIntent = embeddingIntent;
-          intentSource = 'fallback';
-          resolvedIntents = [embeddingIntent];
-        }
-      }
-
-      if (!primaryIntent) {
-        const llmIntent = await classifyIntentWithLLM(message, openAIApiKey);
-        if (llmIntent) {
-          primaryIntent = llmIntent;
-          intentSource = 'fallback';
-          resolvedIntents = [llmIntent];
-        }
-      }
-
-      if (!primaryIntent) {
-        if (hasUploadedDocuments && summaryPatternTriggered) {
-          primaryIntent = 'document_summary';
-        } else if (isStockMentionRequest ||
-            (/(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) &&
-            /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5})/i.test(message))) {
-          primaryIntent = 'stock_analysis';
-        } else {
-          const newsIntent = await evaluateNewsIntentWithOpenAI({
-            message,
-            hasPortfolio: userHasPortfolio,
-            apiKey: openAIApiKey,
-          });
-
-          if (newsIntent) {
-            primaryIntent = newsIntent;
-          } else if (/(?:portfölj|portfolio)/i.test(message) && /(?:optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma|rebalansera)/i.test(message)) {
-            primaryIntent = 'portfolio_optimization';
-          } else if (/(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|position|handel)/i.test(message)) {
-            primaryIntent = 'buy_sell_decisions';
-          } else if (/(?:marknad|index|trend|prognos|ekonomi|räntor|inflation|börsen)/i.test(message)) {
-            primaryIntent = 'market_analysis';
-          } else {
-            primaryIntent = 'general_advice';
-          }
-        }
-
-        intentSource = 'fallback';
-        resolvedIntents = [primaryIntent];
-      }
-
-      if (hasUploadedDocuments && (summaryPatternTriggered || resolvedIntents.includes('document_summary'))) {
-        primaryIntent = 'document_summary';
-        intentSource = interpreterMarkedSummary ? intentSource : 'fallback';
-        resolvedIntents = ['document_summary'];
-      }
-
-      if (resolvedIntents.length === 0) {
-        resolvedIntents = [primaryIntent ?? 'general_advice'];
-      }
-
-      return {
-        primaryIntent: primaryIntent ?? 'general_advice',
-        intents: resolvedIntents,
-        entities: interpreterEntities,
-        language: interpreterLanguage,
-        source: intentSource,
-      };
-    };
-
-    const { primaryIntent: userIntent, intents: detectedIntents, entities: interpretedEntities, language: interpretedLanguage, source: intentSource } = await detectIntent(message);
-
-    if (hasUploadedDocuments && (userIntent === 'document_summary' || detectedIntents.includes('document_summary'))) {
-      isDocumentSummaryRequest = true;
+    // Mappa planens output till variabler som resten av koden använder
+    const userIntent = plan.primaryIntent;
+    const detectedIntents = [plan.primaryIntent, ...plan.secondaryIntents];
+    const interpretedEntities = plan.detectedEntities;
+    const interpretedLanguage = plan.language;
+    const intentSource = 'planner';
+    
+    // Hantera realtidsdata direkt från planen
+    const hasRealTimeTrigger = plan.needsRealtimeData;
+    
+    // Uppdatera isStockMentionRequest baserat på planen
+    // Om planeraren hittade tickers eller valde stock_analysis, räknas det som stock mention
+    if (plan.detectedEntities.length > 0 || userIntent === 'stock_analysis' || userIntent === 'buy_sell_decisions') {
+      isStockMentionRequest = true;
     }
-    const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_sell_decisions', 'news_update', 'stock_analysis']);
-    let shouldIncludePersonalContext = personalIntentTypes.has(userIntent)
-      || isPersonalAdviceRequest
-      || isPortfolioOptimizationRequest
-      || referencesPersonalInvestments;
 
+    // Bestäm om vi ska ha personlig kontext (från planen)
+    let shouldIncludePersonalContext = plan.requiresProfileContext;
+
+    // Justera för prediction markets (behåll din specialhantering)
     if (conversationData?.predictionMarket) {
-  shouldIncludePersonalContext = false; 
-}
-
+      shouldIncludePersonalContext = false; 
+    }
     if (isDocumentSummaryRequest) {
       shouldIncludePersonalContext = false;
     }
@@ -3329,34 +2079,29 @@ serve(async (req) => {
       shouldIncludePersonalContext = false;
     }
 
-    console.log('Detected user intent:', userIntent, 'source:', intentSource, 'all intents:', detectedIntents.join(', '));
-    if (interpretedEntities.length > 0) {
-      console.log('Interpreter entities:', interpretedEntities.join(', '));
-    }
-    if (interpretedLanguage) {
-      console.log('Interpreter language guess:', interpretedLanguage);
-    }
+    // Sätt upp Tavily-planen direkt från Master Planner
+    const llmTavilyPlan = {
+      shouldSearch: plan.needsRealtimeData,
+      query: plan.searchQuery || message, 
+      topic: plan.searchTopic || 'general',
+      depth: plan.searchDepth || 'basic',
+      freshnessDays: plan.searchDays || 7,
+      reasoning: plan.reasoning,
+      preferredLocales: plan.language === 'sv' ? ['se'] : ['global']
+    };
 
-    const realTimeAssessment = await determineRealTimeSearchNeed({
-      message,
-      userIntent,
-      recentMessages: recentUserMessages,
-      openAIApiKey,
-    });
-    const hasRealTimeTrigger = realTimeAssessment.needsRealtime;
-    const realTimeQuestionType = realTimeAssessment.questionType;
-    const recommendationPreference = realTimeAssessment.recommendationPreference;
-    if (realTimeAssessment.signals.length > 0) {
-      console.log('Real-time assessment signals:', realTimeAssessment.signals.join(', '), 'LLM used:', realTimeAssessment.usedLLM);
-    }
-
-    if (realTimeQuestionType) {
-      console.log('LLM question type:', realTimeQuestionType);
-    }
-
-    if (recommendationPreference) {
-      console.log('LLM recommendation preference:', recommendationPreference);
-    }
+    // Variabler som koden nedanför förväntar sig (sätt defaults om de inte används)
+    const realTimeAssessment = {
+        needsRealtime: hasRealTimeTrigger,
+        signals: [],
+        questionType: undefined as string | undefined,
+        recommendationPreference: undefined as 'yes' | 'no' | undefined,
+        usedLLM: true
+    };
+    const recommendationPreference = undefined;
+    const entityAwareQuery = llmTavilyPlan.query;
+    
+    // --- SLUT PÅ NY LOGIK ---
 
     const isSimplePersonalAdviceRequest = (
       isPersonalAdviceRequest || isPortfolioOptimizationRequest
@@ -3365,22 +2110,6 @@ serve(async (req) => {
       !hasRealTimeTrigger &&
       detectedTickers.length === 0;
 
-    const entityAwareQuery = buildEntityAwareQuery({
-      message,
-      tickers: detectedTickers,
-      companyNames: sheetTickerNames,
-      hasRealTimeTrigger,
-      userIntent,
-      detectedEntities: interpretedEntities,
-    });
-
-    const llmTavilyPlan = await planRealtimeSearchWithLLM({
-      message,
-      entityAwareQuery,
-      userIntent,
-      recentMessages: recentUserMessages,
-      openAIApiKey,
-    });
     if (llmTavilyPlan.reason) {
       console.log('LLM Tavily-plan:', llmTavilyPlan.reason);
     }
