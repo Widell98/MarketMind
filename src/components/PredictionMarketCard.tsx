@@ -52,6 +52,14 @@ export const PredictionMarketCard = ({ market }: PredictionMarketCardProps) => {
 
         {/* Innehåll */}
         <div className="flex-grow min-w-0">
+          
+          {/* VISNING AV GRUPP-TITEL (GRUNDMARKNAD) */}
+          {market.groupItemTitle && market.groupItemTitle !== market.question && (
+            <div className="text-xs text-muted-foreground mb-1 line-clamp-1 opacity-90 font-medium uppercase tracking-wider">
+              {market.groupItemTitle}
+            </div>
+          )}
+
           <div className="flex items-start justify-between gap-2 mb-3">
             <h3 className="font-medium text-base leading-tight group-hover:text-primary transition-colors line-clamp-2 flex-1">
               {market.question}
@@ -80,12 +88,10 @@ export const PredictionMarketCard = ({ market }: PredictionMarketCardProps) => {
                 let barColorClass = "bg-secondary"; // Default grå/blå
                 let textColorClass = "text-foreground";
 
-              if (titleLower === 'yes') {
-                    // ÄNDRA HÄR: Från emerald-500 till green-600 för starkare grön
+                if (titleLower === 'yes') {
                     barColorClass = "bg-green-600 dark:bg-green-500";
                     textColorClass = "text-green-950 dark:text-green-50";
                 } else if (titleLower === 'no') {
-                    // ÄNDRA HÄR: Från rose-500 till red-600 för starkare röd
                     barColorClass = "bg-red-600 dark:bg-red-500";
                     textColorClass = "text-red-950 dark:text-red-50";
                 }
