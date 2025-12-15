@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Bot, User, Plus, Check, TrendingUp, ChevronDown, Sparkles, Paperclip } from 'lucide-react';
+import { Bot, User, Plus, Check, TrendingUp, ChevronDown, Sparkles, Paperclip, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
@@ -203,6 +203,73 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
   // Check if Tavily fallback was used
   const tavilyFallbackUsed = message.context?.tavilyFallbackUsed === true;
 
+  // Extract sources from message content and remove them from display
+  const { sources, contentWithoutSources } = useMemo(() => {
+    if (message.role !== 'assistant') {
+      return { sources: [], contentWithoutSources: message.content };
+    }
+    
+    const urlPattern = /https?:\/\/[^\s\)]+/g;
+    const extractedSources: string[] = [];
+    let cleanedContent = message.content;
+    
+    // Look for "Källor:" section first
+    const sourcesMatch = message.content.match(/(?:^|\n)\s*Källor\s*:\s*\n([\s\S]*?)(?:\n\s*\n|$)/i);
+    if (sourcesMatch) {
+      const sourcesText = sourcesMatch[1];
+      const urls = sourcesText.match(urlPattern);
+      if (urls) {
+        extractedSources.push(...urls);
+      }
+      // Remove the entire "Källor:" section
+      cleanedContent = message.content.replace(/(?:^|\n)\s*Källor\s*:\s*\n[\s\S]*?$/i, '').trim();
+    } else {
+      // Extract URLs that appear to be standalone sources (at end of message, one per line)
+      const lines = message.content.split('\n');
+      const trailingUrls: string[] = [];
+      let urlStartIndex = -1;
+      
+      // Find where URLs start appearing at the end
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        const urlMatch = line.match(urlPattern);
+        if (urlMatch && line.split(/\s+/).length <= 2 && !line.match(/[a-öA-Ö]{3,}/)) {
+          // Line is mostly just a URL
+          trailingUrls.unshift(...urlMatch);
+          urlStartIndex = i;
+        } else {
+          break;
+        }
+      }
+      
+      if (trailingUrls.length > 0 && urlStartIndex >= 0) {
+        extractedSources.push(...trailingUrls);
+        // Remove trailing URL lines
+        cleanedContent = lines.slice(0, urlStartIndex).join('\n').trim();
+      }
+    }
+    
+    // Remove duplicates and filter out invalid URLs
+    const validSources = Array.from(new Set(extractedSources)).filter(url => {
+      try {
+        new URL(url);
+        const lowerUrl = url.toLowerCase();
+        // Filter out image URLs and data URIs
+        return !lowerUrl.match(/\.(jpg|jpeg|png|gif|svg|webp|ico)$/i) && 
+               !lowerUrl.includes('data:');
+      } catch {
+        return false;
+      }
+    });
+    
+    return {
+      sources: validSources,
+      contentWithoutSources: cleanedContent,
+    };
+  }, [message.content, message.role]);
+
   const attachedDocumentNames = useMemo(() => {
     const context = message.context as { documentNames?: unknown; documentIds?: unknown } | undefined;
     const rawNames = Array.isArray(context?.documentNames)
@@ -362,6 +429,12 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
 
       if (trimmedLine.startsWith('-') || trimmedLine.startsWith('•')) {
         const contentWithoutMarker = trimmedLine.replace(/^[-•]\s*/, '').trim();
+        
+        // Skip if this line is just a URL (likely a source)
+        const urlPattern = /^https?:\/\/[^\s\)]+$/;
+        if (urlPattern.test(contentWithoutMarker.trim())) {
+          return; // Skip standalone URL lines
+        }
 
         const isContinuation =
           (currentList && currentList.type === 'ul' && currentList.marker === 'disc') ||
@@ -391,6 +464,12 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
 
       if (/^\d+\./.test(trimmedLine)) {
         const contentWithoutNumber = trimmedLine.replace(/^\d+\.\s*/, '').trim();
+        
+        // Skip if this line is just a URL (likely a source)
+        const urlPattern = /^https?:\/\/[^\s\)]+$/;
+        if (urlPattern.test(contentWithoutNumber.trim())) {
+          return; // Skip standalone URL lines
+        }
 
         const isContinuation =
           (currentList && currentList.type === 'ol') ||
@@ -415,6 +494,12 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         } else {
           pendingListItem = { type: 'ol', content: contentWithoutNumber };
         }
+        return;
+      }
+      
+      // Skip lines that are just URLs (sources will be shown separately)
+      const urlOnlyPattern = /^https?:\/\/[^\s\)]+$/;
+      if (urlOnlyPattern.test(trimmedLine)) {
         return;
       }
 
@@ -523,11 +608,56 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
                 </div>
               )}
 
-              <div className="mt-2 space-y-1.5">{formatMessageContent(message.content)}</div>
+              <div className="mt-2 space-y-1.5">{formatMessageContent(contentWithoutSources)}</div>
               
               {tavilyFallbackUsed && (
                 <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-300">
                   <strong>OBS:</strong> Realtidssökning kunde inte genomföras. Svaret baseras på befintlig kunskap och kan sakna senaste nyheter eller kurser.
+                </div>
+              )}
+
+              {sources.length > 0 && (
+                <div className="mt-4 border-t border-[#205295]/18 pt-3 dark:border-ai-border/40">
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <ExternalLink className="h-3.5 w-3.5 text-ai-text-muted" />
+                    <span className="text-xs font-semibold text-ai-text-muted uppercase tracking-wide">Källor</span>
+                    <span className="text-[10px] text-ai-text-muted/70">({sources.length})</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {sources.map((source, index) => {
+                      try {
+                        const url = new URL(source);
+                        const domain = url.hostname.replace('www.', '');
+                        // Extract a cleaner display name
+                        const pathParts = url.pathname.split('/').filter(Boolean);
+                        let displayName = domain;
+                        
+                        // If domain is very long, truncate it
+                        if (displayName.length > 35) {
+                          displayName = `${displayName.substring(0, 32)}...`;
+                        }
+                        
+                        return (
+                          <a
+                            key={`${message.id}-source-${index}`}
+                            href={source}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group inline-flex items-center gap-1.5 rounded-lg border border-[#205295]/25 bg-white/90 px-3 py-1.5 text-[11px] font-medium text-primary/90 transition-all hover:bg-white hover:text-primary hover:shadow-md hover:-translate-y-0.5 hover:border-primary/40 dark:border-ai-border/60 dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:hover:bg-ai-surface-muted dark:hover:text-foreground dark:hover:border-ai-border"
+                            title={source}
+                          >
+                            <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
+                            <span className="max-w-[180px] truncate">
+                              {displayName}
+                            </span>
+                          </a>
+                        );
+                      } catch {
+                        // Invalid URL, skip it
+                        return null;
+                      }
+                    })}
+                  </div>
                 </div>
               )}
             </div>
