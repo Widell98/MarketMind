@@ -790,6 +790,8 @@ type SheetTickerEdgeItem = {
   name?: string | null;
   price?: number | null;
   currency?: string | null;
+  changePercent?: number | null;
+  sector?: string | null;
 };
 
 type SheetTickerEdgeResponse = {
@@ -2156,10 +2158,16 @@ serve(async (req) => {
 
     console.log('Supabase client initialized');
 
+    // Get authorization header from incoming request to forward to list-sheet-tickers
+    const authHeader = req.headers.get('Authorization');
+    const invokeHeaders = authHeader ? { Authorization: authHeader } : {};
+
     // Fetch all independent data in parallel for better performance
     const [userContext, sheetTickerResult] = await Promise.all([
       fetchUserContext(supabase, userId),
-      supabase.functions.invoke('list-sheet-tickers').catch((error) => {
+      supabase.functions.invoke('list-sheet-tickers', {
+        headers: invokeHeaders,
+      }).catch((error) => {
         console.error('Failed to fetch Google Sheets tickers:', error);
         return { data: null, error };
       }),
@@ -2176,6 +2184,19 @@ serve(async (req) => {
     let sheetTickerSymbols: string[] = [];
     let sheetTickerNames: string[] = [];
     let sheetTickerCurrencyMap = new Map<string, string>();
+    let sheetTickerPriceMap = new Map<string, { 
+      price: number; 
+      currency: string; 
+      name: string;
+      change?: number | null;
+      changePercent?: number | null;
+      high?: number | null;
+      low?: number | null;
+      open?: number | null;
+      previousClose?: number | null;
+      sector?: string | null;
+    }>();
+    let sheetCompanyNameToTickerMap = new Map<string, string[]>(); // Maps company names to ticker symbols
     let swedishTickerSymbols: string[] = [];
     let swedishCompanyNamesNormalized: string[] = [];
 
@@ -2203,6 +2224,11 @@ serve(async (req) => {
           const currencyNormalized = typeof item.currency === 'string'
             ? item.currency.trim().toUpperCase()
             : null;
+          const rawPrice = typeof item.price === 'number' && Number.isFinite(item.price)
+            ? item.price
+            : null;
+          const rawName = typeof item.name === 'string' ? item.name : null;
+          
           if (rawSymbol) {
             const trimmedSymbol = rawSymbol.trim();
             const withoutPrefix = trimmedSymbol.includes(':')
@@ -2219,10 +2245,51 @@ serve(async (req) => {
                   swedishSymbolSet.add(finalSymbol);
                 }
               }
+              // Store price information if available
+              if (rawPrice !== null && currencyNormalized && rawName) {
+                const rawChangePercent = typeof item.changePercent === 'number' 
+                  ? item.changePercent 
+                  : null;
+                const rawSector = typeof item.sector === 'string' 
+                  ? item.sector 
+                  : null;
+                
+                sheetTickerPriceMap.set(finalSymbol, {
+                  price: rawPrice,
+                  currency: currencyNormalized,
+                  name: rawName,
+                  changePercent: rawChangePercent,
+                  sector: rawSector,
+                });
+              }
+              
+              // Map company name to ticker symbol (if we have a name)
+              if (rawName) {
+                const normalizedWhitespaceName = rawName.replace(/\s+/g, ' ').trim();
+                if (normalizedWhitespaceName.length > 0) {
+                  const normalizedName = normalizedWhitespaceName.toLowerCase();
+                  
+                  if (!sheetCompanyNameToTickerMap.has(normalizedName)) {
+                    sheetCompanyNameToTickerMap.set(normalizedName, []);
+                  }
+                  if (!sheetCompanyNameToTickerMap.get(normalizedName)!.includes(finalSymbol)) {
+                    sheetCompanyNameToTickerMap.get(normalizedName)!.push(finalSymbol);
+                  }
+                  
+                  const diacriticsStripped = removeDiacritics(normalizedWhitespaceName).trim();
+                  if (diacriticsStripped.length > 0 && diacriticsStripped !== normalizedWhitespaceName) {
+                    const diacriticsName = diacriticsStripped.toLowerCase();
+                    if (!sheetCompanyNameToTickerMap.has(diacriticsName)) {
+                      sheetCompanyNameToTickerMap.set(diacriticsName, []);
+                    }
+                    if (!sheetCompanyNameToTickerMap.get(diacriticsName)!.includes(finalSymbol)) {
+                      sheetCompanyNameToTickerMap.get(diacriticsName)!.push(finalSymbol);
+                    }
+                  }
+                }
+              }
             }
           }
-
-          const rawName = typeof item.name === 'string' ? item.name : null;
           if (rawName) {
             const normalizedWhitespaceName = rawName.replace(/\s+/g, ' ').trim();
             if (normalizedWhitespaceName.length > 0) {
@@ -2531,6 +2598,13 @@ serve(async (req) => {
     const isStockAnalysisRequest = /(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) &&
       /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity)/i.test(message);
 
+    // Stoppord: vanliga svenska ord som kan misstas för tickers
+    const SWEDISH_STOP_WORDS = new Set([
+      'DOM', 'DET', 'DEN', 'VAR', 'HAR', 'KAN', 'SKA', 'VID', 'MED', 
+      'OCH', 'ATT', 'SOM', 'ELLER', 'MEN', 'INTE', 'FÖR', 'PÅ', 'AV', 
+      'TILL', 'OM', 'ÄR', 'VI', 'DE', 'DU', 'JAG', 'HON', 'HAN'
+    ]);
+
     const extractTickerSymbols = (input: string): string[] => {
       const normalizedInput = removeDiacritics(input);
       const tickerMatches = Array.from(normalizedInput.matchAll(/\b([A-Za-z0-9]{1,6})\b/g));
@@ -2544,6 +2618,12 @@ serve(async (req) => {
         if (!rawToken) continue;
 
         const normalizedSymbol = rawToken.toUpperCase();
+        
+        // Hoppa över stoppord
+        if (SWEDISH_STOP_WORDS.has(normalizedSymbol)) {
+          continue;
+        }
+        
         const isUppercaseInMessage = rawToken === rawToken.toUpperCase();
 
         if (sheetTickerSymbolSet.size > 0) {
@@ -2749,6 +2829,61 @@ serve(async (req) => {
     const detectedTickers = extractTickerSymbols(message);
     const primaryDetectedTicker = detectedTickers.length > 0 ? detectedTickers[0] : null;
 
+    // Fetch prices for detected tickers immediately (if not already in Google Sheets)
+    if (detectedTickers.length > 0) {
+      console.log('Fetching prices for detected tickers:', detectedTickers);
+      
+      for (const ticker of detectedTickers) {
+        const normalizedTicker = ticker.toUpperCase().replace(/[^A-Za-z0-9]/g, '');
+        
+        // First check if we already have the price from Google Sheets
+        const existingPriceData = sheetTickerPriceMap.get(normalizedTicker);
+        
+        if (!existingPriceData) {
+          // Ticker not found in Google Sheets, fetch from Finnhub via get-ticker-price
+          try {
+            console.log(`Ticker ${ticker} not found in Google Sheets, fetching from Finnhub via get-ticker-price`);
+            const authHeader = req.headers.get('Authorization');
+            const invokeHeaders = authHeader ? { Authorization: authHeader } : {};
+            
+            // ANROP TILL GET-TICKER-PRICE ISTÄLLET FÖR LIST-SHEET-TICKERS
+            const { data: liveData, error: liveError } = await supabase.functions.invoke('get-ticker-price', {
+              headers: invokeHeaders,
+              body: { 
+                symbol: normalizedTicker,
+                includeProfile: true // För att få valuta om möjligt
+              },
+            });
+            
+            if (!liveError && liveData && typeof liveData.price === 'number') {
+              const currency = liveData.currency || 'USD'; // Fallback till USD om valuta saknas
+              
+              // Spara i mappen så det kommer med i kontexten
+              sheetTickerPriceMap.set(normalizedTicker, {
+                price: liveData.price,
+                currency: currency,
+                name: ticker, // Finnhub quote ger inte namn, så vi använder tickern som namn
+                change: typeof liveData.change === 'number' ? liveData.change : null,
+                changePercent: typeof liveData.changePercent === 'number' ? liveData.changePercent : null,
+                high: typeof liveData.high === 'number' ? liveData.high : null,
+                low: typeof liveData.low === 'number' ? liveData.low : null,
+                open: typeof liveData.open === 'number' ? liveData.open : null,
+                previousClose: typeof liveData.previousClose === 'number' ? liveData.previousClose : null,
+              });
+              
+              console.log(`Found live price for ${ticker} from Finnhub: ${liveData.price} ${currency}${typeof liveData.changePercent === 'number' ? ` (${liveData.changePercent >= 0 ? '+' : ''}${liveData.changePercent.toFixed(2)}%)` : ''}`);
+            } else {
+              console.warn(`Failed to fetch price for ${ticker} from Finnhub:`, liveError || 'No price in response');
+            }
+          } catch (error) {
+            console.error(`Error fetching price for ${ticker}:`, error);
+          }
+        } else {
+          console.log(`Using existing price for ${ticker} from Google Sheets: ${existingPriceData.price} ${existingPriceData.currency}`);
+        }
+      }
+    }
+
     const hasTickerSymbolMention = (() => {
       if (detectedTickers.length === 0) return false;
 
@@ -2839,6 +2974,91 @@ serve(async (req) => {
     let realTimeQuestionType = unifiedResult.questionType;
     let recommendationPreference = unifiedResult.recommendationPreference;
     let llmTavilyPlan: TavilyLLMPlan = unifiedResult.tavilySearch;
+
+    // Match company names from interpretedEntities to tickers
+    if (interpretedEntities.length > 0 && sheetCompanyNameToTickerMap.size > 0) {
+      const additionalTickers = new Set<string>();
+      
+      for (const entity of interpretedEntities) {
+        if (!entity || typeof entity !== 'string') continue;
+        
+        // Try exact match first
+        const normalizedEntity = entity.toLowerCase().trim();
+        const matchedTickers = sheetCompanyNameToTickerMap.get(normalizedEntity);
+        
+        if (matchedTickers && matchedTickers.length > 0) {
+          matchedTickers.forEach(ticker => additionalTickers.add(ticker));
+          console.log(`Matched company name "${entity}" to tickers: ${matchedTickers.join(', ')}`);
+        } else {
+          // Try partial match (e.g., "Volvo AB" should match "Volvo")
+          for (const [companyName, tickers] of sheetCompanyNameToTickerMap.entries()) {
+            if (normalizedEntity.includes(companyName) || companyName.includes(normalizedEntity)) {
+              tickers.forEach(ticker => additionalTickers.add(ticker));
+              console.log(`Matched company name "${entity}" (partial) to tickers: ${tickers.join(', ')}`);
+              break;
+            }
+          }
+        }
+      }
+      
+      // Add matched tickers to detectedTickers if not already present
+      if (additionalTickers.size > 0) {
+        const newTickers = Array.from(additionalTickers).filter(ticker => !detectedTickers.includes(ticker));
+        if (newTickers.length > 0) {
+          detectedTickers.push(...newTickers);
+          console.log(`Added ${newTickers.length} tickers from company name matching: ${newTickers.join(', ')}`);
+          
+          // Fetch prices for newly matched tickers
+          for (const ticker of newTickers) {
+            const normalizedTicker = ticker.toUpperCase().replace(/[^A-Za-z0-9]/g, '');
+            
+            // First check if we already have the price from Google Sheets
+            const existingPriceData = sheetTickerPriceMap.get(normalizedTicker);
+            
+            if (!existingPriceData) {
+              // Ticker not found in Google Sheets, fetch from Finnhub via get-ticker-price
+              try {
+                console.log(`Ticker ${ticker} not found in Google Sheets, fetching from Finnhub via get-ticker-price`);
+                const authHeader = req.headers.get('Authorization');
+                const invokeHeaders = authHeader ? { Authorization: authHeader } : {};
+                
+                const { data: liveData, error: liveError } = await supabase.functions.invoke('get-ticker-price', {
+                  headers: invokeHeaders,
+                  body: { 
+                    symbol: normalizedTicker,
+                    includeProfile: true
+                  },
+                });
+                
+                if (!liveError && liveData && typeof liveData.price === 'number') {
+                  const currency = liveData.currency || 'USD';
+                  
+                  sheetTickerPriceMap.set(normalizedTicker, {
+                    price: liveData.price,
+                    currency: currency,
+                    name: ticker,
+                    change: typeof liveData.change === 'number' ? liveData.change : null,
+                    changePercent: typeof liveData.changePercent === 'number' ? liveData.changePercent : null,
+                    high: typeof liveData.high === 'number' ? liveData.high : null,
+                    low: typeof liveData.low === 'number' ? liveData.low : null,
+                    open: typeof liveData.open === 'number' ? liveData.open : null,
+                    previousClose: typeof liveData.previousClose === 'number' ? liveData.previousClose : null,
+                  });
+                  
+                  console.log(`Found live price for ${ticker} from Finnhub: ${liveData.price} ${currency}${typeof liveData.changePercent === 'number' ? ` (${liveData.changePercent >= 0 ? '+' : ''}${liveData.changePercent.toFixed(2)}%)` : ''}`);
+                } else {
+                  console.warn(`Failed to fetch price for ${ticker} from Finnhub:`, liveError || 'No price in response');
+                }
+              } catch (error) {
+                console.error(`Error fetching price for ${ticker}:`, error);
+              }
+            } else {
+              console.log(`Using existing price for ${ticker} from Google Sheets: ${existingPriceData.price} ${existingPriceData.currency}`);
+            }
+          }
+        }
+      }
+    }
 
     // Fallback to old system if unified router failed or returned fallback
     if (intentSource === 'fallback' || !userIntent || userIntent === 'general_advice') {
@@ -2967,6 +3187,7 @@ serve(async (req) => {
     if (llmTavilyPlan.reason) {
       console.log('LLM Tavily-plan:', llmTavilyPlan.reason);
     }
+
 
     const isSimplePersonalAdviceRequest = (
       isPersonalAdviceRequest || isPortfolioOptimizationRequest
@@ -3842,6 +4063,98 @@ INSTRUKTION FÖR PREDIKTIONER:
 - När användaren frågar om "hur mycket är jag upp totalt" eller liknande, referera till den totala avkastningen i procent som anges ovan.
 - Om användaren frågar om specifika aktiers avkastning och den informationen finns i kontexten, använd den detaljerade avkastningsdata som inkluderar investerat belopp, nuvarande värde och vinst/förlust.`;
         }
+      }
+    }
+
+    // Add ticker price information if any tickers were detected
+    if (detectedTickers.length > 0 && sheetTickerPriceMap.size > 0) {
+      const tickerPriceInfo: string[] = [];
+      const yahooPriceInfo: string[] = [];
+      
+      for (const ticker of detectedTickers) {
+        const normalizedTicker = ticker.toUpperCase().replace(/[^A-Za-z0-9]/g, '');
+        const priceData = sheetTickerPriceMap.get(normalizedTicker);
+        
+        if (priceData) {
+          const formattedPrice = priceData.price.toLocaleString('sv-SE', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          });
+          
+          let priceLine = `- ${priceData.name} (${ticker}): ${formattedPrice} ${priceData.currency}`;
+          
+          // Prioritize changePercent from Google Sheets if available, otherwise use Finnhub data
+          // Check if we have changePercent from Google Sheets (no 'change' field means it's from Google Sheets)
+          if (priceData.changePercent !== null && priceData.changePercent !== undefined && 
+              (priceData.change === null || priceData.change === undefined)) {
+            // This is from Google Sheets (only has changePercent, no change field)
+            const changeSign = priceData.changePercent >= 0 ? '+' : '';
+            priceLine += ` (Idag: ${changeSign}${priceData.changePercent.toFixed(2)}%)`;
+          } else if (priceData.change !== null && priceData.change !== undefined && 
+                     priceData.changePercent !== null && priceData.changePercent !== undefined) {
+            // This is from Finnhub (has both change and changePercent)
+            const changeSign = priceData.change >= 0 ? '+' : '';
+            const changeFormatted = priceData.change.toLocaleString('sv-SE', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            });
+            priceLine += ` (${changeSign}${changeFormatted} ${priceData.currency}, ${changeSign}${priceData.changePercent.toFixed(2)}%)`;
+          } else if (priceData.changePercent !== null && priceData.changePercent !== undefined) {
+            // Fallback: only changePercent available (could be from either source)
+            const changeSign = priceData.changePercent >= 0 ? '+' : '';
+            priceLine += ` (Idag: ${changeSign}${priceData.changePercent.toFixed(2)}%)`;
+          }
+          
+          // Add sector from Google Sheets if available
+          if (priceData.sector) {
+            priceLine += ` | Sektor: ${priceData.sector}`;
+          }
+          
+          if (priceData.high && priceData.low) {
+            const highFormatted = priceData.high.toLocaleString('sv-SE', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            });
+            const lowFormatted = priceData.low.toLocaleString('sv-SE', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            });
+            priceLine += ` | Dagens intervall: ${lowFormatted} - ${highFormatted} ${priceData.currency}`;
+          }
+          
+          if (priceData.open) {
+            const openFormatted = priceData.open.toLocaleString('sv-SE', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            });
+            priceLine += ` | Öppning: ${openFormatted} ${priceData.currency}`;
+          }
+          
+          if (priceData.previousClose) {
+            const prevCloseFormatted = priceData.previousClose.toLocaleString('sv-SE', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            });
+            priceLine += ` | Stängning igår: ${prevCloseFormatted} ${priceData.currency}`;
+          }
+          
+          // Check if this ticker was in the original Google Sheets list
+          const wasInOriginalSet = sheetTickerSymbols.includes(normalizedTicker);
+          if (wasInOriginalSet) {
+            tickerPriceInfo.push(priceLine);
+          } else {
+            // This price was fetched from Finnhub (live price)
+            yahooPriceInfo.push(priceLine);
+          }
+        }
+      }
+      
+      if (tickerPriceInfo.length > 0) {
+        contextInfo += `\n\nAKTIEKURSER FRÅN GOOGLE SHEETS:\n${tickerPriceInfo.join('\n')}\n\nVIKTIGT: Dessa priser är FAKTA. När användaren nämner dessa tickers eller frågar om priser, presentera ENDAST dessa faktiska priser naturligt och direkt. Inkludera ALLTID dagsutveckling (förändring i procent, markerat som "Idag: +X%") om den finns tillgänglig i listan ovan. Om användaren frågar "hur har dom gått idag?" eller "hur går [ticker] idag?", använd dagsutvecklingen från listan ovan. Inkludera också relevanta nyckeltal som dagens högsta/lägsta, öppningskurs och stängningskurs från föregående dag om de finns. Presentera informationen naturligt, t.ex. "Volvo (VOLV B) står i 245,50 SEK (Idag: +0,95%). Dagens intervall: 243,20 - 246,80 SEK. Öppning: 244,00 SEK." Om sektor finns i listan, inkludera den också när det är relevant. Spekulera INTE eller hitta på priser - använd bara de priser som finns här. Nämn INTE varifrån priserna kommer (inte "enligt prislista", "enligt Google Sheets" etc.) - presentera bara priset direkt.`;
+      }
+      
+      if (yahooPriceInfo.length > 0) {
+        contextInfo += `\n\nAKTUELLA LIVE-KURSER FRÅN FINNHUB (realtidsdata):\n${yahooPriceInfo.join('\n')}\n\nVIKTIGT: Dessa priser är FAKTA och aktuella realtidskurser. När användaren nämner dessa tickers eller frågar om priser, presentera ENDAST dessa faktiska priser naturligt och direkt. Inkludera ALLTID dagsutveckling (förändring i absolut värde och procent) om den finns tillgänglig. Inkludera också relevanta nyckeltal som dagens högsta/lägsta, öppningskurs och stängningskurs från föregående dag om de finns. Presentera informationen naturligt, t.ex. "Apple (AAPL) står i 185,64 USD (+1,23 USD, +0,67%). Dagens intervall: 184,50 - 186,20 USD. Öppning: 184,80 USD." Om användaren frågar "vad står [ticker] i?" eller "hur går [ticker] nu?" eller "hur har dom gått idag?", svara direkt med det faktiska priset och dagsutvecklingen. Spekulera INTE eller hitta på priser - använd bara de priser som finns här. Nämn INTE varifrån priserna kommer (inte "enligt Finnhub", "enligt prislista" etc.) - presentera bara priset direkt.`;
       }
     }
 

@@ -11,6 +11,11 @@ const finnhubApiKey = Deno.env.get("FINNHUB_API_KEY");
 
 interface FinnhubQuoteResponse {
   c?: number; // Current price
+  d?: number; // Change (absolute)
+  dp?: number; // Percent change
+  h?: number; // High price of the day
+  l?: number; // Low price of the day
+  o?: number; // Open price of the day
   pc?: number; // Previous close price
 }
 
@@ -23,6 +28,12 @@ type CacheEntry = {
   currency: string | null;
   profileFetched: boolean;
   expiresAt: number;
+  change?: number | null;
+  changePercent?: number | null;
+  high?: number | null;
+  low?: number | null;
+  open?: number | null;
+  previousClose?: number | null;
 };
 
 const CACHE_TTL_MS = 60_000; // 1 minute cache window for identical lookups
@@ -78,6 +89,12 @@ serve(async (req) => {
           price: refreshedEntry.price,
           currency: refreshedEntry.currency,
           profileFetched: refreshedEntry.profileFetched,
+          change: refreshedEntry.change ?? null,
+          changePercent: refreshedEntry.changePercent ?? null,
+          high: refreshedEntry.high ?? null,
+          low: refreshedEntry.low ?? null,
+          open: refreshedEntry.open ?? null,
+          previousClose: refreshedEntry.previousClose ?? null,
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -86,6 +103,12 @@ serve(async (req) => {
     }
 
     let price: number | null = null;
+    let change: number | null = null;
+    let changePercent: number | null = null;
+    let high: number | null = null;
+    let low: number | null = null;
+    let open: number | null = null;
+    let previousClose: number | null = null;
     const cachedCurrency: string | null = isCachedValid ? cached!.currency : cached?.currency ?? null;
     let profileFetched = isCachedValid ? cached!.profileFetched : cached?.profileFetched ?? false;
 
@@ -103,9 +126,21 @@ serve(async (req) => {
       }
 
       price = quoteData.price;
+      change = quoteData.change ?? null;
+      changePercent = quoteData.changePercent ?? null;
+      high = quoteData.high ?? null;
+      low = quoteData.low ?? null;
+      open = quoteData.open ?? null;
+      previousClose = quoteData.previousClose ?? null;
       profileFetched = false;
     } else {
       price = cached!.price;
+      change = cached!.change ?? null;
+      changePercent = cached!.changePercent ?? null;
+      high = cached!.high ?? null;
+      low = cached!.low ?? null;
+      open = cached!.open ?? null;
+      previousClose = cached!.previousClose ?? null;
     }
 
     let finalCurrency = cachedCurrency;
@@ -135,6 +170,12 @@ serve(async (req) => {
       currency: finalCurrency ?? null,
       profileFetched: finalProfileFetched,
       expiresAt: now + CACHE_TTL_MS,
+      change,
+      changePercent,
+      high,
+      low,
+      open,
+      previousClose,
     };
 
     priceCache.set(normalizedSymbol, cacheEntry);
@@ -145,6 +186,12 @@ serve(async (req) => {
         price,
         currency: cacheEntry.currency,
         profileFetched: cacheEntry.profileFetched,
+        change: cacheEntry.change ?? null,
+        changePercent: cacheEntry.changePercent ?? null,
+        high: cacheEntry.high ?? null,
+        low: cacheEntry.low ?? null,
+        open: cacheEntry.open ?? null,
+        previousClose: cacheEntry.previousClose ?? null,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -164,7 +211,15 @@ serve(async (req) => {
   }
 });
 
-async function fetchQuote(symbol: string): Promise<{ price: number } | null> {
+async function fetchQuote(symbol: string): Promise<{
+  price: number;
+  change?: number;
+  changePercent?: number;
+  high?: number;
+  low?: number;
+  open?: number;
+  previousClose?: number;
+} | null> {
   try {
     const url = new URL("https://finnhub.io/api/v1/quote");
     url.searchParams.set("symbol", symbol);
@@ -187,7 +242,15 @@ async function fetchQuote(symbol: string): Promise<{ price: number } | null> {
       return null;
     }
 
-    return { price };
+    return {
+      price,
+      change: typeof data.d === "number" && Number.isFinite(data.d) ? data.d : undefined,
+      changePercent: typeof data.dp === "number" && Number.isFinite(data.dp) ? data.dp : undefined,
+      high: typeof data.h === "number" && Number.isFinite(data.h) && data.h > 0 ? data.h : undefined,
+      low: typeof data.l === "number" && Number.isFinite(data.l) && data.l > 0 ? data.l : undefined,
+      open: typeof data.o === "number" && Number.isFinite(data.o) && data.o > 0 ? data.o : undefined,
+      previousClose: typeof data.pc === "number" && Number.isFinite(data.pc) && data.pc > 0 ? data.pc : undefined,
+    };
   } catch (error) {
     console.error("Error fetching Finnhub quote:", error);
     throw error;
