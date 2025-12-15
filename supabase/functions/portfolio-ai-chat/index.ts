@@ -4282,6 +4282,16 @@ ${importantLines.join('\n')}
     }
 
     // Default: streaming SSE response
+    // For streaming, we don't use structured output to enable real-time text streaming
+    // Instead, we add format instructions to the prompt and parse stock suggestions from text
+    const streamingMessages = [
+      ...messages.slice(0, -1), // All messages except the last user message
+      {
+        role: 'user' as const,
+        content: `${messages[messages.length - 1].content}\n\nVIKTIGT: Om du föreslår aktier, formatera dem som: **Företagsnamn (TICKER)** - Kort motivering.`
+      }
+    ];
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -4290,9 +4300,9 @@ ${importantLines.join('\n')}
       },
         body: JSON.stringify({
           model,
-          messages,
+          messages: streamingMessages,
           stream: true,
-          response_format: { type: 'json_schema', json_schema: AI_RESPONSE_SCHEMA },
+          // No structured output for streaming - enables real-time text streaming
         }),
     });
 
@@ -4313,8 +4323,8 @@ ${importantLines.join('\n')}
             throw new Error('No response body');
           }
 
-          let rawJsonBuffer = '';
-          let parsedResponse: AIResponse | null = null;
+          let aiMessage = '';
+          let stockSuggestions: StockSuggestion[] = [];
           
           while (true) {
             const { done, value } = await reader.read();
@@ -4327,21 +4337,19 @@ ${importantLines.join('\n')}
               if (line.startsWith('data: ')) {
                 const data = line.slice(6);
                 if (data === '[DONE]') {
-                  // Try to parse final JSON if we have it
-                  let aiMessage = '';
-                  let stockSuggestions: StockSuggestion[] = [];
-                  
-                  if (parsedResponse) {
-                    aiMessage = parsedResponse.response || '';
-                    stockSuggestions = parsedResponse.stock_suggestions || [];
-                  } else if (rawJsonBuffer) {
+                  // Extract stock suggestions from the final message using regex
+                  if (aiMessage && !stockSuggestions.length) {
                     try {
-                      parsedResponse = JSON.parse(rawJsonBuffer) as AIResponse;
-                      aiMessage = parsedResponse.response || '';
-                      stockSuggestions = parsedResponse.stock_suggestions || [];
+                      // Try to extract stock suggestions from the message text
+                      const suggestionPattern = /\*\*([^*()]+?)\s*\(([A-Z0-9]{1,6}(?:[.-][A-Z0-9]{1,3})?)\)\*\*(?:\s*[-–—:]\s*(.*?))?(?=\n|$)/gi;
+                      const matches = Array.from(aiMessage.matchAll(suggestionPattern));
+                      stockSuggestions = matches.map(match => ({
+                        name: match[1].trim(),
+                        ticker: match[2].toUpperCase(),
+                        reason: match[3]?.trim() || 'AI-rekommendation',
+                      })).slice(0, 10); // Limit to 10 suggestions
                     } catch (e) {
-                      console.warn('Failed to parse final JSON response:', e);
-                      aiMessage = rawJsonBuffer;
+                      console.warn('Failed to extract stock suggestions:', e);
                     }
                   }
                   
@@ -4392,39 +4400,28 @@ ${importantLines.join('\n')}
                 try {
                   const parsed = JSON.parse(data);
                   
-                  // With structured output, content comes as JSON chunks
+                  // Stream content directly (no structured output for streaming)
                   if (parsed.choices?.[0]?.delta?.content) {
                     const content = parsed.choices[0].delta.content;
-                    rawJsonBuffer += content;
+                    aiMessage += content;
                     
-                    // Try to parse partial JSON to stream response text
-                    try {
-                      const partialParsed = JSON.parse(rawJsonBuffer) as Partial<AIResponse>;
-                      if (partialParsed.response) {
-                        // Stream the response text to client
-                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-                          content: partialParsed.response,
-                          profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
-                          requiresConfirmation: profileChangeDetection.requiresConfirmation
-                        })}\n\n`));
-                      }
-                    } catch (e) {
-                      // Partial JSON not complete yet, continue buffering
-                    }
+                    // Stream content immediately to client
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                      content,
+                      profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+                      requiresConfirmation: profileChangeDetection.requiresConfirmation
+                    })}\n\n`));
                   } else if (parsed.choices?.[0]?.message?.content) {
-                    // Complete JSON response received
-                    rawJsonBuffer = parsed.choices[0].message.content;
-                    try {
-                      parsedResponse = JSON.parse(rawJsonBuffer) as AIResponse;
-                      if (parsedResponse.response) {
-                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-                          content: parsedResponse.response,
-                          profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
-                          requiresConfirmation: profileChangeDetection.requiresConfirmation
-                        })}\n\n`));
-                      }
-                    } catch (e) {
-                      console.warn('Failed to parse structured response:', e);
+                    // Complete response received (shouldn't happen in streaming, but handle it)
+                    const fullContent = parsed.choices[0].message.content;
+                    const newContent = fullContent.slice(aiMessage.length);
+                    if (newContent.length > 0) {
+                      aiMessage = fullContent;
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                        content: newContent,
+                        profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+                        requiresConfirmation: profileChangeDetection.requiresConfirmation
+                      })}\n\n`));
                     }
                   }
                 } catch (e) {
