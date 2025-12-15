@@ -3495,6 +3495,36 @@ serve(async (req) => {
     if (conversationData?.predictionMarket) {
       const pm = conversationData.predictionMarket;
       
+      // Helper functions for formatting
+      const formatNumber = (num: number | string | undefined): string => {
+        if (num === undefined || num === null) return 'N/A';
+        const n = typeof num === 'string' ? parseFloat(num) : num;
+        if (isNaN(n)) return 'N/A';
+        if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(2)}B`;
+        if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+        if (n >= 1_000) return `${(n / 1_000).toFixed(2)}K`;
+        return n.toFixed(0);
+      };
+
+      const formatLiquidity = (liq: number | string | undefined): string => {
+        if (liq === undefined || liq === null) return 'Ej angiven';
+        return formatNumber(liq);
+      };
+
+      const formatDate = (dateStr: string | undefined): string => {
+        if (!dateStr) return '';
+        try {
+          const date = new Date(dateStr);
+          return date.toLocaleDateString('sv-SE', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          });
+        } catch {
+          return dateStr;
+        }
+      };
+      
       // Formatera sannolikheten snyggt
       let probDisplay = 'Okänd';
       if (typeof pm.probability === 'number') {
@@ -3505,17 +3535,61 @@ serve(async (req) => {
         probDisplay = pm.probability;
       }
 
-      contextInfo += `\n\nMARKNADSKONTEXT (Detta är ämnet för diskussionen):
+      // Formatera outcomes
+      const outcomesText = pm.outcomes && Array.isArray(pm.outcomes) && pm.outcomes.length > 0
+        ? pm.outcomes.map((o: any) => 
+            `  - ${o.title || 'Okänd'}: ${typeof o.price === 'number' ? o.price.toFixed(1) : o.price || 'N/A'}%`
+          ).join('\n')
+        : '  - Ingen data tillgänglig';
+      
+      // Formatera prishistorik
+      const historyText = pm.priceHistory ? `
+- Prisutveckling:
+  - Nuvarande: ${pm.priceHistory.current || 0}%
+  - 24h högsta: ${pm.priceHistory.high24h || 0}%
+  - 24h lägsta: ${pm.priceHistory.low24h || 0}%
+  - Förändring 24h: ${pm.priceHistory.change24h > 0 ? '+' : ''}${pm.priceHistory.change24h?.toFixed(1) || 0}%
+  - Trend: ${pm.priceHistory.trend === 'up' ? 'Uppåt' : pm.priceHistory.trend === 'down' ? 'Nedåt' : 'Stabil'}` : '';
+      
+      // Formatera metadata
+      const metadataLines: string[] = [];
+      if (pm.endDate) {
+        metadataLines.push(`- Slutdatum: ${formatDate(pm.endDate)}`);
+      }
+      if (pm.tags && Array.isArray(pm.tags) && pm.tags.length > 0) {
+        metadataLines.push(`- Taggar: ${pm.tags.join(', ')}`);
+      }
+      if (pm.liquidity !== undefined && pm.liquidity !== null) {
+        metadataLines.push(`- Likviditet: ${formatLiquidity(pm.liquidity)}`);
+      }
+      if (pm.closed === true) {
+        metadataLines.push(`- Status: Stängd`);
+      } else if (pm.active === true || pm.active === undefined) {
+        metadataLines.push(`- Status: Aktiv`);
+      }
+      const metadataText = metadataLines.length > 0 ? metadataLines.join('\n') : '';
+
+      contextInfo += `\n\nPREDIKTIONSMARKNAD (Detta är ämnet för diskussionen):
 - Marknadsfråga: "${pm.question || 'Okänd marknad'}"
-- Aktuell sannolikhet (JA-sidan): ${probDisplay}
-- Volym: ${pm.volume || 'Ej angiven'}
 - Beskrivning: ${pm.description || '-'}
-- ID: ${pm.id || '-'}
+- Marknads-ID: ${pm.id || '-'}
+${pm.slug ? `- Slug: ${pm.slug}` : ''}
+
+OUTCOMES OCH SANNOLIKHETER:
+${outcomesText}${historyText}
+
+MARKNADSDATA:
+- Volym: ${pm.volume || 'Ej angiven'}${pm.volumeNum ? ` (${formatNumber(pm.volumeNum)})` : ''}
+${metadataText}
 
 INSTRUKTION FÖR PREDIKTIONER:
 - Du har fått exakt realtidsdata ovan. Användaren ser detta just nu.
-- Om användaren frågar "vad är oddsen?", svara direkt med ${probDisplay} och analysera vad det innebär.
-- Diskutera om ${probDisplay} verkar högt eller lågt baserat på nyhetsläget.`;
+- Om användaren frågar "vad är oddsen?" eller "vad är sannolikheten?", svara direkt med ${probDisplay} och analysera vad det innebär.
+- Använd prishistoriken för att diskutera trender och förändringar.
+- Jämför nuvarande sannolikhet med historiska nivåer (högsta/lägsta) för att ge kontext.
+- Diskutera om ${probDisplay} verkar högt eller lågt baserat på nyhetsläget och trender.
+- Om det finns flera outcomes, diskutera alla alternativ, inte bara primära.
+- Använd taggar och metadata för att ge mer kontext om marknaden.`;
     }
 
     // Add current portfolio context with latest valuations

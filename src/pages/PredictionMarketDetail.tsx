@@ -13,6 +13,7 @@ import {
   transformHistoryToGraphData,
   type TimeRange 
 } from "@/hooks/usePolymarket";
+import type { GraphDataPoint, PolymarketMarketHistory } from "@/types/polymarket";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { MarketImpactAnalysis } from "@/components/MarketImpactAnalysis";
 
@@ -26,6 +27,74 @@ const formatVolume = (volumeNum: number): string => {
     return `${(volumeNum / 1_000).toFixed(1)}`;
   }
   return volumeNum.toFixed(0);
+};
+
+// Helper functions for price history calculations
+// These work with the history points which have ISO timestamp strings
+const calculateHigh24h = (history: { points: Array<{ timestamp: string; price: number }> } | null | undefined): number => {
+  if (!history?.points || history.points.length === 0) return 0;
+  const now = new Date();
+  const last24h = history.points.filter(point => {
+    const pointDate = new Date(point.timestamp);
+    const timeDiff = now.getTime() - pointDate.getTime();
+    return timeDiff < 24 * 60 * 60 * 1000 && timeDiff >= 0;
+  });
+  if (last24h.length === 0) {
+    const lastPoint = history.points[history.points.length - 1];
+    return lastPoint ? Math.round(lastPoint.price * 100) : 0;
+  }
+  return Math.max(...last24h.map(p => Math.round(p.price * 100)));
+};
+
+const calculateLow24h = (history: { points: Array<{ timestamp: string; price: number }> } | null | undefined): number => {
+  if (!history?.points || history.points.length === 0) return 0;
+  const now = new Date();
+  const last24h = history.points.filter(point => {
+    const pointDate = new Date(point.timestamp);
+    const timeDiff = now.getTime() - pointDate.getTime();
+    return timeDiff < 24 * 60 * 60 * 1000 && timeDiff >= 0;
+  });
+  if (last24h.length === 0) {
+    const lastPoint = history.points[history.points.length - 1];
+    return lastPoint ? Math.round(lastPoint.price * 100) : 0;
+  }
+  return Math.min(...last24h.map(p => Math.round(p.price * 100)));
+};
+
+const calculateChange24h = (history: { points: Array<{ timestamp: string; price: number }> } | null | undefined, currentPrice: number): number => {
+  if (!history?.points || history.points.length === 0) return 0;
+  const now = new Date();
+  
+  // Find price from 24 hours ago (or closest available)
+  const targetTime = now.getTime() - 24 * 60 * 60 * 1000;
+  let price24hAgo = currentPrice;
+  
+  for (let i = history.points.length - 1; i >= 0; i--) {
+    const pointDate = new Date(history.points[i].timestamp);
+    if (pointDate.getTime() <= targetTime) {
+      price24hAgo = Math.round(history.points[i].price * 100);
+      break;
+    }
+  }
+  
+  return currentPrice - price24hAgo;
+};
+
+const calculateTrend = (graphData: GraphDataPoint[]): 'up' | 'down' | 'stable' => {
+  if (!graphData || graphData.length < 2) return 'stable';
+  
+  // Use last 10 points or all if less than 10
+  const recentPoints = graphData.slice(-10);
+  if (recentPoints.length < 2) return 'stable';
+  
+  const firstPrice = recentPoints[0].price;
+  const lastPrice = recentPoints[recentPoints.length - 1].price;
+  const change = lastPrice - firstPrice;
+  
+  // Consider it stable if change is less than 2%
+  if (Math.abs(change) < 2) return 'stable';
+  
+  return change > 0 ? 'up' : 'down';
 };
 
 const PredictionMarketDetail = () => {
@@ -298,23 +367,50 @@ const PredictionMarketDetail = () => {
            <Button 
   className="w-full gap-2" 
   size="lg"
-  onClick={() => navigate('/ai-chatt', { 
-    state: { 
-      createNewSession: true, 
-      initialMessage: `Jag vill diskutera prediktionsmarknaden: "${market.question}"`,
-      sessionName: market.question,
-      // NY KOD HÄR: Skicka med datan strukturera
-      conversationData: {
-        predictionMarket: {
-          id: market.id,
-          question: market.question,
-          probability: currentPrice, // Skickar numret (t.ex. 51 för 51%)
-          volume: volumeDisplay,
-          description: market.description
+  onClick={() => {
+    // Calculate price history metrics using the raw history data
+    const priceHistory = history && history.points && history.points.length > 0 ? {
+      current: currentPrice,
+      high24h: calculateHigh24h(history),
+      low24h: calculateLow24h(history),
+      change24h: calculateChange24h(history, currentPrice),
+      trend: calculateTrend(graphData),
+    } : undefined;
+
+    navigate('/ai-chatt', { 
+      state: { 
+        createNewSession: true, 
+        initialMessage: `Jag vill diskutera prediktionsmarknaden: "${market.question}"`,
+        sessionName: market.question,
+        conversationData: {
+          predictionMarket: {
+            id: market.id,
+            question: market.question,
+            slug: market.slug,
+            description: market.description,
+            // Outcomes
+            outcomes: market.outcomes?.map(o => ({
+              title: o.title,
+              price: Math.round(o.price * 100), // Konvertera till procent
+              tokenId: o.tokenId
+            })) || [],
+            // Nuvarande sannolikhet (primär outcome)
+            probability: currentPrice,
+            // Historik (sammanfattad)
+            priceHistory: priceHistory,
+            // Metadata
+            volume: volumeDisplay,
+            volumeNum: market.volumeNum || market.volume || 0,
+            liquidity: market.liquidity || 0,
+            endDate: market.endDate || market.endDateIso,
+            tags: market.tags || [],
+            active: market.active !== false,
+            closed: market.closed === true
+          }
         }
-      }
-    } 
-  })}
+      } 
+    });
+  }}
 >
   <MessageSquare className="h-4 w-4" />
   Diskutera med AI
