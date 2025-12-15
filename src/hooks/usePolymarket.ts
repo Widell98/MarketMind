@@ -36,9 +36,8 @@ const callPolymarketAPI = async (
 };
 
 // Transform API response to our Market type
-//
-
-const transformMarket = (apiMarket: any): PolymarketMarket => {
+// parentEvent skickas med för att vi ska kunna länka till rätt Event-sida och visa Event-rubriken
+const transformMarket = (apiMarket: any, parentEvent?: any): PolymarketMarket => {
   try {
     let outcomes: any[] = [];
     
@@ -91,6 +90,10 @@ const transformMarket = (apiMarket: any): PolymarketMarket => {
       try { clobTokenIdsArray = JSON.parse(apiMarket.clobTokenIds); } catch {}
     }
 
+    // Hämta Event-info från parent om det finns, annars från market objektet
+    const eventSlug = parentEvent?.slug || apiMarket.eventSlug || apiMarket.slug; 
+    const eventTitle = parentEvent?.title || apiMarket.eventTitle;
+
     return {
       id: marketId,
       slug: apiMarket.slug || marketId,
@@ -123,6 +126,9 @@ const transformMarket = (apiMarket: any): PolymarketMarket => {
       closed: apiMarket.closed === true,
       clobTokenIds: clobTokenIdsArray,
       tags: apiMarket.tags || [],
+      // Nya fält för parent-länkning
+      eventSlug: eventSlug,
+      groupItemTitle: eventTitle,
     } as PolymarketMarketDetail;
   } catch (error) {
     console.error('Transform error:', error);
@@ -163,24 +169,12 @@ export const fetchPolymarketMarkets = async (params?: {
 
     const data = await callPolymarketAPI(endpoint, apiParams);
     
+    // Normalisera svaret till en lista av items (Events eller Markets)
     let rawItems: any[] = [];
     
-    // --- EXTRAHERA MARKNADER ---
     if (endpoint === '/public-search') {
         // Sökresultat ligger ofta under 'events' eller 'markets'
-        const events = data.events || (Array.isArray(data) ? data : []);
-        
-        // "Packa upp" events till marknader
-        // Om ett sökresultat är ett Event, vill vi visa dess marknader istället för eventet självt
-        events.forEach((item: any) => {
-            if (item.markets && Array.isArray(item.markets) && item.markets.length > 0) {
-                // Lägg till alla marknader från detta event
-                rawItems.push(...item.markets);
-            } else {
-                // Eller lägg till objektet som det är (om det redan är en marknad)
-                rawItems.push(item);
-            }
-        });
+        rawItems = data.events || (Array.isArray(data) ? data : []);
     } else {
         // Standard endpoint response
         if (Array.isArray(data)) rawItems = data;
@@ -190,18 +184,42 @@ export const fetchPolymarketMarkets = async (params?: {
 
     if (rawItems.length === 0) return [];
     
-    // Transformera och filtrera
-    const transformedMarkets = rawItems
-      .map(item => {
-        // Fix: Om search result saknar 'question' men har 'title', använd 'title'
-        if (!item.question && (item.title || item.name)) {
-             return transformMarket({ ...item, question: item.title || item.name });
+    // Processa items och behåll Event-strukturen
+    const processedMarkets: PolymarketMarket[] = [];
+
+    rawItems.forEach((item: any) => {
+        // Scenario 1: Objektet är ett Event som innehåller markets (vanligt vid sökning)
+        if (item.markets && Array.isArray(item.markets) && item.markets.length > 0) {
+            item.markets.forEach((market: any) => {
+                // Skicka med 'item' (Eventet) som parent för att få med titel/slug
+                const transformed = transformMarket(market, item);
+                
+                // Fix: Om search result saknar 'question' men har 'title' på marknadsnivå
+                if (!transformed.question || transformed.question === 'Unknown Market') {
+                   if (market.title || market.name) transformed.question = market.title || market.name;
+                }
+
+                if (transformed.id && transformed.question) {
+                    processedMarkets.push(transformed);
+                }
+            });
+        } 
+        // Scenario 2: Objektet är en enskild marknad eller ett event utan sub-markets
+        else {
+             // Fix: Om search result saknar 'question' men har 'title', använd 'title'
+             let marketToTransform = item;
+             if (!item.question && (item.title || item.name)) {
+                  marketToTransform = { ...item, question: item.title || item.name };
+             }
+
+             const transformed = transformMarket(marketToTransform);
+             if (transformed.id && transformed.question) {
+                 processedMarkets.push(transformed);
+             }
         }
-        return transformMarket(item);
-      })
-      .filter(market => market.id && market.question);
+    });
     
-    return transformedMarkets;
+    return processedMarkets;
   } catch (error) {
     console.error('Error fetching Polymarket markets:', error);
     return [];
