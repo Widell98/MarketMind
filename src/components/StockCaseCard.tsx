@@ -88,17 +88,21 @@ const buildPlaceholderImage = (companyName?: string | null, sector?: string | nu
 
   return `https://source.unsplash.com/800x600/?${encodedQuery}`;
 };
+
 interface StockCaseCardProps {
   stockCase: StockCase;
   onViewDetails: (id: string) => void;
   onDelete?: (id: string) => void;
   showMetaBadges?: boolean;
+  showActions?: boolean; // Ny prop för att dölja footer-knappar
 }
+
 const StockCaseCard: React.FC<StockCaseCardProps> = ({
   stockCase,
   onViewDetails,
   onDelete,
-  showMetaBadges = true
+  showMetaBadges = true,
+  showActions = true // Default till true
 }) => {
   const {
     user
@@ -345,19 +349,21 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
                 </Button>
               </div>}
 
-            <div className="border-t pt-3 sm:pt-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Button size="sm" variant={isLiked ? "default" : "outline"} onClick={e => {
-                  e.stopPropagation();
-                  toggleLike();
-                }} className="w-full justify-center gap-2 sm:w-auto">
-                  <Heart className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
-                  <span>{likeCount}</span>
-                </Button>
+            {showActions && (
+              <div className="border-t pt-3 sm:pt-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Button size="sm" variant={isLiked ? "default" : "outline"} onClick={e => {
+                    e.stopPropagation();
+                    toggleLike();
+                  }} className="w-full justify-center gap-2 sm:w-auto">
+                    <Heart className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
+                    <span>{likeCount}</span>
+                  </Button>
 
-                <ShareStockCase stockCaseId={stockCase.id} title={stockCase.title} />
+                  <ShareStockCase stockCaseId={stockCase.id} title={stockCase.title} />
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </CardContent>
