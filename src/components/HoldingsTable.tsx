@@ -44,6 +44,49 @@ interface HoldingsTableProps {
   onSort?: (column: SortBy) => void;
 }
 
+// Hjälpfunktion för att avgöra om marknaden är öppen
+const isMarketOpen = (currency?: string, holdingType?: string): boolean => {
+  // Krypto visas alltid (dygnet runt)
+  const type = holdingType?.toLowerCase();
+  if (type === 'crypto' || type === 'cryptocurrency' || type === 'certificate') {
+    return true;
+  }
+
+  // Hämta valuta, fallback till SEK om det saknas
+  const normalizedCurrency = currency?.toUpperCase() || 'SEK';
+
+  // Hämta aktuell tid i Stockholm
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Europe/Stockholm',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false
+  });
+  
+  const parts = formatter.formatToParts(now);
+  const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+  const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+  const currentMinutes = hour * 60 + minute;
+
+  // Tider i minuter från midnatt
+  const swedenOpen = 9 * 60;        // 09:00
+  const usOpen = 15 * 60 + 30;      // 15:30
+  const endOfDay = 23 * 60 + 59;    // 23:59
+
+  // Logik baserat på valuta
+  if (normalizedCurrency === 'USD') {
+    // Amerikanska aktier: Visa mellan 15:30 och midnatt
+    return currentMinutes >= usOpen && currentMinutes <= endOfDay;
+  } else if (['SEK', 'EUR', 'DKK', 'NOK'].includes(normalizedCurrency)) {
+    // Svenska/Europeiska aktier: Visa mellan 09:00 och midnatt
+    return currentMinutes >= swedenOpen && currentMinutes <= endOfDay;
+  }
+
+  // För övriga valutor, anta svenska tider som standard
+  return currentMinutes >= swedenOpen && currentMinutes <= endOfDay;
+};
+
 const HoldingsTable: React.FC<HoldingsTableProps> = ({
   holdings,
   onRefreshPrice,
@@ -133,12 +176,16 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
             priceCurrency,
           } = resolveHoldingValue(holding);
 
+          // Hämta valuta för kontroll av öppettider
+          const actualCurrency = holding.price_currency || holding.currency || 'SEK';
+          const isOpen = isMarketOpen(actualCurrency, holding.holding_type);
+
           const hasPurchasePriceFallback = typeof holding.purchase_price === 'number' && holding.purchase_price > 0 && quantity > 0;
           const purchaseValueOriginal = hasPurchasePriceFallback
             ? holding.purchase_price * quantity
             : undefined;
           const purchaseValueSEK = purchaseValueOriginal !== undefined
-            ? convertToSEK(purchaseValueOriginal, holding.base_currency || priceCurrency || holding.currency || 'SEK')
+            ? convertToSEK(purchaseValueOriginal, actualCurrency)
             : undefined;
 
           const performance = holdingPerformanceMap?.[holding.id];
@@ -245,8 +292,9 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
                   <span className="text-sm text-muted-foreground">—</span>
                 )}
               </TableCell>
+              {/* Kolumnen för Utveckling idag: Visas bara om marknaden är öppen */}
               <TableCell className="py-3 sm:py-3.5 text-right align-middle">
-                {dailyChangePercent !== null ? (
+                {isOpen && dailyChangePercent !== null ? (
                   <div className="inline-flex flex-col items-end text-right gap-0.5">
                     <span className={cn('text-sm font-semibold', dailyChangeClass)}>
                       {dailyChangeValue !== null
@@ -258,7 +306,7 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
                     </span>
                   </div>
                 ) : (
-                  <span className="text-sm text-muted-foreground">—</span>
+                  <span className="text-sm text-muted-foreground" title={!isOpen ? "Marknaden är stängd" : ""}>—</span>
                 )}
               </TableCell>
               <TableCell className="py-3 sm:py-3.5 text-right align-middle">
