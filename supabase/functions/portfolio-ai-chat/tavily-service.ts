@@ -70,6 +70,7 @@ export type TavilySearchOptions = {
 export type TavilyFormattingOptions = {
   requireRecentDays?: number;
   allowUndatedFromDomains?: string[];
+  topic?: TavilyTopic;
 };
 
 // ============================================================================
@@ -239,8 +240,8 @@ export const TAVILY_ROUTER_TOOL = {
         freshnessDays: {
           type: 'integer',
           minimum: 1,
-          maximum: 30,
-          description: 'Maximalt antal dagar bakåt som källorna får vara.'
+          maximum: 180,
+          description: 'Maximalt antal dagar bakåt som källorna får vara. Använd 90-180 dagar för roadmap/pipeline-frågor, 1-7 dagar för nyheter.'
         },
         preferredLocales: {
           type: 'array',
@@ -284,10 +285,19 @@ export const planRealtimeSearchWithLLM = async ({
       routerContext.push('Tidigare relaterade frågor:\n' + recentMessages.map((entry, index) => `${index + 1}. ${entry}`).join('\n'));
     }
 
+    // Upptäck om frågan handlar om pipeline/roadmap för längre freshness
+    const isPipelineRoadmapQuery = /\b(pipeline|roadmap|produktplan|produktplanering|release schedule|release plan|spelkalender|upcoming releases?)\b/i.test(message);
+    
     const routerPrompt = [
       'Du avgör om nästa svar behöver dagsaktuella källor innan rådgivaren svarar kunden.',
       'Om färska nyheter, intradagspris eller senaste rapporter krävs → anropa tavily_search exakt en gång.',
       'Om frågan gäller kommande lanseringar, "releases", spelkalender eller produktpipeline → anropa tavily_search för att hitta uppdaterade listor.',
+      'För roadmap/pipeline-frågor: Använd freshnessDays 90-180 (produktplaner kan vara relevanta i månader).',
+      'För nyheter/rapporter: Använd freshnessDays 1-7 dagar.',
+      '',
+      'VIKTIGT: När du genererar "query"-fältet, optimera det för en sökmotor - använd sökord, inte hela meningar.',
+      'Exempel: Istället för "Vad släpper de för spel?" skriv "Coffee Stain Studios upcoming games release schedule 2025".',
+      '',
       'Om äldre kunskap räcker → svara med JSON på formatet {"decision":"skip","reason":"kort svensk motivering"}.',
       'Ange alltid en motivering (på svenska) antingen i JSON:et eller i fältet reason när du anropar verktyget.',
       routerContext.join('\n\n'),
@@ -345,9 +355,11 @@ export const planRealtimeSearchWithLLM = async ({
           : typeof args?.freshnessDays === 'string'
             ? Number(args.freshnessDays)
             : undefined;
+        // Öka max till 180 för pipeline/roadmap-frågor
+        const maxFreshnessDays = isPipelineRoadmapQuery ? 180 : 30;
         const freshnessDays = Number.isFinite(freshnessDaysRaw)
-          ? Math.min(30, Math.max(1, Math.round(Number(freshnessDaysRaw))))
-          : undefined;
+          ? Math.min(maxFreshnessDays, Math.max(1, Math.round(Number(freshnessDaysRaw))))
+          : (isPipelineRoadmapQuery ? 90 : undefined); // Default 90 dagar för pipeline-frågor om inget anges
         return {
           shouldSearch: true,
           query: typeof args?.query === 'string' ? args.query.trim() : undefined,
@@ -454,7 +466,7 @@ export const formatTavilyResults = (
 
   const sections: string[] = [];
   const sourceSet = new Set<string>();
-  const { requireRecentDays, allowUndatedFromDomains } = options;
+  const { requireRecentDays, allowUndatedFromDomains, topic } = options;
   const requireFreshness = typeof requireRecentDays === 'number'
     && Number.isFinite(requireRecentDays)
     && requireRecentDays > 0;
@@ -535,10 +547,15 @@ export const formatTavilyResults = (
           return false;
         }
 
-        const hasRelevance = hasFinancialRelevance(combinedText);
-        if (!hasRelevance && combinedText.length < 60) {
-          console.log('Filtrerar bort Tavily-resultat med låg finansiell relevans:', url);
-          return false;
+        // Hoppa över finansiell relevans-kontroll för 'general' topic eller obegränsade sökningar
+        // Detta tillåter relevanta resultat som t.ex. spelreleaser som kan sakna finansiella nyckelord
+        const skipRelevanceCheck = topic === 'general' || allowedDomains.length === 0;
+        if (!skipRelevanceCheck) {
+          const hasRelevance = hasFinancialRelevance(combinedText);
+          if (!hasRelevance && combinedText.length < 60) {
+            console.log('Filtrerar bort Tavily-resultat med låg finansiell relevans:', url);
+            return false;
+          }
         }
 
         if (!isRecentEnough(url, result.published_date)) {
@@ -752,6 +769,7 @@ export const fetchTavilyContext = async (
         const context = formatTavilyResults(tavilyData, includeDomains, {
           requireRecentDays,
           allowUndatedFromDomains,
+          topic: effectiveTopic,
         });
         const rawResultCount = Array.isArray(tavilyData.results) ? tavilyData.results.length : 0;
 

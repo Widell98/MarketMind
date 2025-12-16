@@ -4498,6 +4498,14 @@ ${importantLines.join('\n')}
     const hasMarketData = tavilyContext.formattedContext.length > 0;
     const tavilyFallbackUsed = (tavilyContext as any).fallbackUsed === true;
     let tavilySourceInstruction = '';
+    let tavilyAnswerInstruction = '';
+    
+    // Kontrollera om Tavily-sammanfattningen finns (den börjar med "Sammanfattning från realtidssökning")
+    const hasTavilyAnswer = tavilyContext.formattedContext.includes('Sammanfattning från realtidssökning:');
+    if (hasTavilyAnswer) {
+      // Instruera huvud-LLM att vikta Tavily-sammanfattningen högre
+      tavilyAnswerInstruction = '\n\nVIKTIGT OM TAVILY-SAMMANFATTNINGEN:\nTavily-sammanfattningen ovan är en sammanställning baserad på flera källor. Vikta denna sammanfattning högre än de individuella resultaten när du svarar - den representerar en syntes av informationen. Du kan referera till detaljerna nedan för specifika fakta, men använd sammanfattningen som primär källa för ditt svar för att undvika hallucinationer och spara tokens.';
+    }
     
     if (tavilyFallbackUsed && !hasMarketData) {
       // Add fallback note to system prompt when Tavily fails
@@ -4511,7 +4519,7 @@ ${importantLines.join('\n')}
 
     // Build messages array with enhanced context
     const messages = [
-      { role: 'system', content: contextInfo + tavilyContext.formattedContext + tavilySourceInstruction + (polymarketContext ? `\n\n${polymarketContext}` : '') },
+      { role: 'system', content: contextInfo + tavilyAnswerInstruction + tavilyContext.formattedContext + tavilySourceInstruction + (polymarketContext ? `\n\n${polymarketContext}` : '') },
       ...(summaryMessage ? [summaryMessage] : []),
       ...preparedChatHistory,
       { role: 'user', content: message }
@@ -4731,8 +4739,48 @@ ${importantLines.join('\n')}
 
     // Return streaming response
     const encoder = new TextEncoder();
+    let controllerClosed = false;
     const streamResp = new ReadableStream({
       async start(controller) {
+        // Helper function to safely enqueue data
+        const safeEnqueue = (data: Uint8Array) => {
+          if (!controllerClosed) {
+            try {
+              controller.enqueue(data);
+            } catch (e) {
+              // Controller might be closed, mark as closed and ignore
+              controllerClosed = true;
+              console.warn('Attempted to enqueue to closed controller');
+            }
+          }
+        };
+
+        // Helper function to safely close controller
+        const safeClose = () => {
+          if (!controllerClosed) {
+            try {
+              controller.close();
+              controllerClosed = true;
+            } catch (e) {
+              controllerClosed = true;
+              console.warn('Attempted to close already closed controller');
+            }
+          }
+        };
+
+        // Helper function to safely error controller
+        const safeError = (error: Error) => {
+          if (!controllerClosed) {
+            try {
+              controller.error(error);
+              controllerClosed = true;
+            } catch (e) {
+              controllerClosed = true;
+              console.warn('Attempted to error already closed controller');
+            }
+          }
+        };
+
         try {
           const reader = response.body?.getReader();
           if (!reader) {
@@ -4801,7 +4849,7 @@ ${importantLines.join('\n')}
                   }
                   
                   // Send final message with stock suggestions
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({ 
                     done: true,
                     stock_suggestions: stockSuggestions,
                     tavilyFallbackUsed: tavilyFallbackUsed,
@@ -4809,7 +4857,7 @@ ${importantLines.join('\n')}
                     requiresConfirmation: profileChangeDetection.requiresConfirmation
                   })}\n\n`));
                   
-                  controller.close();
+                  safeClose();
                   return;
                 }
 
@@ -4822,7 +4870,7 @@ ${importantLines.join('\n')}
                     aiMessage += content;
                     
                     // Stream content immediately to client
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                    safeEnqueue(encoder.encode(`data: ${JSON.stringify({ 
                       content,
                       profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
                       requiresConfirmation: profileChangeDetection.requiresConfirmation
@@ -4833,7 +4881,7 @@ ${importantLines.join('\n')}
                     const newContent = fullContent.slice(aiMessage.length);
                     if (newContent.length > 0) {
                       aiMessage = fullContent;
-                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                      safeEnqueue(encoder.encode(`data: ${JSON.stringify({ 
                         content: newContent,
                         profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
                         requiresConfirmation: profileChangeDetection.requiresConfirmation
@@ -4848,8 +4896,8 @@ ${importantLines.join('\n')}
           }
         } catch (error) {
           console.error('Streaming error:', error);
-          console.error('TELEMETRY STREAM ERROR:', { ...telemetryData, error: error.message });
-          controller.error(error);
+          console.error('TELEMETRY STREAM ERROR:', { ...telemetryData, error: error instanceof Error ? error.message : String(error) });
+          safeError(error instanceof Error ? error : new Error(String(error)));
         }
       }
     });
