@@ -1,5 +1,6 @@
 import React from 'react';
 import Layout from '@/components/Layout';
+import { isMarketOpen } from '@/utils/marketHours';
 import {
   Brain,
   BarChart3,
@@ -119,9 +120,12 @@ const Index = () => {
 
   const formatPercent = (value: number) => `${value.toFixed(2)}%`;
 
-  const dailyHighlights = React.useMemo(() => {
+ const dailyHighlights = React.useMemo(() => {
     const sortableHoldings = actualHoldings.filter(holding =>
-      holding.holding_type !== 'recommendation' && holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined
+      holding.holding_type !== 'recommendation' && 
+      holding.dailyChangePercent !== null && 
+      holding.dailyChangePercent !== undefined &&
+      isMarketOpen(holding) // 
     );
 
     const best = [...sortableHoldings]
@@ -171,48 +175,30 @@ const Index = () => {
   const [todayDevelopment, setTodayDevelopment] = React.useState<{ percent: number; value: number } | null>(null);
   const [loadingTodayDevelopment, setLoadingTodayDevelopment] = React.useState(true);
 
-  React.useEffect(() => {
+React.useEffect(() => {
     const calculateTodayDevelopment = async () => {
-      if (!user || !hasPortfolio || safeTotalPortfolioValue === 0 || !actualHoldings || actualHoldings.length === 0) {
-        setLoadingTodayDevelopment(false);
-        return;
-      }
-
-      if (sheetChangeDataLoading) {
-        setLoadingTodayDevelopment(true);
-        return;
-      }
-
-      try {
-        setLoadingTodayDevelopment(true);
-
-        if (!sheetChangeData || sheetChangeData.size === 0) {
-          setTodayDevelopment({
-            percent: 0,
-            value: 0,
-          });
-          setLoadingTodayDevelopment(false);
-          return;
-        }
+      // ... (befintlig setup kod) ...
         
         let totalWeightedChange = 0;
         let totalSecuritiesValue = 0;
-        let holdingsWithData = 0;
-        let holdingsWithoutData = 0;
+        // ...
 
         actualHoldings.forEach(holding => {
-          if (holding.holding_type === 'recommendation') {
-            return;
-          }
-
+          // ... (befintliga checks för recommendation/value) ...
+          if (holding.holding_type === 'recommendation') return;
           const { valueInSEK: holdingValue } = resolveHoldingValue(holding);
-          
-          if (holdingValue <= 0) {
-            return;
+          if (holdingValue <= 0) return;
+
+          // <--- NY LOGIK HÄR --->
+          // Om marknaden är stängd, räkna utvecklingen som 0 för portföljens total
+          if (!isMarketOpen(holding)) {
+             totalSecuritiesValue += holdingValue;
+             // Vi lägger inte till något i totalWeightedChange (det är 0)
+             return; 
           }
 
           const changePercent = getChangeForTicker(holding.symbol);
-
+          // ... (resten av logiken för öppna marknader) ...
           if (changePercent !== null && !isNaN(changePercent) && isFinite(changePercent)) {
             const weight = holdingValue / safeTotalPortfolioValue;
             totalWeightedChange += weight * changePercent;
@@ -241,7 +227,7 @@ const Index = () => {
       }
     };
 
-    calculateTodayDevelopment();
+   calculateTodayDevelopment();
   }, [user, hasPortfolio, safeTotalPortfolioValue, actualHoldings, sheetChangeData, sheetChangeDataLoading, getChangeForTicker]);
 
   const dayChangePercent = todayDevelopment?.percent ?? performance.dayChangePercentage ?? 0;
