@@ -3,24 +3,17 @@ import Layout from '@/components/Layout';
 import {
   Brain,
   BarChart3,
-  Users,
-  ArrowUpRight,
   TrendingUp,
   Shield,
   MessageCircle,
   CheckCircle,
   Heart,
-  Target,
   Coffee,
   HandHeart,
   MapPin,
   Clock,
-  Zap,
-  DollarSign,
   MessageSquare,
-  Settings,
   Building2,
-  RefreshCw,
   Sparkles,
   Search,
   Newspaper,
@@ -29,6 +22,7 @@ import {
   Star,
   Wallet,
   FileText,
+  Briefcase,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,8 +34,7 @@ import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useUserHoldings, type UserHolding } from '@/hooks/useUserHoldings';
 import { useAIInsights } from '@/hooks/useAIInsights';
-// Ändra import här:
-import { useStockCases } from '@/hooks/useStockCases'; 
+import { useStockCases } from '@/hooks/useStockCases';
 import { useNewsData } from '@/hooks/useNewsData';
 import { useDiscoverReportSummaries } from '@/hooks/useDiscoverReportSummaries';
 import { Badge } from '@/components/ui/badge';
@@ -53,28 +46,6 @@ import { resolveHoldingValue } from '@/utils/currencyUtils';
 import { useDailyChangeData } from '@/hooks/useDailyChangeData';
 import HoldingsHighlightCard from '@/components/HoldingsHighlightCard';
 import AllocationCard from '@/components/AllocationCard';
-
-type QuickAction = {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  description: string;
-  to: string;
-};
-
-
-const insightTypeLabels: Record<'performance' | 'allocation' | 'risk' | 'opportunity', string> = {
-  performance: 'Prestation',
-  allocation: 'Allokering',
-  risk: 'Risk',
-  opportunity: 'Möjlighet',
-};
-
-const insightBadgeStyles: Record<'performance' | 'allocation' | 'risk' | 'opportunity', string> = {
-  performance: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-transparent',
-  allocation: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-transparent',
-  risk: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-transparent',
-  opportunity: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-transparent',
-};
 
 const formatCategoryLabel = (category: string): string => {
   const categoryMap: Record<string, string> = {
@@ -113,9 +84,9 @@ const Index = () => {
   const { performance } = usePortfolioPerformance();
   const { totalCash } = useCashHoldings();
   const { actualHoldings } = useUserHoldings();
-  const { insights, isLoading: insightsLoading, lastUpdated: insightsLastUpdated, refreshInsights } = useAIInsights();
+  const { insights, isLoading: insightsLoading, lastUpdated: insightsLastUpdated } = useAIInsights();
   
-  // Hämta Utvalda Case istället för gillade
+  // Hämta Utvalda Case
   const { stockCases: featuredStockCases, loading: featuredStockCasesLoading } = useStockCases({ 
     featuredOnly: true, 
     limit: 3 
@@ -126,10 +97,8 @@ const Index = () => {
 
   // Show portfolio dashboard if user has portfolio OR has holdings
   const hasPortfolio = !loading && (!!activePortfolio || (actualHoldings && actualHoldings.length > 0));
-  const totalPortfolioValue = performance.totalPortfolioValue;
-  const greetingName = user?.user_metadata?.first_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || t('common.user');
   const holdingsCount = actualHoldings?.length ?? 0;
-  const safeTotalPortfolioValue = typeof totalPortfolioValue === 'number' && Number.isFinite(totalPortfolioValue) ? totalPortfolioValue : 0;
+  const safeTotalPortfolioValue = typeof performance.totalPortfolioValue === 'number' && Number.isFinite(performance.totalPortfolioValue) ? performance.totalPortfolioValue : 0;
   const safeTotalCash = typeof totalCash === 'number' && Number.isFinite(totalCash) ? totalCash : 0;
   
   // Filtrera utvalda rapporter
@@ -146,14 +115,6 @@ const Index = () => {
   };
 
   const formatPercent = (value: number) => `${value.toFixed(2)}%`;
-
-  const renderHoldingAvatar = (holding: UserHolding) => {
-    const initial = (holding.name || holding.symbol || '?').charAt(0).toUpperCase();
-    const baseClasses = 'flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold';
-    const colorClasses = 'bg-muted/40 text-foreground';
-
-    return <div className={`${baseClasses} ${colorClasses}`}>{initial}</div>;
-  };
 
   const dailyHighlights = React.useMemo(() => {
     const sortableHoldings = actualHoldings.filter(holding =>
@@ -284,108 +245,6 @@ const Index = () => {
   const dayChangeValue = todayDevelopment?.value ?? 0;
   const isPositiveDayChange = dayChangePercent >= 0;
 
-  const summaryCards = React.useMemo<SummaryCard[]>(() => {
-    const changeValue = dayChangeValue;
-    const changeValueFormatted = changeValue !== 0
-      ? (changeValue >= 0 
-        ? `+${changeValue.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr`
-        : `${changeValue.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr`)
-      : '0,00 kr';
-    return [
-      {
-        icon: Star,
-        label: 'Utveckling idag',
-        value: loadingTodayDevelopment 
-          ? '—'
-          : (dayChangePercent !== 0
-            ? (isPositiveDayChange 
-              ? `+${dayChangePercent.toFixed(2)}%` 
-              : `${dayChangePercent.toFixed(2)}%`)
-            : '0.00%'),
-        helper: loadingTodayDevelopment
-          ? 'Laddar...'
-          : (changeValue !== 0
-            ? changeValueFormatted
-            : safeTotalPortfolioValue > 0 
-              ? `${safeTotalPortfolioValue.toLocaleString('sv-SE')} kr`
-              : t('dashboard.onTrack')),
-        helperClassName: loadingTodayDevelopment
-          ? 'text-muted-foreground'
-          : (dayChangePercent !== 0
-            ? (isPositiveDayChange 
-              ? 'text-emerald-600 dark:text-emerald-400 font-medium' 
-              : 'text-red-600 dark:text-red-400 font-medium')
-            : 'text-muted-foreground'),
-      },
-      {
-        icon: BarChart3,
-        label: t('dashboard.holdings'),
-        value: holdingsCount.toString(),
-        helper: t('dashboard.balancedSpread'),
-        helperClassName: 'text-muted-foreground',
-      },
-      {
-        icon: Heart,
-        label: 'Gillade aktier',
-        value: featuredStockCases.length.toString(), // Updated to reflect featured cases count if needed
-        helper: 'Dina favoriter',
-        helperClassName: 'text-muted-foreground',
-      },
-      {
-        icon: Wallet,
-        label: 'Likvida medel',
-        value: `${safeTotalCash.toLocaleString('sv-SE')} kr`,
-        helper: 'Redo för nya möjligheter',
-        helperClassName: 'text-muted-foreground',
-      },
-    ];
-  }, [t, safeTotalPortfolioValue, holdingsCount, safeTotalCash, dayChangePercent, isPositiveDayChange, featuredStockCases.length, loadingTodayDevelopment, dayChangeValue]);
-
-  const quickActions = React.useMemo<QuickAction[]>(() => [
-    {
-      icon: MessageSquare,
-      title: 'AI Chat',
-      description: 'Analysera min portfölj',
-      to: `/ai-chatt?message=${encodeURIComponent('Analysera min portfölj och ge mig råd')}`,
-    },
-    {
-      icon: Building2,
-      title: 'Upptäck',
-      description: 'Hitta nya aktier',
-      to: '/discover',
-    },
-    {
-      icon: Sparkles,
-      title: 'Nyheter',
-      description: 'Marknadsnyheter',
-      to: '/news',
-    },
-    {
-      icon: BarChart3,
-      title: 'Min Portfölj',
-      description: 'Hantera portföljen',
-      to: '/portfolio-implementation',
-    },
-  ], []);
-
-  const lastUpdatedLabel = React.useMemo(() => {
-    if (!insightsLastUpdated) {
-      return null;
-    }
-
-    try {
-      return new Intl.DateTimeFormat('sv-SE', {
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(insightsLastUpdated);
-    } catch {
-      return insightsLastUpdated.toLocaleTimeString('sv-SE', {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    }
-  }, [insightsLastUpdated]);
-
   return <Layout>
       <div className="min-h-0 bg-background">
         <div className="w-full max-w-5xl xl:max-w-6xl mx-auto px-3 sm:px-6 py-5 sm:py-9 lg:py-12">
@@ -447,6 +306,7 @@ const Index = () => {
                         {t('hero.chart.performanceBadge')}
                       </Badge>
                     </div>
+                    {/* ... Chart SVG ... */}
                     <div className="mt-7">
                       <svg viewBox="0 0 400 180" className="h-40 w-full sm:h-44 lg:h-48">
                         <defs>
@@ -489,6 +349,7 @@ const Index = () => {
 
               {/* How it works */}
               <div className="mx-auto mt-16 max-w-5xl sm:mt-20">
+                {/* ... How it works content ... */}
                 <div className="text-center">
                   <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">{t('howItWorks.title')}</h2>
                   <p className="mt-3 text-base text-muted-foreground sm:text-lg">{t('howItWorks.subtitle')}</p>
@@ -499,9 +360,7 @@ const Index = () => {
                       <MessageSquare className="w-8 h-8 text-primary" />
                     </div>
                     <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step1.title')}</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {t('howItWorks.step1.description')}
-                    </p>
+                    <p className="text-muted-foreground leading-relaxed">{t('howItWorks.step1.description')}</p>
                   </div>
                   
                   <div className="text-center">
@@ -509,9 +368,7 @@ const Index = () => {
                       <Brain className="w-8 h-8 text-primary" />
                     </div>
                     <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step2.title')}</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {t('howItWorks.step2.description')}
-                    </p>
+                    <p className="text-muted-foreground leading-relaxed">{t('howItWorks.step2.description')}</p>
                   </div>
                   
                   <div className="text-center">
@@ -519,20 +376,18 @@ const Index = () => {
                       <BarChart3 className="w-8 h-8 text-primary" />
                     </div>
                     <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step3.title')}</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {t('howItWorks.step3.description')}
-                    </p>
+                    <p className="text-muted-foreground leading-relaxed">{t('howItWorks.step3.description')}</p>
                   </div>
                 </div>
               </div>
             </div>}
 
-          {/* Clean Dashboard for logged-in users */}
+          {/* Dashboard for logged-in users */}
           {user && hasPortfolio && <div className="min-h-0 bg-background">
               <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
                 <div className="space-y-5 sm:space-y-6">
 
-                  {/* 1. Din Portfölj - Sektion */}
+                  {/* 1. Din Portfölj */}
                   <div className="space-y-3 sm:space-y-4">
                     <h2 className="text-lg font-semibold text-foreground px-1">Din Portfölj</h2>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -588,7 +443,7 @@ const Index = () => {
                     </div>
                   </div>
 
-                  {/* 2. Morgonrapport Section */}
+                  {/* 2. Morgonrapport */}
                   {morningBrief && (
                     <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
                       <div className="flex items-center gap-2 mb-4">
@@ -622,7 +477,7 @@ const Index = () => {
                     </section>
                   )}
 
-                  {/* 3. News Section (Flyttad upp hit) */}
+                  {/* 3. News Section */}
                   {newsData && newsData.length > 0 && (
                     <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
                       <div className="flex items-center justify-between mb-4">
@@ -674,7 +529,7 @@ const Index = () => {
                     </section>
                   )}
 
-                  {/* 4. UTVALDA STOCK CASES (Ersätter "Dina gillade aktier") */}
+                  {/* 4. UTVALDA STOCK CASES (Uppdaterad design utan like/share) */}
                   <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
@@ -700,12 +555,80 @@ const Index = () => {
                     ) : featuredStockCases.length > 0 ? (
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
                         {featuredStockCases.slice(0, 3).map((stockCase) => (
-                          <StockCaseCard
-                            key={stockCase.id}
-                            stockCase={stockCase}
-                            onViewDetails={(id) => navigate(`/stock-cases/${id}`)}
-                            showMetaBadges={true}
-                          />
+                          <Link 
+                            key={stockCase.id} 
+                            to={`/stock-cases/${stockCase.id}`}
+                            className="block h-full"
+                          >
+                            <Card className="flex flex-col h-full hover:shadow-md transition-all border-border/60 overflow-hidden group">
+                              {/* Image Section */}
+                              <div className="relative h-32 w-full bg-muted/30 overflow-hidden">
+                                {stockCase.image_url ? (
+                                  <img 
+                                    src={stockCase.image_url} 
+                                    alt={stockCase.company_name} 
+                                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-primary/5 text-primary/20">
+                                    <Briefcase className="w-10 h-10" />
+                                  </div>
+                                )}
+                                <div className="absolute top-2 right-2">
+                                  {stockCase.case_categories && (
+                                    <Badge style={{ 
+                                      backgroundColor: stockCase.case_categories.color + '20', 
+                                      color: stockCase.case_categories.color,
+                                      borderColor: 'transparent'
+                                    }}>
+                                      {stockCase.case_categories.name}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+
+                              <CardHeader className="pb-2 pt-3 px-4">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <CardTitle className="text-base font-semibold line-clamp-1 group-hover:text-primary transition-colors">
+                                      {stockCase.title}
+                                    </CardTitle>
+                                    <CardDescription className="font-medium text-xs mt-1">
+                                      {stockCase.company_name} • {stockCase.ticker}
+                                    </CardDescription>
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              
+                              <CardContent className="flex-1 pb-4 px-4">
+                                <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-border/40">
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Målkurs</p>
+                                    <p className="text-sm font-semibold">
+                                      {stockCase.target_price 
+                                        ? `${stockCase.target_price} kr`
+                                        : '-'
+                                      }
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Potential</p>
+                                    {stockCase.target_price && stockCase.current_price ? (
+                                      <p className={`text-sm font-semibold ${
+                                        (stockCase.target_price - stockCase.current_price) > 0 
+                                          ? 'text-emerald-600' 
+                                          : 'text-muted-foreground'
+                                      }`}>
+                                        {((stockCase.target_price - stockCase.current_price) / stockCase.current_price * 100).toFixed(1)}%
+                                      </p>
+                                    ) : (
+                                      <p className="text-sm text-muted-foreground">-</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </Link>
                         ))}
                       </div>
                     ) : (
@@ -725,7 +648,7 @@ const Index = () => {
                     )}
                   </section>
 
-                  {/* 5. Featured Reports Section (Behåll intakt) */}
+                  {/* 5. Featured Reports Section */}
                   {featuredReports.length > 0 && (
                     <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6 mb-6">
                       <div className="flex items-center justify-between mb-4">
@@ -793,8 +716,9 @@ const Index = () => {
               </div>
             </div>}
 
-          {/* Enhanced personal welcome for users without portfolio */}
+          {/* Welcome for users without portfolio */}
           {user && !hasPortfolio && !loading && <div className="mb-12 sm:mb-16">
+              {/* ... Welcome Card ... */}
               <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-3 sm:py-6">
                 <div className="space-y-6 sm:space-y-8">
                   <Card className="rounded-3xl border-slate-200 bg-gradient-to-r from-slate-50 to-indigo-50 shadow-lg dark:border-slate-700 dark:from-slate-800 dark:to-indigo-900/20">
@@ -808,7 +732,6 @@ const Index = () => {
                         den ekonomiska trygghet du drömmer om. Vi tar det i din takt, steg för steg.
                       </p>
 
-                      {/* Personal journey section */}
                       <div className="mb-8 rounded-2xl border bg-card p-6 shadow-sm sm:mb-12 sm:p-8">
                         <h4 className="mb-6 flex items-center justify-center gap-3 text-lg font-semibold text-foreground">
                           <MapPin className="h-5 w-5 text-primary" />
@@ -847,93 +770,7 @@ const Index = () => {
                     </div>
                   </Card>
 
-                  {/* News/Morning Brief Section for users without portfolio */}
-                  {morningBrief && (
-                    <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Sparkles className="h-5 w-5 text-primary" />
-                        <h2 className="text-base font-semibold text-foreground sm:text-lg">Morgonrapport</h2>
-                        <Badge variant="secondary" className="ml-2">Idag</Badge>
-                      </div>
-                      <div className="space-y-3">
-                        <h3 className="text-lg font-semibold text-foreground">{morningBrief.headline}</h3>
-                        <p className="text-sm text-muted-foreground line-clamp-3">{morningBrief.overview}</p>
-                        {morningBrief.keyHighlights && morningBrief.keyHighlights.length > 0 && (
-                          <div className="mt-4 space-y-2">
-                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Höjdpunkter</p>
-                            <ul className="space-y-1">
-                              {morningBrief.keyHighlights.slice(0, 3).map((highlight, idx) => (
-                                <li key={idx} className="flex items-start gap-2 text-sm text-foreground">
-                                  <span className="text-primary mt-1">•</span>
-                                  <span>{highlight}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        <Button asChild variant="outline" size="sm" className="mt-4">
-                          <Link to="/news">
-                            Läs mer
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </Link>
-                        </Button>
-                      </div>
-                    </section>
-                  )}
-
-                  {/* News Section for users without portfolio */}
-                  {newsData && newsData.length > 0 && (
-                    <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          <Newspaper className="h-5 w-5 text-primary" />
-                          <h2 className="text-base font-semibold text-foreground sm:text-lg">Senaste nyheter</h2>
-                        </div>
-                        <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                          <Link to="/news">
-                            Se alla
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </Link>
-                        </Button>
-                      </div>
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-                        {newsData.slice(0, 3).map((newsItem) => (
-                          <Card
-                            key={newsItem.id}
-                            className="rounded-2xl border border-border/60 bg-background/80 p-4 hover:shadow-md transition-all cursor-pointer group"
-                            onClick={() => {
-                              if (newsItem.url && newsItem.url !== '#') {
-                                window.open(newsItem.url, '_blank', 'noopener,noreferrer');
-                              }
-                            }}
-                          >
-                            <div className="flex items-center justify-between mb-2">
-                              <Badge variant="secondary" className="text-xs">
-                                {formatCategoryLabel(newsItem.category)}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                {formatTime(newsItem.publishedAt)}
-                              </span>
-                            </div>
-                            <h3 className="font-semibold text-sm mb-2 line-clamp-2 group-hover:text-primary transition-colors">
-                              {newsItem.headline}
-                            </h3>
-                            <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                              {newsItem.summary}
-                            </p>
-                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/60">
-                              <span className="text-xs text-muted-foreground">{newsItem.source}</span>
-                              {newsItem.url && newsItem.url !== '#' && (
-                                <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
-                              )}
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-                    </section>
-                  )}
-
-                  {/* 4. UTVALDA STOCK CASES (Ersätter "Dina gillade aktier" även här) */}
+                  {/* Featured Case Section for empty portfolio users */}
                   <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
@@ -959,12 +796,79 @@ const Index = () => {
                     ) : featuredStockCases.length > 0 ? (
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
                         {featuredStockCases.slice(0, 3).map((stockCase) => (
-                          <StockCaseCard
-                            key={stockCase.id}
-                            stockCase={stockCase}
-                            onViewDetails={(id) => navigate(`/stock-cases/${id}`)}
-                            showMetaBadges={true} // Visa badges (sektor etc)
-                          />
+                          <Link 
+                            key={stockCase.id} 
+                            to={`/stock-cases/${stockCase.id}`}
+                            className="block h-full"
+                          >
+                            <Card className="flex flex-col h-full hover:shadow-md transition-all border-border/60 overflow-hidden group">
+                              <div className="relative h-32 w-full bg-muted/30 overflow-hidden">
+                                {stockCase.image_url ? (
+                                  <img 
+                                    src={stockCase.image_url} 
+                                    alt={stockCase.company_name} 
+                                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-primary/5 text-primary/20">
+                                    <Briefcase className="w-10 h-10" />
+                                  </div>
+                                )}
+                                <div className="absolute top-2 right-2">
+                                  {stockCase.case_categories && (
+                                    <Badge style={{ 
+                                      backgroundColor: stockCase.case_categories.color + '20', 
+                                      color: stockCase.case_categories.color,
+                                      borderColor: 'transparent'
+                                    }}>
+                                      {stockCase.case_categories.name}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+
+                              <CardHeader className="pb-2 pt-3 px-4">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <CardTitle className="text-base font-semibold line-clamp-1 group-hover:text-primary transition-colors">
+                                      {stockCase.title}
+                                    </CardTitle>
+                                    <CardDescription className="font-medium text-xs mt-1">
+                                      {stockCase.company_name} • {stockCase.ticker}
+                                    </CardDescription>
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              
+                              <CardContent className="flex-1 pb-4 px-4">
+                                <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-border/40">
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Målkurs</p>
+                                    <p className="text-sm font-semibold">
+                                      {stockCase.target_price 
+                                        ? `${stockCase.target_price} kr`
+                                        : '-'
+                                      }
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Potential</p>
+                                    {stockCase.target_price && stockCase.current_price ? (
+                                      <p className={`text-sm font-semibold ${
+                                        (stockCase.target_price - stockCase.current_price) > 0 
+                                          ? 'text-emerald-600' 
+                                          : 'text-muted-foreground'
+                                      }`}>
+                                        {((stockCase.target_price - stockCase.current_price) / stockCase.current_price * 100).toFixed(1)}%
+                                      </p>
+                                    ) : (
+                                      <p className="text-sm text-muted-foreground">-</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </Link>
                         ))}
                       </div>
                     ) : (
@@ -983,70 +887,6 @@ const Index = () => {
                       </div>
                     )}
                   </section>
-
-                  {/* Featured Reports Section for users without portfolio */}
-                  {featuredReports.length > 0 && (
-                    <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-5 w-5 text-primary" />
-                          <h2 className="text-base font-semibold text-foreground sm:text-lg">Utvalda Rapporter</h2>
-                        </div>
-                        <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                          <Link to="/discover">
-                            Se alla
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </Link>
-                        </Button>
-                      </div>
-                      
-                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {featuredReports.map((report) => (
-                          <Card key={report.id} className="flex flex-col h-full hover:shadow-md transition-all border-border/60">
-                            <CardHeader className="pb-3">
-                              <div className="flex justify-between items-start gap-2">
-                                <div className="space-y-1">
-                                  <CardTitle className="text-base font-semibold line-clamp-1">
-                                    {report.reportTitle}
-                                  </CardTitle>
-                                  <CardDescription className="font-medium text-primary">
-                                    {report.companyName}
-                                  </CardDescription>
-                                </div>
-                                {report.companyLogoUrl && (
-                                  <div className="h-8 w-8 rounded bg-muted/20 p-1 shrink-0">
-                                    <img src={report.companyLogoUrl} alt={report.companyName} className="w-full h-full object-contain" />
-                                  </div>
-                                )}
-                              </div>
-                            </CardHeader>
-                            <CardContent className="flex-1 pb-4">
-                              <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
-                                {report.summary}
-                              </p>
-                              {report.keyMetrics && report.keyMetrics.length > 0 && (
-                                <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-border/40">
-                                  {report.keyMetrics.slice(0, 2).map((metric, i) => (
-                                    <div key={i}>
-                                      <p className="text-xs text-muted-foreground">{metric.label}</p>
-                                      <p className="text-sm font-medium">
-                                        {metric.value}
-                                        {metric.trend && (
-                                          <span className={`ml-1 text-xs ${metric.trend.includes('+') ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                            {metric.trend}
-                                          </span>
-                                        )}
-                                      </p>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </section>
-                  )}
                 </div>
               </div>
             </div>}
