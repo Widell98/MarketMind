@@ -920,11 +920,18 @@ const ALL_HOLDINGS_PATTERNS = [
 ];
 
 const RANKING_RETURN_PATTERNS = [
-  // Uppdaterad för att hantera både ental (vilken) och flertal (vilka) samt "gått bäst"
+  // NYTT: Fångar "Vilken aktie...", "Vilket innehav..." (ental)
   /(?:vilken|vilket|vilka).*(?:aktie|aktier|innehav|bolag).*(?:mest|bäst|högst|sämst).*avkastning/i,
+  
+  // NYTT: Fångar "gått bäst", "presterat sämst", "utvecklats bäst"
   /(?:vilken|vilket|vilka).*(?:aktie|aktier|innehav|bolag).*(?:har|är)?.*(?:gått|presterat|utvecklats).*(?:bäst|sämst|bra|dåligt)/i,
   
-  // Gamla mönster (behålls för säkerhets skull)
+  // NYTT: Fångar "Hur bra...", "Hur mycket...", "Vad är bästa..."
+  /(?:hur|vad).*(?:har|är|gick).*(?:bästa|sämsta|största).*(?:innehav|aktie|bolag|position)/i,
+  /(?:hur|vad).*(?:mycket|bra|dåligt).*(?:har|är|gick).*(?:bästa|sämsta).*(?:gått|presterat|utvecklats)/i,
+  /utveckling.*(?:på|för).*mitt.*(?:bästa|sämsta).*(?:innehav|aktie)/i,
+
+  // Gamla mönster (behålls för bakåtkompatibilitet)
   /vilka.*(?:mest|bäst|högst).*presterat/i,
   /vilka.*(?:mest|bäst|högst).*resultat/i,
   /vilka.*(?:mest|bäst|högst).*vinst/i,
