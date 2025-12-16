@@ -3,9 +3,9 @@ import { TrendingUp, TrendingDown, Moon } from 'lucide-react';
 import HoldingsHighlightCard from './HoldingsHighlightCard';
 import { usePortfolioPerformance, type HoldingPerformance } from '@/hooks/usePortfolioPerformance';
 
-// Robust hjälpfunktion för att kontrollera marknadens öppettider med svensk tidszon
+// Robust hjälpfunktion för att kontrollera marknadens öppettider (Samma logik som i HoldingsTable)
 const isMarketOpen = (holding: HoldingPerformance): boolean => {
-  // Krypto visas alltid dygnet runt
+  // Krypto och certifikat visas dygnet runt
   const type = holding.holdingType?.toLowerCase();
   if (type === 'crypto' || type === 'cryptocurrency' || type === 'certificate') {
     return true;
@@ -14,7 +14,7 @@ const isMarketOpen = (holding: HoldingPerformance): boolean => {
   // Hämta valuta, fallback till SEK om det saknas
   const currency = holding.currency?.toUpperCase() || 'SEK';
 
-  // Hämta aktuell tid i Stockholm på ett robust sätt
+  // Hämta aktuell tid i Stockholm
   const now = new Date();
   const formatter = new Intl.DateTimeFormat('sv-SE', {
     timeZone: 'Europe/Stockholm',
@@ -24,8 +24,11 @@ const isMarketOpen = (holding: HoldingPerformance): boolean => {
   });
   
   const parts = formatter.formatToParts(now);
-  const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
-  const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+  const hourPart = parts.find(p => p.type === 'hour')?.value;
+  const minutePart = parts.find(p => p.type === 'minute')?.value;
+  
+  const hour = parseInt(hourPart || '0', 10);
+  const minute = parseInt(minutePart || '0', 10);
   const currentMinutes = hour * 60 + minute;
 
   // Tider i minuter från midnatt
@@ -53,10 +56,9 @@ const BestWorstHoldings: React.FC = () => {
     if (!holdingsPerformance || holdingsPerformance.length === 0) return { best: [], worst: [] };
 
     // 1. Filtrera bort innehav där marknaden är stängd
-    // Detta tar bort Tesla (USD) om klockan är 07:xx
     const openMarketHoldings = holdingsPerformance.filter(holding => isMarketOpen(holding));
 
-    // 2. Sortera baserat på dagens utveckling
+    // 2. Använd dagens utveckling för sortering
     const getChange = (holding: HoldingPerformance) => holding.dayChangePercentage;
 
     const positiveHoldings = openMarketHoldings
@@ -97,7 +99,7 @@ const BestWorstHoldings: React.FC = () => {
   const bestHoldingsItems = topHoldings.best.map(h => mapToItem(h, true));
   const worstHoldingsItems = topHoldings.worst.map(h => mapToItem(h, false));
 
-  // Om inga innehav matchar kriterierna (t.ex. marknaden stängd), visa placeholders med måne-ikon
+  // Om inga innehav matchar kriterierna (t.ex. marknaden stängd), visa placeholders
   if (topHoldings.best.length === 0 && topHoldings.worst.length === 0) {
     return (
       <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
