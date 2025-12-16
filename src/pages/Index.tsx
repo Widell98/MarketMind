@@ -29,6 +29,7 @@ import {
   Activity,
   Star,
   Wallet,
+  Moon, // Lagt till Moon för stängd marknad
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -103,6 +104,52 @@ const formatTime = (dateString: string): string => {
   }
 };
 
+// Hjälpfunktion för att avgöra om marknaden är öppen
+const isMarketOpen = (currency?: string, holdingType?: string): boolean => {
+  // Krypto och certifikat visas alltid dygnet runt
+  const type = holdingType?.toLowerCase();
+  if (type === 'crypto' || type === 'cryptocurrency' || type === 'certificate') {
+    return true;
+  }
+
+  // Hämta valuta, fallback till SEK om det saknas
+  const normalizedCurrency = currency?.toUpperCase() || 'SEK';
+
+  // Hämta aktuell tid i Stockholm på ett säkert sätt
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Europe/Stockholm',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false
+  });
+  
+  const parts = formatter.formatToParts(now);
+  const hourPart = parts.find(p => p.type === 'hour')?.value;
+  const minutePart = parts.find(p => p.type === 'minute')?.value;
+  
+  const hour = parseInt(hourPart || '0', 10);
+  const minute = parseInt(minutePart || '0', 10);
+  const currentMinutes = hour * 60 + minute;
+
+  // Tider i minuter från midnatt
+  const swedenOpen = 9 * 60;        // 09:00
+  const usOpen = 15 * 60 + 30;      // 15:30
+  const endOfDay = 23 * 60 + 59;    // 23:59
+
+  // Logik baserat på valuta
+  if (normalizedCurrency === 'USD') {
+    // Amerikanska aktier: Visa mellan 15:30 och midnatt
+    return currentMinutes >= usOpen && currentMinutes <= endOfDay;
+  } else if (['SEK', 'EUR', 'DKK', 'NOK'].includes(normalizedCurrency)) {
+    // Svenska/Europeiska aktier: Visa mellan 09:00 och midnatt
+    return currentMinutes >= swedenOpen && currentMinutes <= endOfDay;
+  }
+
+  // För övriga valutor, anta svenska tider som standard
+  return currentMinutes >= swedenOpen && currentMinutes <= endOfDay;
+};
+
 const Index = () => {
   const navigate = useNavigate();
   const {
@@ -132,7 +179,6 @@ const Index = () => {
   } = useAIInsights();
   const { likedStockCases, loading: likedStockCasesLoading } = useLikedStockCases();
   const { morningBrief, newsData } = useNewsData();
-  // Show portfolio dashboard if user has portfolio OR has holdings (so they can see portfolio value after implementing strategy)
   const hasPortfolio = !loading && (!!activePortfolio || (actualHoldings && actualHoldings.length > 0));
   const totalPortfolioValue = performance.totalPortfolioValue;
   const greetingName = user?.user_metadata?.first_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || t('common.user');
@@ -157,9 +203,16 @@ const Index = () => {
   };
 
   const dailyHighlights = React.useMemo(() => {
-    const sortableHoldings = actualHoldings.filter(holding =>
-      holding.holding_type !== 'recommendation' && holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined
-    );
+    // Filtrera bort innehav där marknaden är stängd
+    const sortableHoldings = actualHoldings.filter(holding => {
+      const currency = holding.currency || holding.price_currency;
+      const isOpen = isMarketOpen(currency, holding.holding_type);
+
+      return isOpen &&
+             holding.holding_type !== 'recommendation' && 
+             holding.dailyChangePercent !== null && 
+             holding.dailyChangePercent !== undefined;
+    });
 
     const best = [...sortableHoldings]
       .filter((holding) => (holding.dailyChangePercent ?? 0) > 0)
@@ -204,7 +257,6 @@ const Index = () => {
     getChangeForTicker,
   } = useDailyChangeData();
 
-  // Calculate today's development based on Change % from Google Sheets
   const [todayDevelopment, setTodayDevelopment] = React.useState<{ percent: number; value: number } | null>(null);
   const [loadingTodayDevelopment, setLoadingTodayDevelopment] = React.useState(true);
 
@@ -232,43 +284,43 @@ const Index = () => {
           return;
         }
         
-        // Calculate portfolio's today development based on Change % from Google Sheets
-        // Weighted by each holding's value in the portfolio
         let totalWeightedChange = 0;
         let totalSecuritiesValue = 0;
         let holdingsWithData = 0;
         let holdingsWithoutData = 0;
 
         actualHoldings.forEach(holding => {
-          // Skip cash holdings and recommendations (they don't have Change %)
           if (holding.holding_type === 'recommendation') {
             return;
           }
 
-          // Get holding's current value in SEK using proper currency conversion
           const { valueInSEK: holdingValue } = resolveHoldingValue(holding);
           
-          // Skip if no valid value
           if (holdingValue <= 0) {
             return;
           }
 
-          // Try to find Change % from Google Sheets data
-          const changePercent = getChangeForTicker(holding.symbol);
+          // Kontrollera om marknaden är öppen
+          const currency = holding.currency || holding.price_currency;
+          const isOpen = isMarketOpen(currency, holding.holding_type);
 
-          // Only include holdings with valid Change % data from Google Sheets
-          if (changePercent !== null && !isNaN(changePercent) && isFinite(changePercent)) {
-            // Weight the change by the holding's proportion of the portfolio
-            const weight = holdingValue / safeTotalPortfolioValue;
-            totalWeightedChange += weight * changePercent;
-            totalSecuritiesValue += holdingValue;
-            holdingsWithData++;
-          } else {
-            holdingsWithoutData++;
+          // Om stängd, sätt changePercent till 0 för att inte påverka dagens utveckling
+          let changePercent = 0;
+          if (isOpen) {
+            const fetchedChange = getChangeForTicker(holding.symbol);
+            if (fetchedChange !== null && !isNaN(fetchedChange) && isFinite(fetchedChange)) {
+              changePercent = fetchedChange;
+              holdingsWithData++;
+            } else {
+              holdingsWithoutData++;
+            }
           }
+
+          const weight = holdingValue / safeTotalPortfolioValue;
+          totalWeightedChange += weight * changePercent;
+          totalSecuritiesValue += holdingValue;
         });
 
-        // Calculate the change value in SEK
         const finalChangePercent = totalWeightedChange;
         const changeValue = (totalSecuritiesValue * finalChangePercent) / 100;
 
@@ -278,7 +330,6 @@ const Index = () => {
         });
       } catch (error) {
         console.error('Error calculating today development:', error);
-        // Set to 0% on error
         setTodayDevelopment({
           percent: 0,
           value: 0,
@@ -295,7 +346,6 @@ const Index = () => {
   const dayChangeValue = todayDevelopment?.value ?? 0;
   const isPositiveDayChange = dayChangePercent >= 0;
 
-  // Behåller denna logik om du vill använda den senare, men den används inte i den nya vyn
   const summaryCards = React.useMemo<SummaryCard[]>(() => {
     const changeValue = dayChangeValue;
     const changeValueFormatted = changeValue !== 0
@@ -402,7 +452,7 @@ const Index = () => {
       <div className="min-h-0 bg-background">
         <div className="w-full max-w-5xl xl:max-w-6xl mx-auto px-3 sm:px-6 py-5 sm:py-9 lg:py-12">
           
-          {/* Hero Section - Apple-inspired clean design */}
+          {/* Hero Section - Kvarstår för utloggade användare */}
           {!user && <div className="mb-16 sm:mb-20 lg:mb-24">
               {/* Hero Content */}
               <section className="relative flex flex-col justify-center overflow-hidden rounded-[28px] border border-border/60 bg-card/70 px-6 py-10 shadow-sm backdrop-blur sm:px-10 sm:py-12 lg:px-14 min-h-[calc(100vh-160px)] sm:min-h-[calc(100vh-180px)] lg:min-h-[calc(100vh-220px)]">
@@ -538,10 +588,6 @@ const Index = () => {
                   </div>
                 </div>
               </div>
-
-            {/* Clean Examples Section */}
-
-
             </div>}
 
           {/* Clean Dashboard for logged-in users */}
@@ -549,12 +595,12 @@ const Index = () => {
               <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
                 <div className="space-y-5 sm:space-y-6">
 
-                  {/* NY SEKTION: Din Portfölj - Ersätter det gamla värdekortet */}
+                  {/* Din Portfölj */}
                   <div className="space-y-3 sm:space-y-4">
                     <h2 className="text-lg font-semibold text-foreground px-1">Din Portfölj</h2>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                       
-                      {/* Performance Card - Ersätter "Bankkontot" med "Riktning" */}
+                      {/* Performance Card */}
                       <Card className="p-6 flex flex-col justify-between relative overflow-hidden border-border/60 shadow-sm">
                         <div className="relative z-10">
                           <div className="flex items-center gap-2 mb-2">
@@ -578,7 +624,9 @@ const Index = () => {
                           </div>
                           
                           <p className="text-sm text-muted-foreground">
-                            {isPositiveDayChange ? 'Portföljen går starkt idag.' : 'En rekyl i marknaden idag.'}
+                            {loadingTodayDevelopment ? 'Beräknar...' : 
+                             dayChangePercent === 0 && dayChangeValue === 0 ? 'Marknaden har inte öppnat än' :
+                             isPositiveDayChange ? 'Portföljen går starkt idag.' : 'En rekyl i marknaden idag.'}
                           </p>
                         </div>
 
@@ -586,26 +634,26 @@ const Index = () => {
                         <div className={`absolute -right-4 -bottom-4 h-32 w-32 rounded-full blur-3xl opacity-20 ${isPositiveDayChange ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                       </Card>
 
-                      {/* Highlights Cards - Vad driver rörelsen? */}
+                      {/* Highlights Cards */}
                       <HoldingsHighlightCard
                         title="Dagens vinnare"
-                        icon={<TrendingUp className="h-5 w-5" />}
-                        iconColorClass="text-emerald-600"
+                        icon={dailyHighlights.best.length > 0 ? <TrendingUp className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                        iconColorClass={dailyHighlights.best.length > 0 ? "text-emerald-600" : "text-muted-foreground"}
                         items={bestHighlightItems}
-                        emptyText="Inga uppgångar just nu"
+                        emptyText={actualHoldings.length > 0 && dailyHighlights.best.length === 0 ? "Marknaden är stängd" : "Inga uppgångar just nu"}
                       />
 
                       <HoldingsHighlightCard
                         title="Dagens förlorare"
-                        icon={<TrendingDown className="h-5 w-5" />}
-                        iconColorClass="text-red-600"
+                        icon={dailyHighlights.worst.length > 0 ? <TrendingDown className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                        iconColorClass={dailyHighlights.worst.length > 0 ? "text-red-600" : "text-muted-foreground"}
                         items={worstHighlightItems}
-                        emptyText="Inga nedgångar just nu"
+                        emptyText={actualHoldings.length > 0 && dailyHighlights.worst.length === 0 ? "Marknaden är stängd" : "Inga nedgångar just nu"}
                       />
                     </div>
                   </div>
 
-                  {/* News/Morning Brief Section - Moved up */}
+                  {/* Morning Brief */}
                   {morningBrief && (
                     <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
                       <div className="flex items-center gap-2 mb-4">
@@ -747,7 +795,7 @@ const Index = () => {
               </div>
             </div>}
 
-          {/* Enhanced personal welcome for users without portfolio */}
+          {/* Enhanced welcome for users without portfolio */}
           {user && !hasPortfolio && !loading && <div className="mb-12 sm:mb-16">
               <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-3 sm:py-6">
                 <div className="space-y-6 sm:space-y-8">

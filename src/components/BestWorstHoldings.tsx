@@ -8,6 +8,8 @@ const BestWorstHoldings: React.FC = () => {
 
   const topHoldings = React.useMemo(() => {
     if (!holdingsPerformance || holdingsPerformance.length === 0) return { best: [], worst: [] };
+    
+    // Använd total avkastning (profitPercentage) om det finns inköpspris, annars dagsutveckling
     const getChange = (holding: (typeof holdingsPerformance)[number]) =>
       holding.hasPurchasePrice ? holding.profitPercentage : holding.dayChangePercentage;
 
@@ -95,5 +97,3 @@ const BestWorstHoldings: React.FC = () => {
 };
 
 export default BestWorstHoldings;
-
-
