@@ -1,11 +1,14 @@
 import React, { useMemo } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import HoldingsHighlightCard from './HoldingsHighlightCard';
-import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
+import { usePortfolioPerformance, type HoldingPerformance } from '@/hooks/usePortfolioPerformance';
 
-// Hjälpfunktion för att avgöra om ett innehav ska visas baserat på tid
-const shouldShowHolding = (symbol?: string): boolean => {
-  if (!symbol) return false;
+// Hjälpfunktion för att avgöra om ett innehav ska visas baserat på tid och valuta
+const shouldShowHolding = (holding: HoldingPerformance): boolean => {
+  // Krypto visas alltid (dygnet runt)
+  if (holding.holdingType === 'crypto' || holding.holdingType === 'cryptocurrency') {
+    return true;
+  }
 
   // Hämta aktuell tid i Stockholm
   const now = new Date();
@@ -26,17 +29,18 @@ const shouldShowHolding = (symbol?: string): boolean => {
   const usOpen = 15 * 60 + 30;     // 15:30
   const closeTime = 23 * 60 + 59;  // 23:59
 
-  // Enkel logik för att gissa marknad. 
-  // Antar att symboler med .ST eller specifika svenska storbolag är svenska.
-  const isSwedish = symbol.endsWith('.ST') || 
-                    ['VOLV', 'ERIC', 'HM', 'SEB', 'SHB', 'SWED', 'TELIA', 'SAND', 'ATCO', 'ESSITY'].some(s => symbol.includes(s));
+  const currency = holding.currency?.toUpperCase() || 'SEK';
 
-  if (isSwedish) {
-    // Visa svenska aktier mellan 09:00 och 23:59
+  if (currency === 'USD') {
+    // Amerikanska marknaden (baserat på valuta)
+    return currentMinutes >= usOpen && currentMinutes <= closeTime;
+  } else if (currency === 'SEK' || currency === 'EUR' || currency === 'DKK' || currency === 'NOK') {
+    // Svenska/Nordiska/Europeiska marknaden (baserat på valuta)
     return currentMinutes >= swedenOpen && currentMinutes <= closeTime;
   } else {
-    // Visa amerikanska/övriga aktier mellan 15:30 och 23:59
-    return currentMinutes >= usOpen && currentMinutes <= closeTime;
+    // Fallback för övriga valutor: visa under "dagtid" 09-24 eller dölj
+    // Här antar vi samma som Sverige för enkelhetens skull
+    return currentMinutes >= swedenOpen && currentMinutes <= closeTime;
   }
 };
 
@@ -47,9 +51,9 @@ const BestWorstHoldings: React.FC = () => {
     if (!holdingsPerformance || holdingsPerformance.length === 0) return { best: [], worst: [] };
 
     // Filtrera först bort innehav där marknaden är stängd
-    const activeHoldings = holdingsPerformance.filter(holding => shouldShowHolding(holding.symbol));
+    const activeHoldings = holdingsPerformance.filter(holding => shouldShowHolding(holding));
 
-    // Använd alltid dagens utveckling (dayChangePercentage) för "Dagens vinnare/förlorare"
+    // Använd dagens utveckling (dayChangePercentage)
     const getChange = (holding: (typeof holdingsPerformance)[number]) => holding.dayChangePercentage;
 
     const positiveHoldings = activeHoldings
@@ -79,7 +83,6 @@ const BestWorstHoldings: React.FC = () => {
   };
 
   const bestHoldingsItems = topHoldings.best.map((holding) => {
-    // Använd dagens förändring konsekvent
     const change = holding.dayChangePercentage;
     const changeValue = holding.dayChange;
 
@@ -94,7 +97,6 @@ const BestWorstHoldings: React.FC = () => {
   });
 
   const worstHoldingsItems = topHoldings.worst.map((holding) => {
-    // Använd dagens förändring konsekvent
     const change = holding.dayChangePercentage;
     const changeValue = holding.dayChange;
 
@@ -104,11 +106,11 @@ const BestWorstHoldings: React.FC = () => {
       symbol: holding.symbol,
       percentLabel: formatChangeLabel(change),
       valueLabel: formatChangeValue(changeValue),
-      isPositive: (change ?? 0) > 0, // Notera: > 0 för att vara grön, men här är det oftast rött
+      isPositive: (change ?? 0) > 0,
     };
   });
 
-  // Om inga innehav matchar kriterierna (t.ex. börsen stängd), visa ingenting eller en placeholder
+  // Om inga innehav matchar kriterierna (t.ex. börsen stängd), visa placeholders
   if (topHoldings.best.length === 0 && topHoldings.worst.length === 0) {
     return (
       <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
