@@ -1,4 +1,5 @@
 import React from 'react';
+import { isMarketOpen } from '@/utils/marketHours';
 import {
   Table,
   TableHeader,
@@ -180,6 +181,9 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
             isUpdatingPrice && refreshingTicker && normalizedSymbol && refreshingTicker === normalizedSymbol
           );
 
+          // NY LOGIK: Kontrollera om marknaden är öppen
+          const isOpen = isMarketOpen(holding);
+
           return (
             <TableRow key={holding.id}>
               <TableCell className="py-3 sm:py-3.5">
@@ -245,8 +249,10 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
                   <span className="text-sm text-muted-foreground">—</span>
                 )}
               </TableCell>
+              
+              {/* UPPATERAD LOGIK: Visar endast data om isOpen är true */}
               <TableCell className="py-3 sm:py-3.5 text-right align-middle">
-                {dailyChangePercent !== null ? (
+                {isOpen && dailyChangePercent !== null ? (
                   <div className="inline-flex flex-col items-end text-right gap-0.5">
                     <span className={cn('text-sm font-semibold', dailyChangeClass)}>
                       {dailyChangeValue !== null
@@ -258,9 +264,10 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
                     </span>
                   </div>
                 ) : (
-                  <span className="text-sm text-muted-foreground">—</span>
+                  <span className="text-sm text-muted-foreground" title={!isOpen ? "Marknaden stängd" : undefined}>—</span>
                 )}
               </TableCell>
+              
               <TableCell className="py-3 sm:py-3.5 text-right align-middle">
                 <span className="font-medium text-sm">
                   {totalPortfolioValue && totalPortfolioValue > 0
