@@ -1,486 +1,1025 @@
+
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Search, Filter, Download, Trash2, Edit, RefreshCw } from 'lucide-react';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Package,
+  Plus,
+  Banknote,
+  Search,
+  LayoutGrid,
+  Table as TableIcon,
+  RefreshCw,
+  Filter,
+  ArrowUpDown,
+  X
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { useUserHoldings, type UserHolding } from '@/hooks/useUserHoldings';
+  DialogTitle
+} from "@/components/ui/dialog";
+import HoldingsGroupSection from '@/components/HoldingsGroupSection';
+import HoldingsTable from '@/components/HoldingsTable';
+import AddHoldingDialog from '@/components/AddHoldingDialog';
+import EditHoldingDialog from '@/components/EditHoldingDialog';
+import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import AddHoldingDialog from './AddHoldingDialog';
-import EditHoldingDialog from './EditHoldingDialog';
-import HoldingsTable from './HoldingsTable';
+import type { HoldingPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
+import { useAuth } from '@/contexts/AuthContext';
+import { resolveHoldingValue } from '@/utils/currencyUtils';
+import { usePersistentDialogOpenState } from '@/hooks/usePersistentDialogOpenState';
+import { ADD_HOLDING_DIALOG_STORAGE_KEY } from '@/constants/storageKeys';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
-// Hjälpfunktion för att avgöra om marknaden är öppen
-// Denna används för sorteringen av "Utveckling idag"
-const isMarketOpen = (currency?: string, holdingType?: string): boolean => {
-  const type = holdingType?.toLowerCase();
-  if (type === 'crypto' || type === 'cryptocurrency' || type === 'certificate') return true;
+interface TransformedHolding {
+  id: string;
+  name: string;
+  holding_type: 'stock' | 'fund' | 'crypto' | 'real_estate' | 'bonds' | 'other' | 'recommendation' | 'cash';
+  current_value: number;
+  currency: string;
+  symbol?: string;
+  quantity?: number;
+  purchase_price?: number;
+  sector?: string;
+  current_price_per_unit?: number;
+  price_currency?: string;
+  base_currency?: string;
+  original_value?: number;
+  original_currency?: string;
+  dailyChangePercent?: number | null;
+  dailyChangeValueSEK?: number | null;
+}
 
-  const normalizedCurrency = currency?.toUpperCase() || 'SEK';
-  const now = new Date();
-  const formatter = new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'Europe/Stockholm',
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: false
-  });
-  
-  const parts = formatter.formatToParts(now);
-  const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
-  const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
-  const currentMinutes = hour * 60 + minute;
+interface UserHoldingsManagerProps {
+  importControls?: React.ReactNode;
+}
 
-  const swedenOpen = 9 * 60;        // 09:00
-  const usOpen = 15 * 60 + 30;      // 15:30
-  const endOfDay = 23 * 60 + 59;    // 23:59
+type FilterMode = 'all' | 'se' | 'us' | 'winners' | 'losers';
 
-  if (normalizedCurrency === 'USD') return currentMinutes >= usOpen && currentMinutes <= endOfDay;
-  if (['SEK', 'EUR', 'DKK', 'NOK'].includes(normalizedCurrency)) return currentMinutes >= swedenOpen && currentMinutes <= endOfDay;
-
-  return currentMinutes >= swedenOpen && currentMinutes <= endOfDay;
-};
-
-type SortBy = 'name' | 'marketValue' | 'performance' | 'dailyChange' | 'share';
-type SortOrder = 'asc' | 'desc';
-
-const UserHoldingsManager = () => {
+const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControls }) => {
+  const {
+    actualHoldings,
+    loading,
+    deleteHolding,
+    recommendations,
+    addHolding,
+    updateHolding,
+    refetch: refetchHoldings
+  } = useUserHoldings();
+  const { performance, updatePrices, updating, holdingsPerformance } = usePortfolioPerformance();
+  const { 
+    cashHoldings, 
+    totalCash, 
+    loading: cashLoading, 
+    addCashHolding, 
+    updateCashHolding, 
+    deleteCashHolding 
+  } = useCashHoldings();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { actualHoldings, loading, refetch: refetchHoldings } = useUserHoldings();
-  const { performance, holdingsPerformance, updatePrices, updating, refetch: refetchPerformance } = usePortfolioPerformance();
-  const { totalCash, addCash, withdrawCash, updateCash, loading: cashLoading } = useCashHoldings();
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<SortBy>('marketValue');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   
-  // Dialog states
-  const [isAddHoldingDialogOpen, setIsAddHoldingDialogOpen] = useState(false);
+  const [showAddCashDialog, setShowAddCashDialog] = useState(false);
+  const [editingCash, setEditingCash] = useState<{id: string, amount: number} | null>(null);
+  const [newCashData, setNewCashData] = useState({
+    name: 'Kassa',
+    amount: ''
+  });
+  const [searchTerm, setSearchTerm] = useState('');
+  const {
+    isOpen: isAddHoldingDialogOpen,
+    open: openAddHoldingDialog,
+    close: closeAddHoldingDialog,
+  } = usePersistentDialogOpenState(ADD_HOLDING_DIALOG_STORAGE_KEY, 'user-holdings');
   const [showEditHoldingDialog, setShowEditHoldingDialog] = useState(false);
-  const [editingHolding, setEditingHolding] = useState<UserHolding | null>(null);
-  const [addHoldingInitialData, setAddHoldingInitialData] = useState<{ symbol: string; name: string } | null>(null);
-  
-  // Cash dialog states
-  const [isCashDialogOpen, setIsCashDialogOpen] = useState(false);
-  const [cashAction, setCashAction] = useState<'deposit' | 'withdraw'>('deposit');
-  const [cashAmount, setCashAmount] = useState('');
-  const [editingCash, setEditingCash] = useState<{ id: string, amount: number } | null>(null);
-
+  const [editingHolding, setEditingHolding] = useState<any>(null);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
   const [refreshingTicker, setRefreshingTicker] = useState<string | null>(null);
+  const [holdingToDelete, setHoldingToDelete] = useState<{ id: string; name: string; type: 'cash' | 'holding' } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [filterMode, setFilterMode] = useState<FilterMode>('all');
+  const [addHoldingInitialData, setAddHoldingInitialData] = useState<any | null>(null);
+  const [sortBy, setSortBy] = useState<'name' | 'marketValue' | 'performance' | 'dailyChange' | 'share'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [showFilters, setShowFilters] = useState(false);
 
-  // Mappa holdingPerformance till en map för snabb uppslagning
-  const holdingPerformanceMap = useMemo(() => {
-    const map: Record<string, any> = {};
-    holdingsPerformance.forEach(h => {
-      map[h.id] = h;
+  const filterOptions: Array<{ key: FilterMode; label: string }> = [
+    { key: 'all', label: 'Alla' },
+    { key: 'se', label: 'Sverige' },
+    { key: 'us', label: 'USA' },
+    { key: 'winners', label: 'Vinnare' },
+    { key: 'losers', label: 'Förlorare' },
+  ];
+
+  const hasActiveFilters = searchTerm.trim() !== "";
+  const activeFiltersCount = searchTerm.trim() !== "" ? 1 : 0;
+
+  const renderHoldingsActionButtons = () => (
+    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-1.5 md:gap-2">
+      <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 flex-1 min-w-0">
+        <div className="flex gap-1.5 sm:gap-2 flex-1 max-w-full sm:max-w-md items-center min-w-[150px] xs:min-w-[200px]">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-muted-foreground" />
+            <Input
+              placeholder="Sök innehav..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-7 sm:pl-8 md:pl-10 text-[10px] xs:text-xs sm:text-sm h-8 sm:h-9 md:h-10"
+            />
+          </div>
+        </div>
+        {viewMode === 'cards' && (
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={() => setShowFilters(!showFilters)}
+            className="relative h-8 w-8 sm:h-9 sm:w-9"
+          >
+            <Filter className="h-4 w-4" />
+            {activeFiltersCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+                {activeFiltersCount}
+              </span>
+            )}
+          </Button>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => handleOpenAddHolding()}>
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="sr-only">Lägg till innehav</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Lägg till innehav</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="icon" variant="outline" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => setShowAddCashDialog(true)}>
+              <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="sr-only">Lägg till kassa</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Lägg till kassa</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 sm:h-9 sm:w-9 border border-dashed border-border text-muted-foreground"
+            >
+              <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="sr-only">Uppdatera prisinformation</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">
+            Klicka på en ticker i listan för att uppdatera priset.
+          </TooltipContent>
+        </Tooltip>
+        {importControls && (
+          <div className="w-full sm:w-auto flex justify-end sm:justify-start">
+            {importControls}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+
+  const holdingPerformanceMap = useMemo<Record<string, HoldingPerformance>>(() => {
+    const map: Record<string, HoldingPerformance> = {};
+    holdingsPerformance.forEach(performanceEntry => {
+      map[performanceEntry.id] = performanceEntry;
     });
     return map;
   }, [holdingsPerformance]);
-
-  const handleSort = (column: SortBy) => {
-    if (sortBy === column) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(column);
-      setSortOrder('desc');
+  
+  const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
+    const success = await deleteHolding(holdingId);
+    if (success) {
+      toast({
+        title: 'Innehav raderat',
+        description: `${holdingName} har tagits bort.`,
+      });
+      return true;
     }
+
+    return false;
   };
 
-  const handleRefreshPrice = async (ticker: string) => {
-    setRefreshingTicker(ticker);
-    try {
-      await updatePrices(ticker);
-      await refetchHoldings();
-      await refetchPerformance();
-      toast({
-        title: "Pris uppdaterat",
-        description: `Priset för ${ticker} har uppdaterats.`,
-      });
-    } catch (error) {
-      console.error("Failed to refresh price:", error);
-      toast({
-        title: "Kunde inte uppdatera pris",
-        description: "Ett fel uppstod vid hämtning av marknadsdata.",
-        variant: "destructive",
-      });
-    } finally {
-      setRefreshingTicker(null);
-    }
-  };
-
-  const filteredHoldings = useMemo(() => {
-    if (!actualHoldings) return [];
+  const handleDiscussHolding = (holdingName: string, symbol?: string) => {
+    const sessionName = `Diskussion: ${holdingName}`;
+    const message = `Berätta mer om ${holdingName}${symbol ? ` (${symbol})` : ''}. Vad gör företaget, vilka är deras huvudsakliga affärsområden, och varför skulle det vara en bra investering för min portfölj? Analysera också eventuella risker och möjligheter.`;
     
-    return actualHoldings.filter(holding => {
-      const searchLower = searchQuery.toLowerCase();
-      return (
-        holding.name.toLowerCase().includes(searchLower) ||
-        (holding.symbol && holding.symbol.toLowerCase().includes(searchLower))
-      );
+    navigate('/ai-chatt', {
+      state: {
+        createNewSession: true,
+        sessionName: sessionName,
+        initialMessage: message
+      }
     });
-  }, [actualHoldings, searchQuery]);
-
-  const sortedHoldings = useMemo(() => {
-    return [...filteredHoldings].sort((a, b) => {
-      let valA: any = 0;
-      let valB: any = 0;
-
-      switch (sortBy) {
-        case 'name':
-          valA = a.name;
-          valB = b.name;
-          return sortOrder === 'asc' 
-            ? valA.localeCompare(valB) 
-            : valB.localeCompare(valA);
-            
-        case 'marketValue':
-          const perfA_MV = holdingPerformanceMap[a.id];
-          const perfB_MV = holdingPerformanceMap[b.id];
-          valA = perfA_MV ? perfA_MV.currentValue : (a.current_value || 0);
-          valB = perfB_MV ? perfB_MV.currentValue : (b.current_value || 0);
-          break;
-          
-        case 'performance':
-          const perfA = holdingPerformanceMap[a.id];
-          const perfB = holdingPerformanceMap[b.id];
-          valA = perfA ? perfA.profitPercentage : 0;
-          valB = perfB ? perfB.profitPercentage : 0;
-          break;
-          
-        case 'dailyChange':
-          // SPECIALHANTERING FÖR DAGSUTVECKLING
-          // Vi använder isMarketOpen för att avgöra om värdet är relevant just nu
-          const currencyA = a.price_currency || a.currency || 'SEK';
-          const currencyB = b.price_currency || b.currency || 'SEK';
-          const isOpenA = isMarketOpen(currencyA, a.holding_type);
-          const isOpenB = isMarketOpen(currencyB, b.holding_type);
-
-          // Om ena är stängd och andra öppen, prioritera den öppna (visa den först om man sorterar)
-          // Om man sorterar fallande (bäst först), vill vi ha öppna marknader högst upp
-          // Om man sorterar stigande (sämst först), vill vi också ha öppna marknader högst upp (de relevanta)
-          // Eller så lägger vi alltid stängda marknader sist för renare lista.
-          
-          if (!isOpenA && isOpenB) return 1; // A stängd -> A sist
-          if (isOpenA && !isOpenB) return -1; // B stängd -> B sist
-          
-          // Om båda är stängda, sortera på namn för stabilitet
-          if (!isOpenA && !isOpenB) return a.name.localeCompare(b.name);
-
-          // Om båda är öppna, sortera på värdet
-          valA = a.dailyChangePercent ?? 0;
-          valB = b.dailyChangePercent ?? 0;
-          break;
-
-        case 'share':
-          const totalVal = performance.totalPortfolioValue || 1;
-          const perfA_S = holdingPerformanceMap[a.id];
-          const perfB_S = holdingPerformanceMap[b.id];
-          const valA_SEK = perfA_S ? perfA_S.currentValue : (a.current_value || 0);
-          const valB_SEK = perfB_S ? perfB_S.currentValue : (b.current_value || 0);
-          valA = (valA_SEK / totalVal) * 100;
-          valB = (valB_SEK / totalVal) * 100;
-          break;
-          
-        default:
-          return 0;
-      }
-
-      if (typeof valA === 'number' && typeof valB === 'number') {
-        return sortOrder === 'asc' ? valA - valB : valB - valA;
-      }
-      
-      return 0;
-    });
-  }, [filteredHoldings, sortBy, sortOrder, holdingPerformanceMap, performance.totalPortfolioValue]);
-
-  // Handlers för dialoger och actions
-  const handleAddHolding = async (holdingData: any) => {
-    try {
-      // Implementera logik för att lägga till innehav via useUserHoldings eller direkt anrop
-      // Detta beror på hur AddHoldingDialog kommunicerar
-      await refetchHoldings();
-      setIsAddHoldingDialogOpen(false);
-      setAddHoldingInitialData(null);
-      toast({
-        title: "Innehav tillagt",
-        description: "Ditt nya innehav har lagts till i portföljen.",
-      });
-    } catch (error) {
-      toast({
-        title: "Fel",
-        description: "Kunde inte lägga till innehav.",
-        variant: "destructive",
-      });
-    }
   };
 
-  const handleUpdateHolding = async (holdingData: any) => {
-    if (!editingHolding) return;
-    // Implementera uppdateringslogik här
-    setShowEditHoldingDialog(false);
-    setEditingHolding(null);
-    await refetchHoldings();
-  };
+  const handleAddCash = async () => {
+    if (!newCashData.name || !newCashData.amount) return;
+    
+    const amount = parseFloat(newCashData.amount);
+    if (isNaN(amount) || amount <= 0) return;
 
-  const handleCloseAddHoldingDialog = () => {
-    setIsAddHoldingDialogOpen(false);
-    setAddHoldingInitialData(null);
-  };
-
-  const handleCashSubmit = async () => {
-    const amount = parseFloat(cashAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toast({
-        title: "Ogiltigt belopp",
-        description: "Vänligen ange ett giltigt belopp.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      if (cashAction === 'deposit') {
-        await addCash(amount);
-        toast({ title: "Insättning klar", description: `${amount} kr har satts in.` });
-      } else {
-        await withdrawCash(amount);
-        toast({ title: "Uttag klart", description: `${amount} kr har tagits ut.` });
-      }
-      setIsCashDialogOpen(false);
-      setCashAmount('');
-    } catch (error) {
-      toast({
-        title: "Fel vid transaktion",
-        description: "Kunde inte genomföra transaktionen.",
-        variant: "destructive",
-      });
+    const success = await addCashHolding(newCashData.name, amount);
+    if (success) {
+      setNewCashData({ name: 'Kassa', amount: '' });
+      setShowAddCashDialog(false);
     }
   };
 
   const handleUpdateCash = async () => {
     if (!editingCash) return;
-    try {
-        await updateCash(editingCash.id, editingCash.amount);
-        setEditingCash(null);
-        toast({
-            title: "Kassa uppdaterad",
-            description: "Ditt kassainnehav har uppdaterats.",
-        });
-    } catch (error) {
-        toast({
-            title: "Fel",
-            description: "Kunde inte uppdatera kassan.",
-            variant: "destructive",
-        });
+    
+    const success = await updateCashHolding(editingCash.id, editingCash.amount);
+    if (success) {
+      setEditingCash(null);
     }
   };
 
-  return (
-    <Card className="w-full border-border/60 shadow-sm overflow-hidden bg-card">
-      <CardHeader className="pb-4 border-b border-border/40">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <CardTitle className="text-xl font-semibold">Dina Innehav</CardTitle>
-            <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-              <span>Totalt värde: {performance.totalPortfolioValue?.toLocaleString('sv-SE')} kr</span>
-              <span>•</span>
-              <span>Kassa: {totalCash?.toLocaleString('sv-SE')} kr</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setIsCashDialogOpen(true)}
-            >
-              Hantera kassa
-            </Button>
-            <Button 
-              onClick={() => setIsAddHoldingDialogOpen(true)} 
-              className="bg-primary hover:bg-primary/90 text-white shadow-sm"
-              size="sm"
-            >
-              <Plus className="h-4 w-4 mr-1.5" />
-              Lägg till innehav
-            </Button>
-          </div>
-        </div>
-        
-        <div className="flex flex-col sm:flex-row gap-3 mt-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Sök på namn eller symbol..."
-              className="pl-9 bg-background/50 border-input/60"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-10 px-3 border-input/60 bg-background/50">
-                  <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
-                  Filtrera
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>Sortera efter</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleSort('marketValue')}>
-                  Marknadsvärde
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleSort('performance')}>
-                  Total avkastning
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleSort('dailyChange')}>
-                  Utveckling idag
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleSort('name')}>
-                  Namn (A-Ö)
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+  const handleDeleteCash = async (id: string) => {
+    return deleteCashHolding(id);
+  };
 
-            <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" title="Exportera till CSV">
-              <Download className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          {loading ? (
-            <div className="flex items-center justify-center p-12 text-muted-foreground">
-              <RefreshCw className="h-6 w-6 animate-spin mr-2" />
-              Laddar innehav...
-            </div>
-          ) : sortedHoldings.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-12 text-center">
-              <div className="bg-muted/30 p-4 rounded-full mb-3">
-                <Search className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <h3 className="font-medium text-foreground">Inga innehav hittades</h3>
-              <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto">
-                {searchQuery 
-                  ? `Inga resultat matchade "${searchQuery}"` 
-                  : "Din portfölj är tom. Lägg till ditt första innehav för att komma igång."}
+  const handleRequestDelete = (id: string, name: string, type: 'cash' | 'holding') => {
+    setHoldingToDelete({ id, name, type });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!holdingToDelete) {
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      const wasDeleted = holdingToDelete.type === 'cash'
+        ? await handleDeleteCash(holdingToDelete.id)
+        : await handleDeleteHolding(holdingToDelete.id, holdingToDelete.name);
+
+      if (wasDeleted) {
+        setHoldingToDelete(null);
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    if (isDeleting) {
+      return;
+    }
+
+    setHoldingToDelete(null);
+  };
+
+  const handleOpenAddHolding = () => {
+    setAddHoldingInitialData({ holding_type: 'stock' });
+    openAddHoldingDialog();
+  };
+
+
+  const handleEditHolding = (id: string) => {
+    const holding = actualHoldings.find(h => h.id === id);
+    if (holding) {
+      setEditingHolding(holding);
+      setShowEditHoldingDialog(true);
+    }
+  };
+
+  const handleUpdateHolding = async (holdingData: any) => {
+    if (!editingHolding) return false;
+
+    const rawSymbol = typeof holdingData.symbol === 'string'
+      ? holdingData.symbol
+      : editingHolding.symbol;
+    const normalizedSymbol = rawSymbol?.trim().length
+      ? rawSymbol.trim().toUpperCase()
+      : undefined;
+
+    const payload = {
+      ...holdingData,
+      ...(typeof holdingData.symbol === 'string'
+        ? { symbol: normalizedSymbol }
+        : {})
+    };
+
+    const success = await updateHolding(editingHolding.id, payload);
+    if (success) {
+      setShowEditHoldingDialog(false);
+      setEditingHolding(null);
+      if (normalizedSymbol) {
+        void handleUpdateHoldingPrice(normalizedSymbol);
+      }
+    }
+    return success;
+  };
+
+  const handleAddHolding = async (holdingData: any) => {
+    const payload = {
+      holding_type: holdingData.holding_type || 'stock',
+      ...holdingData,
+    };
+
+    const success = await addHolding(payload);
+    if (success) {
+      closeAddHoldingDialog();
+      setAddHoldingInitialData(null);
+      const normalizedSymbol = typeof holdingData.symbol === 'string'
+        ? holdingData.symbol.trim().toUpperCase()
+        : undefined;
+      if (normalizedSymbol) {
+        void handleUpdateHoldingPrice(normalizedSymbol);
+      }
+    }
+    return success;
+  };
+
+  const handleCloseAddHoldingDialog = () => {
+    setAddHoldingInitialData(null);
+    closeAddHoldingDialog();
+  };
+
+  const handleUpdateHoldingPrice = async (symbol?: string) => {
+    const normalizedSymbol = symbol?.trim().toUpperCase();
+    if (!normalizedSymbol || updating) {
+      return;
+    }
+
+    setRefreshingTicker(normalizedSymbol);
+    try {
+      await updatePrices(normalizedSymbol);
+      if (typeof refetchHoldings === 'function') {
+        await refetchHoldings({ silent: true });
+      }
+    } finally {
+      setRefreshingTicker(null);
+    }
+  };
+
+  // Prepare holdings data for grouping - fix type issues
+  const uniqueCashHoldings = cashHoldings.filter(cash => 
+    !actualHoldings.some(holding => holding.id === cash.id)
+  );
+
+  // Transform all holdings to match the TransformedHolding interface
+  const transformedActualHoldings: TransformedHolding[] = actualHoldings.map(holding => {
+    const {
+      pricePerUnit,
+      priceCurrency,
+      valueInSEK,
+      quantity,
+      valueInOriginalCurrency,
+      valueCurrency,
+    } = resolveHoldingValue(holding);
+
+    const resolvedQuantity = typeof holding.quantity === 'number' && Number.isFinite(holding.quantity)
+      ? holding.quantity
+      : quantity;
+
+    return {
+      id: holding.id,
+      name: holding.name,
+      holding_type: holding.holding_type || 'stock',
+      current_value: valueInSEK,
+      currency: 'SEK',
+      symbol: holding.symbol,
+      quantity: resolvedQuantity,
+      purchase_price: holding.purchase_price,
+      sector: holding.sector,
+      current_price_per_unit: typeof pricePerUnit === 'number' ? pricePerUnit : undefined,
+      price_currency: priceCurrency,
+      base_currency: holding.currency || priceCurrency,
+      original_value: valueInOriginalCurrency,
+      original_currency: valueCurrency,
+      dailyChangePercent: holding.dailyChangePercent ?? holding.daily_change_pct ?? null,
+      dailyChangeValueSEK: holding.dailyChangeValueSEK ?? null,
+    };
+  });
+
+  const transformedCashHoldings: TransformedHolding[] = uniqueCashHoldings.map(cash => ({
+    id: cash.id,
+    name: cash.name,
+    holding_type: 'cash' as const,
+    current_value: cash.current_value,
+    currency: 'SEK',
+    symbol: undefined,
+    quantity: undefined,
+    purchase_price: undefined,
+    sector: undefined,
+    current_price_per_unit: undefined,
+    price_currency: 'SEK',
+    base_currency: 'SEK',
+    original_value: cash.current_value,
+    original_currency: 'SEK',
+    dailyChangePercent: null,
+    dailyChangeValueSEK: null,
+  }));
+
+  const allHoldings = [
+    ...transformedActualHoldings,
+    ...transformedCashHoldings
+  ];
+
+  const tabHoldings = useMemo(() => allHoldings, [allHoldings]);
+
+  const totalPortfolioValue = performance?.totalPortfolioValue ?? allHoldings.reduce((sum, holding) => {
+    return sum + resolveHoldingValue(holding).valueInSEK;
+  }, 0);
+
+  // Group holdings by type
+  const groupHoldings = (visibleHoldings: TransformedHolding[]) => {
+    const groups = {
+      stocks: visibleHoldings.filter(h => h.holding_type === 'stock'),
+      funds: visibleHoldings.filter(h => h.holding_type === 'fund'),
+      cash: visibleHoldings.filter(h => h.holding_type === 'cash'),
+      other: visibleHoldings.filter(h => !['stock', 'fund', 'cash'].includes(h.holding_type))
+    };
+
+    return Object.entries(groups)
+      .filter(([, holdings]) => holdings.length > 0)
+      .map(([type, holdings]) => {
+        // Fix: Properly sum the current_value of each holding
+        const totalValue = holdings.reduce((sum, holding) => {
+          return sum + resolveHoldingValue(holding).valueInSEK;
+        }, 0);
+
+        const percentage = totalPortfolioValue > 0 ? (totalValue / totalPortfolioValue) * 100 : 0;
+
+        const typeNames = {
+          stocks: 'Aktier',
+          funds: 'Fonder',
+          cash: 'Kassa',
+          other: 'Övrigt'
+        };
+
+        return {
+          key: type,
+          title: typeNames[type as keyof typeof typeNames] || 'Övrigt',
+          holdings,
+          totalValue,
+          percentage
+        };
+      });
+  };
+
+  const matchesSearch = (holding: TransformedHolding) => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return true;
+
+    return (
+      holding.name.toLowerCase().includes(term) ||
+      (holding.symbol && holding.symbol.toLowerCase().includes(term))
+    );
+  };
+
+  const getHoldingRegion = (holding: TransformedHolding): 'se' | 'us' | null => {
+    const currency = (holding.base_currency || holding.price_currency || holding.currency || '').toUpperCase();
+    const symbol = holding.symbol?.toUpperCase();
+
+    if (currency === 'SEK' || symbol?.endsWith('.ST')) {
+      return 'se';
+    }
+
+    if (currency === 'USD') {
+      return 'us';
+    }
+
+    return null;
+  };
+
+  const matchesFilter = (holding: TransformedHolding) => {
+    if (filterMode === 'all') return true;
+
+    if (filterMode === 'se') return getHoldingRegion(holding) === 'se';
+    if (filterMode === 'us') return getHoldingRegion(holding) === 'us';
+
+    const performance = holdingPerformanceMap[holding.id];
+    if (!performance || holding.holding_type === 'cash') {
+      return false;
+    }
+
+    if (filterMode === 'winners') {
+      return performance.profit > 0;
+    }
+
+    if (filterMode === 'losers') {
+      return performance.profit < 0;
+    }
+
+    return true;
+  };
+
+  const filteredGroups = useMemo(() => {
+    const groups = groupHoldings(tabHoldings)
+      .map(group => ({
+        ...group,
+        holdings: group.holdings.filter(holding => matchesSearch(holding) && matchesFilter(holding))
+      }))
+      .filter(group => group.holdings.length > 0);
+
+    // Sort holdings within each group for cards view
+    return groups.map(group => ({
+      ...group,
+      holdings: [...group.holdings].sort((a, b) => {
+        let aValue: number | string = 0;
+        let bValue: number | string = 0;
+
+        const aPerformance = holdingPerformanceMap[a.id];
+        const bPerformance = holdingPerformanceMap[b.id];
+        const { valueInSEK: aValueInSEK } = resolveHoldingValue(a);
+        const { valueInSEK: bValueInSEK } = resolveHoldingValue(b);
+        const aShare = totalPortfolioValue && totalPortfolioValue > 0 ? (aValueInSEK / totalPortfolioValue) * 100 : 0;
+        const bShare = totalPortfolioValue && totalPortfolioValue > 0 ? (bValueInSEK / totalPortfolioValue) * 100 : 0;
+
+        switch (sortBy) {
+          case 'name':
+            aValue = (a.name || '').toLowerCase();
+            bValue = (b.name || '').toLowerCase();
+            break;
+          case 'marketValue':
+            aValue = aValueInSEK;
+            bValue = bValueInSEK;
+            break;
+          case 'performance':
+            aValue = aPerformance?.profit ?? 0;
+            bValue = bPerformance?.profit ?? 0;
+            break;
+          case 'dailyChange':
+            aValue = a.dailyChangePercent ?? 0;
+            bValue = b.dailyChangePercent ?? 0;
+            break;
+          case 'share':
+            aValue = aShare;
+            bValue = bShare;
+            break;
+          default:
+            aValue = (a.name || '').toLowerCase();
+            bValue = (b.name || '').toLowerCase();
+        }
+
+        if (sortOrder === 'asc') {
+          if (typeof aValue === 'string' && typeof bValue === 'string') {
+            return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+          }
+          return (aValue as number) < (bValue as number) ? -1 : (aValue as number) > (bValue as number) ? 1 : 0;
+        } else {
+          if (typeof aValue === 'string' && typeof bValue === 'string') {
+            return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+          }
+          return (aValue as number) > (bValue as number) ? -1 : (aValue as number) < (bValue as number) ? 1 : 0;
+        }
+      })
+    }));
+  }, [tabHoldings, searchTerm, filterMode, sortBy, sortOrder, holdingPerformanceMap, totalPortfolioValue]);
+
+  // Separate holdings by type
+  const stockHoldings = useMemo(() => {
+    const holdings = filteredGroups.flatMap(group => group.holdings).filter(h => h.holding_type === 'stock');
+    
+    return [...holdings].sort((a, b) => {
+      let aValue: number | string = 0;
+      let bValue: number | string = 0;
+
+      const aPerformance = holdingPerformanceMap[a.id];
+      const bPerformance = holdingPerformanceMap[b.id];
+      const { valueInSEK: aValueInSEK } = resolveHoldingValue(a);
+      const { valueInSEK: bValueInSEK } = resolveHoldingValue(b);
+      const aShare = totalPortfolioValue && totalPortfolioValue > 0 ? (aValueInSEK / totalPortfolioValue) * 100 : 0;
+      const bShare = totalPortfolioValue && totalPortfolioValue > 0 ? (bValueInSEK / totalPortfolioValue) * 100 : 0;
+
+      switch (sortBy) {
+        case 'name':
+          aValue = (a.name || '').toLowerCase();
+          bValue = (b.name || '').toLowerCase();
+          break;
+        case 'marketValue':
+          aValue = aValueInSEK;
+          bValue = bValueInSEK;
+          break;
+        case 'performance':
+          aValue = aPerformance?.profit ?? 0;
+          bValue = bPerformance?.profit ?? 0;
+          break;
+        case 'dailyChange':
+          aValue = a.dailyChangePercent ?? 0;
+          bValue = b.dailyChangePercent ?? 0;
+          break;
+        case 'share':
+          aValue = aShare;
+          bValue = bShare;
+          break;
+        default:
+          aValue = (a.name || '').toLowerCase();
+          bValue = (b.name || '').toLowerCase();
+      }
+
+      if (sortOrder === 'asc') {
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+        }
+        return (aValue as number) < (bValue as number) ? -1 : (aValue as number) > (bValue as number) ? 1 : 0;
+      } else {
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+        }
+        return (aValue as number) > (bValue as number) ? -1 : (aValue as number) < (bValue as number) ? 1 : 0;
+      }
+    });
+  }, [filteredGroups, sortBy, sortOrder, holdingPerformanceMap, totalPortfolioValue]);
+
+  // Other holdings (non-stocks) for separate table sections
+  const otherHoldingsGroups = useMemo(() => {
+    return filteredGroups
+      .map(group => ({
+        ...group,
+        holdings: group.holdings.filter(h => h.holding_type !== 'stock')
+      }))
+      .filter(group => group.holdings.length > 0)
+      .map(group => ({
+        ...group,
+        sortedHoldings: [...group.holdings].sort((a, b) => {
+          let aValue: number | string = 0;
+          let bValue: number | string = 0;
+
+          const aPerformance = holdingPerformanceMap[a.id];
+          const bPerformance = holdingPerformanceMap[b.id];
+          const { valueInSEK: aValueInSEK } = resolveHoldingValue(a);
+          const { valueInSEK: bValueInSEK } = resolveHoldingValue(b);
+          const aShare = totalPortfolioValue && totalPortfolioValue > 0 ? (aValueInSEK / totalPortfolioValue) * 100 : 0;
+          const bShare = totalPortfolioValue && totalPortfolioValue > 0 ? (bValueInSEK / totalPortfolioValue) * 100 : 0;
+
+          switch (sortBy) {
+            case 'name':
+              aValue = (a.name || '').toLowerCase();
+              bValue = (b.name || '').toLowerCase();
+              break;
+            case 'marketValue':
+              aValue = aValueInSEK;
+              bValue = bValueInSEK;
+              break;
+            case 'performance':
+              aValue = aPerformance?.profit ?? 0;
+              bValue = bPerformance?.profit ?? 0;
+              break;
+            case 'dailyChange':
+              aValue = a.dailyChangePercent ?? 0;
+              bValue = b.dailyChangePercent ?? 0;
+              break;
+            case 'share':
+              aValue = aShare;
+              bValue = bShare;
+              break;
+            default:
+              aValue = (a.name || '').toLowerCase();
+              bValue = (b.name || '').toLowerCase();
+          }
+
+          if (sortOrder === 'asc') {
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+              return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+            }
+            return (aValue as number) < (bValue as number) ? -1 : (aValue as number) > (bValue as number) ? 1 : 0;
+          } else {
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+              return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+            }
+            return (aValue as number) > (bValue as number) ? -1 : (aValue as number) < (bValue as number) ? 1 : 0;
+          }
+        })
+      }));
+  }, [filteredGroups, sortBy, sortOrder, holdingPerformanceMap, totalPortfolioValue]);
+
+  const handleTableSort = (column: 'name' | 'marketValue' | 'performance' | 'dailyChange' | 'share') => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('asc');
+    }
+  };
+
+  const holdingsActionButtons = renderHoldingsActionButtons();
+
+  return (
+    <TooltipProvider delayDuration={120}>
+      <>
+        <Card className="h-fit rounded-lg sm:rounded-xl">
+        <CardHeader className="p-3 sm:p-3 md:p-4 pb-2">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+            <div className="space-y-0.5">
+              <CardTitle className="text-base sm:text-lg md:text-xl">Innehav</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Sök, lägg till eller hantera dina innehav.
               </p>
-              {!searchQuery && (
-                <Button 
-                  variant="outline" 
-                  className="mt-4"
-                  onClick={() => setIsAddHoldingDialogOpen(true)}
-                >
-                  Lägg till nu
+            </div>
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant={viewMode === 'cards' ? 'default' : 'outline'}
+                    onClick={() => setViewMode('cards')}
+                    className="h-8 w-8 sm:h-9 sm:w-9"
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="sr-only">Kortvy</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Kortvy</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant={viewMode === 'table' ? 'default' : 'outline'}
+                    onClick={() => setViewMode('table')}
+                    className="h-8 w-8 sm:h-9 sm:w-9"
+                  >
+                    <TableIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="sr-only">Tabellvy</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Tabellvy</TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2.5 sm:space-y-3 p-3 sm:p-4 md:p-6 pt-0">
+          {loading || cashLoading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <div className="flex items-center justify-center gap-2">
+                <Package className="w-4 h-4 animate-pulse" />
+                <span>Laddar innehav...</span>
+              </div>
+            </div>
+          ) : tabHoldings.length === 0 ? (
+            <div className="text-center py-6 sm:py-8">
+              <Package className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 opacity-50 text-muted-foreground" />
+              <h3 className="text-base sm:text-lg font-medium mb-2 text-foreground">
+                Inga innehav registrerade
+              </h3>
+              <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 max-w-sm mx-auto px-2">
+                Lägg till dina nuvarande aktier, fonder och kassapositioner för att få en komplett bild av din portfölj och bättre AI-rekommendationer.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center px-2">
+                <Button className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm w-full sm:w-auto" onClick={() => handleOpenAddHolding()}>
+                  <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  Lägg till innehav
                 </Button>
-              )}
+                <Button variant="outline" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm w-full sm:w-auto" onClick={() => setShowAddCashDialog(true)}>
+                  <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  Lägg till kassa
+                </Button>
+              </div>
             </div>
           ) : (
-            <HoldingsTable 
-              holdings={sortedHoldings}
-              holdingPerformanceMap={holdingPerformanceMap}
-              totalPortfolioValue={performance.totalPortfolioValue}
-              onRefreshPrice={handleRefreshPrice}
-              isUpdatingPrice={updating}
-              refreshingTicker={refreshingTicker}
-              sortBy={sortBy}
-              sortOrder={sortOrder}
-              onSort={handleSort}
-            />
+            <div className="space-y-2.5 sm:space-y-3">
+              {holdingsActionButtons}
+              
+              {/* Filter Section for Cards View */}
+              {viewMode === 'cards' && showFilters && (
+                <Card className="p-4 space-y-4">
+                  {/* Sorting */}
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex items-center gap-2">
+                      <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium whitespace-nowrap">Sortera efter:</span>
+                      <Select value={sortBy} onValueChange={(value) => setSortBy(value as 'name' | 'marketValue' | 'performance' | 'dailyChange' | 'share')}>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="name">Namn</SelectItem>
+                          <SelectItem value="marketValue">Marknadsvärde</SelectItem>
+                          <SelectItem value="performance">Utveckling</SelectItem>
+                          <SelectItem value="dailyChange">Utveckling idag</SelectItem>
+                          <SelectItem value="share">Andel</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as 'asc' | 'desc')}>
+                        <SelectTrigger className="w-[120px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="desc">
+                            {sortBy === 'name' ? 'Ö-A' : 'Högst först'}
+                          </SelectItem>
+                          <SelectItem value="asc">
+                            {sortBy === 'name' ? 'A-Ö' : 'Lägst först'}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {viewMode === 'cards' ? (
+                <div className="space-y-4">
+                  {filteredGroups.map((group, index) => (
+                    <HoldingsGroupSection
+                      key={group.key}
+                      title={group.title}
+                      holdings={group.holdings}
+                      totalValue={group.totalValue}
+                      groupPercentage={group.percentage}
+                      holdingPerformanceMap={holdingPerformanceMap}
+                      onDiscuss={handleDiscussHolding}
+                      onEdit={group.key === 'cash' ? (id: string) => {
+                        const cash = group.holdings.find(h => h.id === id);
+                        if (cash) {
+                          setEditingCash({ id: cash.id, amount: cash.current_value });
+                        }
+                      } : handleEditHolding}
+                      onDelete={group.key === 'cash'
+                        ? (id: string, name: string) => handleRequestDelete(id, name, 'cash')
+                        : (id: string, name: string) => handleRequestDelete(id, name, 'holding')}
+                      onRefreshPrice={group.key === 'cash' ? undefined : handleUpdateHoldingPrice}
+                      isUpdatingPrice={updating}
+                      refreshingTicker={refreshingTicker}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-6 sm:space-y-8">
+                  {/* Stocks Table */}
+                  {stockHoldings.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="text-lg font-semibold text-foreground px-1">Aktier</h3>
+                      <HoldingsTable
+                        holdings={stockHoldings}
+                        onRefreshPrice={handleUpdateHoldingPrice}
+                        isUpdatingPrice={updating}
+                        refreshingTicker={refreshingTicker}
+                        holdingPerformanceMap={holdingPerformanceMap}
+                        totalPortfolioValue={totalPortfolioValue}
+                        sortBy={sortBy}
+                        sortOrder={sortOrder}
+                        onSort={handleTableSort}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Other holdings tables (funds, cash, etc.) */}
+                  {otherHoldingsGroups.length > 0 && (
+                    <>
+                      {stockHoldings.length > 0 && (
+                        <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border"></div>
+                      )}
+                      {otherHoldingsGroups.map((group, index) => (
+                        <div key={group.key} className="space-y-3">
+                          {index > 0 && (
+                            <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border"></div>
+                          )}
+                          <h3 className="text-lg font-semibold text-foreground px-1">{group.title}</h3>
+                          <HoldingsTable
+                            holdings={group.sortedHoldings}
+                            onRefreshPrice={group.key === 'cash' ? undefined : handleUpdateHoldingPrice}
+                            isUpdatingPrice={updating}
+                            refreshingTicker={refreshingTicker}
+                            holdingPerformanceMap={holdingPerformanceMap}
+                            totalPortfolioValue={totalPortfolioValue}
+                            sortBy={sortBy}
+                            sortOrder={sortOrder}
+                            onSort={handleTableSort}
+                          />
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {tabHoldings.length > 0 && (
+                <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
+                </div>
+              )}
+            </div>
           )}
-        </div>
-      </CardContent>
+        </CardContent>
+      </Card>
 
-      {/* Footer summary */}
-      {sortedHoldings.length > 0 && (
-        <div className="bg-muted/20 border-t border-border/40 p-3 px-4 sm:px-6 flex justify-between items-center text-xs sm:text-sm text-muted-foreground">
-          <span>{sortedHoldings.length} innehav</span>
-          {/* Här kan man lägga till paginering om det behövs i framtiden */}
-        </div>
-      )}
+      <AlertDialog
+        open={!!holdingToDelete}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCancelDelete();
+          }
+        }}
+      >
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {holdingToDelete?.type === 'cash' ? 'Ta bort kassainnehav' : 'Ta bort innehav'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Är du säker på att du vill ta bort {holdingToDelete?.name || 'detta'} {holdingToDelete?.type === 'cash' ? 'kassainnehav' : 'innehav'}? Denna åtgärd kan inte ångras.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelDelete} disabled={isDeleting}>
+              Avbryt
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Tar bort...' : 'Ta bort'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      {/* Cash Management Dialog */}
-      <Dialog open={isCashDialogOpen} onOpenChange={setIsCashDialogOpen}>
+      {/* Add Cash Dialog */}
+      <Dialog open={showAddCashDialog} onOpenChange={setShowAddCashDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Hantera kassa</DialogTitle>
+            <DialogTitle>Lägg till kassainnehav</DialogTitle>
             <DialogDescription>
-              Sätt in eller ta ut likvida medel från din portfölj.
+              Lägg till dina kassapositioner för bättre portföljöversikt.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-4 py-4">
-            <div className="flex gap-2">
-              <Button 
-                variant={cashAction === 'deposit' ? 'default' : 'outline'} 
-                className="flex-1"
-                onClick={() => setCashAction('deposit')}
-              >
-                Insättning
-              </Button>
-              <Button 
-                variant={cashAction === 'withdraw' ? 'default' : 'outline'} 
-                className="flex-1"
-                onClick={() => setCashAction('withdraw')}
-              >
-                Uttag
-              </Button>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="amount">Belopp (SEK)</Label>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="cash-name">Benämning</Label>
               <Input
-                id="amount"
+                id="cash-name"
+                placeholder="Kassa"
+                value={newCashData.name}
+                onChange={(e) => setNewCashData(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="cash-amount">Belopp (SEK)</Label>
+              <Input
+                id="cash-amount"
                 type="number"
                 placeholder="0"
-                value={cashAmount}
-                onChange={(e) => setCashAmount(e.target.value)}
+                value={newCashData.amount}
+                onChange={(e) => setNewCashData(prev => ({ ...prev, amount: e.target.value }))}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCashDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setShowAddCashDialog(false)}>
               Avbryt
             </Button>
-            <Button onClick={handleCashSubmit} disabled={cashLoading}>
-              {cashAction === 'deposit' ? 'Sätt in' : 'Ta ut'}
+            <Button onClick={handleAddCash}>
+              Lägg till
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Cash Dialog (Direct Edit) */}
+      {/* Edit Cash Dialog */}
       <Dialog open={editingCash !== null} onOpenChange={(open) => !open && setEditingCash(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Redigera kassainnehav</DialogTitle>
             <DialogDescription>
-              Uppdatera beloppet för kassainnehavet manuellt.
+              Uppdatera beloppet för kassainnehavet
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
+          <div>
             <Label htmlFor="edit-amount">Belopp (SEK)</Label>
             <Input
               id="edit-amount"
@@ -520,7 +1059,8 @@ const UserHoldingsManager = () => {
         onSave={handleUpdateHolding}
         holding={editingHolding}
       />
-    </Card>
+      </>
+    </TooltipProvider>
   );
 };
 
