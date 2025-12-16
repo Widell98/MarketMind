@@ -23,7 +23,7 @@ import {
   Wallet,
   FileText,
   Briefcase,
-  ArrowUpRight, // Tillagd igen
+  ArrowUpRight,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -359,7 +359,9 @@ const Index = () => {
                       <MessageSquare className="w-8 h-8 text-primary" />
                     </div>
                     <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step1.title')}</h3>
-                    <p className="text-muted-foreground leading-relaxed">{t('howItWorks.step1.description')}</p>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {t('howItWorks.step1.description')}
+                    </p>
                   </div>
                   
                   <div className="text-center">
@@ -367,7 +369,9 @@ const Index = () => {
                       <Brain className="w-8 h-8 text-primary" />
                     </div>
                     <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step2.title')}</h3>
-                    <p className="text-muted-foreground leading-relaxed">{t('howItWorks.step2.description')}</p>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {t('howItWorks.step2.description')}
+                    </p>
                   </div>
                   
                   <div className="text-center">
@@ -375,13 +379,15 @@ const Index = () => {
                       <BarChart3 className="w-8 h-8 text-primary" />
                     </div>
                     <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step3.title')}</h3>
-                    <p className="text-muted-foreground leading-relaxed">{t('howItWorks.step3.description')}</p>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {t('howItWorks.step3.description')}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>}
 
-          {/* Dashboard for logged-in users */}
+          {/* Clean Dashboard for logged-in users */}
           {user && hasPortfolio && <div className="min-h-0 bg-background">
               <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
                 <div className="space-y-5 sm:space-y-6">
@@ -554,80 +560,12 @@ const Index = () => {
                     ) : featuredStockCases.length > 0 ? (
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
                         {featuredStockCases.slice(0, 3).map((stockCase) => (
-                          <Link 
-                            key={stockCase.id} 
-                            to={`/stock-cases/${stockCase.id}`}
-                            className="block h-full"
-                          >
-                            <Card className="flex flex-col h-full hover:shadow-md transition-all border-border/60 overflow-hidden group">
-                              {/* Image Section */}
-                              <div className="relative h-32 w-full bg-muted/30 overflow-hidden">
-                                {stockCase.image_url ? (
-                                  <img 
-                                    src={stockCase.image_url} 
-                                    alt={stockCase.company_name} 
-                                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center bg-primary/5 text-primary/20">
-                                    <Briefcase className="w-10 h-10" />
-                                  </div>
-                                )}
-                                <div className="absolute top-2 right-2">
-                                  {stockCase.case_categories && (
-                                    <Badge style={{ 
-                                      backgroundColor: stockCase.case_categories.color + '20', 
-                                      color: stockCase.case_categories.color,
-                                      borderColor: 'transparent'
-                                    }}>
-                                      {stockCase.case_categories.name}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-
-                              <CardHeader className="pb-2 pt-3 px-4">
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <CardTitle className="text-base font-semibold line-clamp-1 group-hover:text-primary transition-colors">
-                                      {stockCase.title}
-                                    </CardTitle>
-                                    <CardDescription className="font-medium text-xs mt-1">
-                                      {stockCase.company_name} • {stockCase.ticker}
-                                    </CardDescription>
-                                  </div>
-                                </div>
-                              </CardHeader>
-                              
-                              <CardContent className="flex-1 pb-4 px-4">
-                                <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-border/40">
-                                  <div>
-                                    <p className="text-xs text-muted-foreground">Målkurs</p>
-                                    <p className="text-sm font-semibold">
-                                      {stockCase.target_price 
-                                        ? `${stockCase.target_price} kr`
-                                        : '-'
-                                      }
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs text-muted-foreground">Potential</p>
-                                    {stockCase.target_price && stockCase.current_price ? (
-                                      <p className={`text-sm font-semibold ${
-                                        (stockCase.target_price - stockCase.current_price) > 0 
-                                          ? 'text-emerald-600' 
-                                          : 'text-muted-foreground'
-                                      }`}>
-                                        {((stockCase.target_price - stockCase.current_price) / stockCase.current_price * 100).toFixed(1)}%
-                                      </p>
-                                    ) : (
-                                      <p className="text-sm text-muted-foreground">-</p>
-                                    )}
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          </Link>
+                          <StockCaseCard
+                            key={stockCase.id}
+                            stockCase={stockCase}
+                            onViewDetails={(id) => navigate(`/stock-cases/${id}`)}
+                            showMetaBadges={true}
+                          />
                         ))}
                       </div>
                     ) : (
@@ -795,79 +733,12 @@ const Index = () => {
                     ) : featuredStockCases.length > 0 ? (
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
                         {featuredStockCases.slice(0, 3).map((stockCase) => (
-                          <Link 
-                            key={stockCase.id} 
-                            to={`/stock-cases/${stockCase.id}`}
-                            className="block h-full"
-                          >
-                            <Card className="flex flex-col h-full hover:shadow-md transition-all border-border/60 overflow-hidden group">
-                              <div className="relative h-32 w-full bg-muted/30 overflow-hidden">
-                                {stockCase.image_url ? (
-                                  <img 
-                                    src={stockCase.image_url} 
-                                    alt={stockCase.company_name} 
-                                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center bg-primary/5 text-primary/20">
-                                    <Briefcase className="w-10 h-10" />
-                                  </div>
-                                )}
-                                <div className="absolute top-2 right-2">
-                                  {stockCase.case_categories && (
-                                    <Badge style={{ 
-                                      backgroundColor: stockCase.case_categories.color + '20', 
-                                      color: stockCase.case_categories.color,
-                                      borderColor: 'transparent'
-                                    }}>
-                                      {stockCase.case_categories.name}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-
-                              <CardHeader className="pb-2 pt-3 px-4">
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <CardTitle className="text-base font-semibold line-clamp-1 group-hover:text-primary transition-colors">
-                                      {stockCase.title}
-                                    </CardTitle>
-                                    <CardDescription className="font-medium text-xs mt-1">
-                                      {stockCase.company_name} • {stockCase.ticker}
-                                    </CardDescription>
-                                  </div>
-                                </div>
-                              </CardHeader>
-                              
-                              <CardContent className="flex-1 pb-4 px-4">
-                                <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-border/40">
-                                  <div>
-                                    <p className="text-xs text-muted-foreground">Målkurs</p>
-                                    <p className="text-sm font-semibold">
-                                      {stockCase.target_price 
-                                        ? `${stockCase.target_price} kr`
-                                        : '-'
-                                      }
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs text-muted-foreground">Potential</p>
-                                    {stockCase.target_price && stockCase.current_price ? (
-                                      <p className={`text-sm font-semibold ${
-                                        (stockCase.target_price - stockCase.current_price) > 0 
-                                          ? 'text-emerald-600' 
-                                          : 'text-muted-foreground'
-                                      }`}>
-                                        {((stockCase.target_price - stockCase.current_price) / stockCase.current_price * 100).toFixed(1)}%
-                                      </p>
-                                    ) : (
-                                      <p className="text-sm text-muted-foreground">-</p>
-                                    )}
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          </Link>
+                          <StockCaseCard
+                            key={stockCase.id}
+                            stockCase={stockCase}
+                            onViewDetails={(id) => navigate(`/stock-cases/${id}`)}
+                            showMetaBadges={true}
+                          />
                         ))}
                       </div>
                     ) : (
@@ -886,71 +757,6 @@ const Index = () => {
                       </div>
                     )}
                   </section>
-
-                  {/* 5. Featured Reports Section */}
-                  {featuredReports.length > 0 && (
-                    <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6 mb-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-5 w-5 text-primary" />
-                          <h2 className="text-base font-semibold text-foreground sm:text-lg">Utvalda Rapporter</h2>
-                        </div>
-                        <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                          <Link to="/discover">
-                            Se alla
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </Link>
-                        </Button>
-                      </div>
-                      
-                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {featuredReports.map((report) => (
-                          <Card key={report.id} className="flex flex-col h-full hover:shadow-md transition-all border-border/60">
-                            <CardHeader className="pb-3">
-                              <div className="flex justify-between items-start gap-2">
-                                <div className="space-y-1">
-                                  <CardTitle className="text-base font-semibold line-clamp-1">
-                                    {report.reportTitle}
-                                  </CardTitle>
-                                  <CardDescription className="font-medium text-primary">
-                                    {report.companyName}
-                                  </CardDescription>
-                                </div>
-                                {report.companyLogoUrl && (
-                                  <div className="h-8 w-8 rounded bg-muted/20 p-1 shrink-0">
-                                    <img src={report.companyLogoUrl} alt={report.companyName} className="w-full h-full object-contain" />
-                                  </div>
-                                )}
-                              </div>
-                            </CardHeader>
-                            <CardContent className="flex-1 pb-4">
-                              <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
-                                {report.summary}
-                              </p>
-                              {report.keyMetrics && report.keyMetrics.length > 0 && (
-                                <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-border/40">
-                                  {report.keyMetrics.slice(0, 2).map((metric, i) => (
-                                    <div key={i}>
-                                      <p className="text-xs text-muted-foreground">{metric.label}</p>
-                                      <p className="text-sm font-medium">
-                                        {metric.value}
-                                        {metric.trend && (
-                                          <span className={`ml-1 text-xs ${metric.trend.includes('+') ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                            {metric.trend}
-                                          </span>
-                                        )}
-                                      </p>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </section>
-                  )}
-
                 </div>
               </div>
             </div>}
