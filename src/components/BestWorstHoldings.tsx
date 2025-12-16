@@ -1,47 +1,42 @@
 import React, { useMemo } from 'react';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, Moon } from 'lucide-react';
 import HoldingsHighlightCard from './HoldingsHighlightCard';
 import { usePortfolioPerformance, type HoldingPerformance } from '@/hooks/usePortfolioPerformance';
 
-// Hjälpfunktion för att avgöra om ett innehav ska visas baserat på tid och valuta
-const shouldShowHolding = (holding: HoldingPerformance): boolean => {
-  // Krypto visas alltid (dygnet runt)
-  if (holding.holdingType === 'crypto' || holding.holdingType === 'cryptocurrency' || holding.holdingType === 'certificate') {
+// Hjälpfunktion för att kontrollera marknadens öppettider
+const isMarketOpen = (holding: HoldingPerformance): boolean => {
+  // Krypto och certifikat visas dygnet runt
+  const type = holding.holdingType?.toLowerCase();
+  if (type === 'crypto' || type === 'cryptocurrency' || type === 'certificate') {
     return true;
   }
 
-  // Hämta aktuell tid i Stockholm
-  const now = new Date();
-  const formatter = new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'Europe/Stockholm',
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: false
-  });
-  
-  const parts = formatter.formatToParts(now);
-  const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
-  const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
-  const currentMinutes = hour * 60 + minute;
-
-  // Tider i minuter från midnatt
-  const swedenOpen = 9 * 60;       // 09:00
-  const usOpen = 15 * 60 + 30;     // 15:30
-  const closeTime = 23 * 60 + 59;  // 23:59
-
+  // Hämta valuta, fallback till SEK om det saknas
   const currency = holding.currency?.toUpperCase() || 'SEK';
 
+  // Hämta aktuell tid i svensk tidszon
+  const now = new Date();
+  const sweTimeStr = now.toLocaleString("en-US", { timeZone: "Europe/Stockholm" });
+  const sweTime = new Date(sweTimeStr);
+  
+  const currentMinutes = sweTime.getHours() * 60 + sweTime.getMinutes();
+
+  // Tider i minuter från midnatt
+  const swedenOpen = 9 * 60;        // 09:00
+  const usOpen = 15 * 60 + 30;      // 15:30
+  const endOfDay = 24 * 60;         // 24:00
+
+  // Logik baserat på valuta
   if (currency === 'USD') {
-    // Amerikanska marknaden (baserat på valuta)
-    return currentMinutes >= usOpen && currentMinutes <= closeTime;
+    // Amerikanska aktier: Visa mellan 15:30 och midnatt
+    return currentMinutes >= usOpen && currentMinutes < endOfDay;
   } else if (['SEK', 'EUR', 'DKK', 'NOK'].includes(currency)) {
-    // Svenska/Nordiska/Europeiska marknaden (baserat på valuta)
-    return currentMinutes >= swedenOpen && currentMinutes <= closeTime;
-  } else {
-    // Fallback: Om valutan är okänd men vi har data, visa det.
-    // Men för att vara säker, följ svensk tid som default
-    return currentMinutes >= swedenOpen && currentMinutes <= closeTime;
+    // Svenska/Europeiska aktier: Visa mellan 09:00 och midnatt
+    return currentMinutes >= swedenOpen && currentMinutes < endOfDay;
   }
+
+  // För övriga valutor, anta svenska tider som standard
+  return currentMinutes >= swedenOpen && currentMinutes < endOfDay;
 };
 
 const BestWorstHoldings: React.FC = () => {
@@ -50,17 +45,17 @@ const BestWorstHoldings: React.FC = () => {
   const topHoldings = useMemo(() => {
     if (!holdingsPerformance || holdingsPerformance.length === 0) return { best: [], worst: [] };
 
-    // Filtrera först bort innehav där marknaden är stängd
-    const activeHoldings = holdingsPerformance.filter(holding => shouldShowHolding(holding));
+    // 1. Filtrera bort innehav där marknaden är stängd
+    const openMarketHoldings = holdingsPerformance.filter(holding => isMarketOpen(holding));
 
-    // Använd dagens utveckling (dayChangePercentage)
-    const getChange = (holding: (typeof holdingsPerformance)[number]) => holding.dayChangePercentage;
+    // 2. Använd dagens utveckling för sortering
+    const getChange = (holding: HoldingPerformance) => holding.dayChangePercentage;
 
-    const positiveHoldings = activeHoldings
+    const positiveHoldings = openMarketHoldings
       .filter((holding) => (getChange(holding) ?? 0) > 0)
       .sort((a, b) => (getChange(b) ?? 0) - (getChange(a) ?? 0));
 
-    const negativeHoldings = activeHoldings
+    const negativeHoldings = openMarketHoldings
       .filter((holding) => (getChange(holding) ?? 0) < 0)
       .sort((a, b) => (getChange(a) ?? 0) - (getChange(b) ?? 0));
 
@@ -79,54 +74,38 @@ const BestWorstHoldings: React.FC = () => {
   const formatChangeValue = (value: number | null | undefined) => {
     if (value === null || value === undefined) return '–';
     const prefix = value > 0 ? '+' : '';
-    return `${prefix}${value.toLocaleString('sv-SE')} kr`;
+    return `${prefix}${Math.round(value).toLocaleString('sv-SE')} kr`;
   };
 
-  const bestHoldingsItems = topHoldings.best.map((holding) => {
-    const change = holding.dayChangePercentage;
-    const changeValue = holding.dayChange;
-
-    return {
-      id: holding.id,
-      name: holding.name || holding.symbol || 'Innehav',
-      symbol: holding.symbol,
-      percentLabel: formatChangeLabel(change),
-      valueLabel: formatChangeValue(changeValue),
-      isPositive: (change ?? 0) >= 0,
-    };
+  const mapToItem = (holding: HoldingPerformance, isPositive: boolean) => ({
+    id: holding.id,
+    name: holding.name || holding.symbol || 'Innehav',
+    symbol: holding.symbol,
+    percentLabel: formatChangeLabel(holding.dayChangePercentage),
+    valueLabel: formatChangeValue(holding.dayChange),
+    isPositive
   });
 
-  const worstHoldingsItems = topHoldings.worst.map((holding) => {
-    const change = holding.dayChangePercentage;
-    const changeValue = holding.dayChange;
+  const bestHoldingsItems = topHoldings.best.map(h => mapToItem(h, true));
+  const worstHoldingsItems = topHoldings.worst.map(h => mapToItem(h, false));
 
-    return {
-      id: holding.id,
-      name: holding.name || holding.symbol || 'Innehav',
-      symbol: holding.symbol,
-      percentLabel: formatChangeLabel(change),
-      valueLabel: formatChangeValue(changeValue),
-      isPositive: (change ?? 0) > 0,
-    };
-  });
-
-  // Om inga innehav matchar kriterierna (t.ex. börsen stängd), visa placeholders
+  // Om inga innehav matchar kriterierna (t.ex. marknaden stängd), visa "tomma" kort med info
   if (topHoldings.best.length === 0 && topHoldings.worst.length === 0) {
     return (
       <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
         <HoldingsHighlightCard
-            title="Dagens bästa"
-            icon={<TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />}
-            iconColorClass="text-muted-foreground"
-            items={[]}
-            emptyText="Marknaden är stängd"
+          title="Dagens vinnare"
+          icon={<Moon className="h-4 w-4 sm:h-5 sm:w-5" />}
+          iconColorClass="text-muted-foreground"
+          items={[]}
+          emptyText="Marknaden är stängd"
         />
         <HoldingsHighlightCard
-            title="Dagens sämsta"
-            icon={<TrendingDown className="h-4 w-4 sm:h-5 sm:w-5" />}
-            iconColorClass="text-muted-foreground"
-            items={[]}
-            emptyText="Marknaden är stängd"
+          title="Dagens förlorare"
+          icon={<Moon className="h-4 w-4 sm:h-5 sm:w-5" />}
+          iconColorClass="text-muted-foreground"
+          items={[]}
+          emptyText="Marknaden är stängd"
         />
       </div>
     );
@@ -135,7 +114,7 @@ const BestWorstHoldings: React.FC = () => {
   return (
     <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
       <HoldingsHighlightCard
-        title="Dagens bästa"
+        title="Dagens vinnare"
         icon={<TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />}
         iconColorClass="text-emerald-600"
         items={bestHoldingsItems}
@@ -143,7 +122,7 @@ const BestWorstHoldings: React.FC = () => {
       />
 
       <HoldingsHighlightCard
-        title="Dagens sämsta"
+        title="Dagens förlorare"
         icon={<TrendingDown className="h-4 w-4 sm:h-5 sm:w-5" />}
         iconColorClass="text-red-600"
         items={worstHoldingsItems}
