@@ -69,7 +69,6 @@ const normalizeHeader = (header: string) => {
 
   if (!normalized) return null;
 
-  // [!code ++] HÄR ÄR DEN SAKNADE DELEN:
   if (/(typ|type|kategori|category|slag|instrument)/.test(normalized) && !/inköpstyp/.test(normalized)) {
     return 'type' as const;
   }
@@ -210,12 +209,6 @@ export const parsePortfolioHoldingsFromCSV = (text: string): ParsedCsvHolding[] 
 
   const startIndex = hasHeaderRow ? 1 : 0;
 
-  /**
-   * NEW LOGIC:
-   * 1. Prioritera EXAKT "GAV"
-   * 2. Sedan "GAV (SEK)"
-   * 3. Sedan allt annat som matchar "gav"
-   */
   const prioritizePurchasePriceIndices = (indices: number[]): number[] => {
     if (!indices || indices.length === 0) return indices;
 
@@ -277,7 +270,6 @@ export const parsePortfolioHoldingsFromCSV = (text: string): ParsedCsvHolding[] 
     if (typeRaw) {
       const lowerType = typeRaw.toLowerCase().trim();
       
-      // [!code ++] Specifik hantering för FUNDS och STOCKS
       if (lowerType === 'funds' || lowerType.includes('fund') || lowerType.includes('fond') || lowerType.includes('etf')) {
         detectedType = 'fund';
       } else if (lowerType === 'stocks' || lowerType.includes('stock') || lowerType.includes('aktie')) {
@@ -291,11 +283,9 @@ export const parsePortfolioHoldingsFromCSV = (text: string): ParsedCsvHolding[] 
       } else if (/(fastighet|real estate)/.test(lowerType)) {
         detectedType = 'real_estate';
       } else {
-        // Fallback: Om det står något annat okänt, anta aktie
         detectedType = 'stock';
       }
     } else {
-        // Om ingen typ-kolumn hittades, gissa på namnet
         const nameVal = getValue('name').toLowerCase();
         if (nameVal.includes('fond') || nameVal.includes('fund') || nameVal.includes('etf')) {
             detectedType = 'fund';
@@ -385,16 +375,14 @@ export const parsePortfolioHoldingsFromCSV = (text: string): ParsedCsvHolding[] 
       ? currencyRaw.replace(/[^a-zA-Z]/g, '').toUpperCase() || undefined
       : undefined;
       
-    // Notera: Ändrat från 'const' till 'let' för att kunna uppdatera tickern
     let normalizedSymbol = normalizeShareClassTicker(symbolRaw);
 
-    // FIX: Hantera nordiska marknader (DKK/NOK) där tickern saknar punkt-suffix
     const detectedCurrency = currencyFromValue || priceCurrencyHint;
     if (normalizedSymbol && !normalizedSymbol.includes('.')) {
       if (detectedCurrency === 'DKK') {
-        normalizedSymbol += '.CO'; // Lägg till Köpenhamn-suffix för DKK
+        normalizedSymbol += '.CO';
       } else if (detectedCurrency === 'NOK') {
-        normalizedSymbol += '.OL'; // Lägg till Oslo-suffix för NOK
+        normalizedSymbol += '.OL';
       }
     }
 
@@ -420,4 +408,52 @@ export const parsePortfolioHoldingsFromCSV = (text: string): ParsedCsvHolding[] 
   }
 
   return parsedHoldings;
+};
+
+export interface TickerSource {
+  name?: string | null;
+  symbol: string;
+  currency?: string | null;
+}
+
+export const findTickerByName = (name: string, tickers: TickerSource[]): string | undefined => {
+  if (!name || !tickers.length) return undefined;
+  
+  const cleanName = name.toLowerCase()
+    .replace(/ ab$| group$| class [ab]$/g, '')
+    .trim();
+  
+  const exact = tickers.find(t => t.name?.toLowerCase() === name.toLowerCase());
+  if (exact) return exact.symbol;
+
+  const startsWith = tickers.find(t => t.name?.toLowerCase().startsWith(cleanName));
+  if (startsWith) return startsWith.symbol;
+
+  return undefined;
+};
+
+export const enrichHoldingWithTicker = (
+  holding: ParsedCsvHolding, 
+  tickers: TickerSource[]
+): ParsedCsvHolding => {
+  if (holding.symbol) {
+    return holding;
+  }
+
+  const foundTickerSymbol = findTickerByName(holding.name, tickers);
+  
+  if (foundTickerSymbol) {
+    const tickerInfo = tickers.find(t => t.symbol === foundTickerSymbol);
+    
+    return {
+      ...holding,
+      symbol: foundTickerSymbol,
+      currency: !holding.currencyProvided && tickerInfo?.currency 
+        ? tickerInfo.currency 
+        : holding.currency,
+      currencyProvided: holding.currencyProvided || !!tickerInfo?.currency
+    };
+  }
+
+  return holding;
 };
