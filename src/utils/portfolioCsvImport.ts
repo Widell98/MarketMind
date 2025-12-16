@@ -144,8 +144,15 @@ export const parsePortfolioHoldingsFromCSV = (text: string): ParsedCsvHolding[] 
   }
 
   const detectDelimiter = (line: string) => {
+    const tabCount = (line.match(/\t/g) || []).length;
     const semicolonCount = (line.match(/;/g) || []).length;
     const commaCount = (line.match(/,/g) || []).length;
+
+    // Om vi har flest tabbar, anta att det är en tabb-separerad fil (Nordnet)
+    if (tabCount > semicolonCount && tabCount > commaCount) {
+      return '\t';
+    }
+
     if (semicolonCount === 0 && commaCount === 0) {
       return ',';
     }
@@ -160,6 +167,10 @@ export const parsePortfolioHoldingsFromCSV = (text: string): ParsedCsvHolding[] 
 
   if (headerParts.length === 1 && delimiter === ',' && headerLine.includes(';')) {
     delimiter = ';';
+    headerParts = headerLine.split(delimiter).map(part => trimQuotes(part));
+  } else if (headerParts.length === 1 && !headerLine.includes(delimiter) && headerLine.includes('\t')) {
+    // Fallback för tabbar om detekteringen missade första försöket
+    delimiter = '\t';
     headerParts = headerLine.split(delimiter).map(part => trimQuotes(part));
   }
 
