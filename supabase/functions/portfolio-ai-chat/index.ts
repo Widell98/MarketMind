@@ -3387,6 +3387,14 @@ const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_
       });
 
       const buildDefaultTavilyOptions = (): TavilySearchOptions => {
+        // Upptäck om frågan handlar om releaser för att öka timeout
+        const normalizedMessage = message.toLowerCase();
+        const isReleaseRelatedQuery = /\b(releaser?|lansering|pipeline|spelkalender|upcoming releases?|product launch|product pipeline)\b/i.test(normalizedMessage);
+        
+        // För releaser-frågor (obegränsad sökning) behöver vi längre timeout
+        const baseTimeout = hasRealTimeTrigger ? 5000 : 6500;
+        const timeoutMs = isReleaseRelatedQuery ? Math.max(baseTimeout * 2, 15000) : baseTimeout;
+        
         const options: TavilySearchOptions = {
           query: (llmTavilyPlan.query && llmTavilyPlan.query.length > 2)
             ? llmTavilyPlan.query
@@ -3397,7 +3405,7 @@ const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_
           topic: determineTavilyTopic(),
           searchDepth: selectedDepth,
           maxResults: 6,
-          timeoutMs: hasRealTimeTrigger ? 5000 : 6500,
+          timeoutMs: timeoutMs,
         };
 
         if (typeof llmTavilyPlan.freshnessDays === 'number' && llmTavilyPlan.freshnessDays > 0) {

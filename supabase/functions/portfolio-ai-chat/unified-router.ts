@@ -218,6 +218,7 @@ export const unifiedRouter = async ({
       '',
       '3. Avgör om realtidsdata behövs:',
       '   - Realtidsdata behövs för: senaste nyheter, intradagspriser, färska rapporter, marknadshändelser.',
+      '   - Kommande lanseringar/releases/pipeline -> needsRealtime = true (KRÄVER sökning).',
       '   - Realtidsdata behövs INTE för: historik, strategier, allmänna förklaringar, långsiktiga analyser.',
       '',
       '4. Planera Tavily-sökning (om realtidsdata behövs):',
