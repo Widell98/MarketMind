@@ -7,12 +7,14 @@ import UserHoldingsManager from '@/components/UserHoldingsManager';
 import CashHoldingsManager from '@/components/CashHoldingsManager';
 import PortfolioValueCards from '@/components/PortfolioValueCards';
 import PortfolioHealthScore from '@/components/PortfolioHealthScore';
+import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolioAdvisor';
+import LoginPromptModal from '@/components/LoginPromptModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
-import { useDailyChangeData } from '@/hooks/useDailyChangeData'; // Lägg till denna import
+import { useDailyChangeData } from '@/hooks/useDailyChangeData';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, RefreshCw, BarChart3, PieChart, LineChart } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -20,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import InteractivePortfolio from '@/components/InteractivePortfolio';
 import { resolveHoldingValue } from '@/utils/currencyUtils';
 
-// Hjälpfunktion för att avgöra om marknaden är öppen (Samma som i Index.tsx/HoldingsTable)
+// Hjälpfunktion för att avgöra om marknaden är öppen
 const isMarketOpen = (currency?: string, holdingType?: string): boolean => {
   const type = holdingType?.toLowerCase();
   if (type === 'crypto' || type === 'cryptocurrency' || type === 'certificate') return true;
@@ -62,7 +64,17 @@ const PortfolioImplementation = () => {
   } = usePortfolioPerformance();
   const { totalCash, loading: cashLoading } = useCashHoldings();
   const { actualHoldings } = useUserHoldings();
-  const { getChangeForTicker } = useDailyChangeData(); // Använd daily data hook
+  const { getChangeForTicker } = useDailyChangeData();
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+
+  useEffect(() => {
+    if (!user && !portfolioLoading) {
+      const timer = setTimeout(() => {
+        setShowLoginPrompt(true);
+      }, 5000); // Show prompt after 5 seconds for non-logged in users
+      return () => clearTimeout(timer);
+    }
+  }, [user, portfolioLoading]);
 
   // Beräkna en "justerad" dagsutveckling där stängda marknader räknas som 0%
   const adjustedDayChange = React.useMemo(() => {
@@ -85,25 +97,20 @@ const PortfolioImplementation = () => {
 
       let changePercent = 0;
       if (isOpen) {
-        // Försök hämta dagsförändring från hook eller fallback till performance-objektet om det finns
         const fetchedChange = getChangeForTicker(holding.symbol);
         if (fetchedChange !== null && !isNaN(fetchedChange)) {
           changePercent = fetchedChange;
         } else {
-          // Fallback till existerande performance-data om available och marknaden är öppen
           const perf = holdingsPerformance.find(h => h.id === holding.id);
           if (perf) changePercent = perf.dayChangePercentage;
         }
       }
-      // Om stängd, räkna changePercent som 0
 
       const weight = holdingValue / performance.totalPortfolioValue;
       totalWeightedChange += weight * changePercent;
       totalSecuritiesValue += holdingValue;
     });
 
-    // Om inga innehav har öppen marknad, blir totalen 0 (vilket är korrekt)
-    // Beräkna värdeförändring i kronor baserat på totalt värde
     const changeValue = (totalSecuritiesValue * totalWeightedChange) / 100;
 
     return {
@@ -112,7 +119,7 @@ const PortfolioImplementation = () => {
     };
   }, [actualHoldings, performance.totalPortfolioValue, holdingsPerformance, getChangeForTicker]);
 
-  // Skapa ett override-objekt för performance med våra justerade siffror
+  // Override performance med justerade värden
   const displayPerformance = {
     ...performance,
     dayChangePercentage: adjustedDayChange.percentage,
@@ -182,8 +189,7 @@ const PortfolioImplementation = () => {
           </div>
         </div>
 
-        {/* Overview Cards */}
-        {/* Använd displayPerformance här för att visa 0% om marknaden är stängd */}
+        {/* Overview Cards - Använder displayPerformance */}
         <PortfolioOverview performance={displayPerformance} />
 
         {/* Charts & Interactive View */}
@@ -217,10 +223,10 @@ const PortfolioImplementation = () => {
           </div>
 
           <TabsContent value="holdings" className="space-y-6">
-            {/* Best/Worst Holdings - Visar alltid total avkastning (ingen tidsspärr) */}
+            {/* Best/Worst Holdings */}
             <BestWorstHoldings />
             
-            {/* User Holdings Manager - Innehåller tabellen som nu döljer dagsutveckling vid stängd marknad */}
+            {/* User Holdings Manager */}
             <UserHoldingsManager />
           </TabsContent>
 
@@ -230,14 +236,19 @@ const PortfolioImplementation = () => {
 
           <TabsContent value="analysis">
             <div className="grid gap-6 md:grid-cols-2">
-              {/* Analysis components placeholder */}
-              <div className="p-8 border border-dashed rounded-xl text-center text-muted-foreground">
-                Analysverktyg kommer snart
+              <ConversationalPortfolioAdvisor />
+              <div className="p-8 border border-dashed rounded-xl text-center text-muted-foreground flex items-center justify-center">
+                Fler analysverktyg kommer snart
               </div>
             </div>
           </TabsContent>
         </Tabs>
       </div>
+      
+      <LoginPromptModal 
+        isOpen={showLoginPrompt} 
+        onClose={() => setShowLoginPrompt(false)} 
+      />
     </Layout>
   );
 };
