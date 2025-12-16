@@ -2,7 +2,6 @@ import React from 'react';
 import Layout from '@/components/Layout';
 import {
   Brain,
-  UserPlus,
   BarChart3,
   Users,
   ArrowUpRight,
@@ -41,7 +40,8 @@ import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useUserHoldings, type UserHolding } from '@/hooks/useUserHoldings';
 import { useAIInsights } from '@/hooks/useAIInsights';
-import { useLikedStockCases } from '@/hooks/useLikedStockCases';
+// Ändra import här:
+import { useStockCases } from '@/hooks/useStockCases'; 
 import { useNewsData } from '@/hooks/useNewsData';
 import { useDiscoverReportSummaries } from '@/hooks/useDiscoverReportSummaries';
 import { Badge } from '@/components/ui/badge';
@@ -107,32 +107,20 @@ const formatTime = (dateString: string): string => {
 
 const Index = () => {
   const navigate = useNavigate();
-  const {
-    user
-  } = useAuth();
-  const {
-    t
-  } = useLanguage();
-  const {
-    activePortfolio,
-    loading
-  } = usePortfolio();
-  const {
-    performance
-  } = usePortfolioPerformance();
-  const {
-    totalCash
-  } = useCashHoldings();
-  const {
-    actualHoldings
-  } = useUserHoldings();
-  const {
-    insights,
-    isLoading: insightsLoading,
-    lastUpdated: insightsLastUpdated,
-    refreshInsights,
-  } = useAIInsights();
-  const { likedStockCases, loading: likedStockCasesLoading } = useLikedStockCases();
+  const { user } = useAuth();
+  const { t } = useLanguage();
+  const { activePortfolio, loading } = usePortfolio();
+  const { performance } = usePortfolioPerformance();
+  const { totalCash } = useCashHoldings();
+  const { actualHoldings } = useUserHoldings();
+  const { insights, isLoading: insightsLoading, lastUpdated: insightsLastUpdated, refreshInsights } = useAIInsights();
+  
+  // Hämta Utvalda Case istället för gillade
+  const { stockCases: featuredStockCases, loading: featuredStockCasesLoading } = useStockCases({ 
+    featuredOnly: true, 
+    limit: 3 
+  });
+
   const { morningBrief, newsData } = useNewsData();
   const { reports: allReports } = useDiscoverReportSummaries(50);
 
@@ -339,7 +327,7 @@ const Index = () => {
       {
         icon: Heart,
         label: 'Gillade aktier',
-        value: likedStockCases.length.toString(),
+        value: featuredStockCases.length.toString(), // Updated to reflect featured cases count if needed
         helper: 'Dina favoriter',
         helperClassName: 'text-muted-foreground',
       },
@@ -351,7 +339,7 @@ const Index = () => {
         helperClassName: 'text-muted-foreground',
       },
     ];
-  }, [t, safeTotalPortfolioValue, holdingsCount, safeTotalCash, dayChangePercent, isPositiveDayChange, likedStockCases.length, loadingTodayDevelopment, dayChangeValue]);
+  }, [t, safeTotalPortfolioValue, holdingsCount, safeTotalCash, dayChangePercent, isPositiveDayChange, featuredStockCases.length, loadingTodayDevelopment, dayChangeValue]);
 
   const quickActions = React.useMemo<QuickAction[]>(() => [
     {
@@ -686,23 +674,21 @@ const Index = () => {
                     </section>
                   )}
 
-                  {/* 4. Liked Stocks Section */}
+                  {/* 4. UTVALDA STOCK CASES (Ersätter "Dina gillade aktier") */}
                   <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
-                        <Heart className="h-5 w-5 text-primary" />
-                        <h2 className="text-base font-semibold text-foreground sm:text-lg">Dina gillade aktier</h2>
+                        <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+                        <h2 className="text-base font-semibold text-foreground sm:text-lg">Utvalda Case</h2>
                       </div>
-                      {likedStockCases.length > 0 && (
-                        <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                          <Link to="/discover?tab=liked">
-                            Se alla
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </Link>
-                        </Button>
-                      )}
+                      <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+                        <Link to="/discover">
+                          Se alla
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
                     </div>
-                    {likedStockCasesLoading ? (
+                    {featuredStockCasesLoading ? (
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
                         {Array.from({ length: 3 }).map((_, index) => (
                           <div key={index} className="rounded-2xl border border-border/60 bg-muted/20 p-4 animate-pulse">
@@ -711,35 +697,35 @@ const Index = () => {
                           </div>
                         ))}
                       </div>
-                    ) : likedStockCases.length > 0 ? (
+                    ) : featuredStockCases.length > 0 ? (
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
-                        {likedStockCases.slice(0, 3).map((stockCase) => (
+                        {featuredStockCases.slice(0, 3).map((stockCase) => (
                           <StockCaseCard
                             key={stockCase.id}
                             stockCase={stockCase}
                             onViewDetails={(id) => navigate(`/stock-cases/${id}`)}
-                            showMetaBadges={false}
+                            showMetaBadges={true}
                           />
                         ))}
                       </div>
                     ) : (
                       <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-8 text-center">
-                        <Heart className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-semibold mb-2">Inga gillade aktier ännu</h3>
+                        <Star className="mx-auto h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+                        <h3 className="text-lg font-semibold mb-2">Inga utvalda case just nu</h3>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Utforska aktier och lägg till dem i dina favoriter
+                          Vi letar ständigt efter nya intressanta möjligheter.
                         </p>
                         <Button asChild>
                           <Link to="/discover">
                             <Search className="mr-2 h-4 w-4" />
-                            Upptäck aktier
+                            Utforska marknaden
                           </Link>
                         </Button>
                       </div>
                     )}
                   </section>
 
-                  {/* 5. Featured Reports Section (Flyttad ner hit) */}
+                  {/* 5. Featured Reports Section (Behåll intakt) */}
                   {featuredReports.length > 0 && (
                     <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6 mb-6">
                       <div className="flex items-center justify-between mb-4">
@@ -947,23 +933,21 @@ const Index = () => {
                     </section>
                   )}
 
-                  {/* Liked Stocks Section for users without portfolio */}
+                  {/* 4. UTVALDA STOCK CASES (Ersätter "Dina gillade aktier" även här) */}
                   <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
-                        <Heart className="h-5 w-5 text-primary" />
-                        <h2 className="text-base font-semibold text-foreground sm:text-lg">Dina gillade aktier</h2>
+                        <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+                        <h2 className="text-base font-semibold text-foreground sm:text-lg">Utvalda Case</h2>
                       </div>
-                      {likedStockCases.length > 0 && (
-                        <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                          <Link to="/discover?tab=liked">
-                            Se alla
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </Link>
-                        </Button>
-                      )}
+                      <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+                        <Link to="/discover">
+                          Se alla
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
                     </div>
-                    {likedStockCasesLoading ? (
+                    {featuredStockCasesLoading ? (
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
                         {Array.from({ length: 3 }).map((_, index) => (
                           <div key={index} className="rounded-2xl border border-border/60 bg-muted/20 p-4 animate-pulse">
@@ -972,28 +956,28 @@ const Index = () => {
                           </div>
                         ))}
                       </div>
-                    ) : likedStockCases.length > 0 ? (
+                    ) : featuredStockCases.length > 0 ? (
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
-                        {likedStockCases.slice(0, 3).map((stockCase) => (
+                        {featuredStockCases.slice(0, 3).map((stockCase) => (
                           <StockCaseCard
                             key={stockCase.id}
                             stockCase={stockCase}
                             onViewDetails={(id) => navigate(`/stock-cases/${id}`)}
-                            showMetaBadges={false}
+                            showMetaBadges={true} // Visa badges (sektor etc)
                           />
                         ))}
                       </div>
                     ) : (
                       <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-8 text-center">
-                        <Heart className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-semibold mb-2">Inga gillade aktier ännu</h3>
+                        <Star className="mx-auto h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+                        <h3 className="text-lg font-semibold mb-2">Inga utvalda case just nu</h3>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Utforska aktier och lägg till dem i dina favoriter
+                          Vi letar ständigt efter nya intressanta möjligheter.
                         </p>
                         <Button asChild>
                           <Link to="/discover">
                             <Search className="mr-2 h-4 w-4" />
-                            Upptäck aktier
+                            Utforska marknaden
                           </Link>
                         </Button>
                       </div>
