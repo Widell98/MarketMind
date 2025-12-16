@@ -3137,7 +3137,7 @@ serve(async (req) => {
     if (hasUploadedDocuments && (userIntent === 'document_summary' || detectedIntents.includes('document_summary'))) {
       isDocumentSummaryRequest = true;
     }
-    const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_sell_decisions', 'news_update']);
+const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_sell_decisions']);
     let shouldIncludePersonalContext = personalIntentTypes.has(userIntent)
       || isPersonalAdviceRequest
       || isPortfolioOptimizationRequest
@@ -3689,7 +3689,7 @@ serve(async (req) => {
     } else if (recommendationPreference === 'yes') {
       contextSections.push('REKOMMENDATIONSPOLICY:\n- Användaren vill ha konkreta investeringsrekommendationer. Leverera tydliga råd med motivering när det är relevant.');
     }
-    if (personalizationPrompt) {
+  if (shouldIncludePersonalContext && personalizationPrompt) {
       contextSections.push(`PERSONLIGA PREFERENSER:\n${personalizationPrompt}`);
     }
 
