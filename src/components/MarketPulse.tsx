@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useMarketData, type MarketDataResponse } from '../hooks/useMarketData';
 import Sparkline from './ui/Sparkline';
 import { Loader2, RefreshCw } from 'lucide-react';
@@ -10,6 +9,42 @@ type MarketPulseBaseProps = {
   loading: boolean;
   error: string | null;
   refetch?: () => void;
+};
+
+// Hjälpfunktion för att avgöra om en marknad ska visas baserat på tid
+const shouldShowStock = (symbol: string): boolean => {
+  // Hämta aktuell tid i Stockholm
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Europe/Stockholm',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false
+  });
+  
+  const parts = formatter.formatToParts(now);
+  const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+  const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+  const currentMinutes = hour * 60 + minute;
+
+  // Tider i minuter från midnatt
+  const swedenOpen = 9 * 60;       // 09:00
+  const usOpen = 15 * 60 + 30;     // 15:30
+  const closeTime = 23 * 60 + 59;  // 23:59
+
+  // Enkel logik för att gissa marknad. 
+  // Antar att symboler med .ST eller specifika svenska storbolag är svenska.
+  // Resten antas vara amerikanska (standard i nuvarande data).
+  const isSwedish = symbol.endsWith('.ST') || 
+                    ['VOLV-B', 'ERIC-B', 'HM-B', 'SEB-A', 'SHB-A', 'SWED-A'].some(s => symbol.includes(s));
+
+  if (isSwedish) {
+    // Visa svenska aktier mellan 09:00 och 23:59
+    return currentMinutes >= swedenOpen && currentMinutes <= closeTime;
+  } else {
+    // Visa amerikanska aktier (t.ex. TSLA, AAPL) mellan 15:30 och 23:59
+    return currentMinutes >= usOpen && currentMinutes <= closeTime;
+  }
 };
 
 const MarketPulseBase: React.FC<MarketPulseBaseProps> = ({ marketData, loading, error, refetch }) => {
@@ -27,6 +62,15 @@ const MarketPulseBase: React.FC<MarketPulseBaseProps> = ({ marketData, loading, 
       minute: '2-digit'
     });
   };
+
+  // Filtrera vinnare och förlorare baserat på öppettider
+  const filteredTopStocks = useMemo(() => {
+    return data.topStocks.filter(stock => shouldShowStock(stock.symbol));
+  }, [data.topStocks]);
+
+  const filteredBottomStocks = useMemo(() => {
+    return data.bottomStocks.filter(stock => shouldShowStock(stock.symbol));
+  }, [data.bottomStocks]);
 
   if (loading && !marketData) {
     return (
@@ -96,7 +140,7 @@ const MarketPulseBase: React.FC<MarketPulseBaseProps> = ({ marketData, loading, 
         </div>
       </div>
 
-      {/* Market Indices Summary */}
+      {/* Market Indices Summary - Visas alltid då index/terminer ofta är intressanta dygnet runt */}
       {data.marketIndices.length > 0 && (
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
@@ -121,12 +165,12 @@ const MarketPulseBase: React.FC<MarketPulseBaseProps> = ({ marketData, loading, 
         </div>
       )}
 
-      {/* Top Performers */}
-      {data.topStocks.length > 0 && (
+      {/* Top Performers - Filtrerad */}
+      {filteredTopStocks.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold mb-3 text-foreground">Topprestanda</h3>
           <div className="space-y-2">
-            {data.topStocks.map((stock) => (
+            {filteredTopStocks.map((stock) => (
               <div 
                 key={stock.symbol} 
                 className="rounded-2xl border border-border/60 bg-muted/30 p-4 hover:bg-muted/50 hover:border-primary/30 transition-all flex justify-between items-center"
@@ -152,12 +196,12 @@ const MarketPulseBase: React.FC<MarketPulseBaseProps> = ({ marketData, loading, 
         </div>
       )}
 
-      {/* Bottom Performers */}
-      {data.bottomStocks.length > 0 && (
+      {/* Bottom Performers - Filtrerad */}
+      {filteredBottomStocks.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold mb-3 text-foreground">Lägsta prestanda</h3>
           <div className="space-y-2">
-            {data.bottomStocks.map((stock) => (
+            {filteredBottomStocks.map((stock) => (
               <div 
                 key={stock.symbol} 
                 className="rounded-2xl border border-border/60 bg-muted/30 p-4 hover:bg-muted/50 hover:border-primary/30 transition-all flex justify-between items-center"
@@ -179,6 +223,16 @@ const MarketPulseBase: React.FC<MarketPulseBaseProps> = ({ marketData, loading, 
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Visa meddelande om marknaden är stängd och inga aktier visas */}
+      {filteredTopStocks.length === 0 && filteredBottomStocks.length === 0 && !loading && !error && (
+        <div className="text-center py-8 bg-muted/20 rounded-xl border border-dashed border-border">
+          <p className="text-sm text-muted-foreground">Marknaden är stängd. Dagens vinnare och förlorare visas när börsen öppnar.</p>
+          <div className="text-xs text-muted-foreground mt-1 opacity-70">
+            Sverige: 09:00 - 23:59 | USA: 15:30 - 23:59
           </div>
         </div>
       )}
