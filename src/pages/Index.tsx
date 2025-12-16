@@ -23,6 +23,7 @@ import {
   Wallet,
   FileText,
   Briefcase,
+  ArrowUpRight, // Tillagd igen
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -306,7 +307,6 @@ const Index = () => {
                         {t('hero.chart.performanceBadge')}
                       </Badge>
                     </div>
-                    {/* ... Chart SVG ... */}
                     <div className="mt-7">
                       <svg viewBox="0 0 400 180" className="h-40 w-full sm:h-44 lg:h-48">
                         <defs>
@@ -349,7 +349,6 @@ const Index = () => {
 
               {/* How it works */}
               <div className="mx-auto mt-16 max-w-5xl sm:mt-20">
-                {/* ... How it works content ... */}
                 <div className="text-center">
                   <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">{t('howItWorks.title')}</h2>
                   <p className="mt-3 text-base text-muted-foreground sm:text-lg">{t('howItWorks.subtitle')}</p>
@@ -529,7 +528,7 @@ const Index = () => {
                     </section>
                   )}
 
-                  {/* 4. UTVALDA STOCK CASES (Uppdaterad design utan like/share) */}
+                  {/* 4. UTVALDA STOCK CASES */}
                   <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
@@ -887,6 +886,71 @@ const Index = () => {
                       </div>
                     )}
                   </section>
+
+                  {/* 5. Featured Reports Section */}
+                  {featuredReports.length > 0 && (
+                    <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6 mb-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-5 w-5 text-primary" />
+                          <h2 className="text-base font-semibold text-foreground sm:text-lg">Utvalda Rapporter</h2>
+                        </div>
+                        <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+                          <Link to="/discover">
+                            Se alla
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
+                      
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {featuredReports.map((report) => (
+                          <Card key={report.id} className="flex flex-col h-full hover:shadow-md transition-all border-border/60">
+                            <CardHeader className="pb-3">
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="space-y-1">
+                                  <CardTitle className="text-base font-semibold line-clamp-1">
+                                    {report.reportTitle}
+                                  </CardTitle>
+                                  <CardDescription className="font-medium text-primary">
+                                    {report.companyName}
+                                  </CardDescription>
+                                </div>
+                                {report.companyLogoUrl && (
+                                  <div className="h-8 w-8 rounded bg-muted/20 p-1 shrink-0">
+                                    <img src={report.companyLogoUrl} alt={report.companyName} className="w-full h-full object-contain" />
+                                  </div>
+                                )}
+                              </div>
+                            </CardHeader>
+                            <CardContent className="flex-1 pb-4">
+                              <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
+                                {report.summary}
+                              </p>
+                              {report.keyMetrics && report.keyMetrics.length > 0 && (
+                                <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-border/40">
+                                  {report.keyMetrics.slice(0, 2).map((metric, i) => (
+                                    <div key={i}>
+                                      <p className="text-xs text-muted-foreground">{metric.label}</p>
+                                      <p className="text-sm font-medium">
+                                        {metric.value}
+                                        {metric.trend && (
+                                          <span className={`ml-1 text-xs ${metric.trend.includes('+') ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                            {metric.trend}
+                                          </span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
                 </div>
               </div>
             </div>}
