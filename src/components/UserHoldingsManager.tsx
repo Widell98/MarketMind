@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -57,6 +56,37 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+
+// --- HÄR LÄGGER VI TILL HJÄLPFUNKTIONEN FÖR MARKNADSÖPPETTIDER ---
+// Denna behövs för att sortera "Utveckling idag" korrekt
+const isMarketOpen = (currency?: string, holdingType?: string): boolean => {
+  const type = holdingType?.toLowerCase();
+  if (type === 'crypto' || type === 'cryptocurrency' || type === 'certificate') return true;
+
+  const normalizedCurrency = currency?.toUpperCase() || 'SEK';
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Europe/Stockholm',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false
+  });
+  
+  const parts = formatter.formatToParts(now);
+  const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+  const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+  const currentMinutes = hour * 60 + minute;
+
+  const swedenOpen = 9 * 60;        // 09:00
+  const usOpen = 15 * 60 + 30;      // 15:30
+  const endOfDay = 23 * 60 + 59;    // 23:59
+
+  if (normalizedCurrency === 'USD') return currentMinutes >= usOpen && currentMinutes <= endOfDay;
+  if (['SEK', 'EUR', 'DKK', 'NOK'].includes(normalizedCurrency)) return currentMinutes >= swedenOpen && currentMinutes <= endOfDay;
+
+  return currentMinutes >= swedenOpen && currentMinutes <= endOfDay;
+};
+// -------------------------------------------------------------------
 
 interface TransformedHolding {
   id: string;
@@ -581,6 +611,21 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
             bValue = bPerformance?.profit ?? 0;
             break;
           case 'dailyChange':
+            // === NY SORTERINGSLOGIK ===
+            // Kontrollera om marknaden är öppen
+            const currencyA = a.price_currency || a.currency || 'SEK';
+            const currencyB = b.price_currency || b.currency || 'SEK';
+            const isOpenA = isMarketOpen(currencyA, a.holding_type);
+            const isOpenB = isMarketOpen(currencyB, b.holding_type);
+
+            // Om ena är stängd och andra öppen, prioritera den öppna
+            if (isOpenA && !isOpenB) return -1; // A först
+            if (!isOpenA && isOpenB) return 1;  // B först
+            
+            // Om båda är stängda, sortera på namn för stabilitet
+            if (!isOpenA && !isOpenB) return a.name.localeCompare(b.name);
+
+            // Om båda är öppna, sortera på värdet
             aValue = a.dailyChangePercent ?? 0;
             bValue = b.dailyChangePercent ?? 0;
             break;
@@ -637,6 +682,16 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
           bValue = bPerformance?.profit ?? 0;
           break;
         case 'dailyChange':
+          // === NY SORTERINGSLOGIK ===
+          const currencyA = a.price_currency || a.currency || 'SEK';
+          const currencyB = b.price_currency || b.currency || 'SEK';
+          const isOpenA = isMarketOpen(currencyA, a.holding_type);
+          const isOpenB = isMarketOpen(currencyB, b.holding_type);
+
+          if (isOpenA && !isOpenB) return -1;
+          if (!isOpenA && isOpenB) return 1;
+          if (!isOpenA && !isOpenB) return a.name.localeCompare(b.name);
+
           aValue = a.dailyChangePercent ?? 0;
           bValue = b.dailyChangePercent ?? 0;
           break;
@@ -698,6 +753,16 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
               bValue = bPerformance?.profit ?? 0;
               break;
             case 'dailyChange':
+              // === NY SORTERINGSLOGIK ===
+              const currencyA = a.price_currency || a.currency || 'SEK';
+              const currencyB = b.price_currency || b.currency || 'SEK';
+              const isOpenA = isMarketOpen(currencyA, a.holding_type);
+              const isOpenB = isMarketOpen(currencyB, b.holding_type);
+
+              if (isOpenA && !isOpenB) return -1;
+              if (!isOpenA && isOpenB) return 1;
+              if (!isOpenA && !isOpenB) return a.name.localeCompare(b.name);
+
               aValue = a.dailyChangePercent ?? 0;
               bValue = b.dailyChangePercent ?? 0;
               break;
