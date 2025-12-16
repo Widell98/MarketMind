@@ -29,7 +29,7 @@ import {
   Activity,
   Star,
   Wallet,
-  Moon,
+  Moon, // Lagt till Moon för stängd marknad
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,6 +59,7 @@ type QuickAction = {
   description: string;
   to: string;
 };
+
 
 const insightTypeLabels: Record<'performance' | 'allocation' | 'risk' | 'opportunity', string> = {
   performance: 'Prestation',
@@ -105,7 +106,7 @@ const formatTime = (dateString: string): string => {
 
 // Hjälpfunktion för att avgöra om marknaden är öppen
 const isMarketOpen = (currency?: string, holdingType?: string): boolean => {
-  // Krypto visas alltid (dygnet runt)
+  // Krypto och certifikat visas alltid dygnet runt
   const type = holdingType?.toLowerCase();
   if (type === 'crypto' || type === 'cryptocurrency' || type === 'certificate') {
     return true;
@@ -207,7 +208,7 @@ const Index = () => {
       const currency = holding.currency || holding.price_currency;
       const isOpen = isMarketOpen(currency, holding.holding_type);
 
-      return isOpen && 
+      return isOpen &&
              holding.holding_type !== 'recommendation' && 
              holding.dailyChangePercent !== null && 
              holding.dailyChangePercent !== undefined;
@@ -451,9 +452,9 @@ const Index = () => {
       <div className="min-h-0 bg-background">
         <div className="w-full max-w-5xl xl:max-w-6xl mx-auto px-3 sm:px-6 py-5 sm:py-9 lg:py-12">
           
-          {/* Hero Section */}
+          {/* Hero Section - Kvarstår för utloggade användare */}
           {!user && <div className="mb-16 sm:mb-20 lg:mb-24">
-              {/* ... (behåll Hero section oförändrad) ... */}
+              {/* Hero Content */}
               <section className="relative flex flex-col justify-center overflow-hidden rounded-[28px] border border-border/60 bg-card/70 px-6 py-10 shadow-sm backdrop-blur sm:px-10 sm:py-12 lg:px-14 min-h-[calc(100vh-160px)] sm:min-h-[calc(100vh-180px)] lg:min-h-[calc(100vh-220px)]">
                 <div className="grid gap-10 lg:gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center">
                   <div className="text-left">
@@ -622,26 +623,11 @@ const Index = () => {
                             )}
                           </div>
                           
-                          <div className="text-sm text-muted-foreground">
-                            {loadingTodayDevelopment ? (
-                              'Beräknar...'
-                            ) : dayChangePercent === 0 && dayChangeValue === 0 ? (
-                              morningBrief ? (
-                                <Link to="/news" className="inline-flex items-center gap-1 hover:text-primary transition-colors group">
-                                  <Sparkles className="h-3.5 w-3.5 text-primary animate-pulse" />
-                                  <span>Marknaden stängd.</span>
-                                  <span className="font-medium underline decoration-primary/30 underline-offset-4 group-hover:decoration-primary">Läs morgonrapporten</span>
-                                  <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-                                </Link>
-                              ) : (
-                                'Marknaden har inte öppnat ännu.'
-                              )
-                            ) : isPositiveDayChange ? (
-                              'Portföljen går starkt idag.'
-                            ) : (
-                              'En rekyl i marknaden idag.'
-                            )}
-                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {loadingTodayDevelopment ? 'Beräknar...' : 
+                             dayChangePercent === 0 && dayChangeValue === 0 ? 'Marknaden har inte öppnat än' :
+                             isPositiveDayChange ? 'Portföljen går starkt idag.' : 'En rekyl i marknaden idag.'}
+                          </p>
                         </div>
 
                         {/* Background decoration */}
