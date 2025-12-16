@@ -9,6 +9,7 @@ export const DISCOVER_REPORT_SUMMARIES_QUERY_KEY = 'discover-report-summaries';
 
 type DiscoverReportSummaryRow = Database['public']['Tables']['discover_report_summaries']['Row'] & {
   company_logo_url?: string | null;
+  is_featured?: boolean; // Nytt fält från DB
 };
 
 const parseKeyPoints = (value: DiscoverReportSummaryRow['key_points']): string[] => {
@@ -79,6 +80,7 @@ const mapRowToGeneratedReport = (row: DiscoverReportSummaryRow): GeneratedReport
   sourceType: (row.source_type as GeneratedReport['sourceType']) ?? undefined,
   sourceDocumentName: row.source_document_name,
   sourceDocumentId: row.source_document_id,
+  isFeatured: row.is_featured ?? false, // Mappning
 });
 
 export const useDiscoverReportSummaries = (limit = 12) => {
