@@ -50,6 +50,14 @@ import { useDailyChangeData } from '@/hooks/useDailyChangeData';
 import HoldingsHighlightCard from '@/components/HoldingsHighlightCard';
 import AllocationCard from '@/components/AllocationCard';
 
+// Definiera gränssnittet för QuickAction här
+interface QuickAction {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+  to: string;
+}
+
 const formatCategoryLabel = (category: string): string => {
   const categoryMap: Record<string, string> = {
     macro: 'Makro',
@@ -120,12 +128,12 @@ const Index = () => {
 
   const formatPercent = (value: number) => `${value.toFixed(2)}%`;
 
- const dailyHighlights = React.useMemo(() => {
+  const dailyHighlights = React.useMemo(() => {
     const sortableHoldings = actualHoldings.filter(holding =>
       holding.holding_type !== 'recommendation' && 
       holding.dailyChangePercent !== null && 
       holding.dailyChangePercent !== undefined &&
-      isMarketOpen(holding) // 
+      isMarketOpen(holding) // Filtrera bort stängda marknader
     );
 
     const best = [...sortableHoldings]
@@ -175,33 +183,42 @@ const Index = () => {
   const [todayDevelopment, setTodayDevelopment] = React.useState<{ percent: number; value: number } | null>(null);
   const [loadingTodayDevelopment, setLoadingTodayDevelopment] = React.useState(true);
 
-React.useEffect(() => {
+  React.useEffect(() => {
     const calculateTodayDevelopment = async () => {
-      // ... (befintlig setup kod) ...
+      try {
+        if (!actualHoldings || actualHoldings.length === 0) {
+          setTodayDevelopment({ percent: 0, value: 0 });
+          setLoadingTodayDevelopment(false);
+          return;
+        }
         
         let totalWeightedChange = 0;
         let totalSecuritiesValue = 0;
-        // ...
+        let holdingsWithData = 0;
+        let holdingsWithoutData = 0;
 
         actualHoldings.forEach(holding => {
-          // ... (befintliga checks för recommendation/value) ...
           if (holding.holding_type === 'recommendation') return;
           const { valueInSEK: holdingValue } = resolveHoldingValue(holding);
           if (holdingValue <= 0) return;
 
-          // <--- NY LOGIK HÄR --->
           // Om marknaden är stängd, räkna utvecklingen som 0 för portföljens total
           if (!isMarketOpen(holding)) {
              totalSecuritiesValue += holdingValue;
-             // Vi lägger inte till något i totalWeightedChange (det är 0)
+             // Vi lägger inte till något i totalWeightedChange (det är 0), 
+             // men vi räknar det som att vi har data (0% förändring).
+             holdingsWithData++;
              return; 
           }
 
           const changePercent = getChangeForTicker(holding.symbol);
-          // ... (resten av logiken för öppna marknader) ...
+          
           if (changePercent !== null && !isNaN(changePercent) && isFinite(changePercent)) {
-            const weight = holdingValue / safeTotalPortfolioValue;
-            totalWeightedChange += weight * changePercent;
+            // Använd portföljens totalvärde för viktning
+            if (safeTotalPortfolioValue > 0) {
+              const weight = holdingValue / safeTotalPortfolioValue;
+              totalWeightedChange += weight * changePercent;
+            }
             totalSecuritiesValue += holdingValue;
             holdingsWithData++;
           } else {
@@ -209,11 +226,12 @@ React.useEffect(() => {
           }
         });
 
-        const finalChangePercent = totalWeightedChange;
-        const changeValue = (totalSecuritiesValue * finalChangePercent) / 100;
+        // Beräkna totalt värde i kronor baserat på den viktade procentuella förändringen
+        // och det totala portföljvärdet
+        const changeValue = (safeTotalPortfolioValue * totalWeightedChange) / 100;
 
         setTodayDevelopment({
-          percent: Math.round(finalChangePercent * 100) / 100,
+          percent: Math.round(totalWeightedChange * 100) / 100,
           value: Math.round(changeValue * 100) / 100,
         });
       } catch (error) {
@@ -227,7 +245,7 @@ React.useEffect(() => {
       }
     };
 
-   calculateTodayDevelopment();
+    calculateTodayDevelopment();
   }, [user, hasPortfolio, safeTotalPortfolioValue, actualHoldings, sheetChangeData, sheetChangeDataLoading, getChangeForTicker]);
 
   const dayChangePercent = todayDevelopment?.percent ?? performance.dayChangePercentage ?? 0;
