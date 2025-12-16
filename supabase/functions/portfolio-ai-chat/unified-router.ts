@@ -210,12 +210,15 @@ export const unifiedRouter = async ({
       '1. Identifiera användarens avsikt (intent) från följande alternativ:',
       `   - ${ALLOWED_INTENTS.join(', ')}.`,
       '   - Välj en eller flera intents som bäst matchar frågan.',
+      '   - Om användaren frågar om ett specifikt köp, prisnivå eller aktiecase (t.ex. "var det bra att köpa på 20kr?"), välj stock_analysis. Välj INTE portfolio_optimization för detta.',
+      '   - Välj portfolio_optimization ENDAST när användaren uttryckligen ber om råd kring portföljens sammansättning, viktning eller riskspridning.',
       '   - Om användaren ber om sammanfattning av bifogat material, välj document_summary.',
       '',
       '2. Identifiera viktiga entiteter: bolag, tickers, index, sektorer eller makroteman.',
       '',
       '3. Avgör om realtidsdata behövs:',
       '   - Realtidsdata behövs för: senaste nyheter, intradagspriser, färska rapporter, marknadshändelser.',
+      '   - Kommande lanseringar/releases/pipeline -> needsRealtime = true (KRÄVER sökning).',
       '   - Realtidsdata behövs INTE för: historik, strategier, allmänna förklaringar, långsiktiga analyser.',
       '',
       '4. Planera Tavily-sökning (om realtidsdata behövs):',
@@ -317,7 +320,7 @@ export const unifiedRouter = async ({
 
     // Normalize entities
     const entitiesRaw = Array.isArray(parsedData?.entities) ? parsedData.entities : [];
-    const entities = Array.from(
+    const entities: string[] = Array.from(
       new Set(
         entitiesRaw
           .map((entity: unknown) => {

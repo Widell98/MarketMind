@@ -70,6 +70,7 @@ export type TavilySearchOptions = {
 export type TavilyFormattingOptions = {
   requireRecentDays?: number;
   allowUndatedFromDomains?: string[];
+  topic?: TavilyTopic;
 };
 
 // ============================================================================
@@ -155,7 +156,19 @@ export const DEFAULT_EXCLUDED_TAVILY_DOMAINS = [
 export const RECENT_NEWS_MAX_DAYS = 3;
 export const RECENT_MARKET_NEWS_MAX_DAYS = 7;
 export const RECENT_FINANCIAL_DATA_MAX_DAYS = 45;
-export const DEFAULT_UNDATED_FINANCIAL_DOMAINS = ['stockanalysis.com'];
+export const DEFAULT_UNDATED_FINANCIAL_DOMAINS = [
+  'stockanalysis.com',
+  'finance.yahoo.com',
+  'yahoo.com',
+  'investing.com',
+  'uk.investing.com',
+  'benzinga.com',
+  'marketwatch.com',
+  'morningstar.com',
+  'seekingalpha.com',
+  'google.com',
+  'cnbc.com',
+];
 
 // ============================================================================
 // Financial Relevance Keywords
@@ -239,8 +252,8 @@ export const TAVILY_ROUTER_TOOL = {
         freshnessDays: {
           type: 'integer',
           minimum: 1,
-          maximum: 30,
-          description: 'Maximalt antal dagar bakåt som källorna får vara.'
+          maximum: 180,
+          description: 'Maximalt antal dagar bakåt som källorna får vara. Använd 90-180 dagar för roadmap/pipeline-frågor, 1-7 dagar för nyheter.'
         },
         preferredLocales: {
           type: 'array',
@@ -258,6 +271,24 @@ export const TAVILY_ROUTER_TOOL = {
       required: ['query'],
     },
   },
+} as const;
+
+export const STOCK_TOOL = {
+  type: 'function',
+  function: {
+    name: 'get_stock_data',
+    description: 'Hämta realtidsdata. VIKTIGT: Du MÅSTE ange korrekt Yahoo Finance-ticker med suffix. Exempel: "MILDEF.ST" för Sverige, "NOVO-B.CO" för Danmark, "AAPL" för USA.',
+    parameters: {
+      type: 'object',
+      properties: {
+        ticker: {
+          type: 'string',
+          description: 'Yahoo Finance-ticker (t.ex. MILDEF.ST, VOLV-B.ST, AAPL).'
+        }
+      },
+      required: ['ticker']
+    }
+  }
 } as const;
 
 // ============================================================================
@@ -284,9 +315,19 @@ export const planRealtimeSearchWithLLM = async ({
       routerContext.push('Tidigare relaterade frågor:\n' + recentMessages.map((entry, index) => `${index + 1}. ${entry}`).join('\n'));
     }
 
+    // Upptäck om frågan handlar om pipeline/roadmap för längre freshness
+    const isPipelineRoadmapQuery = /\b(pipeline|roadmap|produktplan|produktplanering|release schedule|release plan|spelkalender|upcoming releases?)\b/i.test(message);
+    
     const routerPrompt = [
       'Du avgör om nästa svar behöver dagsaktuella källor innan rådgivaren svarar kunden.',
       'Om färska nyheter, intradagspris eller senaste rapporter krävs → anropa tavily_search exakt en gång.',
+      'Om frågan gäller kommande lanseringar, "releases", spelkalender eller produktpipeline → anropa tavily_search för att hitta uppdaterade listor.',
+      'För roadmap/pipeline-frågor: Använd freshnessDays 90-180 (produktplaner kan vara relevanta i månader).',
+      'För nyheter/rapporter: Använd freshnessDays 1-7 dagar.',
+      '',
+      'VIKTIGT: När du genererar "query"-fältet, optimera det för en sökmotor - använd sökord, inte hela meningar.',
+      'Exempel: Istället för "Vad släpper de för spel?" skriv "Coffee Stain Studios upcoming games release schedule 2025".',
+      '',
       'Om äldre kunskap räcker → svara med JSON på formatet {"decision":"skip","reason":"kort svensk motivering"}.',
       'Ange alltid en motivering (på svenska) antingen i JSON:et eller i fältet reason när du anropar verktyget.',
       routerContext.join('\n\n'),
@@ -344,9 +385,11 @@ export const planRealtimeSearchWithLLM = async ({
           : typeof args?.freshnessDays === 'string'
             ? Number(args.freshnessDays)
             : undefined;
+        // Öka max till 180 för pipeline/roadmap-frågor
+        const maxFreshnessDays = isPipelineRoadmapQuery ? 180 : 30;
         const freshnessDays = Number.isFinite(freshnessDaysRaw)
-          ? Math.min(30, Math.max(1, Math.round(Number(freshnessDaysRaw))))
-          : undefined;
+          ? Math.min(maxFreshnessDays, Math.max(1, Math.round(Number(freshnessDaysRaw))))
+          : (isPipelineRoadmapQuery ? 90 : undefined); // Default 90 dagar för pipeline-frågor om inget anges
         return {
           shouldSearch: true,
           query: typeof args?.query === 'string' ? args.query.trim() : undefined,
@@ -453,7 +496,7 @@ export const formatTavilyResults = (
 
   const sections: string[] = [];
   const sourceSet = new Set<string>();
-  const { requireRecentDays, allowUndatedFromDomains } = options;
+  const { requireRecentDays, allowUndatedFromDomains, topic } = options;
   const requireFreshness = typeof requireRecentDays === 'number'
     && Number.isFinite(requireRecentDays)
     && requireRecentDays > 0;
@@ -534,10 +577,15 @@ export const formatTavilyResults = (
           return false;
         }
 
-        const hasRelevance = hasFinancialRelevance(combinedText);
-        if (!hasRelevance && combinedText.length < 60) {
-          console.log('Filtrerar bort Tavily-resultat med låg finansiell relevans:', url);
-          return false;
+        // Hoppa över finansiell relevans-kontroll för 'general' topic eller obegränsade sökningar
+        // Detta tillåter relevanta resultat som t.ex. spelreleaser som kan sakna finansiella nyckelord
+        const skipRelevanceCheck = topic === 'general' || allowedDomains.length === 0;
+        if (!skipRelevanceCheck) {
+          const hasRelevance = hasFinancialRelevance(combinedText);
+          if (!hasRelevance && combinedText.length < 60) {
+            console.log('Filtrerar bort Tavily-resultat med låg finansiell relevans:', url);
+            return false;
+          }
         }
 
         if (!isRecentEnough(url, result.published_date)) {
@@ -599,24 +647,44 @@ export const fetchTavilyContext = async (
     return { formattedContext: '', sources: [], error: 'API key missing', fallbackUsed: true };
   }
 
+  // Öka timeout-tiden för obegränsade sökningar (releaser) som kan ta längre tid
+  const isUnrestrictedSearch = Array.isArray(options.includeDomains) && options.includeDomains.length === 0;
+  const defaultTimeout = isUnrestrictedSearch ? 40000 : 30000; // Öka drastiskt till 30-40 sekunder
   const timeout = typeof options.timeoutMs === 'number' && options.timeoutMs > 0
     ? options.timeoutMs
-    : 12000;
+    : defaultTimeout;
 
   // Create search promise with graceful degradation
   const searchPromise = (async (): Promise<TavilyContextPayload> => {
     try {
       const {
         requireRecentDays,
-        allowUndatedFromDomains,
         ...searchOptions
       } = options ?? {};
+      
+      // Om inga specifika domäner skickas med, använd standardlistan för finans
+      const allowUndatedFromDomains = Array.isArray(options?.allowUndatedFromDomains)
+        ? options.allowUndatedFromDomains
+        : DEFAULT_UNDATED_FINANCIAL_DOMAINS;
 
-      const effectiveIncludeDomains = Array.isArray(searchOptions.includeDomains) && searchOptions.includeDomains.length > 0
-        ? searchOptions.includeDomains
-        : TRUSTED_TAVILY_DOMAINS;
+      // Om includeDomains är explicit satt till tom array ([]), låt Tavily söka överallt
+      // Annars använd TRUSTED_TAVILY_DOMAINS som standard
+      // Om includeDomains är undefined eller inte är en array, använd standard
+      const isExplicitlyUnrestricted = Array.isArray(searchOptions.includeDomains) && searchOptions.includeDomains.length === 0;
+      
+      // Automatisk upptäckt av releaser-frågor som kräver bred sökning
+      const queryText = (searchOptions.query ?? message).toLowerCase();
+      const isReleaseRelatedQuery = /\b(releaser?|lansering|pipeline|spelkalender|upcoming releases?|product launch|product pipeline)\b/i.test(queryText);
+      
+      const effectiveIncludeDomains = isExplicitlyUnrestricted || isReleaseRelatedQuery
+        ? []
+        : (Array.isArray(searchOptions.includeDomains) && searchOptions.includeDomains.length > 0
+          ? searchOptions.includeDomains
+          : TRUSTED_TAVILY_DOMAINS);
 
-      const allowDomainFallback = (!Array.isArray(searchOptions.includeDomains) || searchOptions.includeDomains.length === 0)
+      // Om vi har explicit obegränsad sökning, hoppa över domain fallback
+      const allowDomainFallback = !isExplicitlyUnrestricted && !isReleaseRelatedQuery
+        && (!Array.isArray(searchOptions.includeDomains) || searchOptions.includeDomains.length > 0)
         && EXTENDED_TAVILY_DOMAINS.length > 0;
 
       const effectiveExcludeDomains = Array.from(new Set([
@@ -624,7 +692,10 @@ export const fetchTavilyContext = async (
         ...(Array.isArray(searchOptions.excludeDomains) ? searchOptions.excludeDomains : []),
       ]));
 
-      const effectiveTopic: TavilyTopic = searchOptions.topic ?? 'finance';
+      // Använd 'general' topic för releaser-frågor, annars använd angiven topic eller default 'finance'
+      const effectiveTopic: TavilyTopic = isReleaseRelatedQuery 
+        ? 'general' 
+        : (searchOptions.topic ?? 'finance');
       const shouldRequestRawContent = (searchOptions.includeRawContent ?? false)
         && (searchOptions.searchDepth ?? 'basic') === 'advanced';
 
@@ -681,9 +752,21 @@ export const fetchTavilyContext = async (
       }
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      const timeoutId = setTimeout(() => {
+        console.warn(`Tavily-sökning timeout efter ${timeout}ms för query: ${payload.query}`);
+        controller.abort();
+      }, timeout);
 
       try {
+        console.log('Gör Tavily-sökning med payload:', JSON.stringify({
+          query: payload.query,
+          topic: payload.topic,
+          search_depth: payload.search_depth,
+          max_results: payload.max_results,
+          include_domains: includeDomains.length > 0 ? includeDomains.slice(0, 5) : 'alla domäner',
+          timeout_ms: timeout,
+        }));
+
         const response = await fetch('https://api.tavily.com/search', {
           method: 'POST',
           headers: {
@@ -695,18 +778,59 @@ export const fetchTavilyContext = async (
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('Fel vid anrop till Tavily API:', errorText);
+          console.error('Fel vid anrop till Tavily API:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorText: errorText,
+            query: payload.query,
+          });
           return { context: { formattedContext: '', sources: [] }, rawResultCount: 0 };
         }
 
         const tavilyData = await response.json() as TavilySearchResponse;
+        
+        // Logga Tavily-svaret
+        console.log('Tavily API-svar mottaget:', {
+          query: payload.query,
+          hasAnswer: !!tavilyData.answer,
+          answerLength: tavilyData.answer?.length || 0,
+          resultsCount: Array.isArray(tavilyData.results) ? tavilyData.results.length : 0,
+          resultTitles: Array.isArray(tavilyData.results) 
+            ? tavilyData.results.slice(0, 3).map(r => r.title || 'No title').filter(Boolean)
+            : [],
+        });
+
         const context = formatTavilyResults(tavilyData, includeDomains, {
           requireRecentDays,
           allowUndatedFromDomains,
+          topic: effectiveTopic,
         });
         const rawResultCount = Array.isArray(tavilyData.results) ? tavilyData.results.length : 0;
 
+        console.log('Tavily-kontext formaterad:', {
+          formattedContextLength: context.formattedContext.length,
+          sourcesCount: context.sources.length,
+          rawResultCount: rawResultCount,
+        });
+
         return { context, rawResultCount };
+      } catch (fetchError) {
+        // Logga specifik information om timeout
+        if (fetchError instanceof DOMException && fetchError.name === 'AbortError') {
+          console.error('Tavily-sökning avbruten (timeout):', {
+            query: payload.query,
+            timeout: timeout,
+            error: fetchError.name,
+            message: fetchError.message,
+          });
+        } else {
+          console.error('Tavily-sökning misslyckades med fel:', {
+            query: payload.query,
+            error: fetchError instanceof Error ? fetchError.message : String(fetchError),
+            errorType: fetchError instanceof Error ? fetchError.constructor.name : typeof fetchError,
+          });
+        }
+        throw fetchError;
       } finally {
         clearTimeout(timeoutId);
       }
@@ -736,10 +860,22 @@ export const fetchTavilyContext = async (
       return lastContext;
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
-        console.warn('Tavily-förfrågan avbröts på grund av timeout.');
+        console.error('Tavily-förfrågan avbröts på grund av timeout:', {
+          message: message.substring(0, 100),
+          query: options.query?.substring(0, 100),
+          timeout: timeout,
+          errorType: error.name,
+          errorMessage: error.message,
+        });
         return { formattedContext: '', sources: [], error: 'Timeout', fallbackUsed: true };
       } else {
-        console.error('Undantag vid anrop till Tavily API:', error);
+        console.error('Undantag vid anrop till Tavily API:', {
+          message: message.substring(0, 100),
+          query: options.query?.substring(0, 100),
+          error: error instanceof Error ? error.message : String(error),
+          errorType: error instanceof Error ? error.constructor.name : typeof error,
+          stack: error instanceof Error ? error.stack : undefined,
+        });
         return { 
           formattedContext: '', 
           sources: [], 
@@ -764,22 +900,6 @@ export const fetchTavilyContext = async (
   });
 
   // Race between search and timeout - return whichever completes first
-  return Promise.race([searchPromise, timeoutPromise]);
-
-  // Race between search and timeout for graceful degradation
-  const timeoutPromise = new Promise<TavilyContextPayload>((resolve) => {
-    setTimeout(() => {
-      console.warn('Tavily-sökning tog för lång tid (>' + timeout + 'ms), använder fallback.');
-      resolve({ 
-        formattedContext: '', 
-        sources: [], 
-        error: 'Timeout - sökningen tog för lång tid',
-        fallbackUsed: true 
-      });
-    }, timeout);
-  });
-
-  // Return whichever completes first
   return Promise.race([searchPromise, timeoutPromise]);
 };
 
