@@ -920,8 +920,11 @@ const ALL_HOLDINGS_PATTERNS = [
 ];
 
 const RANKING_RETURN_PATTERNS = [
-  /vilka.*innehav.*(?:mest|bäst|högst).*avkastning/i,
-  /vilka.*aktier.*(?:mest|bäst|högst).*avkastning/i,
+  // Uppdaterad för att hantera både ental (vilken) och flertal (vilka) samt "gått bäst"
+  /(?:vilken|vilket|vilka).*(?:aktie|aktier|innehav|bolag).*(?:mest|bäst|högst|sämst).*avkastning/i,
+  /(?:vilken|vilket|vilka).*(?:aktie|aktier|innehav|bolag).*(?:har|är)?.*(?:gått|presterat|utvecklats).*(?:bäst|sämst|bra|dåligt)/i,
+  
+  // Gamla mönster (behålls för säkerhets skull)
   /vilka.*(?:mest|bäst|högst).*presterat/i,
   /vilka.*(?:mest|bäst|högst).*resultat/i,
   /vilka.*(?:mest|bäst|högst).*vinst/i,
@@ -933,6 +936,8 @@ const RANKING_RETURN_PATTERNS = [
   /top.*innehav.*avkastning/i,
   /bäst.*presterande.*innehav/i,
   /mest.*lönsamma.*innehav/i,
+  /sämst.*presterande.*innehav/i,
+  /vilken.*är.*min.*bästa/i
 ];
 
 const detectReturnQuestion = (
