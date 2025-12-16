@@ -3,9 +3,9 @@ import { TrendingUp, TrendingDown, Moon } from 'lucide-react';
 import HoldingsHighlightCard from './HoldingsHighlightCard';
 import { usePortfolioPerformance, type HoldingPerformance } from '@/hooks/usePortfolioPerformance';
 
-// Hjälpfunktion för att kontrollera marknadens öppettider
+// Robust hjälpfunktion för att kontrollera marknadens öppettider med svensk tidszon
 const isMarketOpen = (holding: HoldingPerformance): boolean => {
-  // Krypto och certifikat visas dygnet runt
+  // Krypto visas alltid dygnet runt
   const type = holding.holdingType?.toLowerCase();
   if (type === 'crypto' || type === 'cryptocurrency' || type === 'certificate') {
     return true;
@@ -14,29 +14,36 @@ const isMarketOpen = (holding: HoldingPerformance): boolean => {
   // Hämta valuta, fallback till SEK om det saknas
   const currency = holding.currency?.toUpperCase() || 'SEK';
 
-  // Hämta aktuell tid i svensk tidszon
+  // Hämta aktuell tid i Stockholm på ett robust sätt
   const now = new Date();
-  const sweTimeStr = now.toLocaleString("en-US", { timeZone: "Europe/Stockholm" });
-  const sweTime = new Date(sweTimeStr);
+  const formatter = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Europe/Stockholm',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false
+  });
   
-  const currentMinutes = sweTime.getHours() * 60 + sweTime.getMinutes();
+  const parts = formatter.formatToParts(now);
+  const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+  const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+  const currentMinutes = hour * 60 + minute;
 
   // Tider i minuter från midnatt
   const swedenOpen = 9 * 60;        // 09:00
   const usOpen = 15 * 60 + 30;      // 15:30
-  const endOfDay = 24 * 60;         // 24:00
+  const endOfDay = 23 * 60 + 59;    // 23:59
 
   // Logik baserat på valuta
   if (currency === 'USD') {
     // Amerikanska aktier: Visa mellan 15:30 och midnatt
-    return currentMinutes >= usOpen && currentMinutes < endOfDay;
+    return currentMinutes >= usOpen && currentMinutes <= endOfDay;
   } else if (['SEK', 'EUR', 'DKK', 'NOK'].includes(currency)) {
     // Svenska/Europeiska aktier: Visa mellan 09:00 och midnatt
-    return currentMinutes >= swedenOpen && currentMinutes < endOfDay;
+    return currentMinutes >= swedenOpen && currentMinutes <= endOfDay;
   }
 
   // För övriga valutor, anta svenska tider som standard
-  return currentMinutes >= swedenOpen && currentMinutes < endOfDay;
+  return currentMinutes >= swedenOpen && currentMinutes <= endOfDay;
 };
 
 const BestWorstHoldings: React.FC = () => {
@@ -46,9 +53,10 @@ const BestWorstHoldings: React.FC = () => {
     if (!holdingsPerformance || holdingsPerformance.length === 0) return { best: [], worst: [] };
 
     // 1. Filtrera bort innehav där marknaden är stängd
+    // Detta tar bort Tesla (USD) om klockan är 07:xx
     const openMarketHoldings = holdingsPerformance.filter(holding => isMarketOpen(holding));
 
-    // 2. Använd dagens utveckling för sortering
+    // 2. Sortera baserat på dagens utveckling
     const getChange = (holding: HoldingPerformance) => holding.dayChangePercentage;
 
     const positiveHoldings = openMarketHoldings
@@ -89,7 +97,7 @@ const BestWorstHoldings: React.FC = () => {
   const bestHoldingsItems = topHoldings.best.map(h => mapToItem(h, true));
   const worstHoldingsItems = topHoldings.worst.map(h => mapToItem(h, false));
 
-  // Om inga innehav matchar kriterierna (t.ex. marknaden stängd), visa "tomma" kort med info
+  // Om inga innehav matchar kriterierna (t.ex. marknaden stängd), visa placeholders med måne-ikon
   if (topHoldings.best.length === 0 && topHoldings.worst.length === 0) {
     return (
       <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
