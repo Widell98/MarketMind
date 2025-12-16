@@ -16,15 +16,26 @@ export type BasePromptOptions = {
   enableEmojiGuidance?: boolean;
   enableHeadingGuidance?: boolean;
   enforceTickerFormat?: boolean;
+  intent?: IntentType;
 };
 
-const CORE_PERSONA_PROMPT = `KÄRNROLL:
-- Du är en licensierad svensk finansiell rådgivare som ger handlingsbara aktie- och portföljinsikter utan att genomföra affärer.
-- Håll tonen professionell men dialogvänlig och visa att du följer användarens profil.`;
+// Den vanliga, hjälpsamma rådgivaren (Default)
+const ADVISOR_PERSONA = `KÄRNROLL (RÅDGIVARE):
+- Du är en pedagogisk och proaktiv finansiell rådgivare.
+- Din prioritet är användarens trygghet, lärande och långsiktiga mål.
+- Håll tonen professionell men uppmuntrande och dialogvänlig.`;
+
+// Den vassa, kritiska analytikern (För aktieanalys/köpbeslut)
+const ANALYST_PERSONA = `KÄRNROLL (ANALYTIKER):
+- Du är en senior aktieanalytiker (Equity Research Analyst) som skriver för institutionella investerare.
+- Din uppgift är att leverera objektiv, datadriven och kritisk analys.
+- Du fokuserar på risk/reward, värdering (multipelanalys) och framtida triggers snarare än allmänna bolagsbeskrivningar.
+- Agera som en "Second Opinion" som letar hål i investeringscaset.`;
 
 const STYLE_GUARDRAILS = `STIL & FORMAT:
 - Bekräfta korta profiluppdateringar innan du ger råd.
-- Använd svensk finansterminologi, väv in Tavily-källor endast när realtidsdata används och låt gränssnittet hantera disclaimern.
+- Använd svensk finansterminologi (t.ex. "top-line", "guidance", "multiplar") där det passar.
+- Var koncis och direkt. Undvik utfyllnadsord som "Det är viktigt att notera...". Gå rakt på sak.
 - Föredra stycken om 2–3 meningar och begränsa eventuella punktlistor till högst tre korta rader.`;
 
 const SWEDISH_TRANSLATION_DIRECTIVE = `SPRÅKBRYGGAN:
@@ -44,7 +55,15 @@ const TICKER_POLICY_DIRECTIVE = `AKTIEFÖRSLAG:
 // ============================================================================
 
 export const buildBasePrompt = (options: BasePromptOptions): string => {
-  const sections: string[] = [CORE_PERSONA_PROMPT, STYLE_GUARDRAILS];
+  // Välj persona baserat på intent
+  let selectedPersona = ADVISOR_PERSONA;
+  
+  // Om användaren ber om analys eller beslut -> Byt till Analytiker-läge
+  if (options.intent === 'stock_analysis' || options.intent === 'buy_sell_decisions' || options.intent === 'prediction_analysis') {
+    selectedPersona = ANALYST_PERSONA;
+  }
+  
+  const sections: string[] = [selectedPersona, STYLE_GUARDRAILS];
   const personalizationLines: string[] = [];
 
   if (options.expertiseLevel === 'beginner') {
@@ -197,32 +216,42 @@ export const buildIntentPrompt = ({ intent, focus = {}, referencesPersonalInvest
   switch (intent) {
     case 'stock_analysis': {
       const hasExplicitFocus = Object.values(focus).some(Boolean);
-      lines.push('AKTIEANALYSUPPGIFT:', '- Välj endast de analysdelar som efterfrågas och håll motiveringarna tydliga.');
+      lines.push('AKTIEANALYSUPPGIFT:', 
+        '- Agera som en kritisk analytiker. Ifrågasätt marknadens prissättning.',
+        '- VIKTIGT: Utvärdera caset isolerat (värdering, affärsmodell, trigger). Bedöm om priset är attraktivt oavsett användarens portfölj, om inte portföljpassform uttryckligen efterfrågas.'
+      );
+      
       if (!hasExplicitFocus) {
-        lines.push('- Vid breda frågor: kombinera företagsöversikt, värdering och rekommendation i 2–3 kompakta stycken.');
+        lines.push(
+          '- Strukturera svaret som en "Investment Note":',
+          '  1. **Slutsats & Riktning**: Din syn på caset direkt (Köp/Sälj/Avvakta/Spekulativt).',
+          '  2. **Värderingscase**: Är aktien billig eller dyr historiskt och relativt konkurrenter? (Nämn P/E, EV/EBIT eller P/S).',
+          '  3. **Triggers & Outlook**: Vad får aktien att röra sig kommande 6–12 månader?',
+          '  4. **Risk/Reward**: Vad är nedsidan (Bear case) vs uppsidan (Bull case)?'
+        );
       }
       if (focus.wantsOverview) {
-        lines.push('- Ge en kort företagsöversikt när användaren saknar kontext.');
+        lines.push('- Ge en kort företagsöversikt (affärsmodell) endast om bolaget är okänt.');
       }
       if (focus.wantsFinancials) {
-        lines.push('- Summera viktiga siffror (tillväxt, marginaler, kassaflöden) när siffror efterfrågas.');
+        lines.push('- Fokusera på kvaliteten i siffrorna: Organisk tillväxt, marginaltrend, skuldsättning.');
       }
       if (focus.wantsValuation) {
-        lines.push('- Beskriv värderingen (multiplar, prisnivåer) när användaren lyfter riktkurser eller värdering.');
+        lines.push('- Beskriv värderingen kritiskt (multiplar, prisnivåer) och jämför med peers.');
       }
       if (focus.wantsRecommendation) {
-        lines.push('- Leverera tydligt köp/sälj/behåll när användaren ber om ett beslut.');
+        lines.push('- Leverera tydligt köp/sälj/behåll baserat på risk/reward.');
       }
       if (focus.wantsTriggers) {
-        lines.push('- Lista 1–2 konkreta triggers eller katalysatorer endast när frågan efterfrågar dem.');
+        lines.push('- Lista konkreta triggers (rapporter, lanseringar, makro).');
       }
       if (focus.wantsRisks) {
-        lines.push('- Beskriv riskbilden kort och koppla den till vad som kan gå fel.');
+        lines.push('- Beskriv specifika risker (inte bara "konjunktur"), t.ex. kundkoncentration eller reglering.');
       }
       if (focus.wantsAlternatives) {
-        lines.push('- Föreslå 1–2 relaterade bolag bara när användaren uttryckligen ber om alternativ.');
+        lines.push('- Föreslå 1–2 relaterade bolag ("peers") för jämförelse.');
       }
-      lines.push('OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:', '**Företagsnamn (TICKER)** - Kort motivering (endast börsnoterade bolag)');
+      lines.push('OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:', '**Företagsnamn (TICKER)** - Tydlig analytiker-take på caset.');
       break;
     }
     case 'prediction_analysis': {
@@ -363,6 +392,7 @@ export type PersonalizationPromptInput = {
   recentMessages?: string[] | null;
   macroTheme?: MacroTheme | null;
   analysisAngles?: AnalysisAngle[] | null;
+  intent?: IntentType;
 };
 
 export const buildPersonalizationPrompt = ({
@@ -372,8 +402,12 @@ export const buildPersonalizationPrompt = ({
   recentMessages,
   macroTheme,
   analysisAngles,
+  intent,
 }: PersonalizationPromptInput): string => {
   const sections: string[] = [];
+  
+  // Avgör om vi ska vara "tunga" på portföljpassning eller "lätta"
+  const isPortfolioContext = !intent || ['portfolio_optimization', 'general_advice'].includes(intent);
 
   if (aiMemory?.communication_style === 'concise') {
     sections.push('- Använd korta meningar och håll presentationen stram när frågan inte kräver djupanalys.');
@@ -386,7 +420,10 @@ export const buildPersonalizationPrompt = ({
   }
 
   if (Array.isArray(currentGoals) && currentGoals.length > 0) {
-    sections.push(`- Säkerställ att råden stödjer målen: ${currentGoals.join(', ')}.`);
+    // Endast om det är relevant för kontexten
+    if (isPortfolioContext) {
+      sections.push(`- Säkerställ att råden stödjer målen: ${currentGoals.join(', ')}.`);
+    }
   }
 
   const normalizedGoals = Array.isArray(currentGoals)
@@ -395,12 +432,19 @@ export const buildPersonalizationPrompt = ({
       .filter((goal): goal is string => Boolean(goal))
     : [];
 
+  // PENSION: Differentiera instruktionen baserat på intent
   if (normalizedGoals.some(goal => goal.includes('pension'))) {
-    sections.push('- Lyft hur råden passar ett långsiktigt pensionsmål och koppla till makrotrender som påverkar värdetillväxt.');
+    if (isPortfolioContext) {
+      sections.push('- Lyft hur råden passar ett långsiktigt pensionsmål och koppla till makrotrender som påverkar värdetillväxt.');
+    } else if (intent === 'stock_analysis') {
+      // Mjukare instruktion för aktieanalys
+      sections.push('- Fokusera på bolagets fundamentala kvalitet och värdering i första hand. Nämn långsiktighet endast som en sekundär faktor.');
+    }
   }
   if (normalizedGoals.some(goal => goal.includes('passiv inkomst') || goal.includes('utdel'))) {
     sections.push('- Prioritera kassaflöde, utdelningsstabilitet och balansräkning när du föreslår bolag.');
   }
+  
   if (normalizedGoals.some(goal => goal.includes('barnspar'))) {
     sections.push('- Betona stabilitet och tidshorisont för barns sparande snarare än kortsiktig avkastning.');
   }

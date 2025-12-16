@@ -3656,6 +3656,7 @@ const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_
         enableEmojiGuidance: includeEmojiGuidance,
         enableHeadingGuidance: includeHeadingGuidance,
         enforceTickerFormat,
+        intent: userIntent,
       });
 
     const headingDirective = buildHeadingDirectives({ intent: userIntent });
@@ -3689,6 +3690,7 @@ const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_
       recentMessages: combinedRecentMessages,
       macroTheme: macroThemeFromMessages,
       analysisAngles: analysisAnglesFromMessages,
+      intent: userIntent,
     });
 
     const contextSections = [basePrompt];
