@@ -166,6 +166,8 @@ export interface HoldingPerformance {
   dayChange: number;
   dayChangePercentage: number;
   hasPurchasePrice: boolean;
+  currency?: string;      // NYTT FÄLT: Valutan för innehavet (t.ex. "SEK", "USD")
+  holdingType?: string;   // NYTT FÄLT: Typ av innehav (t.ex. "stock", "fund", "crypto")
 }
 
 interface PriceUpdateSummary {
@@ -317,12 +319,15 @@ export const usePortfolioPerformance = () => {
           priceCurrency,
         } = resolveHoldingValue(holding);
 
+        // Fastställ effektiv valuta för att kunna använda den i logiken
+        const effectiveCurrency = holding.currency || priceCurrency || 'SEK';
+
         const parsedPurchasePrice = parseNumeric(holding.purchase_price);
         const hasPurchasePrice = parsedPurchasePrice !== null && parsedPurchasePrice > 0 && quantity > 0;
         const purchasePrice = hasPurchasePrice ? parsedPurchasePrice : 0;
 
         const investedValue = hasPurchasePrice
-          ? convertToSEK(purchasePrice * quantity, holding.currency || priceCurrency || 'SEK')
+          ? convertToSEK(purchasePrice * quantity, effectiveCurrency)
           : currentValue;
 
         // Find yesterday's value for this holding
@@ -330,7 +335,7 @@ export const usePortfolioPerformance = () => {
         const yesterdayRawValue = yesterdayHolding
           ? parseNumeric(yesterdayHolding.total_value) ?? currentValue
           : currentValue;
-        const yesterdayCurrency = yesterdayHolding?.currency || holding.currency || priceCurrency || 'SEK';
+        const yesterdayCurrency = yesterdayHolding?.currency || effectiveCurrency;
         const yesterdayValue = convertToSEK(yesterdayRawValue, yesterdayCurrency);
 
         const profit = hasPurchasePrice ? currentValue - investedValue : 0;
@@ -349,6 +354,8 @@ export const usePortfolioPerformance = () => {
           dayChange,
           dayChangePercentage,
           hasPurchasePrice,
+          currency: effectiveCurrency, // Skicka med valutan
+          holdingType: holding.holding_type // Skicka med innehavstypen
         });
 
         totalValue += currentValue;
