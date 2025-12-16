@@ -1,24 +1,38 @@
-import React, { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Search, Plus, Filter, Download, RefreshCw } from 'lucide-react';
-import { useUserHoldings } from '@/hooks/useUserHoldings';
-import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
-import HoldingsTable from './HoldingsTable';
-import AddHoldingDialog from './AddHoldingDialog';
-import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Plus, Search, Filter, Download, Trash2, Edit, RefreshCw } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuLabel
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { useUserHoldings, type UserHolding } from '@/hooks/useUserHoldings';
+import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import AddHoldingDialog from './AddHoldingDialog';
+import EditHoldingDialog from './EditHoldingDialog';
+import HoldingsTable from './HoldingsTable';
+import { useCashHoldings } from '@/hooks/useCashHoldings';
 
 // Hjälpfunktion för att avgöra om marknaden är öppen
-// Detta säkerställer att vi använder samma logik över hela appen
+// Denna används för sorteringen av "Utveckling idag"
 const isMarketOpen = (currency?: string, holdingType?: string): boolean => {
   const type = holdingType?.toLowerCase();
   if (type === 'crypto' || type === 'cryptocurrency' || type === 'certificate') return true;
@@ -44,7 +58,6 @@ const isMarketOpen = (currency?: string, holdingType?: string): boolean => {
   if (normalizedCurrency === 'USD') return currentMinutes >= usOpen && currentMinutes <= endOfDay;
   if (['SEK', 'EUR', 'DKK', 'NOK'].includes(normalizedCurrency)) return currentMinutes >= swedenOpen && currentMinutes <= endOfDay;
 
-  // Standard fallback
   return currentMinutes >= swedenOpen && currentMinutes <= endOfDay;
 };
 
@@ -52,14 +65,29 @@ type SortBy = 'name' | 'marketValue' | 'performance' | 'dailyChange' | 'share';
 type SortOrder = 'asc' | 'desc';
 
 const UserHoldingsManager = () => {
-  const { actualHoldings, loading, refetch } = useUserHoldings();
-  const { performance, holdingsPerformance, updatePrices, updating } = usePortfolioPerformance();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { actualHoldings, loading, refetch: refetchHoldings } = useUserHoldings();
+  const { performance, holdingsPerformance, updatePrices, updating, refetch: refetchPerformance } = usePortfolioPerformance();
+  const { totalCash, addCash, withdrawCash, updateCash, loading: cashLoading } = useCashHoldings();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('marketValue');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  
+  // Dialog states
+  const [isAddHoldingDialogOpen, setIsAddHoldingDialogOpen] = useState(false);
+  const [showEditHoldingDialog, setShowEditHoldingDialog] = useState(false);
+  const [editingHolding, setEditingHolding] = useState<UserHolding | null>(null);
+  const [addHoldingInitialData, setAddHoldingInitialData] = useState<{ symbol: string; name: string } | null>(null);
+  
+  // Cash dialog states
+  const [isCashDialogOpen, setIsCashDialogOpen] = useState(false);
+  const [cashAction, setCashAction] = useState<'deposit' | 'withdraw'>('deposit');
+  const [cashAmount, setCashAmount] = useState('');
+  const [editingCash, setEditingCash] = useState<{ id: string, amount: number } | null>(null);
+
   const [refreshingTicker, setRefreshingTicker] = useState<string | null>(null);
-  const { toast } = useToast();
 
   // Mappa holdingPerformance till en map för snabb uppslagning
   const holdingPerformanceMap = useMemo(() => {
@@ -75,7 +103,7 @@ const UserHoldingsManager = () => {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
       setSortBy(column);
-      setSortOrder('desc'); // Default till desc för nya kolumner
+      setSortOrder('desc');
     }
   };
 
@@ -83,9 +111,19 @@ const UserHoldingsManager = () => {
     setRefreshingTicker(ticker);
     try {
       await updatePrices(ticker);
-      await refetch();
+      await refetchHoldings();
+      await refetchPerformance();
+      toast({
+        title: "Pris uppdaterat",
+        description: `Priset för ${ticker} har uppdaterats.`,
+      });
     } catch (error) {
       console.error("Failed to refresh price:", error);
+      toast({
+        title: "Kunde inte uppdatera pris",
+        description: "Ett fel uppstod vid hämtning av marknadsdata.",
+        variant: "destructive",
+      });
     } finally {
       setRefreshingTicker(null);
     }
@@ -131,13 +169,18 @@ const UserHoldingsManager = () => {
           break;
           
         case 'dailyChange':
-          // SPECIALHANTERING: Sortera stängda marknader sist
+          // SPECIALHANTERING FÖR DAGSUTVECKLING
+          // Vi använder isMarketOpen för att avgöra om värdet är relevant just nu
           const currencyA = a.price_currency || a.currency || 'SEK';
           const currencyB = b.price_currency || b.currency || 'SEK';
           const isOpenA = isMarketOpen(currencyA, a.holding_type);
           const isOpenB = isMarketOpen(currencyB, b.holding_type);
 
-          // Om ena är stängd och andra öppen, prioritera den öppna
+          // Om ena är stängd och andra öppen, prioritera den öppna (visa den först om man sorterar)
+          // Om man sorterar fallande (bäst först), vill vi ha öppna marknader högst upp
+          // Om man sorterar stigande (sämst först), vill vi också ha öppna marknader högst upp (de relevanta)
+          // Eller så lägger vi alltid stängda marknader sist för renare lista.
+          
           if (!isOpenA && isOpenB) return 1; // A stängd -> A sist
           if (isOpenA && !isOpenB) return -1; // B stängd -> B sist
           
@@ -171,12 +214,87 @@ const UserHoldingsManager = () => {
     });
   }, [filteredHoldings, sortBy, sortOrder, holdingPerformanceMap, performance.totalPortfolioValue]);
 
-  const totalFilteredValue = useMemo(() => {
-    return sortedHoldings.reduce((sum, holding) => {
-      const perf = holdingPerformanceMap[holding.id];
-      return sum + (perf ? perf.currentValue : (holding.current_value || 0));
-    }, 0);
-  }, [sortedHoldings, holdingPerformanceMap]);
+  // Handlers för dialoger och actions
+  const handleAddHolding = async (holdingData: any) => {
+    try {
+      // Implementera logik för att lägga till innehav via useUserHoldings eller direkt anrop
+      // Detta beror på hur AddHoldingDialog kommunicerar
+      await refetchHoldings();
+      setIsAddHoldingDialogOpen(false);
+      setAddHoldingInitialData(null);
+      toast({
+        title: "Innehav tillagt",
+        description: "Ditt nya innehav har lagts till i portföljen.",
+      });
+    } catch (error) {
+      toast({
+        title: "Fel",
+        description: "Kunde inte lägga till innehav.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateHolding = async (holdingData: any) => {
+    if (!editingHolding) return;
+    // Implementera uppdateringslogik här
+    setShowEditHoldingDialog(false);
+    setEditingHolding(null);
+    await refetchHoldings();
+  };
+
+  const handleCloseAddHoldingDialog = () => {
+    setIsAddHoldingDialogOpen(false);
+    setAddHoldingInitialData(null);
+  };
+
+  const handleCashSubmit = async () => {
+    const amount = parseFloat(cashAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        title: "Ogiltigt belopp",
+        description: "Vänligen ange ett giltigt belopp.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      if (cashAction === 'deposit') {
+        await addCash(amount);
+        toast({ title: "Insättning klar", description: `${amount} kr har satts in.` });
+      } else {
+        await withdrawCash(amount);
+        toast({ title: "Uttag klart", description: `${amount} kr har tagits ut.` });
+      }
+      setIsCashDialogOpen(false);
+      setCashAmount('');
+    } catch (error) {
+      toast({
+        title: "Fel vid transaktion",
+        description: "Kunde inte genomföra transaktionen.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateCash = async () => {
+    if (!editingCash) return;
+    try {
+        await updateCash(editingCash.id, editingCash.amount);
+        setEditingCash(null);
+        toast({
+            title: "Kassa uppdaterad",
+            description: "Ditt kassainnehav har uppdaterats.",
+        });
+    } catch (error) {
+        toast({
+            title: "Fel",
+            description: "Kunde inte uppdatera kassan.",
+            variant: "destructive",
+        });
+    }
+  };
 
   return (
     <Card className="w-full border-border/60 shadow-sm overflow-hidden bg-card">
@@ -184,13 +302,22 @@ const UserHoldingsManager = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <CardTitle className="text-xl font-semibold">Dina Innehav</CardTitle>
-            <CardDescription className="mt-1">
-              Hantera och följ dina aktier och fonder
-            </CardDescription>
+            <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+              <span>Totalt värde: {performance.totalPortfolioValue?.toLocaleString('sv-SE')} kr</span>
+              <span>•</span>
+              <span>Kassa: {totalCash?.toLocaleString('sv-SE')} kr</span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Button 
-              onClick={() => setIsAddDialogOpen(true)} 
+              variant="outline" 
+              size="sm"
+              onClick={() => setIsCashDialogOpen(true)}
+            >
+              Hantera kassa
+            </Button>
+            <Button 
+              onClick={() => setIsAddHoldingDialogOpen(true)} 
               className="bg-primary hover:bg-primary/90 text-white shadow-sm"
               size="sm"
             >
@@ -266,7 +393,7 @@ const UserHoldingsManager = () => {
                 <Button 
                   variant="outline" 
                   className="mt-4"
-                  onClick={() => setIsAddDialogOpen(true)}
+                  onClick={() => setIsAddHoldingDialogOpen(true)}
                 >
                   Lägg till nu
                 </Button>
@@ -292,14 +419,106 @@ const UserHoldingsManager = () => {
       {sortedHoldings.length > 0 && (
         <div className="bg-muted/20 border-t border-border/40 p-3 px-4 sm:px-6 flex justify-between items-center text-xs sm:text-sm text-muted-foreground">
           <span>{sortedHoldings.length} innehav</span>
-          <span>Totalt: {Math.round(totalFilteredValue).toLocaleString('sv-SE')} kr</span>
+          {/* Här kan man lägga till paginering om det behövs i framtiden */}
         </div>
       )}
 
-      {/* Dialoger */}
-      <AddHoldingDialog 
-        open={isAddDialogOpen} 
-        onOpenChange={setIsAddDialogOpen} 
+      {/* Cash Management Dialog */}
+      <Dialog open={isCashDialogOpen} onOpenChange={setIsCashDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Hantera kassa</DialogTitle>
+            <DialogDescription>
+              Sätt in eller ta ut likvida medel från din portfölj.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-4">
+            <div className="flex gap-2">
+              <Button 
+                variant={cashAction === 'deposit' ? 'default' : 'outline'} 
+                className="flex-1"
+                onClick={() => setCashAction('deposit')}
+              >
+                Insättning
+              </Button>
+              <Button 
+                variant={cashAction === 'withdraw' ? 'default' : 'outline'} 
+                className="flex-1"
+                onClick={() => setCashAction('withdraw')}
+              >
+                Uttag
+              </Button>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="amount">Belopp (SEK)</Label>
+              <Input
+                id="amount"
+                type="number"
+                placeholder="0"
+                value={cashAmount}
+                onChange={(e) => setCashAmount(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCashDialogOpen(false)}>
+              Avbryt
+            </Button>
+            <Button onClick={handleCashSubmit} disabled={cashLoading}>
+              {cashAction === 'deposit' ? 'Sätt in' : 'Ta ut'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Cash Dialog (Direct Edit) */}
+      <Dialog open={editingCash !== null} onOpenChange={(open) => !open && setEditingCash(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Redigera kassainnehav</DialogTitle>
+            <DialogDescription>
+              Uppdatera beloppet för kassainnehavet manuellt.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="edit-amount">Belopp (SEK)</Label>
+            <Input
+              id="edit-amount"
+              type="number"
+              value={editingCash?.amount || 0}
+              onChange={(e) => setEditingCash(prev => 
+                prev ? { ...prev, amount: parseFloat(e.target.value) || 0 } : null
+              )}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingCash(null)}>
+              Avbryt
+            </Button>
+            <Button onClick={handleUpdateCash}>
+              Uppdatera
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Holding Dialog */}
+      <AddHoldingDialog
+        isOpen={isAddHoldingDialogOpen}
+        onClose={handleCloseAddHoldingDialog}
+        onAdd={handleAddHolding}
+        initialData={addHoldingInitialData}
+      />
+
+      {/* Edit Holding Dialog */}
+      <EditHoldingDialog
+        isOpen={showEditHoldingDialog}
+        onClose={() => {
+          setShowEditHoldingDialog(false);
+          setEditingHolding(null);
+        }}
+        onSave={handleUpdateHolding}
+        holding={editingHolding}
       />
     </Card>
   );
