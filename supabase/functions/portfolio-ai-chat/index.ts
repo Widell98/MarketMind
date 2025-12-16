@@ -6,7 +6,8 @@ import { detectUserIntentWithOpenAI } from './intent-detector.ts';
 import { unifiedRouter, type UnifiedRouterResult } from './unified-router.ts';
 import { buildBasePrompt, buildIntentPrompt, buildHeadingDirectives, buildPersonalizationPrompt, type BasePromptOptions, type IntentPromptContext, type PersonalizationPromptInput, type HeadingDirectiveInput, detectMacroThemeFromMessages, getMacroInstruction, isAnalysisAngle, getAnalysisAngleInstruction, isMacroTheme } from './prompt-builder.ts';
 import { fetchUserContext } from './user-context.ts';
-import { fetchTavilyContext, planRealtimeSearchWithLLM, type TavilyContextPayload, type TavilyLLMPlan, type TavilySearchOptions, RECENT_FINANCIAL_DATA_MAX_DAYS, DEFAULT_UNDATED_FINANCIAL_DOMAINS, SWEDISH_PRIORITY_TAVILY_DOMAINS, INTERNATIONAL_PRIORITY_TAVILY_DOMAINS, TRUSTED_TAVILY_DOMAINS, FINANCIAL_RELEVANCE_KEYWORDS } from './tavily-service.ts';
+import { fetchTavilyContext, planRealtimeSearchWithLLM, type TavilyContextPayload, type TavilyLLMPlan, type TavilySearchOptions, RECENT_FINANCIAL_DATA_MAX_DAYS, DEFAULT_UNDATED_FINANCIAL_DOMAINS, SWEDISH_PRIORITY_TAVILY_DOMAINS, INTERNATIONAL_PRIORITY_TAVILY_DOMAINS, TRUSTED_TAVILY_DOMAINS, FINANCIAL_RELEVANCE_KEYWORDS, STOCK_TOOL } from './tavily-service.ts';
+import { fetchStockData, formatStockDataForContext } from './stock-service.ts';
 import { searchPolymarketMarkets, formatPolymarketContext, type PolymarketMarket } from './polymarket-service.ts';
 import { rerankDocumentChunks, selectTopChunks, type DocumentChunk } from './document-reranker.ts';
 import { AI_RESPONSE_SCHEMA, type AIResponse, type StockSuggestion } from './response-schema.ts';
@@ -274,7 +275,8 @@ const DEFAULT_EXCLUDED_TAVILY_DOMAINS = [
 const RECENT_NEWS_MAX_DAYS = 3;
 const RECENT_MARKET_NEWS_MAX_DAYS = 7;
 const RECENT_FINANCIAL_DATA_MAX_DAYS = 45;
-const DEFAULT_UNDATED_FINANCIAL_DOMAINS = ['stockanalysis.com'];
+// Använd den exporterade listan från tavily-service.ts istället för lokal definition
+// const DEFAULT_UNDATED_FINANCIAL_DOMAINS = ['stockanalysis.com']; // Ta bort lokal definition
 
 const FINANCIAL_RELEVANCE_KEYWORDS = [
   'aktie',
@@ -1959,7 +1961,7 @@ const fetchTavilyContext = async (
 
     const timeout = typeof searchOptions.timeoutMs === 'number' && searchOptions.timeoutMs > 0
       ? searchOptions.timeoutMs
-      : 12000;
+      : 30000; // Öka drastiskt till 30 sekunder
 
     const domainAttempts: string[][] = [];
     if (effectiveIncludeDomains.length > 0) {
@@ -2830,7 +2832,7 @@ serve(async (req) => {
         searchDepth: 'advanced',
         maxResults: 5,
         includeRawContent: true,
-        timeoutMs: 7000,
+        timeoutMs: 30000, // Öka drastiskt till 30 sekunder
         requireRecentDays: RECENT_FINANCIAL_DATA_MAX_DAYS,
         allowUndatedFromDomains: DEFAULT_UNDATED_FINANCIAL_DOMAINS,
       });
@@ -3392,8 +3394,8 @@ const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_
         const isReleaseRelatedQuery = /\b(releaser?|lansering|pipeline|spelkalender|upcoming releases?|product launch|product pipeline)\b/i.test(normalizedMessage);
         
         // För releaser-frågor (obegränsad sökning) behöver vi längre timeout
-        const baseTimeout = hasRealTimeTrigger ? 5000 : 6500;
-        const timeoutMs = isReleaseRelatedQuery ? Math.max(baseTimeout * 2, 15000) : baseTimeout;
+        const baseTimeout = hasRealTimeTrigger ? 30000 : 35000; // Öka drastiskt till 30-35 sekunder
+        const timeoutMs = isReleaseRelatedQuery ? Math.max(baseTimeout * 1.3, 45000) : baseTimeout; // 45 sek för releaser
         
         const options: TavilySearchOptions = {
           query: (llmTavilyPlan.query && llmTavilyPlan.query.length > 2)
@@ -4518,12 +4520,66 @@ ${importantLines.join('\n')}
     }
 
     // Build messages array with enhanced context
-    const messages = [
+    let messages: Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_call_id?: string; name?: string; tool_calls?: any[] }> = [
       { role: 'system', content: contextInfo + tavilyAnswerInstruction + tavilyContext.formattedContext + tavilySourceInstruction + (polymarketContext ? `\n\n${polymarketContext}` : '') },
       ...(summaryMessage ? [summaryMessage] : []),
       ...preparedChatHistory,
       { role: 'user', content: message }
     ];
+
+    // Helper function to handle tool calls and return tool responses
+    const handleToolCalls = async (toolCalls: any[], messagesArray: typeof messages): Promise<Array<{ role: 'tool'; tool_call_id: string; name: string; content: string }>> => {
+      const toolResponses: Array<{ role: 'tool'; tool_call_id: string; name: string; content: string }> = [];
+      
+      for (const toolCall of toolCalls) {
+        if (toolCall.function?.name === 'get_stock_data') {
+          try {
+            const args = JSON.parse(toolCall.function.arguments || '{}');
+            const ticker = args.ticker;
+            
+            if (!ticker || typeof ticker !== 'string') {
+              console.warn('Invalid ticker in get_stock_data call:', args);
+              toolResponses.push({
+                role: 'tool',
+                tool_call_id: toolCall.id,
+                name: 'get_stock_data',
+                content: 'Kunde inte hitta ticker i förfrågan. Försök söka med Tavily istället.'
+              });
+              continue;
+            }
+
+            console.log(`AI vill hämta aktiedata för: ${ticker}`);
+            
+            const stockData = await fetchStockData(ticker);
+            
+            let toolOutput = '';
+            if (stockData) {
+              toolOutput = formatStockDataForContext(stockData);
+            } else {
+              // VIKTIGT: Berätta för AI:n att det misslyckades så att den kan använda Tavily istället
+              toolOutput = `FEL: Kunde inte hämta realtidsdata för ${ticker} från API. Försök att söka manuellt med 'tavily_search' efter "nuvarande aktiekurs och P/E-tal för ${ticker}" istället.`;
+            }
+            
+            toolResponses.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              name: 'get_stock_data',
+              content: toolOutput
+            });
+          } catch (error) {
+            console.error('Error handling get_stock_data tool call:', error);
+            toolResponses.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              name: 'get_stock_data',
+              content: 'Ett fel uppstod vid hämtning av aktiedata. Försök söka med Tavily istället.'
+            });
+          }
+        }
+      }
+      
+      return toolResponses;
+    };
 
     // Enhanced telemetry logging with decision tracking
     const requestId = crypto.randomUUID();
@@ -4629,44 +4685,130 @@ ${importantLines.join('\n')}
 
     // If the client requests non-streaming, return JSON instead of SSE
     if (stream === false) {
-      const nonStreamResp = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          stream: false,
-          response_format: { type: 'json_schema', json_schema: AI_RESPONSE_SCHEMA },
-        }),
-      });
-
-      if (!nonStreamResp.ok) {
-        const errorBody = await nonStreamResp.text();
-        console.error('OpenAI API error response:', errorBody);
-        console.error('TELEMETRY ERROR:', { ...telemetryData, error: errorBody });
-        throw new Error(`OpenAI API error: ${nonStreamResp.status} - ${errorBody}`);
-      }
-
-      const nonStreamData = await nonStreamResp.json();
-      const rawContent = nonStreamData.choices?.[0]?.message?.content || '';
-      
-      // Parse structured JSON response
-      let parsedResponse: AIResponse;
-      let aiMessage: string;
+      // Handle tool calls with a loop (structured output doesn't support tools in the same call)
+      let currentMessages = [...messages];
+      let maxToolIterations = 3;
+      let toolIteration = 0;
+      let aiMessage = '';
       let stockSuggestions: StockSuggestion[] = [];
       
-      try {
-        parsedResponse = JSON.parse(rawContent) as AIResponse;
-        aiMessage = parsedResponse.response || rawContent;
-        stockSuggestions = parsedResponse.stock_suggestions || [];
-      } catch (parseError) {
-        // Fallback if JSON parsing fails
-        console.warn('Failed to parse structured response, using raw content:', parseError);
-        aiMessage = rawContent;
-        stockSuggestions = [];
+      while (toolIteration < maxToolIterations) {
+        const requestBody: any = {
+          model,
+          messages: currentMessages,
+          stream: false,
+          tools: [STOCK_TOOL],
+        };
+        
+        const nonStreamResp = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        if (!nonStreamResp.ok) {
+          const errorBody = await nonStreamResp.text();
+          console.error('OpenAI API error response:', errorBody);
+          console.error('TELEMETRY ERROR:', { ...telemetryData, error: errorBody });
+          throw new Error(`OpenAI API error: ${nonStreamResp.status} - ${errorBody}`);
+        }
+
+        const nonStreamData = await nonStreamResp.json();
+        const assistantMessage = nonStreamData.choices?.[0]?.message;
+        const toolCalls = assistantMessage?.tool_calls;
+        
+        // If there are tool calls, handle them
+        if (toolCalls && Array.isArray(toolCalls) && toolCalls.length > 0) {
+          // Add assistant message with tool calls to history
+          currentMessages.push({
+            role: 'assistant',
+            content: assistantMessage.content || '',
+            tool_calls: toolCalls
+          });
+          
+          // Handle tool calls and get responses
+          const toolResponses = await handleToolCalls(toolCalls, currentMessages);
+          // Add tool responses to messages
+          currentMessages.push(...toolResponses);
+          toolIteration++;
+          continue;
+        }
+        
+        // No tool calls, we have a response but need structured output
+        // Make final call with structured output
+        const finalResp = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            messages: currentMessages,
+            stream: false,
+            response_format: { type: 'json_schema', json_schema: AI_RESPONSE_SCHEMA },
+          }),
+        });
+        
+        if (!finalResp.ok) {
+          const errorBody = await finalResp.text();
+          console.error('OpenAI API error response (final call):', errorBody);
+          throw new Error(`OpenAI API error: ${finalResp.status} - ${errorBody}`);
+        }
+        
+        const finalData = await finalResp.json();
+        const rawContent = finalData.choices?.[0]?.message?.content || '';
+        
+        try {
+          const parsedResponse = JSON.parse(rawContent) as AIResponse;
+          aiMessage = parsedResponse.response || rawContent;
+          stockSuggestions = parsedResponse.stock_suggestions || [];
+        } catch (parseError) {
+          // Fallback if JSON parsing fails
+          console.warn('Failed to parse structured response, using raw content:', parseError);
+          aiMessage = rawContent;
+          stockSuggestions = [];
+        }
+        
+        break;
+      }
+      
+      // If we hit max iterations, make one final call with structured output
+      if (toolIteration >= maxToolIterations) {
+        const finalResp = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            messages: currentMessages,
+            stream: false,
+            response_format: { type: 'json_schema', json_schema: AI_RESPONSE_SCHEMA },
+          }),
+        });
+        
+        if (!finalResp.ok) {
+          const errorBody = await finalResp.text();
+          throw new Error(`OpenAI API error: ${finalResp.status} - ${errorBody}`);
+        }
+        
+        const finalData = await finalResp.json();
+        const rawContent = finalData.choices?.[0]?.message?.content || '';
+        
+        try {
+          const parsedResponse = JSON.parse(rawContent) as AIResponse;
+          aiMessage = parsedResponse.response || rawContent;
+          stockSuggestions = parsedResponse.stock_suggestions || [];
+        } catch (parseError) {
+          console.warn('Failed to parse structured response, using raw content:', parseError);
+          aiMessage = rawContent;
+          stockSuggestions = [];
+        }
       }
 
       // Update AI memory and optionally save to chat history
@@ -4708,7 +4850,7 @@ ${importantLines.join('\n')}
     // Default: streaming SSE response
     // For streaming, we don't use structured output to enable real-time text streaming
     // Instead, we add format instructions to the prompt and parse stock suggestions from text
-    const streamingMessages = [
+    let streamingMessages = [
       ...messages.slice(0, -1), // All messages except the last user message
       {
         role: 'user' as const,
@@ -4716,18 +4858,72 @@ ${importantLines.join('\n')}
       }
     ];
 
+    // Handle tool calls before streaming (similar to non-streaming path)
+    let maxToolIterations = 3;
+    let toolIteration = 0;
+    
+    while (toolIteration < maxToolIterations) {
+      const requestBody: any = {
+        model,
+        messages: streamingMessages,
+        stream: false, // Don't stream while handling tools
+        tools: [STOCK_TOOL],
+      };
+
+      const toolCheckResp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!toolCheckResp.ok) {
+        const errorBody = await toolCheckResp.text();
+        console.error('OpenAI API error response:', errorBody);
+        console.error('TELEMETRY ERROR:', { ...telemetryData, error: errorBody });
+        throw new Error(`OpenAI API error: ${toolCheckResp.status} - ${errorBody}`);
+      }
+
+      const toolCheckData = await toolCheckResp.json();
+      const assistantMessage = toolCheckData.choices?.[0]?.message;
+      const toolCalls = assistantMessage?.tool_calls;
+      
+      // If there are tool calls, handle them
+      if (toolCalls && Array.isArray(toolCalls) && toolCalls.length > 0) {
+        // Add assistant message with tool calls
+        streamingMessages.push({
+          role: 'assistant',
+          content: assistantMessage.content || '',
+          tool_calls: toolCalls
+        });
+        
+        // Handle tool calls
+        const toolResponses = await handleToolCalls(toolCalls, streamingMessages);
+        streamingMessages.push(...toolResponses);
+        toolIteration++;
+        continue;
+      }
+      
+      // No tool calls, break and proceed with streaming
+      break;
+    }
+    
+    // Final streaming request
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
-        body: JSON.stringify({
-          model,
-          messages: streamingMessages,
-          stream: true,
-          // No structured output for streaming - enables real-time text streaming
-        }),
+      body: JSON.stringify({
+        model,
+        messages: streamingMessages,
+        stream: true,
+        // No tools in final streaming call - tools were already handled
+        // No structured output for streaming - enables real-time text streaming
+      }),
     });
 
     if (!response.ok) {

@@ -156,7 +156,19 @@ export const DEFAULT_EXCLUDED_TAVILY_DOMAINS = [
 export const RECENT_NEWS_MAX_DAYS = 3;
 export const RECENT_MARKET_NEWS_MAX_DAYS = 7;
 export const RECENT_FINANCIAL_DATA_MAX_DAYS = 45;
-export const DEFAULT_UNDATED_FINANCIAL_DOMAINS = ['stockanalysis.com'];
+export const DEFAULT_UNDATED_FINANCIAL_DOMAINS = [
+  'stockanalysis.com',
+  'finance.yahoo.com',
+  'yahoo.com',
+  'investing.com',
+  'uk.investing.com',
+  'benzinga.com',
+  'marketwatch.com',
+  'morningstar.com',
+  'seekingalpha.com',
+  'google.com',
+  'cnbc.com',
+];
 
 // ============================================================================
 // Financial Relevance Keywords
@@ -259,6 +271,24 @@ export const TAVILY_ROUTER_TOOL = {
       required: ['query'],
     },
   },
+} as const;
+
+export const STOCK_TOOL = {
+  type: 'function',
+  function: {
+    name: 'get_stock_data',
+    description: 'Hämta realtidsdata. VIKTIGT: Du MÅSTE ange korrekt Yahoo Finance-ticker med suffix. Exempel: "MILDEF.ST" för Sverige, "NOVO-B.CO" för Danmark, "AAPL" för USA.',
+    parameters: {
+      type: 'object',
+      properties: {
+        ticker: {
+          type: 'string',
+          description: 'Yahoo Finance-ticker (t.ex. MILDEF.ST, VOLV-B.ST, AAPL).'
+        }
+      },
+      required: ['ticker']
+    }
+  }
 } as const;
 
 // ============================================================================
@@ -619,7 +649,7 @@ export const fetchTavilyContext = async (
 
   // Öka timeout-tiden för obegränsade sökningar (releaser) som kan ta längre tid
   const isUnrestrictedSearch = Array.isArray(options.includeDomains) && options.includeDomains.length === 0;
-  const defaultTimeout = isUnrestrictedSearch ? 15000 : 12000;
+  const defaultTimeout = isUnrestrictedSearch ? 40000 : 30000; // Öka drastiskt till 30-40 sekunder
   const timeout = typeof options.timeoutMs === 'number' && options.timeoutMs > 0
     ? options.timeoutMs
     : defaultTimeout;
@@ -629,9 +659,13 @@ export const fetchTavilyContext = async (
     try {
       const {
         requireRecentDays,
-        allowUndatedFromDomains,
         ...searchOptions
       } = options ?? {};
+      
+      // Om inga specifika domäner skickas med, använd standardlistan för finans
+      const allowUndatedFromDomains = Array.isArray(options?.allowUndatedFromDomains)
+        ? options.allowUndatedFromDomains
+        : DEFAULT_UNDATED_FINANCIAL_DOMAINS;
 
       // Om includeDomains är explicit satt till tom array ([]), låt Tavily söka överallt
       // Annars använd TRUSTED_TAVILY_DOMAINS som standard
