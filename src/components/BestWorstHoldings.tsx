@@ -6,7 +6,7 @@ import { usePortfolioPerformance, type HoldingPerformance } from '@/hooks/usePor
 // Hjälpfunktion för att avgöra om ett innehav ska visas baserat på tid och valuta
 const shouldShowHolding = (holding: HoldingPerformance): boolean => {
   // Krypto visas alltid (dygnet runt)
-  if (holding.holdingType === 'crypto' || holding.holdingType === 'cryptocurrency') {
+  if (holding.holdingType === 'crypto' || holding.holdingType === 'cryptocurrency' || holding.holdingType === 'certificate') {
     return true;
   }
 
@@ -34,12 +34,12 @@ const shouldShowHolding = (holding: HoldingPerformance): boolean => {
   if (currency === 'USD') {
     // Amerikanska marknaden (baserat på valuta)
     return currentMinutes >= usOpen && currentMinutes <= closeTime;
-  } else if (currency === 'SEK' || currency === 'EUR' || currency === 'DKK' || currency === 'NOK') {
+  } else if (['SEK', 'EUR', 'DKK', 'NOK'].includes(currency)) {
     // Svenska/Nordiska/Europeiska marknaden (baserat på valuta)
     return currentMinutes >= swedenOpen && currentMinutes <= closeTime;
   } else {
-    // Fallback för övriga valutor: visa under "dagtid" 09-24 eller dölj
-    // Här antar vi samma som Sverige för enkelhetens skull
+    // Fallback: Om valutan är okänd men vi har data, visa det.
+    // Men för att vara säker, följ svensk tid som default
     return currentMinutes >= swedenOpen && currentMinutes <= closeTime;
   }
 };
