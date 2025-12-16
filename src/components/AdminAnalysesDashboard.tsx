@@ -10,6 +10,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  Star,
   Trash2,
   Upload,
   User,
@@ -177,6 +178,43 @@ const AdminAnalysesDashboard: React.FC = () => {
   const handleReportGenerated = (report: GeneratedReport) => {
     syncReportCache(report);
     queryClient.invalidateQueries({ queryKey: [DISCOVER_REPORT_SUMMARIES_QUERY_KEY] });
+  };
+
+  const toggleFeatured = async (report: GeneratedReport) => {
+    try {
+      const newStatus = !report.isFeatured;
+      
+      const { error } = await supabase.rpc('toggle_discover_report_featured', {
+        report_id: report.id,
+        featured_status: newStatus
+      });
+
+      if (error) throw error;
+
+      // Uppdatera lokal cache manuellt för direkt feedback
+      queryClient.setQueryData<GeneratedReport[]>(
+        [DISCOVER_REPORT_SUMMARIES_QUERY_KEY, ADMIN_REPORT_LIMIT],
+        (old) => old?.map(r => r.id === report.id ? { ...r, isFeatured: newStatus } : r)
+      );
+
+      // Uppdatera även den publika cachen om den finns
+      queryClient.setQueryData<GeneratedReport[]>(
+        [DISCOVER_REPORT_SUMMARIES_QUERY_KEY, PUBLIC_REPORT_LIMIT],
+        (old) => old?.map(r => r.id === report.id ? { ...r, isFeatured: newStatus } : r)
+      );
+
+      toast({
+        title: newStatus ? "Rapport utvald" : "Rapport borttagen",
+        description: `"${report.reportTitle}" visas ${newStatus ? 'nu' : 'inte längre'} som utvald.`,
+      });
+    } catch (error) {
+      console.error('Error toggling featured:', error);
+      toast({
+        title: "Kunde inte uppdatera status",
+        description: "Ett fel uppstod vid kommunikation med databasen.",
+        variant: "destructive"
+      });
+    }
   };
 
   const getAnalysisTypeColor = (type: string) => {
@@ -551,6 +589,7 @@ const AdminAnalysesDashboard: React.FC = () => {
                   <TableRow>
                     <TableHead>Rapport</TableHead>
                     <TableHead>Nyckelinsikter</TableHead>
+                    <TableHead className="w-[80px] text-center">Utvald</TableHead>
                     <TableHead>Skapad</TableHead>
                     <TableHead className="text-right">Åtgärder</TableHead>
                   </TableRow>
@@ -586,6 +625,24 @@ const AdminAnalysesDashboard: React.FC = () => {
                           </div>
                         )}
                       </TableCell>
+                      
+                      <TableCell className="align-top text-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleFeatured(report)}
+                          className="hover:bg-transparent h-8 w-8 p-0"
+                        >
+                          <Star 
+                            className={`h-5 w-5 transition-all ${
+                              report.isFeatured 
+                                ? "fill-yellow-400 text-yellow-400" 
+                                : "text-muted-foreground hover:text-yellow-400"
+                            }`} 
+                          />
+                        </Button>
+                      </TableCell>
+
                       <TableCell className="align-top">
                         <div className="flex items-center gap-1 text-sm text-gray-600">
                           <Calendar className="h-4 w-4" />

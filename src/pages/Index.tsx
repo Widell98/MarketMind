@@ -2,26 +2,18 @@ import React from 'react';
 import Layout from '@/components/Layout';
 import {
   Brain,
-  UserPlus,
   BarChart3,
-  Users,
-  ArrowUpRight,
   TrendingUp,
   Shield,
   MessageCircle,
   CheckCircle,
   Heart,
-  Target,
   Coffee,
   HandHeart,
   MapPin,
   Clock,
-  Zap,
-  DollarSign,
   MessageSquare,
-  Settings,
   Building2,
-  RefreshCw,
   Sparkles,
   Search,
   Newspaper,
@@ -29,6 +21,9 @@ import {
   Activity,
   Star,
   Wallet,
+  FileText,
+  Briefcase,
+  ArrowUpRight,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,8 +35,10 @@ import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useUserHoldings, type UserHolding } from '@/hooks/useUserHoldings';
 import { useAIInsights } from '@/hooks/useAIInsights';
-import { useLikedStockCases } from '@/hooks/useLikedStockCases';
+import { useStockCases } from '@/hooks/useStockCases';
 import { useNewsData } from '@/hooks/useNewsData';
+import { useDiscoverReportSummaries } from '@/hooks/useDiscoverReportSummaries';
+import { useLikedStockCases } from '@/hooks/useLikedStockCases';
 import { Badge } from '@/components/ui/badge';
 import StockCaseCard from '@/components/StockCaseCard';
 import PortfolioOverviewCard, { type SummaryCard } from '@/components/PortfolioOverviewCard';
@@ -51,28 +48,6 @@ import { resolveHoldingValue } from '@/utils/currencyUtils';
 import { useDailyChangeData } from '@/hooks/useDailyChangeData';
 import HoldingsHighlightCard from '@/components/HoldingsHighlightCard';
 import AllocationCard from '@/components/AllocationCard';
-
-type QuickAction = {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  description: string;
-  to: string;
-};
-
-
-const insightTypeLabels: Record<'performance' | 'allocation' | 'risk' | 'opportunity', string> = {
-  performance: 'Prestation',
-  allocation: 'Allokering',
-  risk: 'Risk',
-  opportunity: 'Möjlighet',
-};
-
-const insightBadgeStyles: Record<'performance' | 'allocation' | 'risk' | 'opportunity', string> = {
-  performance: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-transparent',
-  allocation: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-transparent',
-  risk: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-transparent',
-  opportunity: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-transparent',
-};
 
 const formatCategoryLabel = (category: string): string => {
   const categoryMap: Record<string, string> = {
@@ -105,41 +80,37 @@ const formatTime = (dateString: string): string => {
 
 const Index = () => {
   const navigate = useNavigate();
-  const {
-    user
-  } = useAuth();
-  const {
-    t
-  } = useLanguage();
-  const {
-    activePortfolio,
-    loading
-  } = usePortfolio();
-  const {
-    performance
-  } = usePortfolioPerformance();
-  const {
-    totalCash
-  } = useCashHoldings();
-  const {
-    actualHoldings
-  } = useUserHoldings();
-  const {
-    insights,
-    isLoading: insightsLoading,
-    lastUpdated: insightsLastUpdated,
-    refreshInsights,
-  } = useAIInsights();
-  const { likedStockCases, loading: likedStockCasesLoading } = useLikedStockCases();
+  const { user } = useAuth();
+  const { t } = useLanguage();
+  const { activePortfolio, loading } = usePortfolio();
+  const { performance } = usePortfolioPerformance();
+  const { totalCash } = useCashHoldings();
+  const { actualHoldings } = useUserHoldings();
+  const { insights, isLoading: insightsLoading, lastUpdated: insightsLastUpdated } = useAIInsights();
+  
+  // Hämta Utvalda Case
+  const { stockCases: featuredStockCases, loading: featuredStockCasesLoading } = useStockCases({ 
+    featuredOnly: true, 
+    limit: 3 
+  });
+
+  const { likedStockCases } = useLikedStockCases();
   const { morningBrief, newsData } = useNewsData();
-  // Show portfolio dashboard if user has portfolio OR has holdings (so they can see portfolio value after implementing strategy)
+  const { reports: allReports } = useDiscoverReportSummaries(50);
+
+  // Show portfolio dashboard if user has portfolio OR has holdings
   const hasPortfolio = !loading && (!!activePortfolio || (actualHoldings && actualHoldings.length > 0));
-  const totalPortfolioValue = performance.totalPortfolioValue;
-  const greetingName = user?.user_metadata?.first_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || t('common.user');
   const holdingsCount = actualHoldings?.length ?? 0;
-  const safeTotalPortfolioValue = typeof totalPortfolioValue === 'number' && Number.isFinite(totalPortfolioValue) ? totalPortfolioValue : 0;
+  const safeTotalPortfolioValue = typeof performance.totalPortfolioValue === 'number' && Number.isFinite(performance.totalPortfolioValue) ? performance.totalPortfolioValue : 0;
   const safeTotalCash = typeof totalCash === 'number' && Number.isFinite(totalCash) ? totalCash : 0;
   
+  // Filtrera utvalda rapporter
+  const featuredReports = React.useMemo(() => {
+    return allReports
+      .filter(r => r.isFeatured)
+      .slice(0, 3);
+  }, [allReports]);
+
   const formatDailyChangeValue = (value: number | null | undefined) => {
     if (value === null || value === undefined) return '–';
     const prefix = value > 0 ? '+' : '';
@@ -147,14 +118,6 @@ const Index = () => {
   };
 
   const formatPercent = (value: number) => `${value.toFixed(2)}%`;
-
-  const renderHoldingAvatar = (holding: UserHolding) => {
-    const initial = (holding.name || holding.symbol || '?').charAt(0).toUpperCase();
-    const baseClasses = 'flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold';
-    const colorClasses = 'bg-muted/40 text-foreground';
-
-    return <div className={`${baseClasses} ${colorClasses}`}>{initial}</div>;
-  };
 
   const dailyHighlights = React.useMemo(() => {
     const sortableHoldings = actualHoldings.filter(holding =>
@@ -232,33 +195,25 @@ const Index = () => {
           return;
         }
         
-        // Calculate portfolio's today development based on Change % from Google Sheets
-        // Weighted by each holding's value in the portfolio
         let totalWeightedChange = 0;
         let totalSecuritiesValue = 0;
         let holdingsWithData = 0;
         let holdingsWithoutData = 0;
 
         actualHoldings.forEach(holding => {
-          // Skip cash holdings and recommendations (they don't have Change %)
           if (holding.holding_type === 'recommendation') {
             return;
           }
 
-          // Get holding's current value in SEK using proper currency conversion
           const { valueInSEK: holdingValue } = resolveHoldingValue(holding);
           
-          // Skip if no valid value
           if (holdingValue <= 0) {
             return;
           }
 
-          // Try to find Change % from Google Sheets data
           const changePercent = getChangeForTicker(holding.symbol);
 
-          // Only include holdings with valid Change % data from Google Sheets
           if (changePercent !== null && !isNaN(changePercent) && isFinite(changePercent)) {
-            // Weight the change by the holding's proportion of the portfolio
             const weight = holdingValue / safeTotalPortfolioValue;
             totalWeightedChange += weight * changePercent;
             totalSecuritiesValue += holdingValue;
@@ -268,7 +223,6 @@ const Index = () => {
           }
         });
 
-        // Calculate the change value in SEK
         const finalChangePercent = totalWeightedChange;
         const changeValue = (totalSecuritiesValue * finalChangePercent) / 100;
 
@@ -278,7 +232,6 @@ const Index = () => {
         });
       } catch (error) {
         console.error('Error calculating today development:', error);
-        // Set to 0% on error
         setTodayDevelopment({
           percent: 0,
           value: 0,
@@ -295,7 +248,6 @@ const Index = () => {
   const dayChangeValue = todayDevelopment?.value ?? 0;
   const isPositiveDayChange = dayChangePercent >= 0;
 
-  // Behåller denna logik om du vill använda den senare, men den används inte i den nya vyn
   const summaryCards = React.useMemo<SummaryCard[]>(() => {
     const changeValue = dayChangeValue;
     const changeValueFormatted = changeValue !== 0
@@ -402,9 +354,8 @@ const Index = () => {
       <div className="min-h-0 bg-background">
         <div className="w-full max-w-5xl xl:max-w-6xl mx-auto px-3 sm:px-6 py-5 sm:py-9 lg:py-12">
           
-          {/* Hero Section - Apple-inspired clean design */}
+          {/* Hero Section */}
           {!user && <div className="mb-16 sm:mb-20 lg:mb-24">
-              {/* Hero Content */}
               <section className="relative flex flex-col justify-center overflow-hidden rounded-[28px] border border-border/60 bg-card/70 px-6 py-10 shadow-sm backdrop-blur sm:px-10 sm:py-12 lg:px-14 min-h-[calc(100vh-160px)] sm:min-h-[calc(100vh-180px)] lg:min-h-[calc(100vh-220px)]">
                 <div className="grid gap-10 lg:gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center">
                   <div className="text-left">
@@ -500,7 +451,7 @@ const Index = () => {
                 </div>
               </section>
 
-              {/* How it works - Clean Apple style */}
+              {/* How it works */}
               <div className="mx-auto mt-16 max-w-5xl sm:mt-20">
                 <div className="text-center">
                   <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">{t('howItWorks.title')}</h2>
@@ -538,10 +489,6 @@ const Index = () => {
                   </div>
                 </div>
               </div>
-
-            {/* Clean Examples Section */}
-
-
             </div>}
 
           {/* Clean Dashboard for logged-in users */}
@@ -549,12 +496,12 @@ const Index = () => {
               <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
                 <div className="space-y-5 sm:space-y-6">
 
-                  {/* NY SEKTION: Din Portfölj - Ersätter det gamla värdekortet */}
+                  {/* 1. Din Portfölj */}
                   <div className="space-y-3 sm:space-y-4">
                     <h2 className="text-lg font-semibold text-foreground px-1">Din Portfölj</h2>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                       
-                      {/* Performance Card - Ersätter "Bankkontot" med "Riktning" */}
+                      {/* Performance Card */}
                       <Card className="p-6 flex flex-col justify-between relative overflow-hidden border-border/60 shadow-sm">
                         <div className="relative z-10">
                           <div className="flex items-center gap-2 mb-2">
@@ -586,7 +533,7 @@ const Index = () => {
                         <div className={`absolute -right-4 -bottom-4 h-32 w-32 rounded-full blur-3xl opacity-20 ${isPositiveDayChange ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                       </Card>
 
-                      {/* Highlights Cards - Vad driver rörelsen? */}
+                      {/* Highlights Cards */}
                       <HoldingsHighlightCard
                         title="Dagens vinnare"
                         icon={<TrendingUp className="h-5 w-5" />}
@@ -605,7 +552,7 @@ const Index = () => {
                     </div>
                   </div>
 
-                  {/* News/Morning Brief Section - Moved up */}
+                  {/* 2. Morgonrapport */}
                   {morningBrief && (
                     <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
                       <div className="flex items-center gap-2 mb-4">
@@ -639,23 +586,21 @@ const Index = () => {
                     </section>
                   )}
 
-                  {/* Liked Stocks Section */}
+                  {/* 3. UTVALDA STOCK CASES */}
                   <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
-                        <Heart className="h-5 w-5 text-primary" />
-                        <h2 className="text-base font-semibold text-foreground sm:text-lg">Dina gillade aktier</h2>
+                        <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+                        <h2 className="text-base font-semibold text-foreground sm:text-lg">Utvalda Case</h2>
                       </div>
-                      {likedStockCases.length > 0 && (
-                        <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                          <Link to="/discover?tab=liked">
-                            Se alla
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </Link>
-                        </Button>
-                      )}
+                      <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+                        <Link to="/discover">
+                          Se alla
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
                     </div>
-                    {likedStockCasesLoading ? (
+                    {featuredStockCasesLoading ? (
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
                         {Array.from({ length: 3 }).map((_, index) => (
                           <div key={index} className="rounded-2xl border border-border/60 bg-muted/20 p-4 animate-pulse">
@@ -664,35 +609,36 @@ const Index = () => {
                           </div>
                         ))}
                       </div>
-                    ) : likedStockCases.length > 0 ? (
+                    ) : featuredStockCases.length > 0 ? (
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
-                        {likedStockCases.slice(0, 3).map((stockCase) => (
+                        {featuredStockCases.slice(0, 3).map((stockCase) => (
                           <StockCaseCard
                             key={stockCase.id}
                             stockCase={stockCase}
                             onViewDetails={(id) => navigate(`/stock-cases/${id}`)}
-                            showMetaBadges={false}
+                            showMetaBadges={false} // Döljer badges
+                            showActions={false}    // Döljer knappar
                           />
                         ))}
                       </div>
                     ) : (
                       <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-8 text-center">
-                        <Heart className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-semibold mb-2">Inga gillade aktier ännu</h3>
+                        <Star className="mx-auto h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+                        <h3 className="text-lg font-semibold mb-2">Inga utvalda case just nu</h3>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Utforska aktier och lägg till dem i dina favoriter
+                          Vi letar ständigt efter nya intressanta möjligheter.
                         </p>
                         <Button asChild>
                           <Link to="/discover">
                             <Search className="mr-2 h-4 w-4" />
-                            Upptäck aktier
+                            Utforska marknaden
                           </Link>
                         </Button>
                       </div>
                     )}
                   </section>
 
-                  {/* Latest News Section */}
+                  {/* 4. News Section */}
                   {newsData && newsData.length > 0 && (
                     <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
                       <div className="flex items-center justify-between mb-4">
@@ -743,12 +689,78 @@ const Index = () => {
                       </div>
                     </section>
                   )}
+
+                  {/* 5. Featured Reports Section */}
+                  {featuredReports.length > 0 && (
+                    <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6 mb-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-5 w-5 text-primary" />
+                          <h2 className="text-base font-semibold text-foreground sm:text-lg">Utvalda Rapporter</h2>
+                        </div>
+                        <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+                          <Link to="/discover">
+                            Se alla
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
+                      
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {featuredReports.map((report) => (
+                          <Card key={report.id} className="flex flex-col h-full hover:shadow-md transition-all border-border/60">
+                            <CardHeader className="pb-3">
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="space-y-1">
+                                  <CardTitle className="text-base font-semibold line-clamp-1">
+                                    {report.reportTitle}
+                                  </CardTitle>
+                                  <CardDescription className="font-medium text-primary">
+                                    {report.companyName}
+                                  </CardDescription>
+                                </div>
+                                {report.companyLogoUrl && (
+                                  <div className="h-8 w-8 rounded bg-muted/20 p-1 shrink-0">
+                                    <img src={report.companyLogoUrl} alt={report.companyName} className="w-full h-full object-contain" />
+                                  </div>
+                                )}
+                              </div>
+                            </CardHeader>
+                            <CardContent className="flex-1 pb-4">
+                              <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
+                                {report.summary}
+                              </p>
+                              {report.keyMetrics && report.keyMetrics.length > 0 && (
+                                <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-border/40">
+                                  {report.keyMetrics.slice(0, 2).map((metric, i) => (
+                                    <div key={i}>
+                                      <p className="text-xs text-muted-foreground">{metric.label}</p>
+                                      <p className="text-sm font-medium">
+                                        {metric.value}
+                                        {metric.trend && (
+                                          <span className={`ml-1 text-xs ${metric.trend.includes('+') ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                            {metric.trend}
+                                          </span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
                 </div>
               </div>
             </div>}
 
-          {/* Enhanced personal welcome for users without portfolio */}
+          {/* Welcome for users without portfolio */}
           {user && !hasPortfolio && !loading && <div className="mb-12 sm:mb-16">
+              {/* ... Welcome Card ... */}
               <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-3 sm:py-6">
                 <div className="space-y-6 sm:space-y-8">
                   <Card className="rounded-3xl border-slate-200 bg-gradient-to-r from-slate-50 to-indigo-50 shadow-lg dark:border-slate-700 dark:from-slate-800 dark:to-indigo-900/20">
@@ -762,7 +774,6 @@ const Index = () => {
                         den ekonomiska trygghet du drömmer om. Vi tar det i din takt, steg för steg.
                       </p>
 
-                      {/* Personal journey section */}
                       <div className="mb-8 rounded-2xl border bg-card p-6 shadow-sm sm:mb-12 sm:p-8">
                         <h4 className="mb-6 flex items-center justify-center gap-3 text-lg font-semibold text-foreground">
                           <MapPin className="h-5 w-5 text-primary" />
@@ -801,23 +812,21 @@ const Index = () => {
                     </div>
                   </Card>
 
-                  {/* Liked Stocks Section for users without portfolio */}
+                  {/* Featured Case Section for empty portfolio users */}
                   <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
-                        <Heart className="h-5 w-5 text-primary" />
-                        <h2 className="text-base font-semibold text-foreground sm:text-lg">Dina gillade aktier</h2>
+                        <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+                        <h2 className="text-base font-semibold text-foreground sm:text-lg">Utvalda Case</h2>
                       </div>
-                      {likedStockCases.length > 0 && (
-                        <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                          <Link to="/discover?tab=liked">
-                            Se alla
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </Link>
-                        </Button>
-                      )}
+                      <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+                        <Link to="/discover">
+                          Se alla
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
                     </div>
-                    {likedStockCasesLoading ? (
+                    {featuredStockCasesLoading ? (
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
                         {Array.from({ length: 3 }).map((_, index) => (
                           <div key={index} className="rounded-2xl border border-border/60 bg-muted/20 p-4 animate-pulse">
@@ -826,33 +835,98 @@ const Index = () => {
                           </div>
                         ))}
                       </div>
-                    ) : likedStockCases.length > 0 ? (
+                    ) : featuredStockCases.length > 0 ? (
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
-                        {likedStockCases.slice(0, 3).map((stockCase) => (
+                        {featuredStockCases.slice(0, 3).map((stockCase) => (
                           <StockCaseCard
                             key={stockCase.id}
                             stockCase={stockCase}
                             onViewDetails={(id) => navigate(`/stock-cases/${id}`)}
-                            showMetaBadges={false}
+                            showMetaBadges={false} // Döljer badges
+                            showActions={false}    // Döljer knappar
                           />
                         ))}
                       </div>
                     ) : (
                       <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-8 text-center">
-                        <Heart className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-semibold mb-2">Inga gillade aktier ännu</h3>
+                        <Star className="mx-auto h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+                        <h3 className="text-lg font-semibold mb-2">Inga utvalda case just nu</h3>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Utforska aktier och lägg till dem i dina favoriter
+                          Vi letar ständigt efter nya intressanta möjligheter.
                         </p>
                         <Button asChild>
                           <Link to="/discover">
                             <Search className="mr-2 h-4 w-4" />
-                            Upptäck aktier
+                            Utforska marknaden
                           </Link>
                         </Button>
                       </div>
                     )}
                   </section>
+
+                  {/* Featured Reports Section for users without portfolio */}
+                  {featuredReports.length > 0 && (
+                    <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-5 w-5 text-primary" />
+                          <h2 className="text-base font-semibold text-foreground sm:text-lg">Utvalda Rapporter</h2>
+                        </div>
+                        <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+                          <Link to="/discover">
+                            Se alla
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
+                      
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {featuredReports.map((report) => (
+                          <Card key={report.id} className="flex flex-col h-full hover:shadow-md transition-all border-border/60">
+                            <CardHeader className="pb-3">
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="space-y-1">
+                                  <CardTitle className="text-base font-semibold line-clamp-1">
+                                    {report.reportTitle}
+                                  </CardTitle>
+                                  <CardDescription className="font-medium text-primary">
+                                    {report.companyName}
+                                  </CardDescription>
+                                </div>
+                                {report.companyLogoUrl && (
+                                  <div className="h-8 w-8 rounded bg-muted/20 p-1 shrink-0">
+                                    <img src={report.companyLogoUrl} alt={report.companyName} className="w-full h-full object-contain" />
+                                  </div>
+                                )}
+                              </div>
+                            </CardHeader>
+                            <CardContent className="flex-1 pb-4">
+                              <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
+                                {report.summary}
+                              </p>
+                              {report.keyMetrics && report.keyMetrics.length > 0 && (
+                                <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-border/40">
+                                  {report.keyMetrics.slice(0, 2).map((metric, i) => (
+                                    <div key={i}>
+                                      <p className="text-xs text-muted-foreground">{metric.label}</p>
+                                      <p className="text-sm font-medium">
+                                        {metric.value}
+                                        {metric.trend && (
+                                          <span className={`ml-1 text-xs ${metric.trend.includes('+') ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                            {metric.trend}
+                                          </span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </section>
+                  )}
 
                   {/* News/Morning Brief Section for users without portfolio */}
                   {morningBrief && (
@@ -888,7 +962,7 @@ const Index = () => {
                     </section>
                   )}
 
-                  {/* Latest News Section */}
+                  {/* News Section for users without portfolio */}
                   {newsData && newsData.length > 0 && (
                     <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
                       <div className="flex items-center justify-between mb-4">
@@ -939,6 +1013,7 @@ const Index = () => {
                       </div>
                     </section>
                   )}
+
                 </div>
               </div>
             </div>}

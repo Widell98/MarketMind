@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, ArrowLeft, X, Edit, Trash2, Plus, Save, Search, TrendingUp, Calendar, CheckCircle2, Loader2 } from 'lucide-react';
+import { Upload, ArrowLeft, X, Edit, Trash2, Plus, Save, Search, TrendingUp, Calendar, CheckCircle2, Loader2, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -68,6 +68,7 @@ type StockCaseWithActions = {
   category_id: string | null;
   created_at: string;
   updated_at: string;
+  isFeatured?: boolean;
   profiles?: {
     username: string;
     display_name: string | null;
@@ -430,6 +431,7 @@ const AdminStockCases = () => {
           ...stockCase,
           title: normalizeStockCaseTitle(stockCase.title, stockCase.company_name),
           status: (stockCase.status || 'active') as 'active' | 'winner' | 'loser',
+          isFeatured: stockCase.is_featured,
           profiles: profile ? { 
             username: profile.username, 
             display_name: profile.display_name 
@@ -451,6 +453,35 @@ const AdminStockCases = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleFeatured = async (stockCase: StockCaseWithActions) => {
+    try {
+      const newStatus = !stockCase.isFeatured;
+      
+      const { error } = await supabase.rpc('toggle_stock_case_featured', {
+        case_id: stockCase.id,
+        featured_status: newStatus
+      });
+
+      if (error) throw error;
+
+      // Uppdatera lokal state direkt
+      setAllCases(prev => prev.map(c => 
+        c.id === stockCase.id ? { ...c, isFeatured: newStatus } : c
+      ));
+
+      toast({
+        title: newStatus ? "Case utvalt" : "Case borttaget från utvalda",
+        description: `"${stockCase.title}" visas ${newStatus ? 'nu' : 'inte längre'} på startsidan.`,
+      });
+    } catch (error) {
+      console.error('Error toggling featured:', error);
+      toast({
+        title: "Kunde inte uppdatera",
+        variant: "destructive"
+      });
     }
   };
 
@@ -1115,6 +1146,7 @@ const AdminStockCases = () => {
                           <TableHead>Ticker</TableHead>
                           <TableHead>Kategori</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead className="w-[80px] text-center">Utvald</TableHead>
                           <TableHead>Skapare</TableHead>
                           <TableHead>Inköp/Mål</TableHead>
                           <TableHead>Skapad</TableHead>
@@ -1150,6 +1182,24 @@ const AdminStockCases = () => {
                                 </Select>
                               </div>
                             </TableCell>
+                            
+                            <TableCell className="text-center">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleFeatured(stockCase)}
+                                className="hover:bg-transparent h-8 w-8 p-0"
+                              >
+                                <Star 
+                                  className={`h-5 w-5 transition-all ${
+                                    stockCase.isFeatured 
+                                      ? "fill-yellow-400 text-yellow-400" 
+                                      : "text-muted-foreground hover:text-yellow-400"
+                                  }`} 
+                                />
+                              </Button>
+                            </TableCell>
+
                             <TableCell>
                               {stockCase.profiles?.display_name || stockCase.profiles?.username || 'Admin'}
                             </TableCell>

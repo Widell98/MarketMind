@@ -1,4 +1,3 @@
-
 export interface StockCase {
   id: string;
   title: string;
@@ -33,6 +32,7 @@ export interface StockCase {
   timeframe?: string;
   target_reached?: boolean;
   stop_loss_hit?: boolean;
+  isFeatured?: boolean; // Nytt fält
   profiles?: {
     username: string;
     display_name: string | null;

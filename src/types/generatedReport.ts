@@ -18,4 +18,5 @@ export interface GeneratedReport {
   sourceType?: 'text' | 'url' | 'document';
   sourceDocumentName?: string | null;
   sourceDocumentId?: string | null;
+  isFeatured: boolean; // Nytt fält
 }
