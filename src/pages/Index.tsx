@@ -1,5 +1,6 @@
 import React from 'react';
 import Layout from '@/components/Layout';
+import { isMarketOpen } from '@/utils/marketHours';
 import {
   Brain,
   BarChart3,
@@ -48,6 +49,14 @@ import { resolveHoldingValue } from '@/utils/currencyUtils';
 import { useDailyChangeData } from '@/hooks/useDailyChangeData';
 import HoldingsHighlightCard from '@/components/HoldingsHighlightCard';
 import AllocationCard from '@/components/AllocationCard';
+
+// Definiera gränssnittet för QuickAction här
+interface QuickAction {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+  to: string;
+}
 
 const formatCategoryLabel = (category: string): string => {
   const categoryMap: Record<string, string> = {
@@ -121,7 +130,10 @@ const Index = () => {
 
   const dailyHighlights = React.useMemo(() => {
     const sortableHoldings = actualHoldings.filter(holding =>
-      holding.holding_type !== 'recommendation' && holding.dailyChangePercent !== null && holding.dailyChangePercent !== undefined
+      holding.holding_type !== 'recommendation' && 
+      holding.dailyChangePercent !== null && 
+      holding.dailyChangePercent !== undefined &&
+      isMarketOpen(holding) // Filtrera bort stängda marknader
     );
 
     const best = [...sortableHoldings]
@@ -173,24 +185,9 @@ const Index = () => {
 
   React.useEffect(() => {
     const calculateTodayDevelopment = async () => {
-      if (!user || !hasPortfolio || safeTotalPortfolioValue === 0 || !actualHoldings || actualHoldings.length === 0) {
-        setLoadingTodayDevelopment(false);
-        return;
-      }
-
-      if (sheetChangeDataLoading) {
-        setLoadingTodayDevelopment(true);
-        return;
-      }
-
       try {
-        setLoadingTodayDevelopment(true);
-
-        if (!sheetChangeData || sheetChangeData.size === 0) {
-          setTodayDevelopment({
-            percent: 0,
-            value: 0,
-          });
+        if (!actualHoldings || actualHoldings.length === 0) {
+          setTodayDevelopment({ percent: 0, value: 0 });
           setLoadingTodayDevelopment(false);
           return;
         }
@@ -201,21 +198,27 @@ const Index = () => {
         let holdingsWithoutData = 0;
 
         actualHoldings.forEach(holding => {
-          if (holding.holding_type === 'recommendation') {
-            return;
-          }
-
+          if (holding.holding_type === 'recommendation') return;
           const { valueInSEK: holdingValue } = resolveHoldingValue(holding);
-          
-          if (holdingValue <= 0) {
-            return;
+          if (holdingValue <= 0) return;
+
+          // Om marknaden är stängd, räkna utvecklingen som 0 för portföljens total
+          if (!isMarketOpen(holding)) {
+             totalSecuritiesValue += holdingValue;
+             // Vi lägger inte till något i totalWeightedChange (det är 0), 
+             // men vi räknar det som att vi har data (0% förändring).
+             holdingsWithData++;
+             return; 
           }
 
           const changePercent = getChangeForTicker(holding.symbol);
-
+          
           if (changePercent !== null && !isNaN(changePercent) && isFinite(changePercent)) {
-            const weight = holdingValue / safeTotalPortfolioValue;
-            totalWeightedChange += weight * changePercent;
+            // Använd portföljens totalvärde för viktning
+            if (safeTotalPortfolioValue > 0) {
+              const weight = holdingValue / safeTotalPortfolioValue;
+              totalWeightedChange += weight * changePercent;
+            }
             totalSecuritiesValue += holdingValue;
             holdingsWithData++;
           } else {
@@ -223,11 +226,12 @@ const Index = () => {
           }
         });
 
-        const finalChangePercent = totalWeightedChange;
-        const changeValue = (totalSecuritiesValue * finalChangePercent) / 100;
+        // Beräkna totalt värde i kronor baserat på den viktade procentuella förändringen
+        // och det totala portföljvärdet
+        const changeValue = (safeTotalPortfolioValue * totalWeightedChange) / 100;
 
         setTodayDevelopment({
-          percent: Math.round(finalChangePercent * 100) / 100,
+          percent: Math.round(totalWeightedChange * 100) / 100,
           value: Math.round(changeValue * 100) / 100,
         });
       } catch (error) {

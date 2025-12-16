@@ -23,7 +23,10 @@ import FloatingActionButton from '@/components/FloatingActionButton';
 import { useToast } from '@/hooks/use-toast';
 import { normalizeShareClassTicker, parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
 import { supabase } from '@/integrations/supabase/client';
-import { useExchangeRates } from '@/contexts/ExchangeRatesContext'; // [!code ++] Lägg till denna import
+import { useExchangeRates } from '@/contexts/ExchangeRatesContext';
+import { isMarketOpen } from '@/utils/marketHours';
+import { resolveHoldingValue } from '@/utils/currencyUtils';
+
 const PortfolioImplementation = () => {
   const {
     actualHoldings,
@@ -35,7 +38,6 @@ const PortfolioImplementation = () => {
     loading
   } = usePortfolio();
 
-  // [!code ++] Lägg till detta anrop. 
   // Även om du inte använder 'rates'-variabeln direkt här, 
   // så tvingar detta komponenten att rendera om när kurserna uppdateras.
   const { rates } = useExchangeRates();
@@ -65,6 +67,7 @@ const PortfolioImplementation = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isImportingHoldings, setIsImportingHoldings] = useState(false);
   const { toast } = useToast();
+
   useEffect(() => {
     // Only show login modal if auth has finished loading and user is not authenticated
     if (!authLoading && !user) {
@@ -73,10 +76,12 @@ const PortfolioImplementation = () => {
       setShowLoginModal(false);
     }
   }, [user, authLoading]);
+
   useEffect(() => {
     if (!user || loading) return;
     setShowOnboarding(false);
   }, [user, activePortfolio, loading]);
+
   useEffect(() => {
     // Set last updated time
     setLastUpdated(new Date().toLocaleTimeString('sv-SE', {
@@ -84,9 +89,11 @@ const PortfolioImplementation = () => {
       minute: '2-digit'
     }));
   }, [performance, totalCash]);
+
   useEffect(() => {
     hasTriggeredAutoUpdate.current = false;
   }, [user?.id]);
+
   useEffect(() => {
     if (!user || holdingsLoading) {
       return;
@@ -109,6 +116,36 @@ const PortfolioImplementation = () => {
       }
     })();
   }, [user, holdingsLoading, actualHoldings.length, updateAllPrices, refetchHoldings]);
+
+  // Beräkna en justerad performance för "Idag"-vyn som tar hänsyn till öppettider
+  const adjustedPerformance = React.useMemo(() => {
+    // Om ingen data finns, returnera original
+    if (!performance || !actualHoldings?.length) return performance;
+
+    let adjustedDayChangeValue = 0;
+
+    actualHoldings.forEach(holding => {
+      // Hoppa över om marknaden är stängd
+      if (!isMarketOpen(holding)) return;
+
+      const { valueInSEK } = resolveHoldingValue(holding);
+      const changePct = holding.dailyChangePercent ?? holding.daily_change_pct ?? 0;
+      
+      // Räkna ut kronförändring för detta innehav (om marknaden är öppen)
+      adjustedDayChangeValue += (valueInSEK * changePct) / 100;
+    });
+    
+    // Räkna ut ny procent baserat på hela portföljens värde (inte bara de öppna)
+    const totalPortfolioVal = performance.totalPortfolioValue || 1;
+    const adjustedDayChangePercent = (adjustedDayChangeValue / totalPortfolioVal) * 100;
+
+    return {
+      ...performance,
+      dayChange: adjustedDayChangeValue,
+      dayChangePercentage: adjustedDayChangePercent
+    };
+  }, [performance, actualHoldings]);
+
   const handleQuickChat = (message: string) => {
     if (!riskProfile) {
       return;
@@ -126,9 +163,11 @@ const PortfolioImplementation = () => {
       navigate('/ai-chatt');
     }
   };
+
   const handleActionClick = (action: string) => {
     // Future enhancement: trigger contextual workflows based on action
   };
+
   const handleUpdateProfile = () => {
     if (!user) {
       setShowLoginModal(true);
@@ -435,7 +474,11 @@ const PortfolioImplementation = () => {
             <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
               <PortfolioOverview
-                portfolio={activePortfolio}
+                portfolio={activePortfolio ? {
+                  ...activePortfolio,
+                  day_change: adjustedPerformance.dayChange,
+                  day_change_pct: adjustedPerformance.dayChangePercentage
+                } : activePortfolio}
                 onQuickChat={handleQuickChat}
                 onActionClick={handleActionClick}
                 importControls={portfolioImportControls}
