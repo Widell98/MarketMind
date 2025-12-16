@@ -21,11 +21,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { AlertCircle, Brain, Info, Sparkles, Upload, User } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
 import { useToast } from '@/hooks/use-toast';
-import { normalizeShareClassTicker, parsePortfolioHoldingsFromCSV } from '@/utils/portfolioCsvImport';
+import { normalizeShareClassTicker, parsePortfolioHoldingsFromCSV, enrichHoldingWithTicker } from '@/utils/portfolioCsvImport';
 import { supabase } from '@/integrations/supabase/client';
 import { useExchangeRates } from '@/contexts/ExchangeRatesContext';
 import { isMarketOpen } from '@/utils/marketHours';
 import { resolveHoldingValue } from '@/utils/currencyUtils';
+import useSheetTickers from '@/hooks/useSheetTickers';
 
 const PortfolioImplementation = () => {
   const {
@@ -59,6 +60,9 @@ const PortfolioImplementation = () => {
   const {
     totalCash
   } = useCashHoldings();
+  
+  const { tickers } = useSheetTickers();
+
   const navigate = useNavigate();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -199,9 +203,11 @@ const PortfolioImplementation = () => {
 
     try {
       const text = await file.text();
-      const parsed = parsePortfolioHoldingsFromCSV(text);
+      const rawHoldings = parsePortfolioHoldingsFromCSV(text);
+      
+      const enrichedHoldings = rawHoldings.map(h => enrichHoldingWithTicker(h, tickers));
 
-      if (!parsed.length) {
+      if (!enrichedHoldings.length) {
         throw new Error('Kunde inte tolka några innehav från CSV-filen. Kontrollera formatet.');
       }
 
@@ -210,7 +216,7 @@ const PortfolioImplementation = () => {
       }
 
       const nowIso = new Date().toISOString();
-      const holdingsToInsert = parsed.map(holding => {
+      const holdingsToInsert = enrichedHoldings.map(holding => {
         const normalizedSymbol = holding.symbol.trim()
           ? normalizeShareClassTicker(holding.symbol)
           : null;
