@@ -242,11 +242,11 @@ const handleDiscussHolding = (holdingName: string, symbol?: string) => {
     const cleanName = holdingName; // Används för frågorna
 
     // Skapa en lista med relevanta prompts
-    const suggestedPrompts = [
-      `Varför går ${cleanName} upp eller ner idag?`,
-      `Ge mig en kort analys av ${cleanName} och dess framtidsutsikter.`,
-      `Vilka är de största riskerna med att investera i ${cleanName}?`,
-      `Hur ser ${cleanName}s senaste kvartalsrapport ut?`
+   const suggestedPrompts = [
+      `Vad driver kursrörelserna i ${cleanName} just nu?`,
+      `Ge mig en 'Bull vs Bear'-analys för ${cleanName} på 6-12 månaders sikt.`,
+      `Hur står sig ${cleanName} värderingsmässigt jämfört med sina konkurrenter?`,
+      `Sammanfatta marknadssentimentet och de senaste nyheterna kring ${cleanName}.`
     ];
 
     navigate('/ai-chatt', {
