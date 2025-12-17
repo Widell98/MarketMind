@@ -96,7 +96,7 @@ const ChatInput = memo(({
 
         <form
           onSubmit={handleSubmit}
-          className="mx-auto flex w-full max-w-5xl items-end gap-2 sm:gap-3 lg:max-w-6xl xl:max-w-6xl xl:gap-4 2xl:max-w-7xl 2xl:gap-5"
+          className="mx-auto flex w-full max-w-5xl items-end gap-2 sm:gap-3 lg:max-w-6xl xl:max-w-[85rem] xl:gap-4 2xl:max-w-[95rem] 2xl:gap-5"
         >
           <div className="flex-1 relative min-w-0">
             {attachedDocuments.length > 0 && (
