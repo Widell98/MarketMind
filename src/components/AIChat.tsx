@@ -109,6 +109,9 @@ const AIChat = ({
   const navigate = useNavigate();
   const isPremium = subscription?.subscribed;
   
+  // Hämta contextData (t.ex. aktie-prompts) från navigation state
+  const contextData = location.state?.contextData;
+  
   const draftStorageKey = useMemo(() => {
     const sessionKey = currentSessionId ?? 'new';
     const portfolioKey = portfolioId ?? 'default';
@@ -197,20 +200,27 @@ const AIChat = ({
   }, [draftStorageKey, input]);
 
   // Handle session creation and initial messages
+// Handle session creation and initial messages
   useEffect(() => {
     const handleSessionInit = async () => {
-      // ÄNDRING: Använd ref för att låsa direkt. Detta stoppar "trippel-skapandet".
+      // 1. Säkerhetskoll: Om vi redan kört initiering eller ingen användare finns -> avbryt
       if (hasProcessedInitialMessageRef.current || !user) return;
 
-      // Fall 1: Tvingad ny session (t.ex. från Polymarket)
-      if (shouldCreateNewSession) {
-        // Lås direkt för att förhindra race conditions
+      // 2. Hämta flaggor: Vi kollar både props (från parent) och location.state (från navigation/knapp)
+      const state = location.state || {};
+      const triggerNewSession = shouldCreateNewSession || state.createNewSession;
+      const msg = initialMessage || state.initialMessage;
+      const stock = initialStock || state.initialStock;
+
+      // Fall 1: Tvingad ny session (t.ex. från Diskutera-knappen)
+      if (triggerNewSession) {
+        // Lås direkt för att förhindra dubbelkörning
         hasProcessedInitialMessageRef.current = true;
 
         await createNewSession(sessionName);
         
-        if (initialMessage) {
-          setInput(initialMessage);
+        if (msg) {
+          setInput(msg);
           setTimeout(() => {
             inputRef.current?.focus();
           }, 100);
@@ -220,21 +230,30 @@ const AIChat = ({
           setConversationContext(conversationData);
         }
         
-        // Rensa URL state direkt för att undvika omladdning
-        window.history.replaceState({}, document.title);
+        // VIKTIGT FIX: Uppdatera navigationens state för att stänga av "createNewSession".
+        // Detta gör att om användaren trycker F5, så är flaggan false och ingen ny chatt skapas.
+        navigate(location.pathname, { 
+          replace: true, 
+          state: { 
+            ...state,                 // Behåll dina prompts (contextData)
+            createNewSession: false,  // Stäng av skapande-flaggan
+            initialMessage: undefined // Rensa meddelandet
+          } 
+        });
         return;
       }
 
-      // Fall 2: URL parametrar (legacy eller externa länkar)
-      if (initialStock && initialMessage) {
+      // Fall 2: URL parametrar (gamla länkar eller externa anrop)
+      if (stock && msg) {
         hasProcessedInitialMessageRef.current = true;
-        await createNewSession(initialStock);
-        const decodedMessage = decodeURIComponent(initialMessage);
+        await createNewSession(stock);
+        const decodedMessage = decodeURIComponent(msg);
         setInput(decodedMessage);
         setTimeout(() => {
           inputRef.current?.focus();
         }, 100);
         
+        // Rensa URL-parametrar snyggt
         if (location.search) {
           const newUrl = `${location.pathname}${location.hash ?? ''}`;
           navigate(newUrl, { replace: true });
@@ -254,7 +273,8 @@ const AIChat = ({
     navigate,
     location.pathname,
     location.hash,
-    location.search
+    location.search,
+    location.state // Viktigt beroende för att reagera på knapptryckningen
   ]);
 
   useEffect(() => {
@@ -593,14 +613,47 @@ const AIChat = ({
             </header>
 
             <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
-              <ChatMessages
-                messages={messages}
-                isLoading={isLoading}
-                isLoadingSession={isLoadingSession}
-                messagesEndRef={messagesEndRef}
-                onExamplePrompt={showExamplePrompts ? handleExamplePrompt : undefined}
-                showGuideBot={isGuideSession}
-              />
+              {/* Conditional rendering for custom empty state with prompts */}
+              {messages.length === 0 && contextData ? (
+                <div className="flex flex-col items-center justify-center h-full p-8 space-y-8 animate-in fade-in zoom-in duration-300 overflow-y-auto">
+                  <div className="text-center space-y-3 max-w-lg">
+                    <div className="flex justify-center mb-4">
+                       <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                         <Sparkles className="w-8 h-8 text-primary" />
+                       </div>
+                    </div>
+                    <h2 className="text-2xl font-semibold text-foreground tracking-tight">
+                      {contextData.title}
+                    </h2>
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      {contextData.subtitle}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-3xl px-4">
+                    {contextData.prompts.map((prompt: string, index: number) => (
+                      <button
+                        key={index}
+                        onClick={() => handleExamplePrompt(prompt)}
+                        className="flex flex-col text-left p-5 rounded-xl border border-ai-border/60 bg-ai-surface hover:bg-ai-surface-muted hover:border-primary/30 transition-all duration-200 group shadow-sm hover:shadow-md"
+                      >
+                        <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors mb-1">
+                          {prompt}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <ChatMessages
+                  messages={messages}
+                  isLoading={isLoading}
+                  isLoadingSession={isLoadingSession}
+                  messagesEndRef={messagesEndRef}
+                  onExamplePrompt={showExamplePrompts ? handleExamplePrompt : undefined}
+                  showGuideBot={isGuideSession}
+                />
+              )}
 
               {user && !isGuideSession && (
                 <ChatDocumentManager
