@@ -902,13 +902,13 @@ ${tavilyContext || "Inga nyheter."}
 ${previousDayContext ? `GÅRDAGEN: ${previousDayContext}` : ""}
 
 INSTRUKTIONER:
-1. **Hero-sektion (Overview):** Fånga den absolut viktigaste händelsen ("The big story"). Förklara *varför* den är viktig.
-2. **Snabbkollen (Key Highlights):** 5 korta punkter. Blanda makro (räntor/inflation) med bolagsnyheter.
-3. **Fokus idag:** Titta efter kalenderhändelser i texten (Rapporter, KPI, Centralbanker) som sker IDAG.
+1. **Hero-sektion (Overview):** Fånga den absolut viktigaste händelsen ("The big story") baserat på de medföljande artiklarna.
+2. **Snabbkollen (Key Highlights):** 5 korta punkter baserade uteslutande på de största nyheterna i kontexten. Tvinga inte in makro om det inte är en huvudnyhet.
+3. **Fokus idag:** Identifiera specifika händelser eller deadlines som nämns i texten att de sker IDAG. Om inget specifikt nämns, lämna denna lista tom eller nämn generella teman från nyheterna.
 4. **Fördjupning (Sections):** Skapa exakt 3 sektioner:
-   - Sektion 1: "Marknadsläget" (Hur går börsen, terminer, sentiment).
-   - Sektion 2: "Dagens Djupdykning" (Välj ETT ämne/bolag från nyheterna och analysera det djupare).
-   - Sektion 3: "Makro & Omvärld" (Större trender, USA/Kina/Räntor).
+   - Sektion 1: "Marknadsläget" (Sammanfatta marknadsrörelser baserat på datan).
+   - Sektion 2: "Dagens Huvudämne" (Välj det mest dominerande ämnet/bolaget i nyhetsflödet).
+   - Sektion 3: "Övriga Trender" (Fånga upp andra viktiga nyheter som inte passar i ovanstående).
 
 FORMAT (JSON):
 {
