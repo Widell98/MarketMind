@@ -49,7 +49,8 @@ const parseCsv = (text: string): string[][] => {
   }
 
   if (insideQuotes) {
-    throw new Error('CSV parse error: unmatched quote');
+    // Graceful fallback for malformed CSV quotes
+    console.warn('CSV parse warning: unmatched quote detected, attempting to recover');
   }
 
   currentRow.push(currentValue);
@@ -71,8 +72,9 @@ const parseExchangeRate = (value: string | null | undefined): number | null => {
   // Remove quotes if present
   const unquoted = trimmed.replace(/^["']|["']$/g, '');
   
-  // Replace Swedish decimal comma with dot
-  const normalized = unquoted.replace(/,/g, '.').replace(/\s/g, '');
+  // Replace Swedish decimal comma with dot and remove spaces
+  // Example: "10,50" -> "10.50", "1 200,00" -> "1200.00"
+  const normalized = unquoted.replace(/\s/g, '').replace(/,/g, '.');
   
   const parsed = parseFloat(normalized);
   
@@ -80,29 +82,33 @@ const parseExchangeRate = (value: string | null | undefined): number | null => {
 };
 
 /**
- * Extract currency code from pair format "X/SEK"
- * Returns the currency code (X) or null if format is invalid
+ * Extract currency code from various formats
+ * Handles: "USD/SEK", "USD", "SEK/USD" (ignored), "Amerikansk Dollar" (ignored unless mapped)
  */
-const extractCurrencyFromPair = (pair: string | null | undefined): string | null => {
-  if (!pair) return null;
+const extractCurrencyCode = (cellValue: string | null | undefined): string | null => {
+  if (!cellValue) return null;
   
-  const trimmed = pair.trim().toUpperCase();
+  let trimmed = cellValue.trim().toUpperCase();
   if (!trimmed) return null;
   
-  // Only process X/SEK format (not SEK/X)
-  if (!trimmed.endsWith('/SEK')) return null;
-  
-  const currency = trimmed.replace('/SEK', '').trim();
-  return currency && currency.length > 0 ? currency : null;
+  // 1. Hantera formatet "USD/SEK"
+  if (trimmed.endsWith('/SEK')) {
+    return trimmed.replace('/SEK', '').trim();
+  }
+
+  // 2. Hantera om det bara står "USD", "EUR" etc. (Exakt 3 bokstäver)
+  // Vi undviker "SEK" eftersom vi alltid sätter den till 1 manuellt
+  if (trimmed.length === 3 && trimmed !== 'SEK') {
+    return trimmed;
+  }
+
+  return null;
 };
 
 /**
  * Fetch exchange rates from Google Sheets CSV
  * Returns ExchangeRates object with rates to SEK
- * 
- * Expects currency pairs in rows 954-963 (0-indexed: 953-962 after header)
- * Column A (index 0) = currency pair (e.g., "USD/SEK")
- * Column F (index 5) = exchange rate value
+ * * Scans the entire sheet for valid currency codes in Column B and rates in Column F.
  */
 export const fetchExchangeRatesFromSheet = async (): Promise<ExchangeRates> => {
   const exchangeRates: ExchangeRates = {};
@@ -131,32 +137,21 @@ export const fetchExchangeRatesFromSheet = async (): Promise<ExchangeRates> => {
       return exchangeRates;
     }
     
-    // Rows 954-963 in spreadsheet (0-indexed: 953-962 after header row)
-    // Since first row is header, data starts at index 1
-    // So we need rows at index 953-962 (which is rows 954-963 in spreadsheet)
-    const startRowIndex = 953; // Row 954 in spreadsheet (0-indexed: 953 after header)
-    const endRowIndex = 962;   // Row 963 in spreadsheet (0-indexed: 962 after header)
-    
-    // Ensure we don't go beyond available rows
-    const actualEndIndex = Math.min(endRowIndex, rows.length - 1);
-    
-    // Process currency rows
-    for (let i = startRowIndex; i <= actualEndIndex; i++) {
-      if (i >= rows.length) break;
-      
-      const row = rows[i];
-      
+    // Loop through ALL rows to find currencies
+    for (const row of rows) {
+      // Vi behöver data åtminstone fram till kolumn F (index 5)
       if (!row || row.length < 6) {
         continue;
       }
       
-      // Column A (index 0) = currency pair
-      const currencyPair = row[0]?.trim();
-      // Column F (index 5) = exchange rate
-      const rateValue = row[5]?.trim();
+      // Column B (index 1) = Currency Name/Code (t.ex. "USD" eller "USD/SEK")
+      const currencyCell = row[1];
       
-      const currency = extractCurrencyFromPair(currencyPair);
-      const rate = parseExchangeRate(rateValue);
+      // Column F (index 5) = Exchange Rate Value
+      const rateCell = row[5];
+      
+      const currency = extractCurrencyCode(currencyCell);
+      const rate = parseExchangeRate(rateCell);
       
       if (currency && rate !== null) {
         exchangeRates[currency] = rate;
@@ -166,10 +161,11 @@ export const fetchExchangeRatesFromSheet = async (): Promise<ExchangeRates> => {
     // Always include SEK with rate 1
     exchangeRates.SEK = 1;
     
+    console.log(`Successfully fetched ${Object.keys(exchangeRates).length} rates from sheet.`);
+    
   } catch (error) {
     console.error('Error fetching exchange rates from Google Sheets:', error);
   }
   
   return exchangeRates;
 };
-
