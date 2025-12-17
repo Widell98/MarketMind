@@ -6,6 +6,9 @@ import type { ExchangeRates } from './currencyUtils';
 
 const STANDARD_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRJZtyoepzQZSQw-LXTp0vmnpPVMqluTiPZJkPp61g5KsfEp08CA6LZ7CNoTfIgYe-E7lvCZ_ToMuF4/pub?output=csv";
 
+// Lista på valutor vi vill importera (för att slippa få med aktier som "ABB" från samma kolumn)
+const ALLOWED_CURRENCIES = ['USD', 'EUR', 'GBP', 'NOK', 'DKK', 'JPY', 'CHF', 'CAD', 'AUD'];
+
 /**
  * Parse CSV text handling quoted values and commas in cells
  */
@@ -49,7 +52,7 @@ const parseCsv = (text: string): string[][] => {
   }
 
   if (insideQuotes) {
-    throw new Error('CSV parse error: unmatched quote');
+    // Tyst hantering av parse-fel
   }
 
   currentRow.push(currentValue);
@@ -71,8 +74,8 @@ const parseExchangeRate = (value: string | null | undefined): number | null => {
   // Remove quotes if present
   const unquoted = trimmed.replace(/^["']|["']$/g, '');
   
-  // Replace Swedish decimal comma with dot
-  const normalized = unquoted.replace(/,/g, '.').replace(/\s/g, '');
+  // Replace Swedish decimal comma with dot and remove spaces
+  const normalized = unquoted.replace(/\s/g, '').replace(/,/g, '.');
   
   const parsed = parseFloat(normalized);
   
@@ -80,29 +83,29 @@ const parseExchangeRate = (value: string | null | undefined): number | null => {
 };
 
 /**
- * Extract currency code from pair format "X/SEK"
- * Returns the currency code (X) or null if format is invalid
+ * Extract currency code from various formats
  */
-const extractCurrencyFromPair = (pair: string | null | undefined): string | null => {
-  if (!pair) return null;
+const extractCurrencyCode = (cellValue: string | null | undefined): string | null => {
+  if (!cellValue) return null;
   
-  const trimmed = pair.trim().toUpperCase();
+  let trimmed = cellValue.trim().toUpperCase();
   if (!trimmed) return null;
   
-  // Only process X/SEK format (not SEK/X)
-  if (!trimmed.endsWith('/SEK')) return null;
-  
-  const currency = trimmed.replace('/SEK', '').trim();
-  return currency && currency.length > 0 ? currency : null;
+  // Hantera formatet "USD/SEK"
+  if (trimmed.endsWith('/SEK')) {
+    trimmed = trimmed.replace('/SEK', '').trim();
+  }
+
+  // Filtrera så vi bara tar riktiga valutor och inte aktier
+  if (ALLOWED_CURRENCIES.includes(trimmed)) {
+    return trimmed;
+  }
+
+  return null;
 };
 
 /**
  * Fetch exchange rates from Google Sheets CSV
- * Returns ExchangeRates object with rates to SEK
- * 
- * Expects currency pairs in rows 954-963 (0-indexed: 953-962 after header)
- * Column A (index 0) = currency pair (e.g., "USD/SEK")
- * Column F (index 5) = exchange rate value
  */
 export const fetchExchangeRatesFromSheet = async (): Promise<ExchangeRates> => {
   const exchangeRates: ExchangeRates = {};
@@ -112,64 +115,39 @@ export const fetchExchangeRatesFromSheet = async (): Promise<ExchangeRates> => {
       cache: 'no-store',
     });
     
-    if (!response.ok) {
-      console.error(`Failed to fetch Google Sheets CSV: ${response.status} ${response.statusText}`);
-      return exchangeRates;
-    }
+    if (!response.ok) return exchangeRates;
     
     const csvText = await response.text();
     
-    if (!csvText || csvText.trim().length === 0) {
-      console.error('Google Sheets CSV is empty');
-      return exchangeRates;
-    }
+    if (!csvText || csvText.trim().length === 0) return exchangeRates;
     
     const rows = parseCsv(csvText);
     
-    if (rows.length === 0) {
-      console.error('No rows found in Google Sheets CSV');
-      return exchangeRates;
-    }
-    
-    // Rows 954-963 in spreadsheet (0-indexed: 953-962 after header row)
-    // Since first row is header, data starts at index 1
-    // So we need rows at index 953-962 (which is rows 954-963 in spreadsheet)
-    const startRowIndex = 953; // Row 954 in spreadsheet (0-indexed: 953 after header)
-    const endRowIndex = 962;   // Row 963 in spreadsheet (0-indexed: 962 after header)
-    
-    // Ensure we don't go beyond available rows
-    const actualEndIndex = Math.min(endRowIndex, rows.length - 1);
-    
-    // Process currency rows
-    for (let i = startRowIndex; i <= actualEndIndex; i++) {
-      if (i >= rows.length) break;
+    // Loop through ALL rows to find currencies
+    rows.forEach((row) => {
+      // Vi behöver data åtminstone fram till kolumn F (index 5)
+      if (!row || row.length < 6) return;
       
-      const row = rows[i];
+      const currencyCell = row[1]; // Kolumn B
+      const rateCell = row[5];     // Kolumn F
       
-      if (!row || row.length < 6) {
-        continue;
+      const currency = extractCurrencyCode(currencyCell);
+      
+      if (currency) {
+        const rate = parseExchangeRate(rateCell);
+        if (rate !== null) {
+          exchangeRates[currency] = rate;
+        }
       }
-      
-      // Column A (index 0) = currency pair
-      const currencyPair = row[0]?.trim();
-      // Column F (index 5) = exchange rate
-      const rateValue = row[5]?.trim();
-      
-      const currency = extractCurrencyFromPair(currencyPair);
-      const rate = parseExchangeRate(rateValue);
-      
-      if (currency && rate !== null) {
-        exchangeRates[currency] = rate;
-      }
-    }
+    });
     
     // Always include SEK with rate 1
     exchangeRates.SEK = 1;
     
   } catch (error) {
-    console.error('Error fetching exchange rates from Google Sheets:', error);
+    // Tyst felhantering eller minimal loggning vid behov
+    console.error('Error fetching exchange rates:', error);
   }
   
   return exchangeRates;
 };
-
