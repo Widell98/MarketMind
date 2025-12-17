@@ -32,7 +32,6 @@ interface Holding {
   base_currency?: string;
   dailyChangePercent?: number | null;
   dailyChangeValueSEK?: number | null;
-  // Dessa fält används i renderingen, så vi lägger till dem i typen för att undvika TS-fel
   original_value?: number;
   original_currency?: string;
 }
@@ -150,7 +149,6 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
 
           const performance = holdingPerformanceMap?.[holding.id];
           const hasPerformanceData = Boolean(performance);
-          const hasPurchasePrice = performance?.hasPurchasePrice ?? hasPurchasePriceFallback;
           const profitLoss = performance?.profit ?? (purchaseValueSEK !== undefined ? valueInSEK - purchaseValueSEK : undefined);
           const profitPercentage = performance?.profitPercentage ?? (
             purchaseValueSEK !== undefined && purchaseValueSEK > 0
@@ -187,28 +185,29 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
             isUpdatingPrice && refreshingTicker && normalizedSymbol && refreshingTicker === normalizedSymbol
           );
 
-          // NY LOGIK: Kontrollera om marknaden är öppen
           const isOpen = isMarketOpen(holding);
 
           return (
             <TableRow key={holding.id}>
               <TableCell className="py-3 sm:py-3.5">
-                <div className="flex flex-col gap-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium leading-tight text-foreground break-words">{holding.name}</span>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center flex-wrap gap-2">
+                    <span className="font-semibold text-[15px] leading-tight text-foreground break-words">
+                      {holding.name}
+                    </span>
                     
-                    {/* "Diskutera"-knappen implementerad här */}
+                    {/* DESIGN-UPPDATERING: Mer lik mockup-bilden */}
                     {onDiscuss && (
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
                           onDiscuss(holding.name, normalizedSymbol);
                         }}
-                        className="h-6 px-2 text-[10px] text-muted-foreground border border-border/50 hover:bg-background hover:text-foreground hover:border-border transition-all hidden sm:inline-flex items-center gap-1.5 font-normal rounded-sm"
+                        className="h-7 px-3 text-xs font-normal text-muted-foreground border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-foreground transition-all hidden sm:inline-flex items-center gap-1.5 rounded-md shadow-sm bg-white dark:bg-transparent"
                       >
-                        <MessageSquare className="w-3 h-3" />
+                        <MessageSquare className="w-3.5 h-3.5" />
                         Diskutera
                       </Button>
                     )}
