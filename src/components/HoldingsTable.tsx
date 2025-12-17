@@ -15,8 +15,8 @@ import { RefreshCw, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare } from 'lucid
 import { formatCurrency, resolveHoldingValue, convertToSEK } from '@/utils/currencyUtils';
 import type { HoldingPerformance } from '@/hooks/usePortfolioPerformance';
 
-// Lägg till 'lastPrice' i sorteringstyperna
-type SortBy = 'name' | 'marketValue' | 'performance' | 'dailyChange' | 'share' | 'lastPrice';
+// Uppdaterad med 'quantity'
+type SortBy = 'name' | 'marketValue' | 'performance' | 'dailyChange' | 'share' | 'lastPrice' | 'quantity';
 type SortOrder = 'asc' | 'desc';
 
 interface Holding {
@@ -115,12 +115,10 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
     <Table>
       <TableHeader>
         <TableRow>
-          {/* Namn-kolumnen är lite bredare för att rymma både namn och knapp */}
           <SortableHeader column="name" className="min-w-[280px]">
             Namn
           </SortableHeader>
           
-          {/* Ny kolumn: Senast (Kurs) */}
           <SortableHeader column="lastPrice" className="text-right">
             Senast
           </SortableHeader>
@@ -135,6 +133,11 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
           
           <SortableHeader column="dailyChange" className="text-right">
             Utveckling idag
+          </SortableHeader>
+
+          {/* Ny kolumn för Antal */}
+          <SortableHeader column="quantity" className="text-right">
+            Antal
           </SortableHeader>
           
           <SortableHeader column="share" className="text-right">
@@ -198,7 +201,6 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
 
           const isOpen = isMarketOpen(holding);
           
-          // Hämta aktuellt pris för visning
           const currentPrice = holding.current_price_per_unit; 
           const displayCurrency = holding.currency || 'SEK';
 
@@ -238,13 +240,10 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
                       {isRefreshing && (
                         <span className="sr-only">Hämtar live-pris...</span>
                       )}
-                      {quantity > 0 && (
-                        <span className="text-muted-foreground">• {quantity} st</span>
-                      )}
+                      {/* OBS: Antal är borttaget härifrån */}
                     </div>
                   </div>
 
-                  {/* Diskutera-knappen placerad här med flex-shrink-0 så den inte trycks ihop */}
                   {onDiscuss && (
                     <div className="flex-shrink-0 pl-4 border-l border-border/40">
                       <Button
@@ -264,10 +263,10 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
                 </div>
               </TableCell>
 
-              {/* Senast (Pris) */}
+              {/* Senast */}
               <TableCell className="py-3 sm:py-3.5 text-right align-middle font-medium">
                 {currentPrice 
-                  ? formatRoundedCurrency(currentPrice, displayCurrency, 2) // Visar 2 decimaler
+                  ? formatRoundedCurrency(currentPrice, displayCurrency, 2)
                   : '—'}
               </TableCell>
 
@@ -318,6 +317,17 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
                   </div>
                 ) : (
                   <span className="text-sm text-muted-foreground" title={!isOpen ? "Marknaden stängd" : undefined}>—</span>
+                )}
+              </TableCell>
+
+              {/* Antal - NY KOLUMN */}
+              <TableCell className="py-3 sm:py-3.5 text-right align-middle">
+                {quantity > 0 ? (
+                  <span className="text-sm font-medium text-foreground">
+                    {quantity.toLocaleString('sv-SE')} st
+                  </span>
+                ) : (
+                  <span className="text-sm text-muted-foreground">—</span>
                 )}
               </TableCell>
               
