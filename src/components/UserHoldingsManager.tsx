@@ -887,6 +887,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
                       <HoldingsTable
                         holdings={stockHoldings}
                         onRefreshPrice={handleUpdateHoldingPrice}
+                        onDiscuss={handleDiscussHolding}
                         isUpdatingPrice={updating}
                         refreshingTicker={refreshingTicker}
                         holdingPerformanceMap={holdingPerformanceMap}
@@ -913,6 +914,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
                           <HoldingsTable
                             holdings={group.sortedHoldings}
                             onRefreshPrice={group.key === 'cash' ? undefined : handleUpdateHoldingPrice}
+                            onDiscuss={handleDiscussHolding}
                             isUpdatingPrice={updating}
                             refreshingTicker={refreshingTicker}
                             holdingPerformanceMap={holdingPerformanceMap}
