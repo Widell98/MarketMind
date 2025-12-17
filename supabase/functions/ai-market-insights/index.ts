@@ -283,11 +283,9 @@ Skapa insikter inom området: ${type}.
 
 Fokusera på:
 - AI och tekniksektorns utveckling
-- Centralbanker (Fed, ECB, Riksbank)
 - Geopolitiska risker
 - Sektorrotation och värderingar
 - Makrotrender som påverkar svenska investerare
-- ESG och hållbarhet
 
 Endast 3–4 insikter. På svenska. Svara enbart med JSON-array enligt formatet ovan.
             `.trim()
