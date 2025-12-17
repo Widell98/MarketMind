@@ -467,8 +467,8 @@ Din kompletta portfölj har sparats och du kan implementera rekommendationerna d
         </CardHeader>
         <CardContent className="space-y-4">
           <Textarea
-            placeholder="Skriv ditt meddelande här"
             value={message}
+             placeholder="Skriv ditt meddelande här"
             onChange={handleInputChange}
             className="resize-none"
           />
