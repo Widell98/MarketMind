@@ -6,6 +6,9 @@ import type { ExchangeRates } from './currencyUtils';
 
 const STANDARD_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRJZtyoepzQZSQw-LXTp0vmnpPVMqluTiPZJkPp61g5KsfEp08CA6LZ7CNoTfIgYe-E7lvCZ_ToMuF4/pub?output=csv";
 
+// Lista på valutor vi vill importera (för att slippa få med aktier som "ABB" från samma kolumn)
+const ALLOWED_CURRENCIES = ['USD', 'EUR', 'GBP', 'NOK', 'DKK', 'JPY', 'CHF', 'CAD', 'AUD'];
+
 /**
  * Parse CSV text handling quoted values and commas in cells
  */
@@ -49,7 +52,7 @@ const parseCsv = (text: string): string[][] => {
   }
 
   if (insideQuotes) {
-    console.warn('CSV parse warning: unmatched quote detected, attempting to recover');
+    // Tyst hantering av parse-fel
   }
 
   currentRow.push(currentValue);
@@ -88,13 +91,13 @@ const extractCurrencyCode = (cellValue: string | null | undefined): string | nul
   let trimmed = cellValue.trim().toUpperCase();
   if (!trimmed) return null;
   
-  // 1. Hantera formatet "USD/SEK"
+  // Hantera formatet "USD/SEK"
   if (trimmed.endsWith('/SEK')) {
-    return trimmed.replace('/SEK', '').trim();
+    trimmed = trimmed.replace('/SEK', '').trim();
   }
 
-  // 2. Hantera om det bara står "USD", "EUR" etc. (Exakt 3 bokstäver)
-  if (trimmed.length === 3 && trimmed !== 'SEK') {
+  // Filtrera så vi bara tar riktiga valutor och inte aktier
+  if (ALLOWED_CURRENCIES.includes(trimmed)) {
     return trimmed;
   }
 
@@ -107,55 +110,33 @@ const extractCurrencyCode = (cellValue: string | null | undefined): string | nul
 export const fetchExchangeRatesFromSheet = async (): Promise<ExchangeRates> => {
   const exchangeRates: ExchangeRates = {};
   
-  console.log('--- Startar hämtning av valutakurser från Google Sheet ---');
-
   try {
     const response = await fetch(STANDARD_SHEET_CSV_URL, {
       cache: 'no-store',
     });
     
-    // Logga statuskoden för att se om Google svarar 200 OK eller 500 Error
-    console.log(`Google Sheets Response Status: ${response.status} ${response.statusText}`);
-
-    if (!response.ok) {
-      console.error(`Failed to fetch Google Sheets CSV: ${response.status} ${response.statusText}`);
-      // Vid 500-fel kommer vi returnera här och inte se loggarna nedan
-      return exchangeRates;
-    }
+    if (!response.ok) return exchangeRates;
     
     const csvText = await response.text();
     
-    if (!csvText || csvText.trim().length === 0) {
-      console.error('Google Sheets CSV is empty');
-      return exchangeRates;
-    }
+    if (!csvText || csvText.trim().length === 0) return exchangeRates;
     
     const rows = parseCsv(csvText);
-    console.log(`CSV Parsed. Found ${rows.length} rows.`);
-    
-    if (rows.length === 0) {
-      return exchangeRates;
-    }
     
     // Loop through ALL rows to find currencies
-    rows.forEach((row, index) => {
+    rows.forEach((row) => {
       // Vi behöver data åtminstone fram till kolumn F (index 5)
-      if (!row || row.length < 2) return;
+      if (!row || row.length < 6) return;
       
       const currencyCell = row[1]; // Kolumn B
-      const rateCell = row[5];     // Kolumn F (kan vara undefined om raden är kort)
+      const rateCell = row[5];     // Kolumn F
       
       const currency = extractCurrencyCode(currencyCell);
       
-      // LOGGNING: Endast om vi hittar något som liknar en valuta
       if (currency) {
         const rate = parseExchangeRate(rateCell);
-        console.log(`[Rad ${index + 1}] Hittade valuta: "${currency}". Råvärde kurs: "${rateCell}". Parsad kurs: ${rate}`);
-        
         if (rate !== null) {
           exchangeRates[currency] = rate;
-        } else {
-          console.warn(`[Rad ${index + 1}] Kunde inte parsa kursen för ${currency}.`);
         }
       }
     });
@@ -163,11 +144,9 @@ export const fetchExchangeRatesFromSheet = async (): Promise<ExchangeRates> => {
     // Always include SEK with rate 1
     exchangeRates.SEK = 1;
     
-    console.log(`Klart! Totalt antal kurser: ${Object.keys(exchangeRates).length}`);
-    console.log('Kurser:', exchangeRates);
-    
   } catch (error) {
-    console.error('Error fetching exchange rates from Google Sheets:', error);
+    // Tyst felhantering eller minimal loggning vid behov
+    console.error('Error fetching exchange rates:', error);
   }
   
   return exchangeRates;
