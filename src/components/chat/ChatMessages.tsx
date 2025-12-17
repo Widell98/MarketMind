@@ -143,7 +143,7 @@ const ChatMessages = ({
       className="flex-1 min-h-0 overflow-y-auto"
       style={{ scrollbarGutter: 'stable' }}
     >
-      <div className="mx-auto w-full max-w-5xl space-y-4 px-4 py-3 sm:space-y-5 sm:px-5 sm:py-4 lg:max-w-6xl lg:space-y-6 lg:px-6 lg:py-5 xl:max-w-[85rem] xl:space-y-7 xl:px-10 xl:py-6 2xl:max-w-[95rem] 2xl:space-y-8 2xl:px-12 2xl:py-7">
+      <div className="mx-auto w-full max-w-5xl space-y-3 px-4 py-2 sm:space-y-5 sm:px-5 sm:py-4 lg:max-w-6xl lg:space-y-6 lg:px-6 lg:py-5 xl:max-w-[85rem] xl:space-y-7 xl:px-10 xl:py-6 2xl:max-w-[95rem] 2xl:space-y-8 2xl:px-12 2xl:py-7">
         {showGuideBot && (
           <GuideBot
             onPromptExample={handleGuidePrompt}
@@ -153,7 +153,7 @@ const ChatMessages = ({
         )}
 
         {messages.length === 0 && !isLoading && onExamplePrompt && !showGuideBot && (
-          <div className="flex flex-col items-center justify-center py-4 px-4 sm:py-6 sm:px-6 lg:py-8 lg:px-4">
+          <div className="flex flex-col items-center justify-center py-3 px-4 sm:py-6 sm:px-6 lg:py-8 lg:px-4">
             {/* Hero Section - Responsive */}
             <div className="text-center mb-4 sm:mb-5 lg:mb-6 max-w-2xl w-full px-2">
               <div className="mx-auto mb-3 sm:mb-4 lg:mb-5 flex h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground shadow-[0_20px_50px_rgba(20,82,149,0.3)] transition-all duration-300 hover:scale-105 dark:shadow-[0_20px_50px_rgba(20,82,149,0.2)]">
@@ -202,7 +202,7 @@ const ChatMessages = ({
         )}
 
         {messages.length === 0 && !isLoading && !onExamplePrompt && !showGuideBot && (
-          <div className="flex flex-col items-center justify-center py-4 px-4 sm:py-6 sm:px-6 lg:py-8 lg:px-4">
+          <div className="flex flex-col items-center justify-center py-3 px-4 sm:py-6 sm:px-6 lg:py-8 lg:px-4">
             <div className="text-center max-w-2xl w-full px-2">
               <div className="mx-auto mb-3 sm:mb-4 lg:mb-5 flex h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground shadow-[0_20px_50px_rgba(20,82,149,0.3)] transition-all duration-300 hover:scale-105 dark:shadow-[0_20px_50px_rgba(20,82,149,0.2)]">
                 <Brain className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8" />
