@@ -237,15 +237,30 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ importControl
     return false;
   };
 
-  const handleDiscussHolding = (holdingName: string, symbol?: string) => {
-    const sessionName = `Diskussion: ${holdingName}`;
-    const message = `Berätta mer om ${holdingName}${symbol ? ` (${symbol})` : ''}. Vad gör företaget, vilka är deras huvudsakliga affärsområden, och varför skulle det vara en bra investering för min portfölj? Analysera också eventuella risker och möjligheter.`;
-    
+const handleDiscussHolding = (holdingName: string, symbol?: string) => {
+    const displayName = symbol ? `${holdingName} (${symbol})` : holdingName;
+    const cleanName = holdingName; // Används för frågorna
+
+    // Skapa en lista med relevanta prompts
+    const suggestedPrompts = [
+      `Varför går ${cleanName} upp eller ner idag?`,
+      `Ge mig en kort analys av ${cleanName} och dess framtidsutsikter.`,
+      `Vilka är de största riskerna med att investera i ${cleanName}?`,
+      `Hur ser ${cleanName}s senaste kvartalsrapport ut?`
+    ];
+
     navigate('/ai-chatt', {
       state: {
         createNewSession: true,
-        sessionName: sessionName,
-        initialMessage: message
+        sessionName: `Analys: ${displayName}`,
+        // Vi tar bort 'initialMessage' för att inte auto-skicka
+        // Vi lägger till en ny parameter för kontext
+        contextData: {
+          type: 'stock-discussion',
+          title: `Diskutera ${displayName}`,
+          subtitle: 'Välj en fråga nedan för att starta analysen',
+          prompts: suggestedPrompts
+        }
       }
     });
   };
