@@ -10,7 +10,8 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { badgeVariants } from '@/components/ui/badge';
-import { RefreshCw, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { RefreshCw, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare } from 'lucide-react';
 import { formatCurrency, resolveHoldingValue, convertToSEK } from '@/utils/currencyUtils';
 import type { HoldingPerformance } from '@/hooks/usePortfolioPerformance';
 
@@ -31,11 +32,15 @@ interface Holding {
   base_currency?: string;
   dailyChangePercent?: number | null;
   dailyChangeValueSEK?: number | null;
+  // Dessa fält används i renderingen, så vi lägger till dem i typen för att undvika TS-fel
+  original_value?: number;
+  original_currency?: string;
 }
 
 interface HoldingsTableProps {
   holdings: Holding[];
   onRefreshPrice?: (symbol: string) => void;
+  onDiscuss?: (name: string, symbol?: string) => void;
   isUpdatingPrice?: boolean;
   refreshingTicker?: string | null;
   holdingPerformanceMap?: Record<string, HoldingPerformance>;
@@ -48,6 +53,7 @@ interface HoldingsTableProps {
 const HoldingsTable: React.FC<HoldingsTableProps> = ({
   holdings,
   onRefreshPrice,
+  onDiscuss,
   isUpdatingPrice,
   refreshingTicker,
   holdingPerformanceMap,
@@ -188,7 +194,26 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
             <TableRow key={holding.id}>
               <TableCell className="py-3 sm:py-3.5">
                 <div className="flex flex-col gap-0.5">
-                  <span className="font-medium leading-tight text-foreground break-words">{holding.name}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium leading-tight text-foreground break-words">{holding.name}</span>
+                    
+                    {/* "Diskutera"-knappen implementerad här */}
+                    {onDiscuss && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDiscuss(holding.name, normalizedSymbol);
+                        }}
+                        className="h-6 px-2 text-[10px] text-muted-foreground border border-border/50 hover:bg-background hover:text-foreground hover:border-border transition-all hidden sm:inline-flex items-center gap-1.5 font-normal rounded-sm"
+                      >
+                        <MessageSquare className="w-3 h-3" />
+                        Diskutera
+                      </Button>
+                    )}
+                  </div>
+                  
                   <div className="flex items-center gap-1 text-xs text-muted-foreground flex-wrap">
                     {onRefreshPrice && normalizedSymbol ? (
                       <button
@@ -250,7 +275,6 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
                 )}
               </TableCell>
               
-              {/* UPPATERAD LOGIK: Visar endast data om isOpen är true */}
               <TableCell className="py-3 sm:py-3.5 text-right align-middle">
                 {isOpen && dailyChangePercent !== null ? (
                   <div className="inline-flex flex-col items-end text-right gap-0.5">
