@@ -10,8 +10,7 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { badgeVariants } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { RefreshCw, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare } from 'lucide-react';
+import { RefreshCw, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { formatCurrency, resolveHoldingValue, convertToSEK } from '@/utils/currencyUtils';
 import type { HoldingPerformance } from '@/hooks/usePortfolioPerformance';
 
@@ -32,14 +31,11 @@ interface Holding {
   base_currency?: string;
   dailyChangePercent?: number | null;
   dailyChangeValueSEK?: number | null;
-  original_value?: number;
-  original_currency?: string;
 }
 
 interface HoldingsTableProps {
   holdings: Holding[];
   onRefreshPrice?: (symbol: string) => void;
-  onDiscuss?: (name: string, symbol?: string) => void;
   isUpdatingPrice?: boolean;
   refreshingTicker?: string | null;
   holdingPerformanceMap?: Record<string, HoldingPerformance>;
@@ -52,7 +48,6 @@ interface HoldingsTableProps {
 const HoldingsTable: React.FC<HoldingsTableProps> = ({
   holdings,
   onRefreshPrice,
-  onDiscuss,
   isUpdatingPrice,
   refreshingTicker,
   holdingPerformanceMap,
@@ -186,34 +181,14 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
             isUpdatingPrice && refreshingTicker && normalizedSymbol && refreshingTicker === normalizedSymbol
           );
 
+          // NY LOGIK: Kontrollera om marknaden är öppen
           const isOpen = isMarketOpen(holding);
 
           return (
             <TableRow key={holding.id}>
               <TableCell className="py-3 sm:py-3.5">
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center flex-wrap gap-2">
-                    <span className="font-semibold text-[15px] leading-tight text-foreground break-words">
-                      {holding.name}
-                    </span>
-                    
-                    {/* DESIGN-UPPDATERING HÄR: */}
-                    {onDiscuss && (
-                      <Button
-                        variant="outline" // Använd outline för att få ramen
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDiscuss(holding.name, normalizedSymbol);
-                        }}
-                        className="h-7 px-3 text-xs font-normal text-muted-foreground border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-foreground transition-all hidden sm:inline-flex items-center gap-1.5 rounded-md shadow-sm bg-white dark:bg-transparent"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" />
-                        Diskutera
-                      </Button>
-                    )}
-                  </div>
-                  
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-medium leading-tight text-foreground break-words">{holding.name}</span>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground flex-wrap">
                     {onRefreshPrice && normalizedSymbol ? (
                       <button
@@ -275,6 +250,7 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
                 )}
               </TableCell>
               
+              {/* UPPATERAD LOGIK: Visar endast data om isOpen är true */}
               <TableCell className="py-3 sm:py-3.5 text-right align-middle">
                 {isOpen && dailyChangePercent !== null ? (
                   <div className="inline-flex flex-col items-end text-right gap-0.5">
