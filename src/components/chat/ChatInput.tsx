@@ -130,7 +130,17 @@ const ChatInput = memo(({
             <Textarea
               ref={inputRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                // Auto-scroll to bottom when typing to keep cursor visible
+                if (inputRef.current) {
+                  requestAnimationFrame(() => {
+                    if (inputRef.current) {
+                      inputRef.current.scrollTop = inputRef.current.scrollHeight;
+                    }
+                  });
+                }
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -144,11 +154,11 @@ const ChatInput = memo(({
               readOnly={isLoading && !quotaExceeded}
               aria-disabled={isLoading || quotaExceeded}
               aria-busy={isLoading}
-              className="min-h-[40px] max-h-[160px] w-full resize-none rounded-[14px] border border-[#205295]/18 bg-white px-3 pr-10 text-sm shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition-all duration-200 focus:border-primary/50 focus:shadow-[0_12px_30px_rgba(15,23,42,0.08)] focus:ring-1 focus:ring-primary/20 sm:px-4 sm:text-base dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none dark:focus:border-ai-border/80 dark:focus:ring-0"
+              className="min-h-[40px] max-h-[100px] sm:max-h-[120px] lg:max-h-[160px] w-full resize-none rounded-[14px] border border-[#205295]/18 bg-white px-3 py-2.5 pr-10 text-sm shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition-all duration-200 focus:border-primary/50 focus:shadow-[0_12px_30px_rgba(15,23,42,0.08)] focus:ring-1 focus:ring-primary/20 sm:px-4 sm:py-3 sm:text-base dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none dark:focus:border-ai-border/80 dark:focus:ring-0 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-primary/20 [&::-webkit-scrollbar-thumb]:rounded-full"
               style={{ fontSize: '16px' }}
               rows={1}
             />
-            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-primary/40 transition-colors dark:text-ai-text-muted">
+            <div className="pointer-events-none absolute right-3 top-2.5 sm:top-1/2 sm:-translate-y-1/2 text-primary/40 transition-colors dark:text-ai-text-muted">
               <MessageSquare className="w-4 h-4" />
             </div>
           </div>
