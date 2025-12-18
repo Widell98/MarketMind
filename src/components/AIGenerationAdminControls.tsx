@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { GeneratedReport } from '@/types/generatedReport';
 import { buildTextPageFromFile } from '@/utils/documentProcessing';
 
@@ -82,6 +83,7 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
   const [isBatchGenerating, setIsBatchGenerating] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState<string>('');
   const [reportDocumentInfo, setReportDocumentInfo] = useState<{
     id: string;
     name: string;
@@ -305,6 +307,7 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
           source_document_id: reportDocumentInfo?.id ?? null,
           source_content: reportDocumentInfo?.textContent ?? null,
           created_by: user?.id ?? null,
+          custom_prompt: customPrompt.trim() || null,
         },
       });
 
@@ -326,6 +329,7 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
       }
 
       setReportDocumentInfo(null);
+      setCustomPrompt('');
     } catch (err) {
       console.error('Failed to generate report summary:', err);
       const message = err instanceof Error ? err.message : 'Ett oväntat fel uppstod vid generering av analys.';
@@ -429,6 +433,7 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
                     className="hidden"
                     onChange={handleFileSelection}
                     disabled={isProcessingFile || isGeneratingReport}
+                    aria-label="Ladda upp rapport"
                   />
                   <Button
                     type="button"
@@ -484,6 +489,34 @@ const AIGenerationAdminControls: React.FC<AIGenerationAdminControlsProps> = ({ o
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium text-foreground">Anpassad prompt (valfritt)</Label>
+              {customPrompt.trim() && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCustomPrompt('')}
+                  className="h-7 text-xs"
+                >
+                  Rensa
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Om du skriver in en anpassad prompt kommer standardprompten att ignoreras helt. Din prompt kommer att användas tillsammans med rapportinnehållet.
+            </p>
+            <Textarea
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              placeholder="Skriv din egen prompt här... (lämna tom för att använda standardprompten)"
+              rows={4}
+              className="resize-none"
+              disabled={isGeneratingReport || isProcessingFile}
+            />
           </div>
 
           <div className="flex flex-wrap items-center gap-3">

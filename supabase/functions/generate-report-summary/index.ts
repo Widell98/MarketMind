@@ -17,6 +17,7 @@ type GenerateReportSummaryPayload = {
   source_document_name?: string | null;
   source_document_id?: string | null;
   created_by?: string | null;
+  custom_prompt?: string | null;
 };
 
 type OpenAIResponse = {
@@ -537,10 +538,20 @@ serve(async (req) => {
         ? "från det uppladdade dokumentet"
         : "inklistrad text";
 
-  const prompt = buildPrompt(truncateContent(sourceContent), sourceDescriptor, {
-    companyHint,
-    reportTitleHint,
-  });
+  // Använd anpassad prompt om den finns, annars använd standardprompt
+  const customPrompt = payload?.custom_prompt?.trim();
+  let prompt: string;
+  
+  if (customPrompt) {
+    // Använd anpassad prompt med rapportinnehållet
+    prompt = `${customPrompt}\n\nUNDERLAG (${sourceDescriptor}):\n"""\n${truncateContent(sourceContent)}\n"""`;
+  } else {
+    // Använd standardprompt
+    prompt = buildPrompt(truncateContent(sourceContent), sourceDescriptor, {
+      companyHint,
+      reportTitleHint,
+    });
+  }
 
   try {
  const response = await fetch("https://api.openai.com/v1/responses", {

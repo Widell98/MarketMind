@@ -3852,11 +3852,10 @@ INSTRUKTION FÖR PREDIKTIONER:
           }
         });
 
-        const topHoldings = [...holdingsWithReturns]
-          .sort((a, b) => b.value.valueInSEK - a.value.valueInSEK)
-          .slice(0, 5);
+        const allHoldings = [...holdingsWithReturns]
+          .sort((a, b) => b.value.valueInSEK - a.value.valueInSEK);
 
-        const topHoldingsDetails = topHoldings.map(({ holding, value, returnPercentage }) => {
+        const holdingsDetails = allHoldings.map(({ holding, value, returnPercentage, returnAmount, investedValue, hasPurchasePrice }) => {
           const label = holding.symbol || holding.name || 'Okänt innehav';
           const percentage = totalValue > 0 ? (value.valueInSEK / totalValue) * 100 : 0;
 
@@ -3873,11 +3872,21 @@ INSTRUKTION FÖR PREDIKTIONER:
             formattedPercentage: percentage.toFixed(1),
             identifiers: Array.from(identifiers),
             returnPercentage,
+            returnAmount,
+            investedValue,
+            hasPurchasePrice,
           };
         });
 
-        let holdingsSummary = topHoldingsDetails
-          .map(({ label, formattedPercentage }) => `${label} (${formattedPercentage}%)`)
+        let holdingsSummary = holdingsDetails
+          .map(({ label, formattedPercentage, returnPercentage, returnAmount, hasPurchasePrice }) => {
+            if (hasPurchasePrice && returnPercentage !== null) {
+              const returnSign = returnPercentage >= 0 ? '+' : '';
+              const returnFormatted = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0, signDisplay: 'always' }).format(Math.round(returnAmount));
+              return `${label} (${formattedPercentage}%, avkastning: ${returnSign}${returnPercentage.toFixed(1)}% / ${returnFormatted} SEK)`;
+            }
+            return `${label} (${formattedPercentage}%)`;
+          })
           .join(', ');
 
         const totalValueFormatted = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0 }).format(Math.round(totalValue));
@@ -3916,8 +3925,8 @@ INSTRUKTION FÖR PREDIKTIONER:
             } => entry !== null);
 
           if (recommendedAllocationEntries.length > 0) {
-            holdingsSummary = topHoldingsDetails
-              .map(({ label, formattedPercentage, identifiers }) => {
+            holdingsSummary = holdingsDetails
+              .map(({ label, formattedPercentage, identifiers, returnPercentage, returnAmount, hasPurchasePrice }) => {
                 const matchingAllocation = identifiers
                   .map(identifier => recommendedAllocationEntries.find(entry => entry.normalizedKey === identifier))
                   .find((match): match is {
@@ -3928,11 +3937,20 @@ INSTRUKTION FÖR PREDIKTIONER:
                     actualPercentage: number | null;
                   } => Boolean(match));
 
+                let baseText = '';
                 if (matchingAllocation) {
-                  return `${label} (nu ${formattedPercentage}%, mål ${matchingAllocation.displayValue}%)`;
+                  baseText = `${label} (nu ${formattedPercentage}%, mål ${matchingAllocation.displayValue}%)`;
+                } else {
+                  baseText = `${label} (${formattedPercentage}%)`;
                 }
 
-                return `${label} (${formattedPercentage}%)`;
+                if (hasPurchasePrice && returnPercentage !== null) {
+                  const returnSign = returnPercentage >= 0 ? '+' : '';
+                  const returnFormatted = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0, signDisplay: 'always' }).format(Math.round(returnAmount));
+                  return `${baseText}, avkastning: ${returnSign}${returnPercentage.toFixed(1)}% / ${returnFormatted} SEK`;
+                }
+
+                return baseText;
               })
               .join(', ');
           }
@@ -3954,7 +3972,7 @@ INSTRUKTION FÖR PREDIKTIONER:
   - Total avkastning: ${totalReturnFormatted} SEK (${totalReturnPercentageFormatted}%)`;
         }
 
-        contextInfo += `\n  - Största positioner: ${holdingsSummary || 'Inga registrerade innehav'}`;
+        contextInfo += `\n  - Alla positioner: ${holdingsSummary || 'Inga registrerade innehav'}`;
 
         // Dynamically add per-holding returns only when user asks about specific returns
         const returnQuestionAnalysis = detectReturnQuestion(message, detectedTickers, interpretedEntities);
