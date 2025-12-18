@@ -13,7 +13,11 @@ import { useChatDocuments } from '@/hooks/useChatDocuments';
 import { useChatFolders } from '@/hooks/useChatFolders';
 import { useToast } from '@/hooks/use-toast';
 
-import { LogIn, MessageSquare, Brain, Lock, Sparkles, PanelLeftClose, PanelLeft, Crown, Infinity } from 'lucide-react';
+import { 
+  LogIn, MessageSquare, Brain, Lock, Sparkles, 
+  PanelLeftClose, PanelLeft, Crown, Infinity, 
+  SquarePen 
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -88,7 +92,6 @@ const AIChat = ({
   } = useChatDocuments();
 
   // Hämta sessioner för att kunna visa rätt namn i headern
-  // Vi använder 'any' här för att komma runt eventuella typ-problem med 'session_name' vs 'name'
   const { sessions } = useChatFolders(); 
    
   const [input, setInput] = useState('');
@@ -122,11 +125,10 @@ const AIChat = ({
     if (isGuideSession) return "Guidad tur";
     if (!currentSessionId) return "Ny konversation";
     
-    // Hitta sessionen i listan
-    // OBS: Vi använder 'as any' för att säkert komma åt session_name oavsett hur typerna är definierade just nu
+    // Hitta sessionen i listan och hantera potentiella typ-skillnader
     const session = sessions?.find(s => s.id === currentSessionId) as any;
     
-    // Använd session_name om det finns (detta är vad Supabase returnerar), annars name, annars fallback
+    // Använd session_name om det finns, annars name, annars fallback
     return session?.session_name || session?.name || "Pågående konversation";
   }, [currentSessionId, sessions, isGuideSession]);
 
@@ -414,10 +416,10 @@ const AIChat = ({
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
             
             {/* --- NY TOOLBAR --- */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-ai-border/40 min-h-[50px] bg-ai-surface/50 backdrop-blur-sm">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-ai-border/40 min-h-[50px] bg-ai-surface/50 backdrop-blur-sm sticky top-0 z-10">
               
               {/* Vänster del: Historik-toggle och Titel */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 overflow-hidden">
                 {isMobile ? (
                   /* Mobil: Sheet för historik */
                   <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -425,7 +427,7 @@ const AIChat = ({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-ai-text-muted hover:text-foreground"
+                        className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0"
                       >
                         <PanelLeft className="h-5 w-5" />
                       </Button>
@@ -443,27 +445,58 @@ const AIChat = ({
                   </Sheet>
                 ) : (
                   /* Desktop: Toggle knapp */
-                  <Button
-                    onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-ai-text-muted hover:text-foreground"
-                    title={desktopSidebarCollapsed ? "Visa historik" : "Dölj historik"}
-                  >
-                    {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0"
+                        >
+                          {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {desktopSidebarCollapsed ? "Visa historik" : "Dölj historik"}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
                 
-                {/* Dynamisk Chatt-titel */}
-                <div className="flex flex-col justify-center">
-                  <span className="text-sm font-medium text-foreground truncate max-w-[150px] sm:max-w-md animate-in fade-in duration-300">
+                {/* Dynamisk Chatt-titel med ikon */}
+                <div className="flex items-center gap-2 overflow-hidden fade-in animate-in duration-300">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary flex-shrink-0">
+                    <MessageSquare className="h-3 w-3" />
+                  </span>
+                  <span className="text-sm font-medium text-foreground truncate">
                     {currentSessionName}
                   </span>
                 </div>
               </div>
 
-              {/* Höger del: Premium/Credits */}
-              <div className="flex items-center">
+              {/* Höger del: Ny chatt + Premium/Credits */}
+              <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                
+                {/* NY CHATT KNAPP - Ger snabb åtkomst att nollställa */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={handleNewSession}
+                        className="h-8 w-8 text-ai-text-muted hover:text-primary hidden sm:flex"
+                      >
+                        <SquarePen className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Ny chatt</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <div className="h-4 w-px bg-border/60 mx-1 hidden sm:block" />
+
                 {isPremium ? (
                   <TooltipProvider delayDuration={120}>
                     <Tooltip>
