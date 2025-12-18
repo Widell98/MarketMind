@@ -15,8 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 
 import { 
   LogIn, MessageSquare, Brain, Lock, Sparkles, 
-  PanelLeftClose, PanelLeft, Crown, Infinity, 
-  SquarePen 
+  PanelLeftClose, PanelLeft, Crown, Infinity
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -91,7 +90,6 @@ const AIChat = ({
     hasReachedDocumentLimit,
   } = useChatDocuments();
 
-  // Hämta sessioner för att kunna visa rätt namn i headern
   const { sessions } = useChatFolders(); 
    
   const [input, setInput] = useState('');
@@ -120,15 +118,12 @@ const AIChat = ({
     return `ai-chat-draft:${portfolioKey}:${sessionKey}`;
   }, [currentSessionId, portfolioId]);
 
-  // Beräkna det aktuella namnet på sessionen
   const currentSessionName = useMemo(() => {
     if (isGuideSession) return "Guidad tur";
     if (!currentSessionId) return "Ny konversation";
     
-    // Hitta sessionen i listan och hantera potentiella typ-skillnader
     const session = sessions?.find(s => s.id === currentSessionId) as any;
     
-    // Använd session_name om det finns, annars name, annars fallback
     return session?.session_name || session?.name || "Pågående konversation";
   }, [currentSessionId, sessions, isGuideSession]);
 
@@ -475,28 +470,8 @@ const AIChat = ({
                 </div>
               </div>
 
-              {/* Höger del: Ny chatt + Premium/Credits */}
+              {/* Höger del: Premium/Credits (Ny chatt-knapp borttagen) */}
               <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                
-                {/* NY CHATT KNAPP - Ger snabb åtkomst att nollställa */}
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={handleNewSession}
-                        className="h-8 w-8 text-ai-text-muted hover:text-primary hidden sm:flex"
-                      >
-                        <SquarePen className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Ny chatt</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-
-                <div className="h-4 w-px bg-border/60 mx-1 hidden sm:block" />
-
                 {isPremium ? (
                   <TooltipProvider delayDuration={120}>
                     <Tooltip>
@@ -529,9 +504,9 @@ const AIChat = ({
                 <div className="flex flex-col items-center justify-center h-full p-8 space-y-8 animate-in fade-in zoom-in duration-300 overflow-y-auto">
                   <div className="text-center space-y-3 max-w-lg">
                     <div className="flex justify-center mb-4">
-                        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                          <Sparkles className="w-8 h-8 text-primary" />
-                        </div>
+                       <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                         <Sparkles className="w-8 h-8 text-primary" />
+                       </div>
                     </div>
                     <h2 className="text-2xl font-semibold text-foreground tracking-tight">
                       {contextData.title}
@@ -619,12 +594,9 @@ const AIChat = ({
           </div>
         </>
       ) : (
-        /* Icke-inloggad vy */
         <div className="flex w-full min-h-0 flex-col overflow-hidden bg-ai-surface">
           <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden">
             <div className="absolute inset-0 flex">
-              
-              {/* Preview Sidebar - Desktop */}
               {!isMobile && (
                 <div className="hidden w-[260px] flex-col border-r border-ai-border/60 bg-ai-surface-muted/60 px-4 py-6 md:flex">
                   <h3 className="text-sm font-semibold text-foreground">Senaste konversationer</h3>
@@ -640,7 +612,6 @@ const AIChat = ({
                   </div>
                 </div>
               )}
-
               <div className="flex flex-1 flex-col overflow-y-auto bg-ai-surface px-4 py-8 sm:px-10 lg:px-14">
                 <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center space-y-6 py-6 sm:py-8">
                   <div className="flex flex-col gap-4">
