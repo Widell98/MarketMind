@@ -11,20 +11,13 @@ import ChatFolderSidebar from './chat/ChatFolderSidebar';
 import ChatDocumentManager from './chat/ChatDocumentManager';
 import { useChatDocuments } from '@/hooks/useChatDocuments';
 import { useToast } from '@/hooks/use-toast';
-import ThemeToggle from './ThemeToggle';
-import ProfileMenu from './ProfileMenu';
 
-// NY IMPORTS: Bytte till History-ikonen för tydlighet
-import { 
-  LogIn, MessageSquare, Brain, Lock, Sparkles, Menu, 
-  History, Crown, Infinity, Home, BarChart3, User, Newspaper, ChevronLeft 
-} from 'lucide-react';
+// Vi behöver inte längre Menu, Home etc eftersom de ligger i global header
+import { LogIn, MessageSquare, Brain, Lock, Sparkles, PanelLeftClose, PanelLeft, Crown, Infinity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useSidebar } from '@/components/ui/sidebar';
-import { cn } from '@/lib/utils';
+// Sheet och SidebarTrigger behövs inte här längre för mobil-menyn (sköts av Layout)
 
 interface Message {
   id: string;
@@ -64,7 +57,6 @@ const AIChat = ({
   } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const { toggleSidebar } = useSidebar(); 
 
   const {
     messages,
@@ -99,11 +91,10 @@ const AIChat = ({
    
   const hasProcessedInitialMessageRef = useRef(false);
    
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Vi behöver inte sidebarOpen för mobilen här längre, det sköts av Layout
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [isGuideSession, setIsGuideSession] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
-  const [sidebarView, setSidebarView] = useState<'chat' | 'navigation'>('chat');
    
   const [conversationContext, setConversationContext] = useState<any>(null);
 
@@ -341,18 +332,12 @@ const AIChat = ({
     hasProcessedInitialMessageRef.current = false; 
     await createNewSession();
     setInput('');
-    if (isMobile) {
-      setSidebarOpen(false);
-    }
-  }, [user, createNewSession, isMobile]);
+  }, [user, createNewSession]);
 
   const handleLoadSession = useCallback(async (sessionId: string) => {
     await loadSession(sessionId);
     setConversationContext(null); 
-    if (isMobile) {
-      setSidebarOpen(false);
-    }
-  }, [loadSession, isMobile]);
+  }, [loadSession]);
 
   const handleExamplePrompt = (prompt: string) => {
     if (isGuideSession) {
@@ -373,10 +358,7 @@ const AIChat = ({
   const handleLoadGuideSession = useCallback(() => {
     setIsGuideSession(true);
     clearMessages();
-    if (isMobile) {
-      setSidebarOpen(false);
-    }
-  }, [clearMessages, isMobile]);
+  }, [clearMessages]);
 
   const sidebarProps = useMemo(() => ({
     currentSessionId: isGuideSession ? 'guide-session' : currentSessionId,
@@ -389,8 +371,7 @@ const AIChat = ({
     onEditSessionName: editSessionName,
     onLoadGuideSession: handleLoadGuideSession,
     onCreateNewSession: handleNewSession,
-    // Sidebar tillbaka till vänster -> border till höger (standard)
-    className: isMobile ? "w-full min-h-full" : "w-[300px] xl:w-[320px]",
+    className: isMobile ? "w-full min-h-full" : "w-[280px] lg:w-[300px]",
   }), [
     isGuideSession,
     currentSessionId,
@@ -407,140 +388,40 @@ const AIChat = ({
     <div className="flex h-full min-h-0 w-full overflow-hidden">
       {user ? (
         <>
-          {/* ChatFolderSidebar flyttad tillbaka till vänster (först i DOM) */}
+          {/* Vänster Sidebar: Chatthistorik */}
           {!isMobile && !desktopSidebarCollapsed && (
             <ChatFolderSidebar {...sidebarProps} />
           )}
 
+          {/* Mitten: Chatt-yta */}
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
-            <header className="grid grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-ai-border/60 px-4 py-3 sm:px-6">
-              <div className="flex items-center gap-2">
-                {isMobile && (
-                  <Link to="/" className="flex items-center min-w-0 flex-shrink-0 mr-1">
-                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center transform rotate-3 hover:rotate-0 transition-transform duration-300 flex-shrink-0">
-                      <Brain className="w-4 h-4 text-primary-foreground" />
-                    </div>
-                  </Link>
-                )}
-
-                {isMobile && (
-                  <Sheet open={sidebarOpen} onOpenChange={(open) => { setSidebarOpen(open); if (!open) setSidebarView('chat'); }}>
-                    <SheetTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground"
-                      >
-                        <Menu className="h-4 w-4" />
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="w-full max-w-xs p-0 sm:max-w-sm" hideCloseButton>
-                      {sidebarView === 'chat' ? (
-                        <div className="flex flex-col h-full">
-                          <div className="px-4 py-3 border-b border-ai-border/60 bg-ai-surface-muted/40 flex items-center justify-between">
-                            <span className="text-sm font-semibold text-foreground">Chat-sessioner</span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setSidebarView('navigation')}
-                              className="h-8 text-xs"
-                            >
-                              <ChevronLeft className="h-4 w-4 mr-1" />
-                              Navigation
-                            </Button>
-                          </div>
-                          <div className="flex-1 overflow-auto">
-                            <ChatFolderSidebar {...sidebarProps} />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col h-full">
-                          <div className="px-4 py-3 border-b border-ai-border/60 bg-ai-surface-muted/40 flex items-center justify-between">
-                            <span className="text-sm font-semibold text-foreground">Navigation</span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setSidebarView('chat')}
-                              className="h-8 text-xs"
-                            >
-                              <ChevronLeft className="h-4 w-4 mr-1" />
-                              Chat
-                            </Button>
-                          </div>
-                          <nav className="flex-1 overflow-auto px-4 py-4 space-y-4">
-                            {/* ... Mobile nav links (samma som tidigare) ... */}
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary mb-3">
-                                <Home className="w-4 h-4" />
-                                <span>{t('nav.mainMenu')}</span>
-                              </div>
-                              <Link
-                                to="/"
-                                onClick={() => setSidebarOpen(false)}
-                                className={cn(
-                                  'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 w-full border shadow-sm',
-                                  location.pathname === '/' 
-                                    ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground border-primary/40'
-                                    : 'text-muted-foreground border-transparent bg-background/60 hover:text-foreground hover:bg-gradient-to-r hover:from-muted/70 hover:to-muted/40'
-                                )}
-                              >
-                                <Home className="w-5 h-5" />
-                                <span>{t('nav.home')}</span>
-                              </Link>
-                              {/* Fyll på med resten av länkarna här om det behövs, eller behåll befintligt block */}
-                            </div>
-                          </nav>
-                        </div>
-                      )}
-                    </SheetContent>
-                  </Sheet>
-                )}
-
-                {/* Desktop: ENBART Huvudmeny-knappen här (Vänster) */}
+            
+            {/* NY CHAT TOOLBAR: Ligger direkt under globala headern */}
+            <div className="flex items-center justify-between px-4 py-2 border-b border-ai-border/40 min-h-[50px]">
+              
+              {/* Vänster: Knapp för att visa/dölja historik */}
+              <div className="flex items-center">
                 {!isMobile && (
-                  <Button 
-                    onClick={toggleSidebar}
-                    variant="ghost" 
+                  <Button
+                    onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
+                    variant="ghost"
                     size="icon"
-                    className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground"
-                    title="Huvudmeny"
+                    className="h-8 w-8 text-ai-text-muted hover:text-foreground"
+                    title={desktopSidebarCollapsed ? "Visa historik" : "Dölj historik"}
                   >
-                    <Menu className="h-5 w-5" />
+                    {/* PanelLeft indikerar att vi kontrollerar den vänstra panelen */}
+                    {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
                   </Button>
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-2">
-                {isMobile && (
-                  <>
-                    <ThemeToggle />
-                    {user && <ProfileMenu />}
-                  </>
-                )}
-
-                {/* Desktop: Historik-knappen här (Höger sida) */}
-                {!isMobile && (
-                  <>
-                    <Button
-                      onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground mr-1"
-                      title={desktopSidebarCollapsed ? "Visa historik" : "Dölj historik"}
-                    >
-                      {/* Använd History-ikonen för att göra det tydligt */}
-                      <History className="h-5 w-5" />
-                    </Button>
-                    
-                    <div className="h-4 w-px bg-border/60 mx-1" />
-                  </>
-                )}
-                 
+              {/* Höger: Premium status / Krediter */}
+              <div className="flex items-center">
                 {isPremium ? (
                   <TooltipProvider delayDuration={120}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Badge className="inline-flex h-7 items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 text-[11px] font-semibold text-white shadow-sm">
+                        <Badge className="inline-flex h-7 items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 text-[11px] font-semibold text-white shadow-sm cursor-default">
                           <Crown className="h-3.5 w-3.5" aria-hidden />
                           Premium
                           <span className="sr-only"> – Obegränsade meddelanden</span>
@@ -555,15 +436,15 @@ const AIChat = ({
                     </Tooltip>
                   </TooltipProvider>
                 ) : (
-                  <span className="hidden rounded-full border border-ai-border/70 bg-ai-surface-muted/60 px-3 py-1 text-xs font-medium text-ai-text-muted sm:inline-flex">
+                  <span className="rounded-full border border-ai-border/70 bg-ai-surface-muted/60 px-3 py-1 text-xs font-medium text-ai-text-muted inline-flex">
                     {remainingCredits}/{totalCredits} krediter kvar
                   </span>
                 )}
               </div>
-            </header>
+            </div>
 
+            {/* Resten av chatten (Meddelanden & Input) */}
             <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
-              {/* Conditional rendering for custom empty state with prompts */}
               {messages.length === 0 && contextData ? (
                 <div className="flex flex-col items-center justify-center h-full p-8 space-y-8 animate-in fade-in zoom-in duration-300 overflow-y-auto">
                   <div className="text-center space-y-3 max-w-lg">
@@ -658,11 +539,12 @@ const AIChat = ({
           </div>
         </>
       ) : (
+        // Icke-inloggad vy (Preview)
         <div className="flex w-full min-h-0 flex-col overflow-hidden bg-ai-surface">
           <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden">
             <div className="absolute inset-0 flex">
               
-              {/* Preview-sidebar tillbaka till VÄNSTER */}
+              {/* Preview Sidebar - Vänster */}
               {!isMobile && (
                 <div className="hidden w-[260px] flex-col border-r border-ai-border/60 bg-ai-surface-muted/60 px-4 py-6 md:flex">
                   <h3 className="text-sm font-semibold text-foreground">Senaste konversationer</h3>
