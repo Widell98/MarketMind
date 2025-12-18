@@ -122,6 +122,7 @@ const AIChat = ({
     if (isGuideSession) return "Guidad tur";
     if (!currentSessionId) return "Ny konversation";
     
+    // Using any to bypass potential type mismatch with session_name/name
     const session = sessions?.find(s => s.id === currentSessionId) as any;
     
     return session?.session_name || session?.name || "Pågående konversation";
@@ -411,90 +412,89 @@ const AIChat = ({
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
             
             {/* --- NY TOOLBAR --- */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-ai-border/40 min-h-[50px] bg-ai-surface/50 backdrop-blur-sm sticky top-0 z-10">
-              
-              {/* Vänster del: Historik-toggle och Titel */}
-              <div className="flex items-center gap-3 overflow-hidden">
-                {isMobile ? (
-                  /* Mobil: Sheet för historik */
-                  <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-                    <SheetTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0"
-                      >
-                        <PanelLeft className="h-5 w-5" />
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="w-full max-w-xs p-0 sm:max-w-sm" hideCloseButton>
-                        <div className="flex flex-col h-full">
-                          <div className="px-4 py-3 border-b border-ai-border/60 bg-ai-surface-muted/40 flex items-center justify-between">
-                            <span className="text-sm font-semibold text-foreground">Chat-sessioner</span>
-                          </div>
-                          <div className="flex-1 overflow-auto">
-                            <ChatFolderSidebar {...sidebarProps} />
-                          </div>
-                        </div>
-                    </SheetContent>
-                  </Sheet>
-                ) : (
-                  /* Desktop: Toggle knapp */
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
+            {/* Wrapper-div som begränsar bredden även i toolbaren */}
+            <div className="border-b border-ai-border/40 bg-ai-surface/50 backdrop-blur-sm sticky top-0 z-10 w-full">
+              <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl px-4 py-2 flex items-center justify-between min-h-[50px]">
+                
+                {/* Vänster del: Historik-toggle och Titel */}
+                <div className="flex items-center gap-3 overflow-hidden">
+                  {isMobile ? (
+                    /* Mobil: Sheet för historik */
+                    <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                      <SheetTrigger asChild>
                         <Button
-                          onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0"
+                          className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0 -ml-2"
                         >
-                          {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                          <PanelLeft className="h-5 w-5" />
                         </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {desktopSidebarCollapsed ? "Visa historik" : "Dölj historik"}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-                
-                {/* Dynamisk Chatt-titel med ikon */}
-                <div className="flex items-center gap-2 overflow-hidden fade-in animate-in duration-300">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary flex-shrink-0">
-                    <MessageSquare className="h-3 w-3" />
-                  </span>
-                  <span className="text-sm font-medium text-foreground truncate">
-                    {currentSessionName}
-                  </span>
+                      </SheetTrigger>
+                      <SheetContent side="left" className="w-full max-w-xs p-0 sm:max-w-sm" hideCloseButton>
+                          <div className="flex flex-col h-full">
+                            <div className="px-4 py-3 border-b border-ai-border/60 bg-ai-surface-muted/40 flex items-center justify-between">
+                              <span className="text-sm font-semibold text-foreground">Chat-sessioner</span>
+                            </div>
+                            <div className="flex-1 overflow-auto">
+                              <ChatFolderSidebar {...sidebarProps} />
+                            </div>
+                          </div>
+                      </SheetContent>
+                    </Sheet>
+                  ) : (
+                    /* Desktop: Toggle knapp */
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0 -ml-2"
+                          >
+                            {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {desktopSidebarCollapsed ? "Visa historik" : "Dölj historik"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                  
+                  {/* Dynamisk Chatt-titel med ikon */}
+                  <div className="flex items-center gap-2 overflow-hidden fade-in animate-in duration-300">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary flex-shrink-0">
+                      <MessageSquare className="h-3 w-3" />
+                    </span>
+                    <span className="text-sm font-medium text-foreground truncate max-w-[200px] lg:max-w-[400px]">
+                      {currentSessionName}
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              {/* Höger del: Premium/Credits (Ny chatt-knapp borttagen) */}
-              <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                {isPremium ? (
-                  <TooltipProvider delayDuration={120}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Badge className="inline-flex h-7 items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 text-[11px] font-semibold text-white shadow-sm cursor-default">
-                          <Crown className="h-3.5 w-3.5" aria-hidden />
-                          Premium
-                          <span className="sr-only"> – Obegränsade meddelanden</span>
-                          <span className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-medium tracking-wide text-white/80">
-                            <Infinity className="h-3 w-3" aria-hidden />
-                          </span>
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" align="end" className="text-xs font-medium">
-                        Premium – Obegränsade meddelanden
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                ) : (
-                  <span className="rounded-full border border-ai-border/70 bg-ai-surface-muted/60 px-3 py-1 text-xs font-medium text-ai-text-muted inline-flex whitespace-nowrap">
-                    {remainingCredits}/{totalCredits} <span className="hidden sm:inline ml-1">krediter</span>
-                  </span>
-                )}
+                {/* Höger del: Premium/Credits */}
+                <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                  {isPremium ? (
+                    <TooltipProvider delayDuration={120}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge className="inline-flex h-7 items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 text-[11px] font-semibold text-white shadow-sm cursor-default">
+                            <Crown className="h-3.5 w-3.5" aria-hidden />
+                            <span className="hidden sm:inline">Premium</span>
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" align="end" className="text-xs font-medium">
+                          Obegränsade meddelanden
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    <span className="rounded-full border border-ai-border/70 bg-ai-surface-muted/60 px-3 py-1 text-xs font-medium text-ai-text-muted inline-flex whitespace-nowrap">
+                      {remainingCredits}/{totalCredits} <span className="hidden sm:inline ml-1">krediter</span>
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
