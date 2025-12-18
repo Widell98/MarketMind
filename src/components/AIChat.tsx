@@ -12,12 +12,13 @@ import ChatDocumentManager from './chat/ChatDocumentManager';
 import { useChatDocuments } from '@/hooks/useChatDocuments';
 import { useToast } from '@/hooks/use-toast';
 
-// Vi behöver inte längre Menu, Home etc eftersom de ligger i global header
-import { LogIn, MessageSquare, Brain, Lock, Sparkles, PanelLeftClose, PanelLeft, Crown, Infinity } from 'lucide-react';
+// Imports för ikoner och UI
+import { LogIn, MessageSquare, Brain, Lock, Sparkles, PanelLeftClose, PanelLeft, Crown, Infinity, Home, BarChart3, User, Newspaper, ChevronLeft, Folder } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-// Sheet och SidebarTrigger behövs inte här längre för mobil-menyn (sköts av Layout)
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { cn } from '@/lib/utils';
 
 interface Message {
   id: string;
@@ -52,9 +53,7 @@ const AIChat = ({
   createNewSession: shouldCreateNewSession,
   sessionName
 }: AIChatProps) => {
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -78,6 +77,7 @@ const AIChat = ({
     remainingCredits,
     totalCredits
   } = useAIChat(portfolioId);
+
   const {
     documents: uploadedDocuments,
     isLoading: isLoadingDocuments,
@@ -88,13 +88,14 @@ const AIChat = ({
   } = useChatDocuments();
    
   const [input, setInput] = useState('');
-   
   const hasProcessedInitialMessageRef = useRef(false);
    
-  // Vi behöver inte sidebarOpen för mobilen här längre, det sköts av Layout
-  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
+  // State för sidebar/historik
+  const [sidebarOpen, setSidebarOpen] = useState(false); // För mobil (Sheet)
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false); // För desktop
   const [isGuideSession, setIsGuideSession] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
+  const [sidebarView, setSidebarView] = useState<'chat' | 'navigation'>('chat'); // Används primärt för mobil sheet-navigering om man vill blanda, men här renodlar vi.
    
   const [conversationContext, setConversationContext] = useState<any>(null);
 
@@ -264,10 +265,7 @@ const AIChat = ({
 
   useEffect(() => {
     const handleCreateStockChat = (event: CustomEvent) => {
-      const {
-        sessionName,
-        message
-      } = event.detail;
+      const { sessionName, message } = event.detail;
       const startChat = async () => {
         await createNewSession(sessionName);
         setInput(message);
@@ -275,22 +273,17 @@ const AIChat = ({
           inputRef.current?.focus();
         }, 100);
       };
-
       void startChat();
     };
     const handleExamplePrompt = (event: CustomEvent) => {
-      const {
-        message
-      } = event.detail;
+      const { message } = event.detail;
       setInput(message);
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
     };
     const handlePrefillChatInput = (event: CustomEvent) => {
-      const {
-        message
-      } = event.detail;
+      const { message } = event.detail;
       setInput(message);
       setTimeout(() => {
         inputRef.current?.focus();
@@ -332,12 +325,18 @@ const AIChat = ({
     hasProcessedInitialMessageRef.current = false; 
     await createNewSession();
     setInput('');
-  }, [user, createNewSession]);
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  }, [user, createNewSession, isMobile]);
 
   const handleLoadSession = useCallback(async (sessionId: string) => {
     await loadSession(sessionId);
-    setConversationContext(null); 
-  }, [loadSession]);
+    setConversationContext(null);
+    if (isMobile) {
+      setSidebarOpen(false);
+    } 
+  }, [loadSession, isMobile]);
 
   const handleExamplePrompt = (prompt: string) => {
     if (isGuideSession) {
@@ -358,7 +357,10 @@ const AIChat = ({
   const handleLoadGuideSession = useCallback(() => {
     setIsGuideSession(true);
     clearMessages();
-  }, [clearMessages]);
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  }, [clearMessages, isMobile]);
 
   const sidebarProps = useMemo(() => ({
     currentSessionId: isGuideSession ? 'guide-session' : currentSessionId,
@@ -388,20 +390,44 @@ const AIChat = ({
     <div className="flex h-full min-h-0 w-full overflow-hidden">
       {user ? (
         <>
-          {/* Vänster Sidebar: Chatthistorik */}
+          {/* Vänster Sidebar (Desktop) */}
           {!isMobile && !desktopSidebarCollapsed && (
             <ChatFolderSidebar {...sidebarProps} />
           )}
 
-          {/* Mitten: Chatt-yta */}
+          {/* Main Chat Area */}
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
             
-            {/* NY CHAT TOOLBAR: Ligger direkt under globala headern */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-ai-border/40 min-h-[50px]">
+            {/* --- NY TOOLBAR --- */}
+            <div className="flex items-center justify-between px-4 py-2 border-b border-ai-border/40 min-h-[50px] bg-ai-surface/50 backdrop-blur-sm">
               
-              {/* Vänster: Knapp för att visa/dölja historik */}
-              <div className="flex items-center">
-                {!isMobile && (
+              {/* Vänster del: Historik-toggle och Titel */}
+              <div className="flex items-center gap-3">
+                {isMobile ? (
+                  /* Mobil: Sheet för historik */
+                  <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                    <SheetTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-ai-text-muted hover:text-foreground"
+                      >
+                        <PanelLeft className="h-5 w-5" />
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="w-full max-w-xs p-0 sm:max-w-sm" hideCloseButton>
+                        <div className="flex flex-col h-full">
+                          <div className="px-4 py-3 border-b border-ai-border/60 bg-ai-surface-muted/40 flex items-center justify-between">
+                            <span className="text-sm font-semibold text-foreground">Chat-sessioner</span>
+                          </div>
+                          <div className="flex-1 overflow-auto">
+                            <ChatFolderSidebar {...sidebarProps} />
+                          </div>
+                        </div>
+                    </SheetContent>
+                  </Sheet>
+                ) : (
+                  /* Desktop: Toggle knapp */
                   <Button
                     onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
                     variant="ghost"
@@ -409,13 +435,20 @@ const AIChat = ({
                     className="h-8 w-8 text-ai-text-muted hover:text-foreground"
                     title={desktopSidebarCollapsed ? "Visa historik" : "Dölj historik"}
                   >
-                    {/* PanelLeft indikerar att vi kontrollerar den vänstra panelen */}
                     {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
                   </Button>
                 )}
+                
+                {/* Chatt-titel / Status */}
+                <div className="flex flex-col justify-center">
+                  <span className="text-sm font-medium text-foreground truncate max-w-[150px] sm:max-w-md animate-in fade-in duration-300">
+                    {/* Visa sessionsnamn eller default */}
+                    {isGuideSession ? "Guidad tur" : (currentSessionId ? "Pågående konversation" : "Ny konversation")}
+                  </span>
+                </div>
               </div>
 
-              {/* Höger: Premium status / Krediter */}
+              {/* Höger del: Premium/Credits */}
               <div className="flex items-center">
                 {isPremium ? (
                   <TooltipProvider delayDuration={120}>
@@ -425,7 +458,7 @@ const AIChat = ({
                           <Crown className="h-3.5 w-3.5" aria-hidden />
                           Premium
                           <span className="sr-only"> – Obegränsade meddelanden</span>
-                          <span className="inline-flex items-center gap-0.5 text-[10px] font-medium tracking-wide text-white/80">
+                          <span className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-medium tracking-wide text-white/80">
                             <Infinity className="h-3 w-3" aria-hidden />
                           </span>
                         </Badge>
@@ -436,14 +469,14 @@ const AIChat = ({
                     </Tooltip>
                   </TooltipProvider>
                 ) : (
-                  <span className="rounded-full border border-ai-border/70 bg-ai-surface-muted/60 px-3 py-1 text-xs font-medium text-ai-text-muted inline-flex">
-                    {remainingCredits}/{totalCredits} krediter kvar
+                  <span className="rounded-full border border-ai-border/70 bg-ai-surface-muted/60 px-3 py-1 text-xs font-medium text-ai-text-muted inline-flex whitespace-nowrap">
+                    {remainingCredits}/{totalCredits} <span className="hidden sm:inline ml-1">krediter</span>
                   </span>
                 )}
               </div>
             </div>
 
-            {/* Resten av chatten (Meddelanden & Input) */}
+            {/* Innehåll: Meddelanden och Input */}
             <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
               {messages.length === 0 && contextData ? (
                 <div className="flex flex-col items-center justify-center h-full p-8 space-y-8 animate-in fade-in zoom-in duration-300 overflow-y-auto">
@@ -539,12 +572,12 @@ const AIChat = ({
           </div>
         </>
       ) : (
-        // Icke-inloggad vy (Preview)
+        /* Icke-inloggad vy */
         <div className="flex w-full min-h-0 flex-col overflow-hidden bg-ai-surface">
           <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden">
             <div className="absolute inset-0 flex">
               
-              {/* Preview Sidebar - Vänster */}
+              {/* Preview Sidebar - Desktop */}
               {!isMobile && (
                 <div className="hidden w-[260px] flex-col border-r border-ai-border/60 bg-ai-surface-muted/60 px-4 py-6 md:flex">
                   <h3 className="text-sm font-semibold text-foreground">Senaste konversationer</h3>
