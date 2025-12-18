@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { SidebarTrigger } from '@/components/ui/sidebar'; // <--- NY IMPORT
 import { cn } from '@/lib/utils';
 
 interface Message {
@@ -87,18 +88,18 @@ const AIChat = ({
     deleteDocument,
     hasReachedDocumentLimit,
   } = useChatDocuments();
-  
+   
   const [input, setInput] = useState('');
-  
+   
   // ÄNDRING: Använd useRef istället för useState för att förhindra dubbla anrop
   const hasProcessedInitialMessageRef = useRef(false);
-  
+   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [isGuideSession, setIsGuideSession] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const [sidebarView, setSidebarView] = useState<'chat' | 'navigation'>('chat');
-  
+   
   const [conversationContext, setConversationContext] = useState<any>(null);
 
   const { t } = useLanguage();
@@ -108,10 +109,10 @@ const AIChat = ({
   const location = useLocation();
   const navigate = useNavigate();
   const isPremium = subscription?.subscribed;
-  
+   
   // Hämta contextData (t.ex. aktie-prompts) från navigation state
   const contextData = location.state?.contextData;
-  
+   
   const draftStorageKey = useMemo(() => {
     const sessionKey = currentSessionId ?? 'new';
     const portfolioKey = portfolioId ?? 'default';
@@ -200,7 +201,6 @@ const AIChat = ({
   }, [draftStorageKey, input]);
 
   // Handle session creation and initial messages
-// Handle session creation and initial messages
   useEffect(() => {
     const handleSessionInit = async () => {
       // 1. Säkerhetskoll: Om vi redan kört initiering eller ingen användare finns -> avbryt
@@ -325,10 +325,10 @@ const AIChat = ({
     e.preventDefault();
     const trimmedInput = input.trim();
     if (!trimmedInput || isLoading || !user) return;
-    
+     
     const previousInput = input;
     setInput('');
-    
+     
     const wasSent = await sendMessage(trimmedInput, {
       documentIds: selectedDocumentIds,
       documents: attachedDocuments.map((doc) => ({ id: doc.id, name: doc.name })),
@@ -566,15 +566,19 @@ const AIChat = ({
                   </Sheet>
                 )}
 
+                {/* Desktop Header Buttons: Huvudmeny (SidebarTrigger) + Historik-toggle */}
                 {!isMobile && (
-                  <Button
-                    onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground"
-                  >
-                    {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-                  </Button>
+                  <>
+                    <SidebarTrigger className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground" />
+                    <Button
+                      onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground"
+                    >
+                      {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                    </Button>
+                  </>
                 )}
               </div>
 
@@ -585,7 +589,7 @@ const AIChat = ({
                     {user && <ProfileMenu />}
                   </>
                 )}
-                
+                 
                 {isPremium ? (
                   <TooltipProvider delayDuration={120}>
                     <Tooltip>
@@ -618,9 +622,9 @@ const AIChat = ({
                 <div className="flex flex-col items-center justify-center h-full p-8 space-y-8 animate-in fade-in zoom-in duration-300 overflow-y-auto">
                   <div className="text-center space-y-3 max-w-lg">
                     <div className="flex justify-center mb-4">
-                       <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                         <Sparkles className="w-8 h-8 text-primary" />
-                       </div>
+                        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                          <Sparkles className="w-8 h-8 text-primary" />
+                        </div>
                     </div>
                     <h2 className="text-2xl font-semibold text-foreground tracking-tight">
                       {contextData.title}
