@@ -1,10 +1,9 @@
-
 import React, { useState, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { OPEN_CHAT_DOCUMENT_UPLOAD_EVENT } from '@/constants/chatDocuments';
-import { Send, MessageSquare, AlertCircle, Loader2, Sparkles, X, Paperclip } from 'lucide-react';
-import { FREE_DAILY_AI_MESSAGE_LIMIT, useSubscription } from '@/hooks/useSubscription';
+import { Send, AlertCircle, Loader2, X, Paperclip } from 'lucide-react';
+import { useSubscription } from '@/hooks/useSubscription';
 import PremiumUpgradeModal from './PremiumUpgradeModal';
 import { useToast } from '@/hooks/use-toast';
 
@@ -35,174 +34,151 @@ const ChatInput = memo(({
   isDocumentLimitReached = false,
   onDocumentLimitClick,
 }: ChatInputProps) => {
-  const { usage, subscription } = useSubscription();
+  const { isSubscribed } = useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { toast } = useToast();
-  
-  const dailyLimit = FREE_DAILY_AI_MESSAGE_LIMIT;
-  const currentUsage = usage?.ai_messages_count || 0;
-  const isPremium = subscription?.subscribed;
-  const isAtLimit = !isPremium && currentUsage >= dailyLimit;
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
+  const handleAttachClick = () => {
+    if (isDocumentLimitReached) {
+      if (onDocumentLimitClick) onDocumentLimitClick();
+      return;
+    }
+    
+    const event = new CustomEvent(OPEN_CHAT_DOCUMENT_UPLOAD_EVENT);
+    window.dispatchEvent(event);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!input.trim() || isLoading) return;
 
-    // Check if user has reached limit
-    if (isAtLimit && !isPremium) {
+    if (quotaExceeded && !isSubscribed) {
       setShowUpgradeModal(true);
-      return;
-    }
-
-    if (isLoading || quotaExceeded) {
       return;
     }
 
     onSubmit(e);
   };
 
-  const handleAttachClick = () => {
-    if (isAttachDisabled) {
-      toast({
-        title: 'Uppladdning pausad',
-        description: 'Vänta tills pågående uppladdning eller försök igen när kvoten är tillgänglig.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (isDocumentLimitReached) {
-      onDocumentLimitClick?.();
-      return;
-    }
-
-    const event = new Event(OPEN_CHAT_DOCUMENT_UPLOAD_EVENT);
-    window.dispatchEvent(event);
-  };
-
   return (
-    <>
-      <div className="flex-shrink-0 border-t border-[#144272]/15 bg-white/95 px-4 py-4 shadow-[0_-12px_35px_rgba(15,23,42,0.05)] backdrop-blur-sm transition-colors sm:px-6 sm:py-3.5 lg:px-10 lg:py-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:pb-[calc(1rem+env(safe-area-inset-bottom))] dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none">
-        {quotaExceeded && (
-          <div className="mb-3 sm:mb-4 rounded-[18px] border border-destructive/20 bg-destructive/10 p-3 shadow-[0_16px_40px_rgba(239,68,68,0.18)]">
-            <div className="flex items-center gap-2 font-medium mb-1 text-destructive text-sm">
-              <AlertCircle className="w-4 h-4" />
-              API-kvot överskriden
-            </div>
-            <p className="text-destructive/80 text-sm leading-relaxed">
-              Du har nått din dagliga gräns för AI-användning. Försök igen senare eller uppgradera ditt konto.
-            </p>
-          </div>
-        )}
-
+    <div className="w-full border-t border-ai-border/40 bg-white/50 backdrop-blur-md dark:bg-ai-surface/50 p-3 pb-4">
+      
+      <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+        
+        {/* Form-containern omsluter nu allt (dokument + input) för en enhetlig look */}
         <form
           onSubmit={handleSubmit}
-          className="mx-auto flex w-full max-w-5xl items-end gap-2 sm:gap-3 lg:max-w-6xl xl:max-w-[85rem] xl:gap-4 2xl:max-w-[95rem] 2xl:gap-5"
+          className="relative flex flex-col w-full rounded-2xl border border-ai-border/60 bg-white shadow-sm transition-all focus-within:border-primary/40 focus-within:shadow-md focus-within:ring-1 focus-within:ring-primary/20 dark:bg-ai-surface dark:shadow-none overflow-hidden"
         >
-          <div className="flex-1 relative min-w-0">
-            {attachedDocuments.length > 0 && (
-              <div className="mb-2 space-y-1.5">
-                <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-primary">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span>AI:n använder dessa dokument som källor</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {attachedDocuments.map((doc) => (
-                    <span
-                      key={doc.id}
-                      className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
+          {/* SEKTION: Uppladdade dokument (Ligger nu inuti ramen, överst) */}
+          {attachedDocuments && attachedDocuments.length > 0 && (
+            <div className="flex flex-wrap gap-2 px-3 pt-3 pb-1">
+              {attachedDocuments.map((doc) => (
+                <div 
+                  key={doc.id} 
+                  className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium shadow-sm transition-all animate-in fade-in slide-in-from-bottom-1 ${
+                    doc.status === 'failed' 
+                      ? 'bg-destructive/10 border-destructive/20 text-destructive' 
+                      : 'bg-ai-surface-muted/50 border-ai-border/50 text-foreground'
+                  }`}
+                >
+                  {doc.status === 'processing' ? (
+                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                  ) : (
+                    <Paperclip className="h-3 w-3 opacity-70" />
+                  )}
+                  
+                  <span className="max-w-[150px] truncate">{doc.name}</span>
+                  
+                  {onRemoveDocument && (
+                    <button
+                      onClick={() => onRemoveDocument(doc.id)}
+                      className="ml-1 rounded-full p-0.5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                      type="button"
                     >
-                      <span className="max-w-[160px] truncate" title={doc.name}>
-                        {doc.name}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => onRemoveDocument?.(doc.id)}
-                        className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/20 text-primary transition-colors hover:bg-primary/30"
-                        aria-label={`Ta bort ${doc.name}`}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
+                      <X className="h-3 w-3 opacity-60" />
+                    </button>
+                  )}
                 </div>
-              </div>
-            )}
-            <Textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-                // Auto-scroll to bottom when typing to keep cursor visible
-                if (inputRef.current) {
-                  requestAnimationFrame(() => {
-                    if (inputRef.current) {
-                      inputRef.current.scrollTop = inputRef.current.scrollHeight;
-                    }
-                  });
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  if (!isLoading && !quotaExceeded) {
-                    handleSubmit(e as unknown as React.FormEvent);
-                  }
-                }
-              }}
-              disabled={quotaExceeded}
-              readOnly={isLoading && !quotaExceeded}
-              aria-disabled={isLoading || quotaExceeded}
-              aria-busy={isLoading}
-              className="min-h-[40px] max-h-[100px] sm:max-h-[120px] lg:max-h-[160px] w-full resize-none rounded-[14px] border border-[#205295]/18 bg-white px-3 py-2.5 pr-10 text-sm shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition-all duration-200 focus:border-primary/50 focus:shadow-[0_12px_30px_rgba(15,23,42,0.08)] focus:ring-1 focus:ring-primary/20 sm:px-4 sm:py-3 sm:text-base dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none dark:focus:border-ai-border/80 dark:focus:ring-0 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-primary/20 [&::-webkit-scrollbar-thumb]:rounded-full"
-              style={{ fontSize: '16px' }}
-              rows={1}
-            />
-            <div className="pointer-events-none absolute right-3 top-2.5 sm:top-1/2 sm:-translate-y-1/2 text-primary/40 transition-colors dark:text-ai-text-muted">
-              <MessageSquare className="w-4 h-4" />
+              ))}
             </div>
-          </div>
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
+          )}
+
+          {/* SEKTION: Input-fält och knappar */}
+          <div className="flex w-full items-end gap-2 p-2">
+            {/* Bifoga-knapp */}
             <Button
               type="button"
-              variant="ghost"
               size="icon"
+              variant="ghost"
+              className="h-9 w-9 rounded-xl text-ai-text-muted transition-colors hover:bg-ai-surface-muted hover:text-foreground shrink-0 mb-0.5"
               onClick={handleAttachClick}
-              className="h-10 w-10 rounded-full border border-transparent text-primary transition-colors hover:border-primary/30 hover:bg-primary/10 sm:h-11 sm:w-11 lg:h-12 lg:w-12 dark:text-ai-text-muted dark:hover:text-primary"
-              aria-label="Bifoga dokument"
+              disabled={isLoading || isAttachDisabled}
+              title="Bifoga dokument"
             >
-              <span className="relative flex h-4 w-4 items-center justify-center">
-                <Paperclip className="h-4 w-4" />
-                {attachedDocuments.length > 0 && (
-                  <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary px-[3px] text-[10px] font-semibold text-primary-foreground">
-                    {attachedDocuments.length}
-                  </span>
-                )}
-              </span>
+              <Paperclip className="h-4 w-4" />
             </Button>
+
+            {/* Textfält */}
+            <Textarea
+              ref={inputRef}
+              tabIndex={0}
+              rows={1}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={isLoading ? "Assistenten tänker..." : "Ställ en fråga om din portfölj..."}
+              className="min-h-[40px] max-h-[200px] w-full resize-none border-0 bg-transparent py-2.5 text-sm placeholder:text-ai-text-muted focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-50"
+              disabled={isLoading}
+            />
+
+            {/* Skicka-knapp */}
             <Button
               type="submit"
-              disabled={!input.trim() || isLoading || quotaExceeded}
-              size="default"
-              className="h-10 sm:h-11 lg:h-12 px-5 sm:px-6 bg-gradient-to-r from-blue-500 to-primary hover:from-blue-500/90 hover:to-primary/90 shadow-[0_24px_55px_rgba(15,23,42,0.18)] rounded-full text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_28px_70px_rgba(15,23,42,0.22)] text-primary-foreground flex-shrink-0 self-end dark:from-primary dark:to-primary dark:hover:from-primary/90 dark:hover:to-primary/90 dark:shadow-none"
+              size="icon"
+              disabled={!input.trim() || isLoading}
+              className={`h-9 w-9 rounded-xl transition-all duration-300 shrink-0 mb-0.5 ${
+                input.trim() && !isLoading
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-105 shadow-md'
+                  : 'bg-ai-surface-muted text-ai-text-muted hover:bg-ai-surface-muted/80'
+              }`}
             >
               {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Send className="w-4 h-4" />
+                <Send className="h-4 w-4" />
               )}
             </Button>
           </div>
         </form>
 
+        {/* Footer-info */}
+        <div className="mt-1.5 px-2 text-center text-[11px] text-ai-text-muted flex justify-center items-center gap-2 opacity-80">
+          {quotaExceeded && !isSubscribed ? (
+            <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-500 font-medium">
+              <AlertCircle className="h-3 w-3" />
+              Gräns nådd. Uppgradera för obegränsat.
+            </span>
+          ) : (
+            <span>
+              AI kan göra misstag. Kontrollera viktig information.
+            </span>
+          )}
+        </div>
       </div>
 
-      <PremiumUpgradeModal
-        isOpen={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
-        currentUsage={currentUsage}
-        dailyLimit={dailyLimit}
+      <PremiumUpgradeModal 
+        open={showUpgradeModal} 
+        onOpenChange={setShowUpgradeModal} 
       />
-    </>
+    </div>
   );
 });
 

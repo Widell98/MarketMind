@@ -10,11 +10,13 @@ import ProfileUpdateConfirmation from './ProfileUpdateConfirmation';
 import ChatFolderSidebar from './chat/ChatFolderSidebar';
 import ChatDocumentManager from './chat/ChatDocumentManager';
 import { useChatDocuments } from '@/hooks/useChatDocuments';
+import { useChatFolders } from '@/hooks/useChatFolders';
 import { useToast } from '@/hooks/use-toast';
-import ThemeToggle from './ThemeToggle';
-import ProfileMenu from './ProfileMenu';
 
-import { LogIn, MessageSquare, Brain, Lock, Sparkles, Menu, PanelLeftClose, PanelLeft, Crown, Infinity, Home, BarChart3, User, Newspaper, ChevronLeft } from 'lucide-react';
+import { 
+  LogIn, MessageSquare, Brain, Lock, Sparkles, 
+  PanelLeftClose, PanelLeft, Crown, Infinity
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -54,11 +56,10 @@ const AIChat = ({
   createNewSession: shouldCreateNewSession,
   sessionName
 }: AIChatProps) => {
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+
   const {
     messages,
     currentSessionId,
@@ -79,6 +80,7 @@ const AIChat = ({
     remainingCredits,
     totalCredits
   } = useAIChat(portfolioId);
+
   const {
     documents: uploadedDocuments,
     isLoading: isLoadingDocuments,
@@ -87,18 +89,17 @@ const AIChat = ({
     deleteDocument,
     hasReachedDocumentLimit,
   } = useChatDocuments();
-  
+
+  const { sessions } = useChatFolders(); 
+   
   const [input, setInput] = useState('');
-  
-  // ÄNDRING: Använd useRef istället för useState för att förhindra dubbla anrop
   const hasProcessedInitialMessageRef = useRef(false);
-  
+   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [isGuideSession, setIsGuideSession] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
-  const [sidebarView, setSidebarView] = useState<'chat' | 'navigation'>('chat');
-  
+   
   const [conversationContext, setConversationContext] = useState<any>(null);
 
   const { t } = useLanguage();
@@ -108,15 +109,24 @@ const AIChat = ({
   const location = useLocation();
   const navigate = useNavigate();
   const isPremium = subscription?.subscribed;
-  
-  // Hämta contextData (t.ex. aktie-prompts) från navigation state
+   
   const contextData = location.state?.contextData;
-  
+   
   const draftStorageKey = useMemo(() => {
     const sessionKey = currentSessionId ?? 'new';
     const portfolioKey = portfolioId ?? 'default';
     return `ai-chat-draft:${portfolioKey}:${sessionKey}`;
   }, [currentSessionId, portfolioId]);
+
+  const currentSessionName = useMemo(() => {
+    if (isGuideSession) return "Guidad tur";
+    if (!currentSessionId) return "Ny konversation";
+    
+    // Using any to bypass potential type mismatch with session_name/name
+    const session = sessions?.find(s => s.id === currentSessionId) as any;
+    
+    return session?.session_name || session?.name || "Pågående konversation";
+  }, [currentSessionId, sessions, isGuideSession]);
 
   useEffect(() => {
     if (conversationData) {
@@ -183,7 +193,6 @@ const AIChat = ({
     if (typeof window === 'undefined') return;
 
     const storedDraft = sessionStorage.getItem(draftStorageKey);
-    // ÄNDRING: Kolla mot ref istället för state
     if (storedDraft && !hasProcessedInitialMessageRef.current) {
       setInput(storedDraft);
     }
@@ -199,22 +208,16 @@ const AIChat = ({
     }
   }, [draftStorageKey, input]);
 
-  // Handle session creation and initial messages
-// Handle session creation and initial messages
   useEffect(() => {
     const handleSessionInit = async () => {
-      // 1. Säkerhetskoll: Om vi redan kört initiering eller ingen användare finns -> avbryt
       if (hasProcessedInitialMessageRef.current || !user) return;
 
-      // 2. Hämta flaggor: Vi kollar både props (från parent) och location.state (från navigation/knapp)
       const state = location.state || {};
       const triggerNewSession = shouldCreateNewSession || state.createNewSession;
       const msg = initialMessage || state.initialMessage;
       const stock = initialStock || state.initialStock;
 
-      // Fall 1: Tvingad ny session (t.ex. från Diskutera-knappen)
       if (triggerNewSession) {
-        // Lås direkt för att förhindra dubbelkörning
         hasProcessedInitialMessageRef.current = true;
 
         await createNewSession(sessionName);
@@ -230,20 +233,17 @@ const AIChat = ({
           setConversationContext(conversationData);
         }
         
-        // VIKTIGT FIX: Uppdatera navigationens state för att stänga av "createNewSession".
-        // Detta gör att om användaren trycker F5, så är flaggan false och ingen ny chatt skapas.
         navigate(location.pathname, { 
           replace: true, 
           state: { 
-            ...state,                 // Behåll dina prompts (contextData)
-            createNewSession: false,  // Stäng av skapande-flaggan
-            initialMessage: undefined // Rensa meddelandet
+            ...state,                 
+            createNewSession: false,  
+            initialMessage: undefined 
           } 
         });
         return;
       }
 
-      // Fall 2: URL parametrar (gamla länkar eller externa anrop)
       if (stock && msg) {
         hasProcessedInitialMessageRef.current = true;
         await createNewSession(stock);
@@ -253,7 +253,6 @@ const AIChat = ({
           inputRef.current?.focus();
         }, 100);
         
-        // Rensa URL-parametrar snyggt
         if (location.search) {
           const newUrl = `${location.pathname}${location.hash ?? ''}`;
           navigate(newUrl, { replace: true });
@@ -274,15 +273,12 @@ const AIChat = ({
     location.pathname,
     location.hash,
     location.search,
-    location.state // Viktigt beroende för att reagera på knapptryckningen
+    location.state 
   ]);
 
   useEffect(() => {
     const handleCreateStockChat = (event: CustomEvent) => {
-      const {
-        sessionName,
-        message
-      } = event.detail;
+      const { sessionName, message } = event.detail;
       const startChat = async () => {
         await createNewSession(sessionName);
         setInput(message);
@@ -290,22 +286,17 @@ const AIChat = ({
           inputRef.current?.focus();
         }, 100);
       };
-
       void startChat();
     };
     const handleExamplePrompt = (event: CustomEvent) => {
-      const {
-        message
-      } = event.detail;
+      const { message } = event.detail;
       setInput(message);
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
     };
     const handlePrefillChatInput = (event: CustomEvent) => {
-      const {
-        message
-      } = event.detail;
+      const { message } = event.detail;
       setInput(message);
       setTimeout(() => {
         inputRef.current?.focus();
@@ -325,10 +316,10 @@ const AIChat = ({
     e.preventDefault();
     const trimmedInput = input.trim();
     if (!trimmedInput || isLoading || !user) return;
-    
+     
     const previousInput = input;
     setInput('');
-    
+     
     const wasSent = await sendMessage(trimmedInput, {
       documentIds: selectedDocumentIds,
       documents: attachedDocuments.map((doc) => ({ id: doc.id, name: doc.name })),
@@ -344,7 +335,7 @@ const AIChat = ({
     if (!user) return;
     setIsGuideSession(false);
     setConversationContext(null);
-    hasProcessedInitialMessageRef.current = false; // Reset ref
+    hasProcessedInitialMessageRef.current = false; 
     await createNewSession();
     setInput('');
     if (isMobile) {
@@ -354,10 +345,10 @@ const AIChat = ({
 
   const handleLoadSession = useCallback(async (sessionId: string) => {
     await loadSession(sessionId);
-    setConversationContext(null); 
+    setConversationContext(null);
     if (isMobile) {
       setSidebarOpen(false);
-    }
+    } 
   }, [loadSession, isMobile]);
 
   const handleExamplePrompt = (prompt: string) => {
@@ -395,7 +386,7 @@ const AIChat = ({
     onEditSessionName: editSessionName,
     onLoadGuideSession: handleLoadGuideSession,
     onCreateNewSession: handleNewSession,
-    className: isMobile ? "w-full min-h-full" : "w-[300px] xl:w-[320px]",
+    className: isMobile ? "w-full min-h-full" : "w-[280px] lg:w-[300px]",
   }), [
     isGuideSession,
     currentSessionId,
@@ -412,208 +403,103 @@ const AIChat = ({
     <div className="flex h-full min-h-0 w-full overflow-hidden">
       {user ? (
         <>
+          {/* Vänster Sidebar (Desktop) */}
           {!isMobile && !desktopSidebarCollapsed && (
             <ChatFolderSidebar {...sidebarProps} />
           )}
 
+          {/* Main Chat Area */}
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
-            <header className="grid grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-ai-border/60 px-4 py-3 sm:px-6">
-              <div className="flex items-center gap-2">
-                {isMobile && (
-                  <Link to="/" className="flex items-center min-w-0 flex-shrink-0 mr-1">
-                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center transform rotate-3 hover:rotate-0 transition-transform duration-300 flex-shrink-0">
-                      <Brain className="w-4 h-4 text-primary-foreground" />
-                    </div>
-                  </Link>
-                )}
-
-                {isMobile && (
-                  <Sheet open={sidebarOpen} onOpenChange={(open) => { setSidebarOpen(open); if (!open) setSidebarView('chat'); }}>
-                    <SheetTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground"
-                      >
-                        <Menu className="h-4 w-4" />
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="w-full max-w-xs p-0 sm:max-w-sm" hideCloseButton>
-                      {sidebarView === 'chat' ? (
-                        <div className="flex flex-col h-full">
-                          <div className="px-4 py-3 border-b border-ai-border/60 bg-ai-surface-muted/40 flex items-center justify-between">
-                            <span className="text-sm font-semibold text-foreground">Chat-sessioner</span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setSidebarView('navigation')}
-                              className="h-8 text-xs"
-                            >
-                              <ChevronLeft className="h-4 w-4 mr-1" />
-                              Navigation
-                            </Button>
-                          </div>
-                          <div className="flex-1 overflow-auto">
-                            <ChatFolderSidebar {...sidebarProps} />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col h-full">
-                          <div className="px-4 py-3 border-b border-ai-border/60 bg-ai-surface-muted/40 flex items-center justify-between">
-                            <span className="text-sm font-semibold text-foreground">Navigation</span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setSidebarView('chat')}
-                              className="h-8 text-xs"
-                            >
-                              <ChevronLeft className="h-4 w-4 mr-1" />
-                              Chat
-                            </Button>
-                          </div>
-                          <nav className="flex-1 overflow-auto px-4 py-4 space-y-4">
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary mb-3">
-                                <Home className="w-4 h-4" />
-                                <span>{t('nav.mainMenu')}</span>
-                              </div>
-                              <Link
-                                to="/"
-                                onClick={() => setSidebarOpen(false)}
-                                className={cn(
-                                  'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 w-full border shadow-sm',
-                                  location.pathname === '/' 
-                                    ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground border-primary/40'
-                                    : 'text-muted-foreground border-transparent bg-background/60 hover:text-foreground hover:bg-gradient-to-r hover:from-muted/70 hover:to-muted/40'
-                                )}
-                              >
-                                <Home className="w-5 h-5" />
-                                <span>{t('nav.home')}</span>
-                              </Link>
-                              <Link
-                                to="/discover"
-                                onClick={() => setSidebarOpen(false)}
-                                className={cn(
-                                  'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 w-full border shadow-sm',
-                                  location.pathname.startsWith('/discover')
-                                    ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground border-primary/40'
-                                    : 'text-muted-foreground border-transparent bg-background/60 hover:text-foreground hover:bg-gradient-to-r hover:from-muted/70 hover:to-muted/40'
-                                )}
-                              >
-                                <Sparkles className="w-5 h-5" />
-                                <span>{t('nav.discover')}</span>
-                              </Link>
-                              <Link
-                                to="/news"
-                                onClick={() => setSidebarOpen(false)}
-                                className={cn(
-                                  'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 w-full border shadow-sm',
-                                  location.pathname.startsWith('/news')
-                                    ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground border-primary/40'
-                                    : 'text-muted-foreground border-transparent bg-background/60 hover:text-foreground hover:bg-gradient-to-r hover:from-muted/70 hover:to-muted/40'
-                                )}
-                              >
-                                <Newspaper className="w-5 h-5" />
-                                <span>{t('nav.news')}</span>
-                              </Link>
-                            </div>
-                            {user && (
-                              <>
-                                <div className="space-y-2 pt-2">
-                                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary mb-3">
-                                    <BarChart3 className="w-4 h-4" />
-                                    <span>{t('nav.aiTools')}</span>
-                                  </div>
-                                  <Link
-                                    to="/portfolio-implementation"
-                                    onClick={() => setSidebarOpen(false)}
-                                    className={cn(
-                                      'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 w-full border shadow-sm',
-                                      location.pathname.startsWith('/portfolio-implementation')
-                                        ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground border-primary/40'
-                                        : 'text-muted-foreground border-transparent bg-background/60 hover:text-foreground hover:bg-gradient-to-r hover:from-muted/70 hover:to-muted/40'
-                                    )}
-                                  >
-                                    <BarChart3 className="w-5 h-5" />
-                                    <span>{t('nav.portfolio')}</span>
-                                  </Link>
-                                </div>
-                                <div className="space-y-2 pt-2">
-                                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary mb-3">
-                                    <User className="w-4 h-4" />
-                                    <span>{t('nav.account')}</span>
-                                  </div>
-                                  <Link
-                                    to="/profile"
-                                    onClick={() => setSidebarOpen(false)}
-                                    className={cn(
-                                      'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 w-full border shadow-sm',
-                                      location.pathname.startsWith('/profile')
-                                        ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground border-primary/40'
-                                        : 'text-muted-foreground border-transparent bg-background/60 hover:text-foreground hover:bg-gradient-to-r hover:from-muted/70 hover:to-muted/40'
-                                    )}
-                                  >
-                                    <User className="w-5 h-5" />
-                                    <span>{t('nav.profile')}</span>
-                                  </Link>
-                                </div>
-                              </>
-                            )}
-                          </nav>
-                        </div>
-                      )}
-                    </SheetContent>
-                  </Sheet>
-                )}
-
-                {!isMobile && (
-                  <Button
-                    onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground"
-                  >
-                    {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-                  </Button>
-                )}
-              </div>
-
-              <div className="flex items-center justify-end gap-2">
-                {isMobile && (
-                  <>
-                    <ThemeToggle />
-                    {user && <ProfileMenu />}
-                  </>
-                )}
+            
+            {/* --- NY TOOLBAR --- */}
+            {/* Wrapper-div som begränsar bredden även i toolbaren */}
+            <div className="border-b border-ai-border/40 bg-ai-surface/50 backdrop-blur-sm sticky top-0 z-10 w-full">
+              <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl px-4 py-2 flex items-center justify-between min-h-[50px]">
                 
-                {isPremium ? (
-                  <TooltipProvider delayDuration={120}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Badge className="inline-flex h-7 items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 text-[11px] font-semibold text-white shadow-sm">
-                          <Crown className="h-3.5 w-3.5" aria-hidden />
-                          Premium
-                          <span className="sr-only"> – Obegränsade meddelanden</span>
-                          <span className="inline-flex items-center gap-0.5 text-[10px] font-medium tracking-wide text-white/80">
-                            <Infinity className="h-3 w-3" aria-hidden />
-                          </span>
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" align="end" className="text-xs font-medium">
-                        Premium – Obegränsade meddelanden
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                ) : (
-                  <span className="hidden rounded-full border border-ai-border/70 bg-ai-surface-muted/60 px-3 py-1 text-xs font-medium text-ai-text-muted sm:inline-flex">
-                    {remainingCredits}/{totalCredits} krediter kvar
-                  </span>
-                )}
-              </div>
-            </header>
+                {/* Vänster del: Historik-toggle och Titel */}
+                <div className="flex items-center gap-3 overflow-hidden">
+                  {isMobile ? (
+                    /* Mobil: Sheet för historik */
+                    <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                      <SheetTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0 -ml-2"
+                        >
+                          <PanelLeft className="h-5 w-5" />
+                        </Button>
+                      </SheetTrigger>
+                      <SheetContent side="left" className="w-full max-w-xs p-0 sm:max-w-sm" hideCloseButton>
+                          <div className="flex flex-col h-full">
+                            <div className="px-4 py-3 border-b border-ai-border/60 bg-ai-surface-muted/40 flex items-center justify-between">
+                              <span className="text-sm font-semibold text-foreground">Chat-sessioner</span>
+                            </div>
+                            <div className="flex-1 overflow-auto">
+                              <ChatFolderSidebar {...sidebarProps} />
+                            </div>
+                          </div>
+                      </SheetContent>
+                    </Sheet>
+                  ) : (
+                    /* Desktop: Toggle knapp */
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0 -ml-2"
+                          >
+                            {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {desktopSidebarCollapsed ? "Visa historik" : "Dölj historik"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                  
+                  {/* Dynamisk Chatt-titel med ikon */}
+                  <div className="flex items-center gap-2 overflow-hidden fade-in animate-in duration-300">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary flex-shrink-0">
+                      <MessageSquare className="h-3 w-3" />
+                    </span>
+                    <span className="text-sm font-medium text-foreground truncate max-w-[200px] lg:max-w-[400px]">
+                      {currentSessionName}
+                    </span>
+                  </div>
+                </div>
 
+                {/* Höger del: Premium/Credits */}
+                <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                  {isPremium ? (
+                    <TooltipProvider delayDuration={120}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge className="inline-flex h-7 items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 text-[11px] font-semibold text-white shadow-sm cursor-default">
+                            <Crown className="h-3.5 w-3.5" aria-hidden />
+                            <span className="hidden sm:inline">Premium</span>
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" align="end" className="text-xs font-medium">
+                          Obegränsade meddelanden
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    <span className="rounded-full border border-ai-border/70 bg-ai-surface-muted/60 px-3 py-1 text-xs font-medium text-ai-text-muted inline-flex whitespace-nowrap">
+                      {remainingCredits}/{totalCredits} <span className="hidden sm:inline ml-1">krediter</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Innehåll: Meddelanden och Input */}
             <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
-              {/* Conditional rendering for custom empty state with prompts */}
               {messages.length === 0 && contextData ? (
                 <div className="flex flex-col items-center justify-center h-full p-8 space-y-8 animate-in fade-in zoom-in duration-300 overflow-y-auto">
                   <div className="text-center space-y-3 max-w-lg">

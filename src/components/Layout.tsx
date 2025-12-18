@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,6 +20,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const isChatRoute = location.pathname.startsWith('/ai-chat') || location.pathname.startsWith('/ai-chatt');
 
+  // Vi vill inte ha h-screen på rooten om headern ska vara med, för då trycks innehållet ut.
+  // Vi låter flex-col hantera höjden.
   const rootClassName = isChatRoute
     ? 'h-screen w-full flex overflow-hidden bg-white dark:bg-background'
     : 'min-h-screen bg-background w-full flex overflow-hidden';
@@ -46,8 +47,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <AppSidebar />
 
           <div className="flex-1 flex flex-col min-w-0 max-w-full">
-            {/* Header - Hidden on mobile for chat routes */}
-            <header className={`sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border shadow-sm ${isChatRoute ? 'hidden md:block' : ''}`}>
+            {/* Header - Alltid synlig nu, även i chatten */}
+            <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border shadow-sm">
               <div className="container-responsive py-2 sm:py-3 lg:py-4 flex justify-between items-center">
                 <div className="flex items-center space-x-2 sm:space-x-4 md:space-x-6 min-w-0">
                   {/* Sidebar trigger for desktop */}
