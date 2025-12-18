@@ -17,6 +17,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
+
 const PRIMARY_CHAT_MODEL = Deno.env.get('OPENAI_PORTFOLIO_MODEL')
   || Deno.env.get('OPENAI_MODEL')
   || 'gpt-5.1';
@@ -3237,8 +3239,22 @@ const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_
       }
     }
 
+// --- 1. Avgör om sökning behövs ---
     const shouldFetchTavily = !hasUploadedDocuments && !isDocumentSummaryRequest && !isSimplePersonalAdviceRequest && llmTavilyPlan.shouldSearch;
-    if (shouldFetchTavily) {
+    
+    // --- 2. Avgör om vi ska använda Perplexity ---
+    const usePerplexity = shouldFetchTavily && !!PERPLEXITY_API_KEY;
+
+    // --- 3. Vägvalet ---
+    if (usePerplexity) {
+      console.log('Använder Perplexity API (Sonar-Pro) för realtidssökning & svar.');
+      // Vi gör inget här – vi låter koden fortsätta ner till sista API-anropet 
+      // där vi byter modell och URL.
+    } 
+    else if (shouldFetchTavily) {
+      // --- HÄR STARTAR DIN GAMLA TAVILY-KOD ---
+      // (Kopiera in allt som låg i det gamla blocket här, eller behåll det om du redigerar runt det)
+      
       const logMessage = llmTavilyPlan.reason
         ? `LLM begärde Tavily-sökning: ${llmTavilyPlan.reason}`
         : 'LLM begärde Tavily-sökning – hämtar realtidskällor.';
@@ -4911,26 +4927,40 @@ ${importantLines.join('\n')}
     }
     
     // Final streaming request
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+// --- NY LOGIK: Välj dynamiskt mellan OpenAI och Perplexity ---
+    let targetApiUrl = 'https://api.openai.com/v1/chat/completions';
+    let targetApiKey = openAIApiKey;
+    let targetModel = model;
+
+    // Om vi har bestämt att vi ska använda Perplexity (för realtidsdata)
+    if (usePerplexity) {
+      targetApiUrl = 'https://api.perplexity.ai/chat/completions';
+      targetApiKey = PERPLEXITY_API_KEY as string; 
+      targetModel = 'sonar-pro'; // Perplexitys bästa modell för analys
+    }
+    // -------------------------------------------------------------
+
+    const response = await fetch(targetApiUrl, { // Använd variabeln targetApiUrl
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${targetApiKey}`, // Använd variabeln targetApiKey
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model,
+        model: targetModel, // Använd variabeln targetModel
         messages: streamingMessages,
         stream: true,
-        // No tools in final streaming call - tools were already handled
-        // No structured output for streaming - enables real-time text streaming
+        // (Inga tools skickas med här eftersom de redan hanterats ovan)
       }),
     });
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error('OpenAI API error response:', errorBody);
+      console.error('API error response:', errorBody);
       console.error('TELEMETRY ERROR:', { ...telemetryData, error: errorBody });
-      throw new Error(`OpenAI API error: ${response.status} - ${errorBody}`);
+      // Logga vilken tjänst som falerade för enklare felsökning
+      const serviceName = usePerplexity ? 'Perplexity API' : 'OpenAI API';
+      throw new Error(`${serviceName} error: ${response.status} - ${errorBody}`);
     }
 
     // Return streaming response
