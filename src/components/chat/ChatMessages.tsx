@@ -121,8 +121,8 @@ const ChatMessages = ({
         className="flex-1 min-h-0 overflow-y-auto"
         style={{ scrollbarGutter: 'stable' }}
       >
-        {/* ÄNDRING: max-w-3xl och mx-auto för centrering */}
-        <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-8 sm:px-5 sm:py-9">
+        {/* ÄNDRING: Bredare på lg och xl skärmar */}
+        <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl space-y-5 px-4 py-8 sm:px-5 sm:py-9">
           {[1, 2, 3].map((item) => (
             <div key={item} className="flex items-start gap-3">
               <Skeleton className="h-10 w-10 rounded-full" />
@@ -144,8 +144,8 @@ const ChatMessages = ({
       className="flex-1 min-h-0 overflow-y-auto w-full"
       style={{ scrollbarGutter: 'stable' }}
     >
-      {/* ÄNDRING: Begränsad maxbredd (max-w-3xl) och centrerad (mx-auto) */}
-      <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-4 sm:px-6 sm:py-6">
+      {/* ÄNDRING: Bredare på lg och xl skärmar */}
+      <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl space-y-4 px-4 py-4 sm:px-6 sm:py-6">
         {showGuideBot && (
           <GuideBot
             onPromptExample={handleGuidePrompt}
@@ -169,7 +169,7 @@ const ChatMessages = ({
               </p>
             </div>
 
-            {/* Example Prompts Grid - Nu centrerad och max-bredd */}
+            {/* Example Prompts Grid */}
             <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               {examplePrompts.map((example, index) => (
                 <button
