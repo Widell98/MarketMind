@@ -10,10 +10,10 @@ import ProfileUpdateConfirmation from './ProfileUpdateConfirmation';
 import ChatFolderSidebar from './chat/ChatFolderSidebar';
 import ChatDocumentManager from './chat/ChatDocumentManager';
 import { useChatDocuments } from '@/hooks/useChatDocuments';
+import { useChatFolders } from '@/hooks/useChatFolders'; // <--- NY IMPORT
 import { useToast } from '@/hooks/use-toast';
 
-// Imports för ikoner och UI
-import { LogIn, MessageSquare, Brain, Lock, Sparkles, PanelLeftClose, PanelLeft, Crown, Infinity, Home, BarChart3, User, Newspaper, ChevronLeft, Folder } from 'lucide-react';
+import { LogIn, MessageSquare, Brain, Lock, Sparkles, PanelLeftClose, PanelLeft, Crown, Infinity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -86,16 +86,17 @@ const AIChat = ({
     deleteDocument,
     hasReachedDocumentLimit,
   } = useChatDocuments();
+
+  // Hämta sessioner för att kunna visa rätt namn i headern
+  const { sessions } = useChatFolders(); 
    
   const [input, setInput] = useState('');
   const hasProcessedInitialMessageRef = useRef(false);
    
-  // State för sidebar/historik
-  const [sidebarOpen, setSidebarOpen] = useState(false); // För mobil (Sheet)
-  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false); // För desktop
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [isGuideSession, setIsGuideSession] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
-  const [sidebarView, setSidebarView] = useState<'chat' | 'navigation'>('chat'); // Används primärt för mobil sheet-navigering om man vill blanda, men här renodlar vi.
    
   const [conversationContext, setConversationContext] = useState<any>(null);
 
@@ -114,6 +115,17 @@ const AIChat = ({
     const portfolioKey = portfolioId ?? 'default';
     return `ai-chat-draft:${portfolioKey}:${sessionKey}`;
   }, [currentSessionId, portfolioId]);
+
+  // Beräkna det aktuella namnet på sessionen
+  const currentSessionName = useMemo(() => {
+    if (isGuideSession) return "Guidad tur";
+    if (!currentSessionId) return "Ny konversation";
+    
+    // Hitta sessionen i listan
+    const session = sessions?.find(s => s.id === currentSessionId);
+    // Returnera namnet om det finns, annars fallback
+    return session?.name || "Pågående konversation";
+  }, [currentSessionId, sessions, isGuideSession]);
 
   useEffect(() => {
     if (conversationData) {
@@ -439,11 +451,10 @@ const AIChat = ({
                   </Button>
                 )}
                 
-                {/* Chatt-titel / Status */}
+                {/* Dynamisk Chatt-titel */}
                 <div className="flex flex-col justify-center">
                   <span className="text-sm font-medium text-foreground truncate max-w-[150px] sm:max-w-md animate-in fade-in duration-300">
-                    {/* Visa sessionsnamn eller default */}
-                    {isGuideSession ? "Guidad tur" : (currentSessionId ? "Pågående konversation" : "Ny konversation")}
+                    {currentSessionName}
                   </span>
                 </div>
               </div>
