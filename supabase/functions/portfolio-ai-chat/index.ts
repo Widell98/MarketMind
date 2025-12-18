@@ -883,72 +883,69 @@ type ReturnQuestionAnalysis = {
 };
 
 const RETURN_KEYWORD_PATTERNS = [
-  /avkastning/i,
-  /prestanda/i,
+  // Huvudord (fångar stammar för att täcka alla böjningar)
+  /avkast[a-z]*/i,      // Fångar: avkastning, avkastat, avkastar
+  /vinst/i,             // Fångar: vinst, vinster
+  /förlust/i,           // Fångar: förlust, förluster
   /resultat/i,
-  /vinst/i,
-  /förlust/i,
-  // NYTT: Fångar "hur mycket är X upp/ner" utan att kräva ordet "jag"
-  /hur.*mycket.*(?:är|ligger|gick).*(?:upp|ner|plus|minus)/i, 
-  /hur.*mycket.*(?:är|ligger|gick).*jag.*upp/i, // Behåll den gamla för säkerhets skull
-  /ligger.*(?:plus|minus)/i,
-  /hur.*går.*det.*för/i,
-  /hur.*har.*presterat/i,
-  /vad.*är.*min.*vinst/i,
+  /prester[a-z]*/i,     // Fångar: presterat, presterar, prestanda
+  /utveckl[a-z]*/i,     // Fångar: utveckling, utvecklats (Väldigt vanligt ord!)
+  
+  // Specifika fraser för riktning/värde
+  /(?:ligger|är|gick).*(?:plus|minus|upp|ner)/i, 
+  /hur.*(?:går|gick).*det/i,
   /hur.*mycket.*tjänat/i,
-  /hur.*mycket.*förlorat/i,
-  // NYTT: Fångar explicita frågor om inköpskurs/GAV
-  /inköpskurs/i,
+  /hur.*mycket.*(?:förlorat|tappat)/i,
+  
+  // GAV och Inköp
+  /inköps(?:kurs|pris|värde)/i,
   /gav/i,
-  /genomsnittlig.*anskaffningsvärde/i,
+  /snittpris/i,
+  /genomsnittlig.*anskaffning/i,
+  /break.?even/i,
+
+  // Engelska termer (bra att ha kvar)
   /performance/i,
   /\breturn\b/i,
   /profit/i,
   /loss/i,
   /gain/i,
+  /roi/i,
+  /cagr/i
 ];
 
 const TOTAL_RETURN_PATTERNS = [
-  /hur.*mycket.*jag.*upp.*totalt/i,
-  /total.*avkastning/i,
-  /hela.*portfölj.*avkastning/i,
-  /portfölj.*prestanda/i,
-  /total.*resultat/i,
+  // Synonymer för totalt
+  /(?:total|hela|sammanlagd|allt).*(?:avkast|upp|ner|plus|minus|vinst|utveckling)/i,
+  /hur.*ligger.*jag.*till.*totalt/i,
+  /portfölj(?:en)?s?.*(?:utveckling|prestanda|värdeökning)/i,
+  /vad.*är.*(?:totalen|summan)/i
 ];
 
 const ALL_HOLDINGS_PATTERNS = [
-  /mina.*aktier.*avkastning/i,
-  /alla.*innehav.*prestanda/i,
-  /hur.*går.*det.*för.*mina.*aktier/i,
-  /prestanda.*på.*alla/i,
+  // Listor och genomgångar
+  /(?:alla|samtliga|mina).*(?:aktier|innehav|positioner).*(?:utveckling|avkast|prester)/i,
+  /lista.*(?:utveckling|avkastning)/i,
+  /hur.*går.*(?:alla|aktierna)/i,
+  /översikt.*avkast/i
 ];
 
 const RANKING_RETURN_PATTERNS = [
-  // NYTT: Fångar "Vilken aktie...", "Vilket innehav..." (ental)
-  /(?:vilken|vilket|vilka).*(?:aktie|aktier|innehav|bolag).*(?:mest|bäst|högst|sämst).*avkastning/i,
-  
-  // NYTT: Fångar "gått bäst", "presterat sämst", "utvecklats bäst"
-  /(?:vilken|vilket|vilka).*(?:aktie|aktier|innehav|bolag).*(?:har|är)?.*(?:gått|presterat|utvecklats).*(?:bäst|sämst|bra|dåligt)/i,
-  
-  // NYTT: Fångar "Hur bra...", "Hur mycket...", "Vad är bästa..."
-  /(?:hur|vad).*(?:har|är|gick).*(?:bästa|sämsta|största).*(?:innehav|aktie|bolag|position)/i,
-  /(?:hur|vad).*(?:mycket|bra|dåligt).*(?:har|är|gick).*(?:bästa|sämsta).*(?:gått|presterat|utvecklats)/i,
-  /utveckling.*(?:på|för).*mitt.*(?:bästa|sämsta).*(?:innehav|aktie)/i,
+  // Den viktigaste fixen: Fångar din tidigare fråga genom att tillåta ord mellan "ranka" och "avkast..."
+  /(?:rank|sortera|ordna).*(?:innehav|aktier|bolag)?.*(?:efter|utifrån)?.*(?:avkast|prester|utveckl|resultat|vinst)/i,
 
-  // Gamla mönster (behålls för bakåtkompatibilitet)
-  /vilka.*(?:mest|bäst|högst).*presterat/i,
-  /vilka.*(?:mest|bäst|högst).*resultat/i,
-  /vilka.*(?:mest|bäst|högst).*vinst/i,
-  /sortera.*innehav.*avkastning/i,
-  /rank.*innehav.*avkastning/i,
-  /jämför.*innehav.*avkastning/i,
-  /vilka.*har.*(?:mest|bäst|högst).*avkastning/i,
-  /vilka.*har.*(?:mest|bäst|högst).*presterat/i,
-  /top.*innehav.*avkastning/i,
-  /bäst.*presterande.*innehav/i,
-  /mest.*lönsamma.*innehav/i,
-  /sämst.*presterande.*innehav/i,
-  /vilken.*är.*min.*bästa/i
+  // "Vilken gick bäst/sämst" (täcker ental och flertal)
+  /(?:vilken|vilket|vilka|vad).*(?:har|är|gick).*(?:bäst|sämst|högst|lägst|mest|minst).*(?:avkast|prester|utveckl|gått|ökat|minskat)/i,
+
+  // Specifika "topp"-fraser
+  /(?:topp|top|botten).*(?:lista|aktier|innehav|förlorare|vinnare)/i,
+  
+  // "Bästa aktien"
+  /(?:bästa|sämsta).*(?:innehav|aktie|position|investering)/i,
+  
+  // Engelska/Svengelska
+  /best.*performing/i,
+  /worst.*performing/i
 ];
 
 const detectReturnQuestion = (
