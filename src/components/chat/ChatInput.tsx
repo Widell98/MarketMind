@@ -68,13 +68,12 @@ const ChatInput = memo(({
   };
 
   return (
-    // Yttre container tar hela bredden för bakgrund/border
     <div className="w-full border-t border-ai-border/40 bg-white/50 backdrop-blur-md dark:bg-ai-surface/50 p-4 pb-6">
       
-      {/* Inre container centrerar och begränsar bredden */}
-      <div className="mx-auto w-full max-w-3xl">
+      {/* ÄNDRING: Bredare på lg och xl skärmar för att matcha ChatMessages */}
+      <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl">
         
-        {/* Dokument-sektion (ligger ovanför input) */}
+        {/* Dokument-sektion */}
         {attachedDocuments && attachedDocuments.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2 px-1">
             {attachedDocuments.map((doc) => (
@@ -157,7 +156,7 @@ const ChatInput = memo(({
           </Button>
         </form>
 
-        {/* Footer-info (gränser/varningar) */}
+        {/* Footer-info */}
         <div className="mt-2 px-2 text-center text-xs text-ai-text-muted flex justify-center items-center gap-2">
           {quotaExceeded && !isSubscribed ? (
             <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-500 font-medium">
