@@ -320,8 +320,8 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       elements.push(
         <p
           key={getKey()}
-          // ÄNDRING: Uppdaterad textstorlek för stora skärmar (lg:text-sm)
-          className="mb-1.5 text-[13px] lg:text-sm leading-[1.6] lg:leading-[1.7] text-foreground last:mb-0"
+          // ÄNDRING: Kompakt textstorlek och radhöjd (text-[13px] istället för text-sm/base)
+          className="mb-1 text-[13px] leading-[1.6] text-foreground last:mb-0"
           dangerouslySetInnerHTML={{ __html: parseMarkdownSafely(pendingListItem.content) }}
         />,
       );
@@ -335,14 +335,15 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       const listKey = getKey();
       const ListTag = currentList.type === 'ol' ? 'ol' : 'ul';
       const isDashList = currentList.type === 'ul' && currentList.marker === 'dash';
-      // ÄNDRING: Uppdaterad textstorlek för listor (lg:text-sm)
+      
+      // ÄNDRING: Kompaktare listor
       const listClassName = `ml-4 ${
         currentList.type === 'ol'
           ? 'list-decimal'
           : isDashList
             ? 'list-none'
             : 'list-disc'
-      } space-y-1.5 text-[13px] lg:text-sm leading-[1.6] lg:leading-[1.7] text-foreground`;
+      } space-y-0.5 text-[13px] leading-[1.6] text-foreground`;
 
       elements.push(
         <ListTag key={listKey} className={listClassName}>
@@ -351,9 +352,9 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
 
             return (
               <li key={`${listKey}-item-${index}`} className={isDashList ? 'flex items-start gap-2' : undefined}>
-                {isDashList && <span className="select-none text-[13px] lg:text-sm text-foreground">-</span>}
+                {isDashList && <span className="select-none text-[13px] text-foreground">-</span>}
                 <span
-                  className={isDashList ? 'flex-1 text-[13px] lg:text-sm leading-[1.6] lg:leading-[1.7] text-foreground' : undefined}
+                  className={isDashList ? 'flex-1 text-[13px] leading-[1.6] text-foreground' : undefined}
                   dangerouslySetInnerHTML={{ __html: sanitizedContent }}
                 />
               </li>
@@ -371,10 +372,11 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       if (trimmedLine === '') {
         flushPendingAsParagraph();
         flushList();
+        // ÄNDRING: Mindre vertikalt mellanrum
         elements.push(
           <div
             key={getKey()}
-            className="h-3"
+            className="h-2"
             aria-hidden="true"
           />,
         );
@@ -391,8 +393,8 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         elements.push(
           <h3
             key={getKey()}
-            // ÄNDRING: Uppdaterad textstorlek för rubriker (lg:text-base)
-            className="mt-2.5 text-[13px] lg:text-sm font-semibold text-foreground first:mt-0"
+            // ÄNDRING: Mindre rubriker
+            className="mt-2 text-xs font-bold text-foreground first:mt-0 uppercase tracking-wide opacity-90"
             dangerouslySetInnerHTML={{
               __html: parseMarkdownSafely(trimmedLine.replace(/^###\s*/, '').trim()),
             }}
@@ -407,8 +409,8 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         elements.push(
           <h2
             key={getKey()}
-            // ÄNDRING: Uppdaterad textstorlek för rubriker (lg:text-base)
-            className="mt-3 text-sm lg:text-base font-semibold text-foreground first:mt-0"
+            // ÄNDRING: Mindre rubriker
+            className="mt-2.5 text-[13px] font-bold text-foreground first:mt-0"
             dangerouslySetInnerHTML={{
               __html: parseMarkdownSafely(trimmedLine.replace(/^##\s*/, '').trim()),
             }}
@@ -495,8 +497,8 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       elements.push(
         <p
           key={getKey()}
-          // ÄNDRING: Uppdaterad textstorlek för paragrafer (lg:text-sm)
-          className="mb-1.5 text-[13px] lg:text-sm leading-[1.6] lg:leading-[1.7] text-foreground last:mb-0"
+          // ÄNDRING: Kompakt textstorlek (text-[13px])
+          className="mb-1 text-[13px] leading-[1.6] text-foreground last:mb-0"
           dangerouslySetInnerHTML={{ __html: parseMarkdownSafely(line) }}
         />,
       );
@@ -569,56 +571,55 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     <div className={`flex w-full items-start gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
       {message.role === 'assistant' ? (
         <>
-          <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-primary shadow-[0_12px_28px_rgba(15,23,42,0.12)] ring-1 ring-[#144272]/25 transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:ring-transparent dark:shadow-none">
-            <Bot className="h-4 w-4" />
+          <div className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-primary shadow-[0_12px_28px_rgba(15,23,42,0.12)] ring-1 ring-[#144272]/25 transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:ring-transparent dark:shadow-none">
+            <Bot className="h-3.5 w-3.5" />
           </div>
-          {/* ÄNDRING: Ökade max-width till 85% på stora skärmar */}
-          <div className="flex-1 min-w-0 max-w-[75%] lg:max-w-[85%] space-y-3">
-            {/* ÄNDRING: Lade till lg:px-6 lg:py-5 för större padding på desktop */}
-            <div className="rounded-[18px] border border-[#205295]/18 bg-white/95 px-4 py-3.5 lg:px-6 lg:py-5 text-foreground shadow-[0_16px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble dark:px-4 dark:py-3 dark:shadow-sm">
-              <div className="flex items-center justify-between text-[11px] font-medium text-ai-text-muted">
+          {/* ÄNDRING: Bredare max-width (85%) men kompakt text */}
+          <div className="flex-1 min-w-0 max-w-[75%] lg:max-w-[85%] space-y-2">
+            {/* ÄNDRING: Kompakt padding (px-4 py-3) även på desktop */}
+            <div className="rounded-[16px] border border-[#205295]/18 bg-white/95 px-4 py-3 text-foreground shadow-[0_16px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble dark:px-4 dark:py-3 dark:shadow-sm">
+              <div className="flex items-center justify-between text-[10px] font-medium text-ai-text-muted mb-1.5">
                 <span className="flex items-center gap-1 text-primary/80 dark:text-ai-text-muted">
-                  <Sparkles className="h-3.5 w-3.5" />
+                  <Sparkles className="h-3 w-3" />
                   MarketMind
                 </span>
                 <time dateTime={isoTimestamp}>{formattedTime}</time>
               </div>
 
               {assistantDigest && (
-                <div className="mt-2 flex flex-wrap gap-2">
+                <div className="mb-2 flex flex-wrap gap-1.5">
                   {assistantDigest.map((chip, index) => (
                     <span
                       key={`${message.id}-chip-${index}`}
-                      className="inline-flex items-center gap-1 rounded-full border border-[#205295]/25 bg-white/80 px-3 py-1 text-[11px] font-medium text-primary/80 shadow-sm transition-colors dark:border-ai-border/60 dark:bg-ai-surface-muted/60 dark:text-ai-text-muted"
+                      className="inline-flex items-center gap-1 rounded-full border border-[#205295]/25 bg-white/80 px-2.5 py-0.5 text-[10px] font-medium text-primary/80 shadow-sm transition-colors dark:border-ai-border/60 dark:bg-ai-surface-muted/60 dark:text-ai-text-muted"
                     >
-                      <Sparkles className="h-3 w-3" />
+                      <Sparkles className="h-2.5 w-2.5" />
                       {chip}
                     </span>
                   ))}
                 </div>
               )}
 
-              <div className="mt-2 space-y-1.5">{formatMessageContent(contentWithoutSources)}</div>
+              <div className="space-y-1">{formatMessageContent(contentWithoutSources)}</div>
               
               {tavilyFallbackUsed && (
-                <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-300">
-                  <strong>OBS:</strong> Realtidssökning kunde inte genomföras. Svaret baseras på befintlig kunskap och kan sakna senaste nyheter eller kurser.
+                <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/80 px-2.5 py-1.5 text-[11px] text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-300">
+                  <strong>OBS:</strong> Realtidssökning kunde inte genomföras. Svaret baseras på befintlig kunskap.
                 </div>
               )}
 
               {sources.length > 0 && (
-                <div className="mt-4 border-t border-[#205295]/18 pt-3 dark:border-ai-border/40">
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <ExternalLink className="h-3.5 w-3.5 text-ai-text-muted" />
-                    <span className="text-xs font-semibold text-ai-text-muted uppercase tracking-wide">Källor</span>
+                <div className="mt-3 border-t border-[#205295]/18 pt-2 dark:border-ai-border/40">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <ExternalLink className="h-3 w-3 text-ai-text-muted" />
+                    <span className="text-[10px] font-semibold text-ai-text-muted uppercase tracking-wide">Källor</span>
                     <span className="text-[10px] text-ai-text-muted/70">({sources.length})</span>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {sources.map((source, index) => {
                       try {
                         const url = new URL(source);
                         const domain = url.hostname.replace('www.', '');
-                        const pathParts = url.pathname.split('/').filter(Boolean);
                         let displayName = domain;
                         
                         if (displayName.length > 35) {
@@ -631,11 +632,11 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
                             href={source}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="group inline-flex items-center gap-1.5 rounded-lg border border-[#205295]/25 bg-white/90 px-3 py-1.5 text-[11px] font-medium text-primary/90 transition-all hover:bg-white hover:text-primary hover:shadow-md hover:-translate-y-0.5 hover:border-primary/40 dark:border-ai-border/60 dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:hover:bg-ai-surface-muted dark:hover:text-foreground dark:hover:border-ai-border"
+                            className="group inline-flex items-center gap-1 rounded-md border border-[#205295]/25 bg-white/90 px-2 py-1 text-[10px] font-medium text-primary/90 transition-all hover:bg-white hover:text-primary hover:shadow-sm hover:-translate-y-0.5 hover:border-primary/40 dark:border-ai-border/60 dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:hover:bg-ai-surface-muted dark:hover:text-foreground dark:hover:border-ai-border"
                             title={source}
                           >
-                            <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
-                            <span className="max-w-[180px] truncate">
+                            <ExternalLink className="h-2.5 w-2.5 flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
+                            <span className="max-w-[150px] truncate">
                               {displayName}
                             </span>
                           </a>
@@ -651,46 +652,46 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
 
             {stockSuggestions.length > 0 && (
               <Collapsible open={showSuggestions} onOpenChange={setShowSuggestions}>
-                <div className="rounded-[16px] border border-[#144272]/18 bg-white/92 shadow-[0_14px_36px_rgba(15,23,42,0.06)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none">
+                <div className="rounded-[14px] border border-[#144272]/18 bg-white/92 shadow-sm backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none">
                   <CollapsibleTrigger asChild>
                     <button
                       type="button"
-                      className="flex w-full items-center justify-between gap-2 rounded-[16px] px-4 py-3 text-left text-xs font-medium text-primary transition-colors hover:bg-white/70 dark:text-ai-text-muted dark:hover:bg-ai-surface-muted/60"
+                      className="flex w-full items-center justify-between gap-2 rounded-[14px] px-3 py-2 text-left text-[11px] font-medium text-primary transition-colors hover:bg-white/70 dark:text-ai-text-muted dark:hover:bg-ai-surface-muted/60"
                     >
-                      <span className="flex items-center gap-2">
-                        <TrendingUp className="h-3.5 w-3.5" />
-                        Aktieförslag från AI ({stockSuggestions.length} st)
+                      <span className="flex items-center gap-1.5">
+                        <TrendingUp className="h-3 w-3" />
+                        Aktieförslag ({stockSuggestions.length} st)
                       </span>
-                      <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showSuggestions ? 'rotate-180' : 'rotate-0'}`} />
+                      <ChevronDown className={`h-3 w-3 transition-transform ${showSuggestions ? 'rotate-180' : 'rotate-0'}`} />
                     </button>
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="px-4 pb-4 pt-2">
-                    <div className="space-y-2">
+                  <CollapsibleContent className="px-3 pb-3 pt-1">
+                    <div className="space-y-1.5">
                       {stockSuggestions.map((suggestion) => {
                         const isAdded = addedStocks.has(suggestion.symbol);
                         return (
                           <div
                             key={suggestion.symbol}
-                            className="flex items-center justify-between gap-3 rounded-[14px] border border-[#205295]/18 bg-white/85 px-3 py-2 shadow-sm transition-colors dark:rounded-ai-sm dark:border-ai-border/50 dark:bg-ai-bubble"
+                            className="flex items-center justify-between gap-2 rounded-[10px] border border-[#205295]/18 bg-white/85 px-2.5 py-1.5 shadow-sm transition-colors dark:rounded-ai-sm dark:border-ai-border/50 dark:bg-ai-bubble"
                           >
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-foreground">{suggestion.name}</p>
-                              <p className="text-xs text-ai-text-muted">{suggestion.symbol}</p>
+                              <p className="truncate text-[12px] font-medium text-foreground">{suggestion.name}</p>
+                              <p className="text-[10px] text-ai-text-muted">{suggestion.symbol}</p>
                             </div>
                             <Button
                               size="sm"
                               variant={isAdded ? 'outline' : 'default'}
                               onClick={() => handleAddStock(suggestion)}
                               disabled={isAdded}
-                              className="h-8 rounded-full px-4 text-xs font-medium shadow-sm transition-all hover:-translate-y-0.5 dark:rounded-ai-sm dark:px-3 dark:shadow-none"
+                              className="h-6 rounded-full px-3 text-[10px] font-medium shadow-sm transition-all hover:-translate-y-0.5 dark:rounded-ai-sm dark:px-2 dark:shadow-none"
                             >
                               {isAdded ? (
                                 <>
-                                  <Check className="mr-1 h-3 w-3" /> Tillagd
+                                  <Check className="mr-1 h-2.5 w-2.5" /> Tillagd
                                 </>
                               ) : (
                                 <>
-                                  <Plus className="mr-1 h-3 w-3" /> Lägg till
+                                  <Plus className="mr-1 h-2.5 w-2.5" /> Lägg till
                                 </>
                               )}
                             </Button>
@@ -706,26 +707,23 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         </>
       ) : (
         <>
-          {/* ÄNDRING: Ökade max-width till 85% på stora skärmar */}
-          <div className="flex-1 min-w-0 max-w-[75%] lg:max-w-[85%] space-y-2">
-            {/* ÄNDRING: Lade till lg:px-6 lg:py-5 för större padding på desktop */}
-            <div className="rounded-[18px] border border-[#144272]/22 bg-gradient-to-br from-[#144272]/16 via-white/95 to-[#205295]/14 px-4 py-3.5 lg:px-6 lg:py-5 text-foreground shadow-[0_18px_46px_rgba(15,23,42,0.1)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble-user dark:px-4 dark:py-3 dark:shadow-sm">
-              <div className="flex items-center justify-between text-[11px] font-medium text-ai-text-muted">
+          <div className="flex-1 min-w-0 max-w-[75%] lg:max-w-[85%] space-y-1.5">
+            <div className="rounded-[16px] border border-[#144272]/22 bg-gradient-to-br from-[#144272]/16 via-white/95 to-[#205295]/14 px-4 py-3 text-foreground shadow-[0_18px_46px_rgba(15,23,42,0.1)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble-user dark:px-4 dark:py-3 dark:shadow-sm">
+              <div className="flex items-center justify-between text-[10px] font-medium text-ai-text-muted mb-1">
                 <span>Du</span>
                 <time dateTime={isoTimestamp}>{formattedTime}</time>
               </div>
-              {/* ÄNDRING: Uppdaterad textstorlek (lg:text-sm) */}
-              <p className="mt-2 whitespace-pre-wrap break-words text-[13px] lg:text-sm leading-[1.6] lg:leading-[1.7] text-foreground">{message.content}</p>
+              <p className="whitespace-pre-wrap break-words text-[13px] leading-[1.6] text-foreground">{message.content}</p>
             </div>
             {attachedDocumentNames && (
-              <div className="flex flex-wrap items-center gap-2 pl-1 text-xs">
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-                  <Paperclip className="h-3 w-3" /> Bifogade källor
+              <div className="flex flex-wrap items-center gap-1.5 pl-1 text-xs">
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                  <Paperclip className="h-2.5 w-2.5" /> Bifogat
                 </span>
                 {attachedDocumentNames.map((name, index) => (
                   <span
                     key={`${message.id}-doc-${index}`}
-                    className="inline-flex items-center rounded-full border border-primary/30 bg-white/80 px-2.5 py-1 text-[11px] font-medium text-primary shadow-sm"
+                    className="inline-flex items-center rounded-full border border-primary/30 bg-white/80 px-2 py-0.5 text-[10px] font-medium text-primary shadow-sm"
                   >
                     {name}
                   </span>
@@ -733,8 +731,8 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
               </div>
             )}
           </div>
-          <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-blue-500 to-blue-600 text-white shadow-[0_16px_40px_rgba(15,23,42,0.18)] ring-1 ring-[#144272]/35 transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:ring-transparent dark:shadow-none">
-            <User className="h-4 w-4" />
+          <div className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-blue-500 to-blue-600 text-white shadow-[0_16px_40px_rgba(15,23,42,0.18)] ring-1 ring-[#144272]/35 transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:ring-transparent dark:shadow-none">
+            <User className="h-3.5 w-3.5" />
           </div>
         </>
       )}
