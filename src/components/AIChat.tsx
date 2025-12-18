@@ -425,7 +425,7 @@ const AIChat = ({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent/50 flex-shrink-0 -ml-2"
+                          className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0 -ml-2"
                         >
                           <PanelLeft className="h-5 w-5" />
                         </Button>
@@ -450,10 +450,9 @@ const AIChat = ({
                             onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
                             variant="ghost"
                             size="icon"
-                            // ÄNDRING: Snyggare knapp (rundad, hover-bg, lite större, tydligare ikon)
-                            className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors flex-shrink-0 -ml-2"
+                            className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0 -ml-2"
                           >
-                            {desktopSidebarCollapsed ? <PanelLeft className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+                            {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
