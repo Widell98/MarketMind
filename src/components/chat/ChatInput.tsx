@@ -2,8 +2,8 @@ import React, { useState, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { OPEN_CHAT_DOCUMENT_UPLOAD_EVENT } from '@/constants/chatDocuments';
-import { Send, MessageSquare, AlertCircle, Loader2, Sparkles, X, Paperclip } from 'lucide-react';
-import { FREE_DAILY_AI_MESSAGE_LIMIT, useSubscription } from '@/hooks/useSubscription';
+import { Send, AlertCircle, Loader2, X, Paperclip } from 'lucide-react';
+import { useSubscription } from '@/hooks/useSubscription';
 import PremiumUpgradeModal from './PremiumUpgradeModal';
 import { useToast } from '@/hooks/use-toast';
 
@@ -34,7 +34,7 @@ const ChatInput = memo(({
   isDocumentLimitReached = false,
   onDocumentLimitClick,
 }: ChatInputProps) => {
-  const { isSubscribed, usageCount, remainingMessages, refreshSubscription } = useSubscription();
+  const { isSubscribed } = useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { toast } = useToast();
 
@@ -68,18 +68,18 @@ const ChatInput = memo(({
   };
 
   return (
-    <div className="w-full border-t border-ai-border/40 bg-white/50 backdrop-blur-md dark:bg-ai-surface/50 p-4 pb-6">
+    <div className="w-full border-t border-ai-border/40 bg-white/50 backdrop-blur-md dark:bg-ai-surface/50 p-3 pb-4">
       
-      {/* ÄNDRING: Bredare på lg och xl skärmar för att matcha ChatMessages */}
+      {/* Denna container styr bredden på både dokument och input */}
       <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl">
         
-        {/* Dokument-sektion */}
+        {/* Uppladdade dokument - Nu inuti wrappern så den följer bredden */}
         {attachedDocuments && attachedDocuments.length > 0 && (
-          <div className="mb-3 flex flex-wrap gap-2 px-1">
+          <div className="mb-2 flex flex-wrap gap-2 px-1 animate-in fade-in slide-in-from-bottom-1 duration-300">
             {attachedDocuments.map((doc) => (
               <div 
                 key={doc.id} 
-                className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium shadow-sm transition-all ${
+                className={`flex items-center gap-2 rounded-lg border px-2.5 py-1 text-[11px] font-medium shadow-sm transition-all ${
                   doc.status === 'failed' 
                     ? 'bg-destructive/10 border-destructive/20 text-destructive' 
                     : 'bg-white border-ai-border/60 text-foreground dark:bg-ai-surface-muted'
@@ -116,12 +116,12 @@ const ChatInput = memo(({
             type="button"
             size="icon"
             variant="ghost"
-            className="h-10 w-10 rounded-xl text-ai-text-muted transition-colors hover:bg-ai-surface-muted hover:text-foreground"
+            className="h-9 w-9 rounded-xl text-ai-text-muted transition-colors hover:bg-ai-surface-muted hover:text-foreground"
             onClick={handleAttachClick}
             disabled={isLoading || isAttachDisabled}
             title="Bifoga dokument"
           >
-            <Paperclip className="h-5 w-5" />
+            <Paperclip className="h-4 w-4" />
           </Button>
 
           {/* Textfält */}
@@ -133,7 +133,7 @@ const ChatInput = memo(({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={isLoading ? "Assistenten tänker..." : "Ställ en fråga om din portfölj..."}
-            className="min-h-[44px] max-h-[200px] w-full resize-none border-0 bg-transparent py-3 text-base placeholder:text-ai-text-muted focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-50 sm:text-sm"
+            className="min-h-[40px] max-h-[200px] w-full resize-none border-0 bg-transparent py-2.5 text-sm placeholder:text-ai-text-muted focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-50"
             disabled={isLoading}
           />
 
@@ -142,29 +142,29 @@ const ChatInput = memo(({
             type="submit"
             size="icon"
             disabled={!input.trim() || isLoading}
-            className={`h-10 w-10 rounded-xl transition-all duration-300 ${
+            className={`h-9 w-9 rounded-xl transition-all duration-300 ${
               input.trim() && !isLoading
                 ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-105 shadow-md'
                 : 'bg-ai-surface-muted text-ai-text-muted hover:bg-ai-surface-muted/80'
             }`}
           >
             {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Send className="h-5 w-5" />
+              <Send className="h-4 w-4" />
             )}
           </Button>
         </form>
 
         {/* Footer-info */}
-        <div className="mt-2 px-2 text-center text-xs text-ai-text-muted flex justify-center items-center gap-2">
+        <div className="mt-1.5 px-2 text-center text-[11px] text-ai-text-muted flex justify-center items-center gap-2 opacity-80">
           {quotaExceeded && !isSubscribed ? (
             <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-500 font-medium">
               <AlertCircle className="h-3 w-3" />
               Gräns nådd. Uppgradera för obegränsat.
             </span>
           ) : (
-            <span className="opacity-70">
+            <span>
               AI kan göra misstag. Kontrollera viktig information.
             </span>
           )}
