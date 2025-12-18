@@ -3247,7 +3247,7 @@ const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_
 
     // --- 3. Vägvalet ---
     if (usePerplexity) {
-      console.log('Använder Perplexity API (Sonar-Pro) för realtidssökning & svar.');
+      console.log('Använder Perplexity API (Sonar) för realtidssökning & svar.');
       // Vi gör inget här – vi låter koden fortsätta ner till sista API-anropet 
       // där vi byter modell och URL.
     } 
@@ -4936,7 +4936,7 @@ ${importantLines.join('\n')}
     if (usePerplexity) {
       targetApiUrl = 'https://api.perplexity.ai/chat/completions';
       targetApiKey = PERPLEXITY_API_KEY as string; 
-      targetModel = 'sonar-pro'; // Perplexitys bästa modell för analys
+      targetModel = 'sonar'; // Perplexitys bästa modell för analys
     }
     // -------------------------------------------------------------
 
@@ -4963,9 +4963,10 @@ ${importantLines.join('\n')}
       throw new Error(`${serviceName} error: ${response.status} - ${errorBody}`);
     }
 
-    // Return streaming response
+// Return streaming response
     const encoder = new TextEncoder();
     let controllerClosed = false;
+    
     const streamResp = new ReadableStream({
       async start(controller) {
         // Helper function to safely enqueue data
@@ -4974,9 +4975,7 @@ ${importantLines.join('\n')}
             try {
               controller.enqueue(data);
             } catch (e) {
-              // Controller might be closed, mark as closed and ignore
               controllerClosed = true;
-              console.warn('Attempted to enqueue to closed controller');
             }
           }
         };
@@ -4989,7 +4988,6 @@ ${importantLines.join('\n')}
               controllerClosed = true;
             } catch (e) {
               controllerClosed = true;
-              console.warn('Attempted to close already closed controller');
             }
           }
         };
@@ -5002,7 +5000,6 @@ ${importantLines.join('\n')}
               controllerClosed = true;
             } catch (e) {
               controllerClosed = true;
-              console.warn('Attempted to error already closed controller');
             }
           }
         };
@@ -5016,28 +5013,49 @@ ${importantLines.join('\n')}
           let aiMessage = '';
           let stockSuggestions: StockSuggestion[] = [];
           
+          // NYTT: Buffer för att hantera splittrade nätverkspaket
+          let buffer = '';
+          const decoder = new TextDecoder();
+
           while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              // Hantera eventuell kvarvarande data i buffern om streamen stängs
+              if (buffer.trim()) {
+                 // Här kan man logga att streamen slutade med ofullständig data, 
+                 // men oftast är det bara tomrum.
+              }
+              break;
+            }
 
-            const chunk = new TextDecoder().decode(value);
-            const lines = chunk.split('\n');
+            // Lägg till ny data i buffern
+            buffer += decoder.decode(value, { stream: true });
+            
+            // Splitta på rader
+            const lines = buffer.split('\n');
+            
+            // Spara den sista raden i buffern (den kan vara ofullständig)
+            // och ta bort den från lines-arrayen för att bearbetas i nästa loop
+            buffer = lines.pop() || '';
 
             for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6);
+              const trimmedLine = line.trim();
+              if (trimmedLine.startsWith('data: ')) {
+                const data = trimmedLine.slice(6).trim(); // Trimma bort extra whitespace
+                
                 if (data === '[DONE]') {
-                  // Extract stock suggestions from the final message using regex
+                  // --- SLUTHANTERING (Samma som förut) ---
+                  
+                  // Extract stock suggestions if any
                   if (aiMessage && !stockSuggestions.length) {
                     try {
-                      // Try to extract stock suggestions from the message text
                       const suggestionPattern = /\*\*([^*()]+?)\s*\(([A-Z0-9]{1,6}(?:[.-][A-Z0-9]{1,3})?)\)\*\*(?:\s*[-–—:]\s*(.*?))?(?=\n|$)/gi;
                       const matches = Array.from(aiMessage.matchAll(suggestionPattern));
                       stockSuggestions = matches.map(match => ({
                         name: match[1].trim(),
                         ticker: match[2].toUpperCase(),
                         reason: match[3]?.trim() || 'AI-rekommendation',
-                      })).slice(0, 10); // Limit to 10 suggestions
+                      })).slice(0, 10);
                     } catch (e) {
                       console.warn('Failed to extract stock suggestions:', e);
                     }
@@ -5045,13 +5063,6 @@ ${importantLines.join('\n')}
                   
                   // Update AI memory
                   await updateAIMemory(supabase, userId, message, aiMessage, aiMemory, userIntent);
-                  
-                  // Send final telemetry
-                  console.log('TELEMETRY COMPLETE:', { 
-                    ...telemetryData, 
-                    responseLength: aiMessage.length,
-                    completed: true 
-                  });
                   
                   // Save complete message to database
                   if (sessionId && aiMessage) {
@@ -5090,7 +5101,7 @@ ${importantLines.join('\n')}
                 try {
                   const parsed = JSON.parse(data);
                   
-                  // Stream content directly (no structured output for streaming)
+                  // Stream content directly
                   if (parsed.choices?.[0]?.delta?.content) {
                     const content = parsed.choices[0].delta.content;
                     aiMessage += content;
@@ -5101,21 +5112,14 @@ ${importantLines.join('\n')}
                       profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
                       requiresConfirmation: profileChangeDetection.requiresConfirmation
                     })}\n\n`));
-                  } else if (parsed.choices?.[0]?.message?.content) {
-                    // Complete response received (shouldn't happen in streaming, but handle it)
-                    const fullContent = parsed.choices[0].message.content;
-                    const newContent = fullContent.slice(aiMessage.length);
-                    if (newContent.length > 0) {
-                      aiMessage = fullContent;
-                      safeEnqueue(encoder.encode(`data: ${JSON.stringify({ 
-                        content: newContent,
-                        profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
-                        requiresConfirmation: profileChangeDetection.requiresConfirmation
-                      })}\n\n`));
-                    }
+                  } 
+                  // Perplexity kan ibland skicka citations i en separat delta eller i rooten
+                  // Vi ignorerar dem för nu för att inte krascha streamen
+                  else if (parsed.citations) {
+                    // (Valfritt: Spara citations om du vill använda dem senare)
                   }
                 } catch (e) {
-                  // Ignore JSON parse errors for non-JSON lines
+                  // Ignore JSON parse errors for non-JSON lines (keep-alive messages etc)
                 }
               }
             }
