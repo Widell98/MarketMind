@@ -314,6 +314,57 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
 
     const getKey = () => `message-fragment-${keyCounter++}`;
 
+    // Detect holdings ranking pattern: **SYMBOL:** Avkastning: X%, Resultat i kronor: Y SEK
+    // Also handles numbered lists: 1. **SYMBOL:** Avkastning: X%, Resultat i kronor: Y SEK
+    const detectHoldingsRanking = (lines: string[]): { start: number; end: number; holdings: Array<{ symbol: string; returnPercent: string; returnAmount: string }> } | null => {
+      const holdingsPatterns = [
+        /^\*\*([A-Z0-9-]+)\*\*:\s*Avkastning:\s*([+-]?[\d,]+\.?\d*)%,\s*Resultat i kronor:\s*([+-]?[\d\s]+)\s*SEK/i,
+        /^\d+\.\s*\*\*([A-Z0-9-]+)\*\*:\s*Avkastning:\s*([+-]?[\d,]+\.?\d*)%,\s*Resultat i kronor:\s*([+-]?[\d\s]+)\s*SEK/i,
+        /^-\s*\*\*([A-Z0-9-]+)\*\*:\s*Avkastning:\s*([+-]?[\d,]+\.?\d*)%,\s*Resultat i kronor:\s*([+-]?[\d\s]+)\s*SEK/i,
+        /^\*\*([A-Z0-9-]+)\*\*:\s*([+-]?[\d,]+\.?\d*)%\s*\(([+-]?[\d\s]+)\s*SEK\)/i,
+        /^\d+\.\s*\*\*([A-Z0-9-]+)\*\*:\s*([+-]?[\d,]+\.?\d*)%\s*\(([+-]?[\d\s]+)\s*SEK\)/i,
+      ];
+      
+      let startIndex = -1;
+      const holdings: Array<{ symbol: string; returnPercent: string; returnAmount: string }> = [];
+      
+      for (let i = 0; i < lines.length; i++) {
+        const trimmed = lines[i].trim();
+        let matched = false;
+        
+        for (const pattern of holdingsPatterns) {
+          const match = trimmed.match(pattern);
+          if (match) {
+            if (startIndex === -1) {
+              startIndex = i;
+            }
+            holdings.push({
+              symbol: match[1],
+              returnPercent: match[2],
+              returnAmount: match[3].replace(/\s/g, ''),
+            });
+            matched = true;
+            break;
+          }
+        }
+        
+        if (startIndex !== -1 && !matched && holdings.length > 0) {
+          // Stop if we found a non-matching line after finding holdings
+          if (trimmed && !trimmed.match(/^(\d+\.|[-•]|\*\*[A-Z0-9-]+\*\*:)/)) {
+            break;
+          }
+        }
+      }
+      
+      if (holdings.length >= 2 && startIndex !== -1) {
+        return { start: startIndex, end: startIndex + holdings.length, holdings };
+      }
+      
+      return null;
+    };
+
+    const holdingsRanking = detectHoldingsRanking(lines);
+
     const flushPendingAsParagraph = () => {
       if (!pendingListItem) return;
 
@@ -364,8 +415,81 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       currentList = null;
     };
 
-    lines.forEach((line) => {
+    lines.forEach((line, lineIndex) => {
       const trimmedLine = line.trim();
+
+      // Skip lines that are part of holdings ranking (will be rendered separately)
+      if (holdingsRanking && lineIndex >= holdingsRanking.start && lineIndex < holdingsRanking.end) {
+        if (lineIndex === holdingsRanking.start) {
+          flushPendingAsParagraph();
+          flushList();
+          
+          // Render holdings ranking as a nice table
+          elements.push(
+            <div
+              key={getKey()}
+              className="my-3 overflow-hidden rounded-lg border border-[#205295]/18 bg-white/95 shadow-sm dark:border-ai-border/60 dark:bg-ai-surface-muted/50"
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#205295]/18 bg-[#144272]/5 dark:border-ai-border/40 dark:bg-ai-surface-muted/30">
+                      <th className="px-3 py-2 text-left text-[11px] font-semibold text-foreground/80 uppercase tracking-wide">Innehav</th>
+                      <th className="px-3 py-2 text-right text-[11px] font-semibold text-foreground/80 uppercase tracking-wide">Avkastning</th>
+                      <th className="px-3 py-2 text-right text-[11px] font-semibold text-foreground/80 uppercase tracking-wide">Resultat</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {holdingsRanking.holdings.map((holding, idx) => {
+                      const returnPercentNum = parseFloat(holding.returnPercent.replace(/,/g, ''));
+                      const returnAmountNum = parseFloat(holding.returnAmount.replace(/,/g, ''));
+                      const isPositive = returnPercentNum >= 0;
+                      const returnColor = isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+                      
+                      // Format percentage with sign
+                      const formattedPercent = holding.returnPercent.startsWith('+') || holding.returnPercent.startsWith('-')
+                        ? `${holding.returnPercent}%`
+                        : `${returnPercentNum >= 0 ? '+' : ''}${holding.returnPercent}%`;
+                      
+                      // Format amount with sign and proper spacing (add space every 3 digits)
+                      const cleanAmount = holding.returnAmount.replace(/\s/g, '');
+                      const formattedAmountValue = cleanAmount.startsWith('+') || cleanAmount.startsWith('-')
+                        ? cleanAmount
+                        : `${returnAmountNum >= 0 ? '+' : ''}${cleanAmount}`;
+                      
+                      // Add space separators for thousands
+                      const amountWithSpaces = formattedAmountValue.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1 ');
+                      const formattedAmount = `${amountWithSpaces} SEK`;
+                      
+                      return (
+                        <tr
+                          key={`holding-${idx}`}
+                          className="border-b border-[#205295]/10 last:border-0 hover:bg-[#144272]/5 dark:border-ai-border/30 dark:hover:bg-ai-surface-muted/40 transition-colors"
+                        >
+                          <td className="px-3 py-2.5">
+                            <span className="text-[13px] font-semibold text-foreground">{holding.symbol}</span>
+                          </td>
+                          <td className="px-3 py-2.5 text-right">
+                            <span className={`text-[13px] font-medium ${returnColor}`}>
+                              {formattedPercent}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 text-right">
+                            <span className={`text-[13px] font-medium ${returnColor}`}>
+                              {formattedAmount}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        }
+        return;
+      }
 
       if (trimmedLine === '') {
         flushPendingAsParagraph();
