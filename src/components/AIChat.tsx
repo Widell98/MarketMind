@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { SidebarTrigger } from '@/components/ui/sidebar'; // <--- NY IMPORT
+import { useSidebar } from '@/components/ui/sidebar'; // <--- ÄNDRAD IMPORT: useSidebar istället för SidebarTrigger
 import { cn } from '@/lib/utils';
 
 interface Message {
@@ -60,6 +60,9 @@ const AIChat = ({
   } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  // Hämta toggle-funktionen för huvud-sidebaren
+  const { toggleSidebar } = useSidebar(); 
+
   const {
     messages,
     currentSessionId,
@@ -91,7 +94,6 @@ const AIChat = ({
    
   const [input, setInput] = useState('');
    
-  // ÄNDRING: Använd useRef istället för useState för att förhindra dubbla anrop
   const hasProcessedInitialMessageRef = useRef(false);
    
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -110,7 +112,6 @@ const AIChat = ({
   const navigate = useNavigate();
   const isPremium = subscription?.subscribed;
    
-  // Hämta contextData (t.ex. aktie-prompts) från navigation state
   const contextData = location.state?.contextData;
    
   const draftStorageKey = useMemo(() => {
@@ -184,7 +185,6 @@ const AIChat = ({
     if (typeof window === 'undefined') return;
 
     const storedDraft = sessionStorage.getItem(draftStorageKey);
-    // ÄNDRING: Kolla mot ref istället för state
     if (storedDraft && !hasProcessedInitialMessageRef.current) {
       setInput(storedDraft);
     }
@@ -200,21 +200,16 @@ const AIChat = ({
     }
   }, [draftStorageKey, input]);
 
-  // Handle session creation and initial messages
   useEffect(() => {
     const handleSessionInit = async () => {
-      // 1. Säkerhetskoll: Om vi redan kört initiering eller ingen användare finns -> avbryt
       if (hasProcessedInitialMessageRef.current || !user) return;
 
-      // 2. Hämta flaggor: Vi kollar både props (från parent) och location.state (från navigation/knapp)
       const state = location.state || {};
       const triggerNewSession = shouldCreateNewSession || state.createNewSession;
       const msg = initialMessage || state.initialMessage;
       const stock = initialStock || state.initialStock;
 
-      // Fall 1: Tvingad ny session (t.ex. från Diskutera-knappen)
       if (triggerNewSession) {
-        // Lås direkt för att förhindra dubbelkörning
         hasProcessedInitialMessageRef.current = true;
 
         await createNewSession(sessionName);
@@ -230,20 +225,17 @@ const AIChat = ({
           setConversationContext(conversationData);
         }
         
-        // VIKTIGT FIX: Uppdatera navigationens state för att stänga av "createNewSession".
-        // Detta gör att om användaren trycker F5, så är flaggan false och ingen ny chatt skapas.
         navigate(location.pathname, { 
           replace: true, 
           state: { 
-            ...state,                 // Behåll dina prompts (contextData)
-            createNewSession: false,  // Stäng av skapande-flaggan
-            initialMessage: undefined // Rensa meddelandet
+            ...state,                 
+            createNewSession: false,  
+            initialMessage: undefined 
           } 
         });
         return;
       }
 
-      // Fall 2: URL parametrar (gamla länkar eller externa anrop)
       if (stock && msg) {
         hasProcessedInitialMessageRef.current = true;
         await createNewSession(stock);
@@ -253,7 +245,6 @@ const AIChat = ({
           inputRef.current?.focus();
         }, 100);
         
-        // Rensa URL-parametrar snyggt
         if (location.search) {
           const newUrl = `${location.pathname}${location.hash ?? ''}`;
           navigate(newUrl, { replace: true });
@@ -274,7 +265,7 @@ const AIChat = ({
     location.pathname,
     location.hash,
     location.search,
-    location.state // Viktigt beroende för att reagera på knapptryckningen
+    location.state 
   ]);
 
   useEffect(() => {
@@ -344,7 +335,7 @@ const AIChat = ({
     if (!user) return;
     setIsGuideSession(false);
     setConversationContext(null);
-    hasProcessedInitialMessageRef.current = false; // Reset ref
+    hasProcessedInitialMessageRef.current = false; 
     await createNewSession();
     setInput('');
     if (isMobile) {
@@ -566,15 +557,27 @@ const AIChat = ({
                   </Sheet>
                 )}
 
-                {/* Desktop Header Buttons: Huvudmeny (SidebarTrigger) + Historik-toggle */}
+                {/* Desktop Header Buttons */}
                 {!isMobile && (
                   <>
-                    <SidebarTrigger className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground" />
+                    {/* Huvudmeny (AppSidebar) - Med tydlig Menu (hamburgare) ikon */}
+                    <Button 
+                      onClick={toggleSidebar}
+                      variant="ghost" 
+                      size="icon"
+                      className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground"
+                      title="Huvudmeny"
+                    >
+                      <Menu className="h-5 w-5" />
+                    </Button>
+
+                    {/* Historik-toggle (Lokal sidebar) - Med Panel ikon */}
                     <Button
                       onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
                       variant="ghost"
                       size="icon"
                       className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground"
+                      title={desktopSidebarCollapsed ? "Visa historik" : "Dölj historik"}
                     >
                       {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
                     </Button>
