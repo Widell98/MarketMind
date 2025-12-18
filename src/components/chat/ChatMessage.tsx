@@ -320,7 +320,6 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       elements.push(
         <p
           key={getKey()}
-          // ÄNDRING: Kompakt textstorlek och radhöjd (text-[13px] istället för text-sm/base)
           className="mb-1 text-[13px] leading-[1.6] text-foreground last:mb-0"
           dangerouslySetInnerHTML={{ __html: parseMarkdownSafely(pendingListItem.content) }}
         />,
@@ -336,7 +335,6 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       const ListTag = currentList.type === 'ol' ? 'ol' : 'ul';
       const isDashList = currentList.type === 'ul' && currentList.marker === 'dash';
       
-      // ÄNDRING: Kompaktare listor
       const listClassName = `ml-4 ${
         currentList.type === 'ol'
           ? 'list-decimal'
@@ -372,7 +370,6 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       if (trimmedLine === '') {
         flushPendingAsParagraph();
         flushList();
-        // ÄNDRING: Mindre vertikalt mellanrum
         elements.push(
           <div
             key={getKey()}
@@ -393,7 +390,6 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         elements.push(
           <h3
             key={getKey()}
-            // ÄNDRING: Mindre rubriker
             className="mt-2 text-xs font-bold text-foreground first:mt-0 uppercase tracking-wide opacity-90"
             dangerouslySetInnerHTML={{
               __html: parseMarkdownSafely(trimmedLine.replace(/^###\s*/, '').trim()),
@@ -409,7 +405,6 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         elements.push(
           <h2
             key={getKey()}
-            // ÄNDRING: Mindre rubriker
             className="mt-2.5 text-[13px] font-bold text-foreground first:mt-0"
             dangerouslySetInnerHTML={{
               __html: parseMarkdownSafely(trimmedLine.replace(/^##\s*/, '').trim()),
@@ -497,7 +492,6 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       elements.push(
         <p
           key={getKey()}
-          // ÄNDRING: Kompakt textstorlek (text-[13px])
           className="mb-1 text-[13px] leading-[1.6] text-foreground last:mb-0"
           dangerouslySetInnerHTML={{ __html: parseMarkdownSafely(line) }}
         />,
@@ -574,9 +568,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
           <div className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-primary shadow-[0_12px_28px_rgba(15,23,42,0.12)] ring-1 ring-[#144272]/25 transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:ring-transparent dark:shadow-none">
             <Bot className="h-3.5 w-3.5" />
           </div>
-          {/* ÄNDRING: Bredare max-width (85%) men kompakt text */}
           <div className="flex-1 min-w-0 max-w-[75%] lg:max-w-[85%] space-y-2">
-            {/* ÄNDRING: Kompakt padding (px-4 py-3) även på desktop */}
             <div className="rounded-[16px] border border-[#205295]/18 bg-white/95 px-4 py-3 text-foreground shadow-[0_16px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble dark:px-4 dark:py-3 dark:shadow-sm">
               <div className="flex items-center justify-between text-[10px] font-medium text-ai-text-muted mb-1.5">
                 <span className="flex items-center gap-1 text-primary/80 dark:text-ai-text-muted">
@@ -707,7 +699,8 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         </>
       ) : (
         <>
-          <div className="flex-1 min-w-0 max-w-[75%] lg:max-w-[85%] space-y-1.5">
+          {/* ÄNDRING: Tog bort flex-1 här så bubblan inte sträcks ut i onödan */}
+          <div className="min-w-0 max-w-[75%] lg:max-w-[85%] space-y-1.5">
             <div className="rounded-[16px] border border-[#144272]/22 bg-gradient-to-br from-[#144272]/16 via-white/95 to-[#205295]/14 px-4 py-3 text-foreground shadow-[0_18px_46px_rgba(15,23,42,0.1)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble-user dark:px-4 dark:py-3 dark:shadow-sm">
               <div className="flex items-center justify-between text-[10px] font-medium text-ai-text-muted mb-1">
                 <span>Du</span>
