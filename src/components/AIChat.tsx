@@ -14,8 +14,11 @@ import { useToast } from '@/hooks/use-toast';
 import ThemeToggle from './ThemeToggle';
 import ProfileMenu from './ProfileMenu';
 
-// Ändrade imports: PanelLeft -> PanelRight etc.
-import { LogIn, MessageSquare, Brain, Lock, Sparkles, Menu, PanelRightClose, PanelRight, Crown, Infinity, Home, BarChart3, User, Newspaper, ChevronLeft } from 'lucide-react';
+// NY IMPORTS: Bytte till History-ikonen för tydlighet
+import { 
+  LogIn, MessageSquare, Brain, Lock, Sparkles, Menu, 
+  History, Crown, Infinity, Home, BarChart3, User, Newspaper, ChevronLeft 
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -386,10 +389,8 @@ const AIChat = ({
     onEditSessionName: editSessionName,
     onLoadGuideSession: handleLoadGuideSession,
     onCreateNewSession: handleNewSession,
-    // ÄNDRING: Lade till 'border-l border-r-0' för att flytta linjen till vänster sida
-    className: isMobile 
-      ? "w-full min-h-full" 
-      : "w-[300px] xl:w-[320px] border-l border-r-0",
+    // Sidebar tillbaka till vänster -> border till höger (standard)
+    className: isMobile ? "w-full min-h-full" : "w-[300px] xl:w-[320px]",
   }), [
     isGuideSession,
     currentSessionId,
@@ -406,7 +407,11 @@ const AIChat = ({
     <div className="flex h-full min-h-0 w-full overflow-hidden">
       {user ? (
         <>
-          {/* Main Content (Chat) is now FIRST in the DOM order (Left side) */}
+          {/* ChatFolderSidebar flyttad tillbaka till vänster (först i DOM) */}
+          {!isMobile && !desktopSidebarCollapsed && (
+            <ChatFolderSidebar {...sidebarProps} />
+          )}
+
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
             <header className="grid grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-ai-border/60 px-4 py-3 sm:px-6">
               <div className="flex items-center gap-2">
@@ -463,17 +468,26 @@ const AIChat = ({
                             </Button>
                           </div>
                           <nav className="flex-1 overflow-auto px-4 py-4 space-y-4">
-                            {/* ... Mobile nav content (unchanged) ... */}
-                            {/* Jag har förkortat detta block för tydlighet, samma innehåll som förut */}
+                            {/* ... Mobile nav links (samma som tidigare) ... */}
                             <div className="space-y-2">
                               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary mb-3">
                                 <Home className="w-4 h-4" />
                                 <span>{t('nav.mainMenu')}</span>
                               </div>
-                              <Link to="/" onClick={() => setSidebarOpen(false)} className={cn('flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 w-full border shadow-sm', location.pathname === '/' ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground border-primary/40' : 'text-muted-foreground border-transparent bg-background/60 hover:text-foreground hover:bg-gradient-to-r hover:from-muted/70 hover:to-muted/40')}>
-                                <Home className="w-5 h-5" /> <span>{t('nav.home')}</span>
+                              <Link
+                                to="/"
+                                onClick={() => setSidebarOpen(false)}
+                                className={cn(
+                                  'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 w-full border shadow-sm',
+                                  location.pathname === '/' 
+                                    ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground border-primary/40'
+                                    : 'text-muted-foreground border-transparent bg-background/60 hover:text-foreground hover:bg-gradient-to-r hover:from-muted/70 hover:to-muted/40'
+                                )}
+                              >
+                                <Home className="w-5 h-5" />
+                                <span>{t('nav.home')}</span>
                               </Link>
-                              {/* ... Fler länkar ... */}
+                              {/* Fyll på med resten av länkarna här om det behövs, eller behåll befintligt block */}
                             </div>
                           </nav>
                         </div>
@@ -482,7 +496,7 @@ const AIChat = ({
                   </Sheet>
                 )}
 
-                {/* Desktop: Enbart Huvudmeny-knappen här (Vänster sida) */}
+                {/* Desktop: ENBART Huvudmeny-knappen här (Vänster) */}
                 {!isMobile && (
                   <Button 
                     onClick={toggleSidebar}
@@ -514,8 +528,8 @@ const AIChat = ({
                       className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground mr-1"
                       title={desktopSidebarCollapsed ? "Visa historik" : "Dölj historik"}
                     >
-                      {/* ÄNDRING: Använd PanelRight ikoner istället för PanelLeft */}
-                      {desktopSidebarCollapsed ? <PanelRight className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />}
+                      {/* Använd History-ikonen för att göra det tydligt */}
+                      <History className="h-5 w-5" />
                     </Button>
                     
                     <div className="h-4 w-px bg-border/60 mx-1" />
@@ -549,6 +563,7 @@ const AIChat = ({
             </header>
 
             <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
+              {/* Conditional rendering for custom empty state with prompts */}
               {messages.length === 0 && contextData ? (
                 <div className="flex flex-col items-center justify-center h-full p-8 space-y-8 animate-in fade-in zoom-in duration-300 overflow-y-auto">
                   <div className="text-center space-y-3 max-w-lg">
@@ -641,16 +656,29 @@ const AIChat = ({
               />
             )}
           </div>
-
-          {/* ÄNDRING: Sidebar flyttad hit (efter main content) för att hamna till höger */}
-          {!isMobile && !desktopSidebarCollapsed && (
-            <ChatFolderSidebar {...sidebarProps} />
-          )}
         </>
       ) : (
         <div className="flex w-full min-h-0 flex-col overflow-hidden bg-ai-surface">
           <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden">
             <div className="absolute inset-0 flex">
+              
+              {/* Preview-sidebar tillbaka till VÄNSTER */}
+              {!isMobile && (
+                <div className="hidden w-[260px] flex-col border-r border-ai-border/60 bg-ai-surface-muted/60 px-4 py-6 md:flex">
+                  <h3 className="text-sm font-semibold text-foreground">Senaste konversationer</h3>
+                  <div className="mt-4 space-y-3 text-[15px] text-ai-text-muted">
+                    <div className="rounded-ai-sm border border-ai-border/50 bg-ai-surface px-3 py-2">
+                      <p className="font-medium text-foreground">Portföljanalys</p>
+                      <p className="text-xs text-ai-text-muted">Idag</p>
+                    </div>
+                    <div className="rounded-ai-sm border border-ai-border/50 bg-ai-surface px-3 py-2">
+                      <p className="font-medium text-foreground">Tesla uppföljning</p>
+                      <p className="text-xs text-ai-text-muted">Igår</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-1 flex-col overflow-y-auto bg-ai-surface px-4 py-8 sm:px-10 lg:px-14">
                 <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center space-y-6 py-6 sm:py-8">
                   <div className="flex flex-col gap-4">
@@ -666,7 +694,6 @@ const AIChat = ({
                       </p>
                     </div>
                   </div>
-                  {/* ... chat preview content ... */}
                   <div className="space-y-4 text-[15px]">
                     <div className="flex justify-start">
                       <div className="max-w-[80%] rounded-ai-md border border-ai-border/50 bg-ai-bubble px-4 py-3 text-ai-text-muted">
@@ -686,25 +713,7 @@ const AIChat = ({
                   </div>
                 </div>
               </div>
-
-              {/* Högerpanel för icke-inloggade (Preview) - Också flyttad till höger */}
-              {!isMobile && (
-                <div className="hidden w-[260px] flex-col border-l border-ai-border/60 bg-ai-surface-muted/60 px-4 py-6 md:flex">
-                  <h3 className="text-sm font-semibold text-foreground">Senaste konversationer</h3>
-                  <div className="mt-4 space-y-3 text-[15px] text-ai-text-muted">
-                    <div className="rounded-ai-sm border border-ai-border/50 bg-ai-surface px-3 py-2">
-                      <p className="font-medium text-foreground">Portföljanalys</p>
-                      <p className="text-xs text-ai-text-muted">Idag</p>
-                    </div>
-                    <div className="rounded-ai-sm border border-ai-border/50 bg-ai-surface px-3 py-2">
-                      <p className="font-medium text-foreground">Tesla uppföljning</p>
-                      <p className="text-xs text-ai-text-muted">Igår</p>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
-            
             <div className="absolute inset-0 flex items-center justify-center bg-ai-surface/85 px-4 py-6 backdrop-blur-sm">
               <div className="w-full max-w-md rounded-ai-md border border-ai-border/60 bg-ai-surface px-6 py-8 text-center shadow-xl">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-ai-surface-muted/70 text-ai-text-muted">
