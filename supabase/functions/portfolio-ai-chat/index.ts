@@ -2949,6 +2949,7 @@ serve(async (req) => {
     // Check if user wants personal investment advice/recommendations
     const isPersonalAdviceRequest = /(?:rekommendation|förslag|vad ska jag|bör jag|passar mig|min portfölj|mina intressen|för mig|personlig|skräddarsy|baserat på|investera|köpa|sälja|portföljanalys|investeringsstrategi)/i.test(message);
     const isPortfolioOptimizationRequest = /portfölj/i.test(message) && /optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma/i.test(message);
+
     const userHasPortfolio = Array.isArray(holdings) &&
       holdings.some((holding: HoldingRecord) => holding?.holding_type !== 'recommendation');
 
@@ -3246,6 +3247,7 @@ const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_
       console.log('Hämtar realtidsdata...');
 
       // Alternativ A: Perplexity (Billigare & Snabbare)
+// Alternativ A: Perplexity (Billigare & Snabbare)
       if (PERPLEXITY_API_KEY) {
         console.log('Använder Perplexity (Sonar) som sökverktyg...');
         try {
@@ -3256,18 +3258,19 @@ const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'sonar', // Den snabba, billiga modellen för enbart sökning
+              model: 'sonar', // Den snabba, billiga modellen
+              max_tokens: 600, // Begränsar svaret till ca 450 ord (lagom för sammanfattning)
               messages: [
                 {
                   role: 'system',
-                  content: 'Du är en precisionsinriktad sökmotor. Sök efter informationen som användaren efterfrågar. Svara INTE som en chattbot. Returnera enbart en detaljerad, faktaspäckad sammanfattning av sökresultaten. Inkludera siffror, datum och specifika detaljer.'
+                  content: 'Du är en avancerad finansiell sökmotor. Din uppgift är att hitta relevant kontext, nyheter och bakgrundsinformation för finansfrågor.\n\nFOKUS:\n- Hitta orsaker bakom marknadsrörelser.\n- Leta efter specifika händelser, rapporter, pressmeddelanden och makronyheter.\n- Sammanfatta marknadssentiment och analytikerkommentarer.\n\nUNDANTAG:\n- Du behöver INTE leta efter exakta aktiekurser eller daglig procentuell utveckling.\n\nFORMAT:\n- Svara inte som en chattbot (inget småprat).\n- Leverera enbart en faktaspäckad sammanfattning av informationen du hittar.'
                 },
                 {
                   role: 'user',
                   content: message // Användarens fråga
                 }
               ],
-              stream: false // Vi vill ha hela datan direkt för att ge till GPT-5.1
+              stream: false // Vi vill ha hela datan direkt
             }),
           });
 
@@ -3284,7 +3287,6 @@ const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_
             console.log(`Perplexity-sökning klar. Hittade ${citations.length} källor.`);
           } else {
             console.warn('Perplexity-sökning misslyckades:', await searchResponse.text());
-            // (Här skulle man kunna ha fallback till Tavily, men vi nöjer oss med loggning)
           }
         } catch (error) {
           console.error('Fel vid Perplexity-sökning:', error);
@@ -4857,6 +4859,7 @@ ${importantLines.join('\n')}
       },
       body: JSON.stringify({
         model: model, // Detta är din GPT-5.1 (eller vald modell)
+        max_completion_tokens: 2000,
         messages: streamingMessages,
         stream: true,
       }),
