@@ -10,7 +10,7 @@ import ProfileUpdateConfirmation from './ProfileUpdateConfirmation';
 import ChatFolderSidebar from './chat/ChatFolderSidebar';
 import ChatDocumentManager from './chat/ChatDocumentManager';
 import { useChatDocuments } from '@/hooks/useChatDocuments';
-import { useChatFolders } from '@/hooks/useChatFolders'; // <--- NY IMPORT
+import { useChatFolders } from '@/hooks/useChatFolders';
 import { useToast } from '@/hooks/use-toast';
 
 import { LogIn, MessageSquare, Brain, Lock, Sparkles, PanelLeftClose, PanelLeft, Crown, Infinity } from 'lucide-react';
@@ -88,6 +88,7 @@ const AIChat = ({
   } = useChatDocuments();
 
   // Hämta sessioner för att kunna visa rätt namn i headern
+  // Vi använder 'any' här för att komma runt eventuella typ-problem med 'session_name' vs 'name'
   const { sessions } = useChatFolders(); 
    
   const [input, setInput] = useState('');
@@ -122,9 +123,11 @@ const AIChat = ({
     if (!currentSessionId) return "Ny konversation";
     
     // Hitta sessionen i listan
-    const session = sessions?.find(s => s.id === currentSessionId);
-    // Returnera namnet om det finns, annars fallback
-    return session?.name || "Pågående konversation";
+    // OBS: Vi använder 'as any' för att säkert komma åt session_name oavsett hur typerna är definierade just nu
+    const session = sessions?.find(s => s.id === currentSessionId) as any;
+    
+    // Använd session_name om det finns (detta är vad Supabase returnerar), annars name, annars fallback
+    return session?.session_name || session?.name || "Pågående konversation";
   }, [currentSessionId, sessions, isGuideSession]);
 
   useEffect(() => {
