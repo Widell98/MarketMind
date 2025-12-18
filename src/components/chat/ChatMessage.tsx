@@ -182,11 +182,9 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     return uniqueSuggestions.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
   };
 
-  // Try to get stock suggestions from structured output first, fallback to regex
   const stockSuggestions = useMemo(() => {
     if (message.role !== 'assistant') return [];
     
-    // First, try to get from structured output (context.stock_suggestions)
     const contextSuggestions = (message.context as { stock_suggestions?: Array<{ name: string; ticker: string; reason?: string }> } | undefined)?.stock_suggestions;
     if (contextSuggestions && Array.isArray(contextSuggestions) && contextSuggestions.length > 0) {
       return contextSuggestions.map(s => ({
@@ -196,14 +194,11 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       }));
     }
     
-    // Fallback to regex extraction for backward compatibility
     return extractStockSuggestions(message.content);
   }, [message]);
 
-  // Check if Tavily fallback was used
   const tavilyFallbackUsed = message.context?.tavilyFallbackUsed === true;
 
-  // Extract sources from message content and remove them from display
   const { sources, contentWithoutSources } = useMemo(() => {
     if (message.role !== 'assistant') {
       return { sources: [], contentWithoutSources: message.content };
@@ -213,7 +208,6 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     const extractedSources: string[] = [];
     let cleanedContent = message.content;
     
-    // Look for "Källor:" section first
     const sourcesMatch = message.content.match(/(?:^|\n)\s*Källor\s*:\s*\n([\s\S]*?)(?:\n\s*\n|$)/i);
     if (sourcesMatch) {
       const sourcesText = sourcesMatch[1];
@@ -221,22 +215,18 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       if (urls) {
         extractedSources.push(...urls);
       }
-      // Remove the entire "Källor:" section
       cleanedContent = message.content.replace(/(?:^|\n)\s*Källor\s*:\s*\n[\s\S]*?$/i, '').trim();
     } else {
-      // Extract URLs that appear to be standalone sources (at end of message, one per line)
       const lines = message.content.split('\n');
       const trailingUrls: string[] = [];
       let urlStartIndex = -1;
       
-      // Find where URLs start appearing at the end
       for (let i = lines.length - 1; i >= 0; i--) {
         const line = lines[i].trim();
         if (!line) continue;
         
         const urlMatch = line.match(urlPattern);
         if (urlMatch && line.split(/\s+/).length <= 2 && !line.match(/[a-öA-Ö]{3,}/)) {
-          // Line is mostly just a URL
           trailingUrls.unshift(...urlMatch);
           urlStartIndex = i;
         } else {
@@ -246,17 +236,14 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       
       if (trailingUrls.length > 0 && urlStartIndex >= 0) {
         extractedSources.push(...trailingUrls);
-        // Remove trailing URL lines
         cleanedContent = lines.slice(0, urlStartIndex).join('\n').trim();
       }
     }
     
-    // Remove duplicates and filter out invalid URLs
     const validSources = Array.from(new Set(extractedSources)).filter(url => {
       try {
         new URL(url);
         const lowerUrl = url.toLowerCase();
-        // Filter out image URLs and data URIs
         return !lowerUrl.match(/\.(jpg|jpeg|png|gif|svg|webp|ico)$/i) && 
                !lowerUrl.includes('data:');
       } catch {
@@ -333,7 +320,8 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       elements.push(
         <p
           key={getKey()}
-          className="mb-1.5 text-[13px] leading-[1.6] text-foreground last:mb-0"
+          // ÄNDRING: Uppdaterad textstorlek för stora skärmar (lg:text-sm)
+          className="mb-1.5 text-[13px] lg:text-sm leading-[1.6] lg:leading-[1.7] text-foreground last:mb-0"
           dangerouslySetInnerHTML={{ __html: parseMarkdownSafely(pendingListItem.content) }}
         />,
       );
@@ -347,13 +335,14 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       const listKey = getKey();
       const ListTag = currentList.type === 'ol' ? 'ol' : 'ul';
       const isDashList = currentList.type === 'ul' && currentList.marker === 'dash';
+      // ÄNDRING: Uppdaterad textstorlek för listor (lg:text-sm)
       const listClassName = `ml-4 ${
         currentList.type === 'ol'
           ? 'list-decimal'
           : isDashList
             ? 'list-none'
             : 'list-disc'
-      } space-y-1.5 text-[13px] leading-[1.6] text-foreground`;
+      } space-y-1.5 text-[13px] lg:text-sm leading-[1.6] lg:leading-[1.7] text-foreground`;
 
       elements.push(
         <ListTag key={listKey} className={listClassName}>
@@ -362,9 +351,9 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
 
             return (
               <li key={`${listKey}-item-${index}`} className={isDashList ? 'flex items-start gap-2' : undefined}>
-                {isDashList && <span className="select-none text-[13px] text-foreground">-</span>}
+                {isDashList && <span className="select-none text-[13px] lg:text-sm text-foreground">-</span>}
                 <span
-                  className={isDashList ? 'flex-1 text-[13px] leading-[1.6] text-foreground' : undefined}
+                  className={isDashList ? 'flex-1 text-[13px] lg:text-sm leading-[1.6] lg:leading-[1.7] text-foreground' : undefined}
                   dangerouslySetInnerHTML={{ __html: sanitizedContent }}
                 />
               </li>
@@ -392,7 +381,6 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         return;
       }
 
-      // Skip lines that are just "--" or similar separators
       if (trimmedLine === '--' || trimmedLine === '---' || trimmedLine === '——') {
         return;
       }
@@ -403,7 +391,8 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         elements.push(
           <h3
             key={getKey()}
-            className="mt-2.5 text-[13px] font-semibold text-foreground first:mt-0"
+            // ÄNDRING: Uppdaterad textstorlek för rubriker (lg:text-base)
+            className="mt-2.5 text-[13px] lg:text-sm font-semibold text-foreground first:mt-0"
             dangerouslySetInnerHTML={{
               __html: parseMarkdownSafely(trimmedLine.replace(/^###\s*/, '').trim()),
             }}
@@ -418,7 +407,8 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         elements.push(
           <h2
             key={getKey()}
-            className="mt-3 text-sm font-semibold text-foreground first:mt-0"
+            // ÄNDRING: Uppdaterad textstorlek för rubriker (lg:text-base)
+            className="mt-3 text-sm lg:text-base font-semibold text-foreground first:mt-0"
             dangerouslySetInnerHTML={{
               __html: parseMarkdownSafely(trimmedLine.replace(/^##\s*/, '').trim()),
             }}
@@ -430,10 +420,9 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       if (trimmedLine.startsWith('-') || trimmedLine.startsWith('•')) {
         const contentWithoutMarker = trimmedLine.replace(/^[-•]\s*/, '').trim();
         
-        // Skip if this line is just a URL (likely a source)
         const urlPattern = /^https?:\/\/[^\s\)]+$/;
         if (urlPattern.test(contentWithoutMarker.trim())) {
-          return; // Skip standalone URL lines
+          return;
         }
 
         const isContinuation =
@@ -465,10 +454,9 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       if (/^\d+\./.test(trimmedLine)) {
         const contentWithoutNumber = trimmedLine.replace(/^\d+\.\s*/, '').trim();
         
-        // Skip if this line is just a URL (likely a source)
         const urlPattern = /^https?:\/\/[^\s\)]+$/;
         if (urlPattern.test(contentWithoutNumber.trim())) {
-          return; // Skip standalone URL lines
+          return;
         }
 
         const isContinuation =
@@ -497,7 +485,6 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         return;
       }
       
-      // Skip lines that are just URLs (sources will be shown separately)
       const urlOnlyPattern = /^https?:\/\/[^\s\)]+$/;
       if (urlOnlyPattern.test(trimmedLine)) {
         return;
@@ -508,7 +495,8 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       elements.push(
         <p
           key={getKey()}
-          className="mb-1.5 text-[13px] leading-[1.6] text-foreground last:mb-0"
+          // ÄNDRING: Uppdaterad textstorlek för paragrafer (lg:text-sm)
+          className="mb-1.5 text-[13px] lg:text-sm leading-[1.6] lg:leading-[1.7] text-foreground last:mb-0"
           dangerouslySetInnerHTML={{ __html: parseMarkdownSafely(line) }}
         />,
       );
@@ -584,8 +572,10 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
           <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-primary shadow-[0_12px_28px_rgba(15,23,42,0.12)] ring-1 ring-[#144272]/25 transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:ring-transparent dark:shadow-none">
             <Bot className="h-4 w-4" />
           </div>
-          <div className="flex-1 min-w-0 max-w-[75%] space-y-3">
-            <div className="rounded-[18px] border border-[#205295]/18 bg-white/95 px-4 py-3.5 text-foreground shadow-[0_16px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble dark:px-4 dark:py-3 dark:shadow-sm">
+          {/* ÄNDRING: Ökade max-width till 85% på stora skärmar */}
+          <div className="flex-1 min-w-0 max-w-[75%] lg:max-w-[85%] space-y-3">
+            {/* ÄNDRING: Lade till lg:px-6 lg:py-5 för större padding på desktop */}
+            <div className="rounded-[18px] border border-[#205295]/18 bg-white/95 px-4 py-3.5 lg:px-6 lg:py-5 text-foreground shadow-[0_16px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble dark:px-4 dark:py-3 dark:shadow-sm">
               <div className="flex items-center justify-between text-[11px] font-medium text-ai-text-muted">
                 <span className="flex items-center gap-1 text-primary/80 dark:text-ai-text-muted">
                   <Sparkles className="h-3.5 w-3.5" />
@@ -628,11 +618,9 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
                       try {
                         const url = new URL(source);
                         const domain = url.hostname.replace('www.', '');
-                        // Extract a cleaner display name
                         const pathParts = url.pathname.split('/').filter(Boolean);
                         let displayName = domain;
                         
-                        // If domain is very long, truncate it
                         if (displayName.length > 35) {
                           displayName = `${displayName.substring(0, 32)}...`;
                         }
@@ -653,7 +641,6 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
                           </a>
                         );
                       } catch {
-                        // Invalid URL, skip it
                         return null;
                       }
                     })}
@@ -719,13 +706,16 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         </>
       ) : (
         <>
-          <div className="flex-1 min-w-0 max-w-[75%] space-y-2">
-            <div className="rounded-[18px] border border-[#144272]/22 bg-gradient-to-br from-[#144272]/16 via-white/95 to-[#205295]/14 px-4 py-3.5 text-foreground shadow-[0_18px_46px_rgba(15,23,42,0.1)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble-user dark:px-4 dark:py-3 dark:shadow-sm">
+          {/* ÄNDRING: Ökade max-width till 85% på stora skärmar */}
+          <div className="flex-1 min-w-0 max-w-[75%] lg:max-w-[85%] space-y-2">
+            {/* ÄNDRING: Lade till lg:px-6 lg:py-5 för större padding på desktop */}
+            <div className="rounded-[18px] border border-[#144272]/22 bg-gradient-to-br from-[#144272]/16 via-white/95 to-[#205295]/14 px-4 py-3.5 lg:px-6 lg:py-5 text-foreground shadow-[0_18px_46px_rgba(15,23,42,0.1)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble-user dark:px-4 dark:py-3 dark:shadow-sm">
               <div className="flex items-center justify-between text-[11px] font-medium text-ai-text-muted">
                 <span>Du</span>
                 <time dateTime={isoTimestamp}>{formattedTime}</time>
               </div>
-              <p className="mt-2 whitespace-pre-wrap break-words text-[13px] leading-[1.6] text-foreground">{message.content}</p>
+              {/* ÄNDRING: Uppdaterad textstorlek (lg:text-sm) */}
+              <p className="mt-2 whitespace-pre-wrap break-words text-[13px] lg:text-sm leading-[1.6] lg:leading-[1.7] text-foreground">{message.content}</p>
             </div>
             {attachedDocumentNames && (
               <div className="flex flex-wrap items-center gap-2 pl-1 text-xs">
