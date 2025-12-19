@@ -197,14 +197,14 @@ const AIRecommendations = () => {
   }
   if (holdingsLoading) {
     return (
-      <Card>
+      <Card className="h-full flex flex-col">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Brain className="w-5 h-5 text-blue-600" />
             Ai-Förslag på innehav
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 flex items-center justify-center">
           <div className="text-center py-8 text-muted-foreground">
             <div className="flex items-center justify-center gap-2">
               <Brain className="w-4 h-4 animate-pulse" />
@@ -218,7 +218,7 @@ const AIRecommendations = () => {
 
   if (totalRecommendations === 0) {
     return (
-      <Card>
+      <Card className="h-full flex flex-col">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Brain className="w-5 h-5 text-blue-600" />
@@ -228,7 +228,7 @@ const AIRecommendations = () => {
             Personaliserade investeringsförslag baserade på din profil
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1">
           <div className="text-center py-8">
             <Brain className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
             <h3 className="text-lg font-medium mb-2 text-foreground">Inga Ai-förslag tillgängliga</h3>
@@ -272,7 +272,7 @@ const AIRecommendations = () => {
 
   return (
     <>
-      <Card className="bg-card/30 backdrop-blur-xl border-border/20 shadow-lg rounded-3xl overflow-hidden">
+      <Card className="bg-card/30 backdrop-blur-xl border-border/20 shadow-lg rounded-3xl overflow-hidden h-full flex flex-col">
         <CardHeader className="pb-6 bg-gradient-to-r from-primary/5 to-purple/5 border-b border-border/20">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex flex-col items-center text-center gap-3 sm:items-start sm:text-left">
@@ -338,13 +338,13 @@ const AIRecommendations = () => {
           </div>
         </CardHeader>
 
-        <CardContent className="p-6 sm:p-8">
-          {/* Header: antal och vy-val */}
+        <CardContent className="p-6 sm:p-8 flex-1">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
             <div className="text-sm text-muted-foreground font-medium text-center sm:text-left">
               {totalRecommendations} Ai-förslag
             </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+            {/* UPDATED: Added flex-wrap */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto flex-wrap">
               <div className="flex items-center justify-center sm:justify-end gap-1">
                 <Button
                   variant="ghost"
@@ -374,9 +374,9 @@ const AIRecommendations = () => {
             </div>
           </div>
 
-          {/* Grid- eller listvy */}
           {viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            // UPDATED: Adjusted grid columns to 2 on 2xl screens
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-2 gap-4">
               {displayedRecommendations.map(renderRecommendationCard)}
             </div>
           ) : (
@@ -385,7 +385,6 @@ const AIRecommendations = () => {
             </div>
           )}
 
-          {/* Visa alla-knapp */}
           {totalRecommendations > 6 && (
             <Button
               variant="outline"
