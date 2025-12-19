@@ -476,8 +476,11 @@ const PortfolioImplementation = () => {
               </div>}
 
           {/* Portfolio Overview & Community */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4 md:gap-6 lg:gap-8">
-            <div className="xl:col-span-2 relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
+          {/* UPDATED: Improved responsiveness. 
+              Only switches to 2 columns on very large screens (2xl).
+              Uses min-w-0 to prevent horizontal overflow in grid cells. */}
+          <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3 sm:gap-4 md:gap-6 lg:gap-8">
+            <div className="2xl:col-span-2 relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden min-w-0">
               <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
               <PortfolioOverview
                 portfolio={activePortfolio ? {
@@ -491,17 +494,17 @@ const PortfolioImplementation = () => {
               />
             </div>
 
-            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden" data-ai-recommendations>
+            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden min-w-0" data-ai-recommendations>
               <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
               <AIRecommendations />
             </div>
 
-            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
+            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden min-w-0">
               <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
               <CommunityRecommendations />
             </div>
 
-            <div className="xl:col-span-2 relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
+            <div className="2xl:col-span-2 relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden min-w-0">
               <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
               <PredictionMarketsPortfolio />
             </div>
