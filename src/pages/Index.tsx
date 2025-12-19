@@ -49,6 +49,8 @@ import { resolveHoldingValue } from '@/utils/currencyUtils';
 import { useDailyChangeData } from '@/hooks/useDailyChangeData';
 import HoldingsHighlightCard from '@/components/HoldingsHighlightCard';
 import AllocationCard from '@/components/AllocationCard';
+import { Dialog, DialogTrigger } from '@/components/ui/dialog';
+import ReportDetailDialogContent from '@/components/ReportDetailDialogContent';
 
 // Definiera gränssnittet för QuickAction här
 interface QuickAction {
@@ -703,7 +705,7 @@ const Index = () => {
                           <h2 className="text-base font-semibold text-foreground sm:text-lg">Utvalda Rapporter</h2>
                         </div>
                         <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                          <Link to="/discover">
+                          <Link to="/news?tab=reports">
                             Se alla
                             <ArrowRight className="ml-2 h-4 w-4" />
                           </Link>
@@ -712,47 +714,52 @@ const Index = () => {
                       
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {featuredReports.map((report) => (
-                          <Card key={report.id} className="flex flex-col h-full hover:shadow-md transition-all border-border/60">
-                            <CardHeader className="pb-3">
-                              <div className="flex justify-between items-start gap-2">
-                                <div className="space-y-1">
-                                  <CardTitle className="text-base font-semibold line-clamp-1">
-                                    {report.reportTitle}
-                                  </CardTitle>
-                                  <CardDescription className="font-medium text-primary">
-                                    {report.companyName}
-                                  </CardDescription>
-                                </div>
-                                {report.companyLogoUrl && (
-                                  <div className="h-8 w-8 rounded bg-muted/20 p-1 shrink-0">
-                                    <img src={report.companyLogoUrl} alt={report.companyName} className="w-full h-full object-contain" />
-                                  </div>
-                                )}
-                              </div>
-                            </CardHeader>
-                            <CardContent className="flex-1 pb-4">
-                              <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
-                                {report.summary}
-                              </p>
-                              {report.keyMetrics && report.keyMetrics.length > 0 && (
-                                <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-border/40">
-                                  {report.keyMetrics.slice(0, 2).map((metric, i) => (
-                                    <div key={i}>
-                                      <p className="text-xs text-muted-foreground">{metric.label}</p>
-                                      <p className="text-sm font-medium">
-                                        {metric.value}
-                                        {metric.trend && (
-                                          <span className={`ml-1 text-xs ${metric.trend.includes('+') ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                            {metric.trend}
-                                          </span>
-                                        )}
-                                      </p>
+                          <Dialog key={report.id}>
+                            <DialogTrigger asChild>
+                              <Card className="flex flex-col h-full hover:shadow-md transition-all border-border/60 cursor-pointer hover:border-primary/40">
+                                <CardHeader className="pb-3">
+                                  <div className="flex justify-between items-start gap-2">
+                                    <div className="space-y-1">
+                                      <CardTitle className="text-base font-semibold line-clamp-1">
+                                        {report.reportTitle}
+                                      </CardTitle>
+                                      <CardDescription className="font-medium text-primary">
+                                        {report.companyName}
+                                      </CardDescription>
                                     </div>
-                                  ))}
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
+                                    {report.companyLogoUrl && (
+                                      <div className="h-8 w-8 rounded bg-muted/20 p-1 shrink-0">
+                                        <img src={report.companyLogoUrl} alt={report.companyName} className="w-full h-full object-contain" />
+                                      </div>
+                                    )}
+                                  </div>
+                                </CardHeader>
+                                <CardContent className="flex-1 pb-4">
+                                  <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
+                                    {report.summary}
+                                  </p>
+                                  {report.keyMetrics && report.keyMetrics.length > 0 && (
+                                    <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-border/40">
+                                      {report.keyMetrics.slice(0, 2).map((metric, i) => (
+                                        <div key={i}>
+                                          <p className="text-xs text-muted-foreground">{metric.label}</p>
+                                          <p className="text-sm font-medium">
+                                            {metric.value}
+                                            {metric.trend && (
+                                              <span className={`ml-1 text-xs ${metric.trend.includes('+') ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                {metric.trend}
+                                              </span>
+                                            )}
+                                          </p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            </DialogTrigger>
+                            <ReportDetailDialogContent report={report} />
+                          </Dialog>
                         ))}
                       </div>
                     </section>
@@ -877,7 +884,7 @@ const Index = () => {
                           <h2 className="text-base font-semibold text-foreground sm:text-lg">Utvalda Rapporter</h2>
                         </div>
                         <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                          <Link to="/discover">
+                          <Link to="/news?tab=reports">
                             Se alla
                             <ArrowRight className="ml-2 h-4 w-4" />
                           </Link>
@@ -886,47 +893,52 @@ const Index = () => {
                       
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {featuredReports.map((report) => (
-                          <Card key={report.id} className="flex flex-col h-full hover:shadow-md transition-all border-border/60">
-                            <CardHeader className="pb-3">
-                              <div className="flex justify-between items-start gap-2">
-                                <div className="space-y-1">
-                                  <CardTitle className="text-base font-semibold line-clamp-1">
-                                    {report.reportTitle}
-                                  </CardTitle>
-                                  <CardDescription className="font-medium text-primary">
-                                    {report.companyName}
-                                  </CardDescription>
-                                </div>
-                                {report.companyLogoUrl && (
-                                  <div className="h-8 w-8 rounded bg-muted/20 p-1 shrink-0">
-                                    <img src={report.companyLogoUrl} alt={report.companyName} className="w-full h-full object-contain" />
-                                  </div>
-                                )}
-                              </div>
-                            </CardHeader>
-                            <CardContent className="flex-1 pb-4">
-                              <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
-                                {report.summary}
-                              </p>
-                              {report.keyMetrics && report.keyMetrics.length > 0 && (
-                                <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-border/40">
-                                  {report.keyMetrics.slice(0, 2).map((metric, i) => (
-                                    <div key={i}>
-                                      <p className="text-xs text-muted-foreground">{metric.label}</p>
-                                      <p className="text-sm font-medium">
-                                        {metric.value}
-                                        {metric.trend && (
-                                          <span className={`ml-1 text-xs ${metric.trend.includes('+') ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                            {metric.trend}
-                                          </span>
-                                        )}
-                                      </p>
+                          <Dialog key={report.id}>
+                            <DialogTrigger asChild>
+                              <Card className="flex flex-col h-full hover:shadow-md transition-all border-border/60 cursor-pointer hover:border-primary/40">
+                                <CardHeader className="pb-3">
+                                  <div className="flex justify-between items-start gap-2">
+                                    <div className="space-y-1">
+                                      <CardTitle className="text-base font-semibold line-clamp-1">
+                                        {report.reportTitle}
+                                      </CardTitle>
+                                      <CardDescription className="font-medium text-primary">
+                                        {report.companyName}
+                                      </CardDescription>
                                     </div>
-                                  ))}
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
+                                    {report.companyLogoUrl && (
+                                      <div className="h-8 w-8 rounded bg-muted/20 p-1 shrink-0">
+                                        <img src={report.companyLogoUrl} alt={report.companyName} className="w-full h-full object-contain" />
+                                      </div>
+                                    )}
+                                  </div>
+                                </CardHeader>
+                                <CardContent className="flex-1 pb-4">
+                                  <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
+                                    {report.summary}
+                                  </p>
+                                  {report.keyMetrics && report.keyMetrics.length > 0 && (
+                                    <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-border/40">
+                                      {report.keyMetrics.slice(0, 2).map((metric, i) => (
+                                        <div key={i}>
+                                          <p className="text-xs text-muted-foreground">{metric.label}</p>
+                                          <p className="text-sm font-medium">
+                                            {metric.value}
+                                            {metric.trend && (
+                                              <span className={`ml-1 text-xs ${metric.trend.includes('+') ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                {metric.trend}
+                                              </span>
+                                            )}
+                                          </p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            </DialogTrigger>
+                            <ReportDetailDialogContent report={report} />
+                          </Dialog>
                         ))}
                       </div>
                     </section>
