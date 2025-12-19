@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -72,11 +73,20 @@ interface NewsItem {
 }
 
 const DiscoverNews = () => {
+const [searchParams] = useSearchParams(); // Hämta searchParams
   const { reports } = useDiscoverReportSummaries(24);
   const { newsData, morningBrief, loading: newsLoading, error: newsError } = useNewsData();
 
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
-  const [activeTab, setActiveTab] = useState<'news' | 'reports'>('news');
+const [activeTab, setActiveTab] = useState<'news' | 'reports'>(
+    searchParams.get('tab') === 'reports' ? 'reports' : 'news'
+  );
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'reports' || tab === 'news') {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
   const [reportSort, setReportSort] = useState<'latest' | 'name'>('latest');
   const [reportSearch, setReportSearch] = useState('');
   const [isBriefExpanded, setIsBriefExpanded] = useState(false);
