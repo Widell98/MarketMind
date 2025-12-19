@@ -1,137 +1,87 @@
-
-import React, { useState } from 'react';
+// src/components/chat/ChatHeader.tsx
+import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Plus, 
-  ChevronDown, 
-  ChevronUp, 
-  History,
-  Zap,
+  PanelLeft, // NY IKON: Tydligare att det är en sidomeny
   Edit2
 } from 'lucide-react';
-import ChatSessionList from './ChatSessionList';
 import EditSessionNameDialog from './EditSessionNameDialog';
-
-interface ChatSession {
-  id: string;
-  session_name: string;
-  created_at: string;
-  is_active: boolean;
-}
+import { cn } from '@/lib/utils';
 
 interface ChatHeaderProps {
-  showSessions: boolean;
-  setShowSessions: (show: boolean) => void;
-  sessions: ChatSession[];
-  currentSessionId: string | null;
-  isLoading: boolean;
+  currentSessionName?: string;
+  isSidebarOpen: boolean;
+  onToggleSidebar: () => void;
   onNewSession: () => void;
-  onLoadSession: (sessionId: string) => void;
-  onDeleteSession: (sessionId: string) => void;
-  onEditSessionName: (sessionId: string, newName: string) => void;
+  onEditSessionName: (newName: string) => void;
+  isLoading?: boolean;
 }
 
 const ChatHeader = ({
-  showSessions,
-  setShowSessions,
-  sessions,
-  currentSessionId,
-  isLoading,
+  currentSessionName,
+  isSidebarOpen,
+  onToggleSidebar,
   onNewSession,
-  onLoadSession,
-  onDeleteSession,
-  onEditSessionName
+  onEditSessionName,
+  isLoading
 }: ChatHeaderProps) => {
-  const [editingSession, setEditingSession] = useState<ChatSession | null>(null);
-
-  const currentSession = sessions.find(session => session.id === currentSessionId);
-
-  const handleEditSessionName = (newName: string) => {
-    if (editingSession) {
-      onEditSessionName(editingSession.id, newName);
-      setEditingSession(null);
-    }
-  };
+  const [isEditing, setIsEditing] = React.useState(false);
 
   return (
-    <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700 p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center bg-gradient-to-br from-cyan-500 to-teal-600 shadow-xl transform -rotate-12 hover:rotate-0 transition-transform duration-300">
-            <Zap className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
-          </div>
-          <div>
-            <h2 className="text-xl sm:text-2xl xl:text-3xl font-bold text-slate-800 dark:text-slate-100">AI Portfolio Assistent</h2>
-            <div className="flex items-center gap-2">
-              <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300">
-                {currentSession ? currentSession.session_name : 'Din intelligenta investeringsrådgivare'}
-              </p>
-              {currentSession && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setEditingSession(currentSession)}
-                  className="h-6 w-6 p-0 opacity-50 hover:opacity-100 transition-opacity"
-                >
-                  <Edit2 className="w-3 h-3" />
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={() => setShowSessions(!showSessions)}
-            className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm border border-slate-200 dark:border-slate-700 shadow-lg transition-all duration-200 px-3 sm:px-4 py-2 sm:py-3 hover:shadow-xl text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800"
-          >
-            <History className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Historik</span>
-            {showSessions ? <ChevronUp className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" /> : <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />}
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={onNewSession}
-            disabled={isLoading}
-            className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm border border-slate-200 dark:border-slate-700 shadow-lg transition-all duration-200 px-3 sm:px-4 py-2 sm:py-3 hover:shadow-xl text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800"
-          >
-            <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Ny Chat</span>
-            <span className="sm:hidden">Ny</span>
-          </Button>
+    <div className="flex h-16 items-center justify-between border-b border-gray-100 bg-white/80 px-4 backdrop-blur-md dark:border-white/5 dark:bg-black/40">
+      <div className="flex items-center gap-3">
+        {/* Toggle Sidebar Button - Apple Style */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onToggleSidebar}
+          className={cn(
+            "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/10",
+            isSidebarOpen && "bg-gray-100 text-foreground dark:bg-white/10"
+          )}
+          title={isSidebarOpen ? "Dölj sidofält" : "Visa sidofält"}
+        >
+          <PanelLeft className="h-5 w-5" />
+        </Button>
+
+        {/* Current Session Title */}
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            {currentSessionName || 'Ny konversation'}
+          </h2>
+          {currentSessionName && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              onClick={() => setIsEditing(true)}
+            >
+              <Edit2 className="h-3 w-3" />
+            </Button>
+          )}
         </div>
       </div>
 
-      <Collapsible open={showSessions}>
-        <CollapsibleContent className="mt-6">
-          <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6 shadow-lg">
-            <h3 className="text-base sm:text-lg font-semibold mb-4 flex items-center gap-3 text-slate-800 dark:text-slate-100">
-              <History className="w-4 h-4 sm:w-5 sm:h-5" />
-              Tidigare chattar
-            </h3>
-            <ScrollArea className="h-40">
-              <ChatSessionList
-                sessions={sessions}
-                currentSessionId={currentSessionId}
-                onLoadSession={onLoadSession}
-                onDeleteSession={onDeleteSession}
-                onEditSession={setEditingSession}
-              />
-            </ScrollArea>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+      {/* Right Actions */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onNewSession}
+          disabled={isLoading}
+          className="text-primary hover:bg-primary/10"
+          title="Ny chat"
+        >
+          <Plus className="h-5 w-5" />
+        </Button>
+      </div>
 
       <EditSessionNameDialog
-        isOpen={!!editingSession}
-        onClose={() => setEditingSession(null)}
-        currentName={editingSession?.session_name || ''}
-        onSave={handleEditSessionName}
+        isOpen={isEditing}
+        onClose={() => setIsEditing(false)}
+        currentName={currentSessionName || ''}
+        onSave={onEditSessionName}
       />
     </div>
   );
