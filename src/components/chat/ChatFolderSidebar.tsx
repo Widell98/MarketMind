@@ -180,29 +180,31 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
     const isActive = currentSessionId === session.id;
 
     return (
-      <li key={session.id} className={cn(depth > 0 && 'pl-3')}>
+      <li key={session.id} className={cn('mb-0.5', depth > 0 && 'pl-3')}>
         <div
           className={cn(
-            'group/session relative flex items-center gap-2 rounded-ai-md border border-transparent px-2.5 py-2.5 transition-colors focus-within:border-ai-border/60 focus-within:bg-ai-surface/80 focus-within:text-foreground',
+            'group/session relative flex items-center gap-2 rounded-md px-2 py-1.5 transition-all duration-200',
             isActive
-              ? 'border-ai-border/60 bg-ai-surface text-foreground shadow-sm'
-              : 'text-ai-text-muted hover:border-ai-border/50 hover:bg-ai-surface/70 hover:text-foreground',
+              ? 'bg-white text-foreground shadow-sm ring-1 ring-black/5 dark:bg-white/10 dark:ring-white/10'
+              : 'text-muted-foreground hover:bg-black/5 hover:text-foreground dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-200'
           )}
         >
           <button
             type="button"
             onClick={() => onLoadSession(session.id)}
-            className="flex min-w-0 flex-1 items-center gap-3 pr-10 text-left text-[15px] leading-6"
+            className="flex min-w-0 flex-1 items-center gap-2.5 text-left text-[13px] font-medium leading-5"
           >
             <div
               className={cn(
-                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-transparent bg-ai-surface/70 text-ai-text-muted transition-colors group-hover/session:border-ai-border/50 group-hover/session:bg-ai-surface group-hover/session:text-foreground',
-                isActive && 'border-ai-border/60 bg-ai-surface text-foreground',
+                'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors',
+                isActive 
+                  ? 'text-primary' 
+                  : 'text-muted-foreground/50 group-hover/session:text-foreground/70'
               )}
             >
-              <MessageSquare className="h-4 w-4" />
+              <MessageSquare className="h-3.5 w-3.5" />
             </div>
-            <span className="min-w-0 flex-1 truncate font-medium" title={session.session_name}>
+            <span className="min-w-0 flex-1 truncate" title={session.session_name}>
               {session.session_name}
             </span>
           </button>
@@ -213,38 +215,42 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                 variant="ghost"
                 size="icon"
                 aria-label="Konversationsalternativ"
-                className="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2 rounded-full text-ai-text-muted transition-opacity hover:bg-ai-surface md:opacity-0 md:group-hover/session:opacity-100 md:group-focus-within/session:opacity-100"
+                className={cn(
+                  "absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full opacity-0 transition-opacity hover:bg-black/5 dark:hover:bg-white/10",
+                  "group-hover/session:opacity-100 group-focus-within/session:opacity-100",
+                  isActive && "hover:bg-gray-100 dark:hover:bg-white/20"
+                )}
               >
-                <MoreHorizontal className="h-4 w-4" />
+                <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-48 rounded-ai-md border border-ai-border/60 bg-ai-surface p-1 shadow-lg"
+              className="w-48 rounded-xl border border-gray-100 bg-white/95 p-1 shadow-xl backdrop-blur-sm dark:border-white/10 dark:bg-zinc-900/95"
             >
               <DropdownMenuItem onClick={() => handleEditSession(session.id, session.session_name)}>
-                <Edit className="mr-2 h-4 w-4" />
+                <Edit className="mr-2 h-3.5 w-3.5" />
                 Byt namn
               </DropdownMenuItem>
               {folders.length > 0 && (
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
-                    <Move className="mr-2 h-4 w-4" />
+                    <Move className="mr-2 h-3.5 w-3.5" />
                     Flytta till mapp
                   </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="rounded-ai-md border border-ai-border/60 bg-ai-surface shadow-lg">
+                  <DropdownMenuSubContent className="rounded-xl border border-gray-100 bg-white/95 shadow-xl dark:border-white/10 dark:bg-zinc-900/95">
                     {folders.map((folder) => (
                       <DropdownMenuItem
                         key={folder.id}
                         onClick={() => moveSessionToFolder(session.id, folder.id)}
                       >
-                        <Folder className="mr-2 h-4 w-4" />
+                        <Folder className="mr-2 h-3.5 w-3.5" />
                         {folder.name}
                       </DropdownMenuItem>
                     ))}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => moveSessionToFolder(session.id, null)}>
-                      <Trash className="mr-2 h-4 w-4" />
+                      <Trash className="mr-2 h-3.5 w-3.5" />
                       Ta bort från mapp
                     </DropdownMenuItem>
                   </DropdownMenuSubContent>
@@ -257,9 +263,9 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                   removeSessionsFromState([session.id]);
                   await loadSessions();
                 }}
-                className="text-red-600"
+                className="text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20"
               >
-                <Trash className="mr-2 h-4 w-4" />
+                <Trash className="mr-2 h-3.5 w-3.5" />
                 Ta bort
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -273,9 +279,9 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
     if (sessionList.length === 0) return null;
 
     return (
-      <section className="space-y-2">
-        <p className="px-3 text-xs font-semibold uppercase tracking-[0.14em] text-ai-text-muted/80">{label}</p>
-        <ul className="space-y-2">
+      <section className="space-y-0.5">
+        <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">{label}</p>
+        <ul className="space-y-0.5">
           {sessionList.map((session) => renderSessionItem(session))}
         </ul>
       </section>
@@ -285,87 +291,64 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
   return (
     <aside
       className={cn(
-        'group/sidebar relative flex h-full min-h-0 w-[280px] flex-shrink-0 flex-col overflow-hidden border-r border-ai-border/60 bg-ai-surface-muted/80 backdrop-blur-sm supports-[backdrop-filter]:bg-ai-surface-muted/70',
+        'group/sidebar relative flex h-full min-h-0 w-[280px] flex-shrink-0 flex-col overflow-hidden border-r border-gray-200/60 bg-gray-50/50 backdrop-blur-xl transition-all duration-300 dark:border-white/5 dark:bg-black/20',
         className,
       )}
     >
-      <header className="sticky top-0 z-20 border-b border-ai-border/60 bg-ai-surface-muted/90 px-4 pb-5 pt-6 backdrop-blur-sm supports-[backdrop-filter]:bg-ai-surface-muted/70">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ai-text-muted/60">
-              Ai-chatt
-            </p>
-            {/* <h2 className="text-lg font-semibold text-foreground">Konversationer</h2> */}
-          </div>
-          <CreateFolderDialog
-            onCreateFolder={createFolder}
-            trigger={
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 rounded-full border border-transparent text-ai-text-muted transition-colors hover:border-ai-border/60 hover:bg-ai-surface hover:text-foreground"
-                aria-label="Skapa mapp"
-              >
-                <Folder className="h-4 w-4" />
-              </Button>
-            }
-          />
-        </div>
-
-        <Button
-          type="button"
-          onClick={onCreateNewSession}
-          variant="default"
-          className="mt-4 h-10 w-full justify-center rounded-ai-md text-[15px] font-semibold shadow-sm transition hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-0"
-        >
-          <Plus className="h-4 w-4" />
-          Ny konversation
-        </Button>
-
-        <div className="relative mt-4">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ai-text-muted" />
+      <header className="flex-shrink-0 px-3 pt-4 pb-2">
+        <div className="relative mb-3">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Sök konversationer"
+            placeholder="Sök"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            className="h-10 rounded-ai-md border border-ai-border/60 bg-ai-surface pl-11 text-sm text-foreground placeholder:text-ai-text-muted focus-visible:border-primary/60 focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="h-9 w-full rounded-lg border-transparent bg-black/5 pl-9 text-[13px] font-normal transition-all focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-primary/20 dark:bg-white/10 dark:focus-visible:bg-white/10 placeholder:text-muted-foreground/70"
           />
         </div>
 
-        <Button
-          type="button"
-          onClick={handleClearUnorganizedSessions}
-          variant="ghost"
-          size="sm"
-          disabled={!hasRootSessions || isClearingRoot}
-          className="mt-3 self-end h-auto gap-1.5 rounded-full px-3 py-1 text-[12px] font-medium text-ai-text-muted transition-colors hover:bg-ai-surface/70 hover:text-destructive focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Trash className="h-3.5 w-3.5 text-destructive" />
-          {isClearingRoot
-            ? 'Rensar chattar...'
-            : hasRootSessions
-              ? 'Rensa osorterade'
-              : 'Inga osorterade'}
-        </Button>
+        <div className="flex items-center justify-between px-1 py-1">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 pl-1">
+            Bibliotek
+          </span>
+          <div className="flex items-center gap-0.5">
+             <CreateFolderDialog
+                onCreateFolder={createFolder}
+                trigger={
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground/70 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10" title="Ny mapp">
+                    <Folder className="h-3.5 w-3.5" />
+                  </Button>
+                }
+             />
+             <Button
+                variant="ghost"
+                size="icon"
+                onClick={onCreateNewSession}
+                className="h-6 w-6 text-muted-foreground/70 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10"
+                title="Ny konversation"
+             >
+                <Plus className="h-4 w-4" />
+             </Button>
+          </div>
+        </div>
       </header>
 
-      <nav className="flex-1 overflow-y-auto px-3 pb-6 pt-6">
-        <div className="flex flex-col gap-6">
+      <nav className="flex-1 overflow-y-auto px-3 pb-4 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-white/10">
+        <div className="flex flex-col gap-1">
           {shouldShowGuide && onLoadGuideSession && (
-            <section className="px-1">
+            <div className="mb-2 px-1">
               <button
                 onClick={onLoadGuideSession}
-                className="flex w-full items-center gap-3 rounded-ai-md border border-ai-border/50 bg-ai-surface px-3 py-3 text-left text-[15px] leading-6 text-foreground shadow-sm transition hover:border-primary/40 hover:bg-ai-surface/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-0"
+                className="flex w-full items-center gap-3 rounded-xl border border-primary/10 bg-gradient-to-br from-white to-gray-50 px-3 py-3 text-left text-[13px] leading-relaxed text-foreground shadow-sm transition-all hover:border-primary/20 hover:shadow-md dark:from-white/5 dark:to-white/0 dark:border-white/5"
               >
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <Sparkles className="h-4 w-4" />
                 </div>
-                <div className="min-w-0">
-                  <p className="truncate font-semibold">Upptäck assistenten</p>
-                  <p className="truncate text-sm text-ai-text-muted">Kom igång med en guidning</p>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold text-primary">Upptäck</p>
+                  <p className="truncate text-xs text-muted-foreground">Kom igång med en guide</p>
                 </div>
               </button>
-            </section>
+            </div>
           )}
 
           {filteredFolders.map((folder) => {
@@ -376,35 +359,32 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
             const hasActiveSession = folderSessions.some((session) => session.id === currentSessionId);
 
             return (
-              <section key={folder.id} className="space-y-2">
+              <section key={folder.id} className="space-y-0.5">
                 <div
                   className={cn(
-                    'group/folder relative flex items-center gap-2 rounded-ai-md border border-transparent px-2.5 py-2.5 transition-colors focus-within:border-ai-border/60 focus-within:bg-ai-surface/80 focus-within:text-foreground',
+                    'group/folder relative flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors',
                     hasActiveSession
-                      ? 'border-ai-border/60 bg-ai-surface text-foreground shadow-sm'
-                      : 'text-ai-text-muted hover:border-ai-border/50 hover:bg-ai-surface/70 hover:text-foreground',
+                      ? 'bg-black/5 text-foreground dark:bg-white/10'
+                      : 'text-muted-foreground hover:bg-black/5 hover:text-foreground dark:text-gray-400 dark:hover:bg-white/5'
                   )}
                 >
                   <button
                     type="button"
                     onClick={() => toggleFolder(folder.id)}
-                    className="flex min-w-0 flex-1 items-center gap-3 pr-10 text-left text-[15px] leading-6"
+                    className="flex min-w-0 flex-1 items-center gap-2.5 text-left text-[13px] font-medium leading-5"
                   >
-                    <span className="flex min-w-0 items-center gap-3 font-medium">
+                    <span className="flex min-w-0 flex-1 items-center gap-2.5">
                       {isExpanded ? (
-                        <ChevronDown className="h-4 w-4" />
+                        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
                       ) : (
-                        <ChevronRight className="h-4 w-4" />
+                        <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-50" />
                       )}
-                      <span
-                        className="h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: folder.color || '#d4d7dc' }}
-                      />
+                      
                       <span className="truncate" title={folder.name}>
                         {folder.name}
                       </span>
                     </span>
-                    <span className="ml-auto shrink-0 text-xs text-ai-text-muted transition-colors group-hover/folder:text-foreground/80 group-focus-within/folder:text-foreground/80">
+                    <span className="ml-auto shrink-0 text-[10px] text-muted-foreground/50">
                       {folderSessions.length}
                     </span>
                   </button>
@@ -415,14 +395,14 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                         variant="ghost"
                         size="icon"
                         aria-label="Mappalternativ"
-                        className="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2 rounded-full text-ai-text-muted transition-opacity hover:bg-ai-surface md:opacity-0 md:group-hover/folder:opacity-100 md:group-focus-within/folder:opacity-100"
+                        className="absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full opacity-0 transition-opacity hover:bg-black/5 group-hover/folder:opacity-100 group-focus-within/folder:opacity-100 dark:hover:bg-white/10"
                       >
-                        <MoreHorizontal className="h-4 w-4" />
+                        <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
                       align="end"
-                      className="w-48 rounded-ai-md border border-ai-border/60 bg-ai-surface p-1 shadow-lg"
+                      className="w-48 rounded-xl border border-gray-100 bg-white/95 p-1 shadow-xl backdrop-blur-sm dark:border-white/10 dark:bg-zinc-900/95"
                     >
                       <DropdownMenuItem
                         onClick={() => {
@@ -432,12 +412,12 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                           }
                         }}
                       >
-                        <Edit className="mr-2 h-4 w-4" />
+                        <Edit className="mr-2 h-3.5 w-3.5" />
                         Byt namn
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => deleteFolder(folder.id)} className="text-red-600">
-                        <Trash className="mr-2 h-4 w-4" />
+                      <DropdownMenuItem onClick={() => deleteFolder(folder.id)} className="text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20">
+                        <Trash className="mr-2 h-3.5 w-3.5" />
                         Ta bort mapp
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -445,7 +425,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                 </div>
 
                 {isExpanded && folderSessions.length > 0 && (
-                  <ul className="space-y-2 border-l border-ai-border/30 pl-4">
+                  <ul className="space-y-0.5 pl-3">
                     {folderSessions.map((session) => renderSessionItem(session, 1))}
                   </ul>
                 )}
@@ -458,12 +438,28 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
           {renderSessionGroup(getOlderSessions(unorganizedSessions), 'Tidigare')}
 
           {sessions.length === 0 && (
-            <div className="py-12 text-center text-sm text-ai-text-muted">
-              Inga konversationer ännu
+            <div className="py-12 text-center text-[13px] text-muted-foreground/50">
+              Inga konversationer
             </div>
           )}
         </div>
       </nav>
+
+      {hasRootSessions && (
+        <div className="flex-shrink-0 border-t border-gray-200/60 p-3 dark:border-white/5">
+          <Button
+            type="button"
+            onClick={handleClearUnorganizedSessions}
+            variant="ghost"
+            size="sm"
+            disabled={isClearingRoot}
+            className="w-full justify-start gap-2 h-8 px-2 text-[11px] font-medium text-muted-foreground/70 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/10 dark:hover:text-red-400"
+          >
+            <Trash className="h-3.5 w-3.5" />
+            {isClearingRoot ? 'Rensar...' : 'Rensa osorterade'}
+          </Button>
+        </div>
+      )}
 
       <EditSessionNameDialog
         isOpen={!!editingSession}
