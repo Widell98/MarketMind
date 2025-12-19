@@ -17,7 +17,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 
 import { 
   LogIn, MessageSquare, Brain, Lock, Sparkles, 
-  PanelLeftClose, PanelLeft, Crown, Infinity
+  Crown, Infinity, ChevronLeft, ChevronRight, History
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -414,14 +414,13 @@ const AIChat = ({
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
             
             {/* --- IMPROVED IMMERSIVE TOOLBAR --- */}
-            {/* Denna ersätter den tidigare headern och toolbaren */}
             <div className="border-b border-ai-border/40 bg-ai-surface/80 backdrop-blur-md sticky top-0 z-10 w-full">
               <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl px-4 h-14 flex items-center justify-between">
                 
                 {/* Vänster del: Navigationers & Titel */}
                 <div className="flex items-center gap-2 overflow-hidden">
                   
-                  {/* 1. Global App Navigation Trigger (Synlig då globala headern är dold) */}
+                  {/* 1. Global App Navigation Trigger */}
                   <div className="flex items-center text-muted-foreground">
                     <SidebarTrigger className="hidden md:flex h-8 w-8 hover:text-foreground transition-colors" />
                     <div className="md:hidden flex items-center">
@@ -432,7 +431,7 @@ const AIChat = ({
                   {/* Divider */}
                   <div className="h-4 w-[1px] bg-border/40 mx-1 hidden sm:block" />
 
-                  {/* 2. Chat History Toggle */}
+                  {/* 2. Chat History Toggle (CHEVRON ICONS) */}
                   {isMobile ? (
                     <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
                       <SheetTrigger asChild>
@@ -441,7 +440,8 @@ const AIChat = ({
                           size="icon"
                           className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0"
                         >
-                          <PanelLeft className="h-5 w-5" />
+                          {/* Använder History-ikon på mobil för tydlighet */}
+                          <History className="h-5 w-5" />
                         </Button>
                       </SheetTrigger>
                       <SheetContent side="left" className="w-full max-w-xs p-0 sm:max-w-sm" hideCloseButton>
@@ -465,7 +465,8 @@ const AIChat = ({
                             size="icon"
                             className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0"
                           >
-                            {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                            {/* Pil-ikoner för desktop */}
+                            {desktopSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
