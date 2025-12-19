@@ -137,9 +137,10 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
     />
   );
 
-  return (
+return (
     <aside className={cn(
-      "flex h-full w-full flex-col bg-background/50 backdrop-blur-xl border-r border-border/40",
+      // ÄNDRAT: border-r byttes till border-l (border-left)
+      "flex h-full w-full flex-col bg-background/50 backdrop-blur-xl border-l border-border/40",
       className
     )}>
       {/* --- Header / Top Actions --- */}
