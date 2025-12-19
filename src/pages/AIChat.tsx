@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import AIChat from '@/components/AIChat';
 import AIChatLayout from '@/components/AIChatLayout';
+import ChatFolderSidebar from '@/components/chat/ChatFolderSidebar'; // NYTT: Importera sidebaren
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -13,11 +14,15 @@ import { AlertCircle, User } from 'lucide-react';
 const AIChatPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const location = useLocation(); // <--- NYTT: För att komma åt state
+  const location = useLocation();
   const { user } = useAuth();
   const { t } = useLanguage();
   const { riskProfile, loading: riskProfileLoading } = useRiskProfile();
   const { activePortfolio } = usePortfolio();
+
+  // NYTT: State för den nya layouten och sessionshantering
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
   // Hämta data från antingen URL eller Navigation State
   const stockName = searchParams.get('stock');
@@ -34,6 +39,29 @@ const AIChatPage = () => {
   const finalMessage = state?.initialMessage || urlMessage;
   const isPredictionChat = !!state?.conversationData?.predictionMarket;
 
+  // NYTT: Handlers för sidebaren
+  const handleLoadSession = (sessionId: string) => {
+    setCurrentSessionId(sessionId);
+    // Valfritt: Uppdatera URL eller rensa sökparametrar om man byter till en sparad session
+    // navigate(`/ai-chatt?session=${sessionId}`, { replace: true });
+  };
+
+  const handleCreateNewSession = () => {
+    setCurrentSessionId(null);
+    navigate('/ai-chatt'); // Återställ URL till ren "ny chat"
+  };
+
+  // Placeholder-handlers (Dessa bör kopplas till din useAIChat/useChatSessions logik)
+  const handleDeleteSession = async (sessionId: string) => {
+    console.log("Delete session requested:", sessionId);
+    // TODO: Implementera radering här eller hämta funktionen från en hook
+  };
+
+  const handleEditSessionName = (sessionId: string, newName: string) => {
+    console.log("Rename session requested:", sessionId, newName);
+    // TODO: Implementera namnbyte här eller hämta funktionen från en hook
+  };
+
   useEffect(() => {
     // Om det är en vanlig chat och riskprofil saknas -> redirect.
     // MEN om det är en prediction chat -> stanna kvar (behöver ingen profil).
@@ -45,7 +73,8 @@ const AIChatPage = () => {
   if (user && riskProfileLoading) {
     return (
       <Layout>
-        <AIChatLayout>
+        {/* NYTT: Skickar med en tom sidebar eller isSidebarOpen={false} för att hålla layouten snygg vid laddning */}
+        <AIChatLayout isSidebarOpen={false}>
           <div className="flex flex-1 items-center justify-center px-6 py-12">
             <div className="flex flex-col items-center gap-4 text-ai-text-muted">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-ai-border border-t-transparent" />
@@ -61,7 +90,7 @@ const AIChatPage = () => {
   if (user && !riskProfile && !isPredictionChat) {
     return (
       <Layout>
-        <AIChatLayout>
+        <AIChatLayout isSidebarOpen={false}>
           <div className="flex flex-1 items-center justify-center px-6 py-12">
             <div className="max-w-md rounded-ai-md border border-ai-border/70 bg-ai-surface-muted/40 p-6 text-center shadow-sm">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-ai-surface">
@@ -82,15 +111,34 @@ const AIChatPage = () => {
 
   return (
     <Layout>
-      <AIChatLayout>
+      {/* NYTT: Integrera layouten med sidebar */}
+      <AIChatLayout
+        isSidebarOpen={isSidebarOpen}
+        sidebar={
+          <ChatFolderSidebar
+            currentSessionId={currentSessionId}
+            onLoadSession={handleLoadSession}
+            onCreateNewSession={handleCreateNewSession}
+            onDeleteSession={handleDeleteSession}
+            onEditSessionName={handleEditSessionName}
+            // onLoadGuideSession={...} // Om du vill ha guiden
+          />
+        }
+      >
         <AIChat
           portfolioId={activePortfolio?.id}
           initialStock={stockName}
           initialMessage={finalMessage}
-          // Skicka vidare all data till komponenten
           conversationData={state?.conversationData} 
           createNewSession={state?.createNewSession}
           sessionName={state?.sessionName}
+          
+          // NYTT: Props för att styra layouten inifrån AIChat (ChatHeader)
+          isSidebarOpen={isSidebarOpen}
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          
+          // NYTT: Skicka valt session ID till chatten
+          sessionId={currentSessionId}
         />
       </AIChatLayout>
     </Layout>
