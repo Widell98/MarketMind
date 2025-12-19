@@ -19,8 +19,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const isChatRoute = location.pathname.startsWith('/ai-chat') || location.pathname.startsWith('/ai-chatt');
 
-  // Vi vill inte ha h-screen på rooten om headern ska vara med, för då trycks innehållet ut.
-  // Vi låter flex-col hantera höjden.
+  // Chatten ska ha h-screen (låst till fönstrets höjd), övriga sidor min-h-screen
   const rootClassName = isChatRoute
     ? 'h-screen w-full flex overflow-hidden bg-white dark:bg-background'
     : 'min-h-screen bg-background w-full flex overflow-hidden';
@@ -35,7 +34,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     ? 'flex-1 flex w-full flex-col min-h-0'
     : 'max-w-full overflow-hidden px-1 sm:px-0';
 
-  const showHeader = !isChatRoute; // Dölj header i chatten
+  // ÄNDRING: Visa alltid Header, men dölj Footer/Breadcrumb i chatten
+  const showHeader = true; 
   const showFooter = !isChatRoute;
   const showBreadcrumb = !isChatRoute;
 
@@ -43,19 +43,17 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     <ConversationMemoryProvider>
       <SidebarProvider>
         <div className={rootClassName}>
-          {/* Sidebar for desktop */}
+          {/* Global Sidebar */}
           <AppSidebar />
 
           <div className="flex-1 flex flex-col min-w-0 max-w-full">
-            {/* Header - Döljs nu i chatten för immersive mode */}
+            
+            {/* Header - Nu alltid synlig */}
             {showHeader && (
               <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border shadow-sm">
                 <div className="container-responsive py-2 sm:py-3 lg:py-4 flex justify-between items-center">
                   <div className="flex items-center space-x-2 sm:space-x-4 md:space-x-6 min-w-0">
-                    {/* Sidebar trigger for desktop */}
                     <SidebarTrigger className="hidden md:flex flex-shrink-0" />
-                    
-                    {/* Mobile navigation trigger */}
                     <MobileNavigation />
                     
                     <Link to="/" className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground flex items-center min-w-0 flex-shrink-0">
@@ -69,7 +67,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   
                   <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 flex-shrink-0">
                     <ThemeToggle />
-                    {/* <LanguageToggle /> */}
                     {user ? (
                       <ProfileMenu />
                     ) : (
@@ -91,10 +88,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             )}
             
             {/* Main content */}
-            <main
-              className={mainClassName}
-              style={{ scrollbarGutter: 'stable' }}
-            >
+            <main className={mainClassName} style={{ scrollbarGutter: 'stable' }}>
               {showBreadcrumb && (
                 <div className={breadcrumbWrapperClassName}>
                   <BreadcrumbNavigation />
@@ -125,9 +119,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               </footer>
             )}
           </div>
-
-          {/* AI Floating Widget - available on all pages */}
-          {/* <AIFloatingWidget /> */}
         </div>
       </SidebarProvider>
     </ConversationMemoryProvider>
