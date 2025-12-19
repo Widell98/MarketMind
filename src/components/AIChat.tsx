@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAIChat } from '@/hooks/useAIChat';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -15,13 +15,12 @@ import { useToast } from '@/hooks/use-toast';
 
 import { 
   LogIn, MessageSquare, Brain, Lock, Sparkles, 
-  PanelLeftClose, PanelLeft, Crown, Infinity
+  Crown, History, PanelRight, PanelRightClose
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { cn } from '@/lib/utils';
 
 interface Message {
   id: string;
@@ -75,7 +74,6 @@ const AIChat = ({
     clearMessages,
     dismissProfileUpdatePrompt,
     updateUserProfile,
-    usage,
     subscription,
     remainingCredits,
     totalCredits
@@ -403,83 +401,34 @@ const AIChat = ({
     <div className="flex h-full min-h-0 w-full overflow-hidden">
       {user ? (
         <>
-          {/* Vänster Sidebar (Desktop) */}
-          {!isMobile && !desktopSidebarCollapsed && (
-            <ChatFolderSidebar {...sidebarProps} />
-          )}
-
-          {/* Main Chat Area */}
+          {/* Main Chat Area - Först i flödet för att hamna till vänster */}
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
             
-            {/* --- NY TOOLBAR --- */}
-            {/* Wrapper-div som begränsar bredden även i toolbaren */}
-            <div className="border-b border-ai-border/40 bg-ai-surface/50 backdrop-blur-sm sticky top-0 z-10 w-full">
-              <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl px-4 py-2 flex items-center justify-between min-h-[50px]">
+            {/* --- LOCAL CHAT TOOLBAR (Sub-header) --- */}
+            <div className="border-b border-ai-border/40 bg-ai-surface/80 backdrop-blur-md sticky top-0 z-10 w-full">
+              <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl px-4 h-12 sm:h-14 flex items-center justify-between">
                 
-                {/* Vänster del: Historik-toggle och Titel */}
+                {/* VÄNSTER: Chat Titel */}
                 <div className="flex items-center gap-3 overflow-hidden">
-                  {isMobile ? (
-                    /* Mobil: Sheet för historik */
-                    <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-                      <SheetTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0 -ml-2"
-                        >
-                          <PanelLeft className="h-5 w-5" />
-                        </Button>
-                      </SheetTrigger>
-                      <SheetContent side="left" className="w-full max-w-xs p-0 sm:max-w-sm" hideCloseButton>
-                          <div className="flex flex-col h-full">
-                            <div className="px-4 py-3 border-b border-ai-border/60 bg-ai-surface-muted/40 flex items-center justify-between">
-                              <span className="text-sm font-semibold text-foreground">Chat-sessioner</span>
-                            </div>
-                            <div className="flex-1 overflow-auto">
-                              <ChatFolderSidebar {...sidebarProps} />
-                            </div>
-                          </div>
-                      </SheetContent>
-                    </Sheet>
-                  ) : (
-                    /* Desktop: Toggle knapp */
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0 -ml-2"
-                          >
-                            {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {desktopSidebarCollapsed ? "Visa historik" : "Dölj historik"}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                  
-                  {/* Dynamisk Chatt-titel med ikon */}
                   <div className="flex items-center gap-2 overflow-hidden fade-in animate-in duration-300">
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary flex-shrink-0">
                       <MessageSquare className="h-3 w-3" />
                     </span>
-                    <span className="text-sm font-medium text-foreground truncate max-w-[200px] lg:max-w-[400px]">
+                    <span className="text-sm font-medium text-foreground truncate max-w-[200px] sm:max-w-[300px]">
                       {currentSessionName}
                     </span>
                   </div>
                 </div>
 
-                {/* Höger del: Premium/Credits */}
-                <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                {/* HÖGER: Credits & Historik */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  
+                  {/* Credits / Premium */}
                   {isPremium ? (
                     <TooltipProvider delayDuration={120}>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Badge className="inline-flex h-7 items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 text-[11px] font-semibold text-white shadow-sm cursor-default">
+                          <Badge className="inline-flex h-6 sm:h-7 items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 text-[10px] sm:text-[11px] font-semibold text-white shadow-sm cursor-default">
                             <Crown className="h-3.5 w-3.5" aria-hidden />
                             <span className="hidden sm:inline">Premium</span>
                           </Badge>
@@ -494,6 +443,53 @@ const AIChat = ({
                       {remainingCredits}/{totalCredits} <span className="hidden sm:inline ml-1">krediter</span>
                     </span>
                   )}
+
+                  {/* Separator */}
+                  <div className="h-4 w-[1px] bg-border/40 mx-1" />
+
+                  {/* CHAT HISTORY TOGGLE - HÖGER SIDA */}
+                  {isMobile ? (
+                    <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                      <SheetTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0"
+                        >
+                          <History className="h-5 w-5" />
+                        </Button>
+                      </SheetTrigger>
+                      <SheetContent side="right" className="w-full max-w-xs p-0 sm:max-w-sm" hideCloseButton>
+                          <div className="flex flex-col h-full">
+                            <div className="px-4 py-3 border-b border-ai-border/60 bg-ai-surface-muted/40 flex items-center justify-between">
+                              <span className="text-sm font-semibold text-foreground">Chat-sessioner</span>
+                            </div>
+                            <div className="flex-1 overflow-auto">
+                              <ChatFolderSidebar {...sidebarProps} />
+                            </div>
+                          </div>
+                      </SheetContent>
+                    </Sheet>
+                  ) : (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0"
+                          >
+                            {!desktopSidebarCollapsed ? <PanelRight className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {desktopSidebarCollapsed ? "Visa historik" : "Dölj historik"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+
                 </div>
               </div>
             </div>
@@ -555,11 +551,7 @@ const AIChat = ({
 
               {messages.map((message) => {
                 const profileUpdates = message.context?.profileUpdates;
-
-                if (!message.context?.requiresConfirmation || !profileUpdates) {
-                  return null;
-                }
-
+                if (!message.context?.requiresConfirmation || !profileUpdates) return null;
                 return (
                   <ProfileUpdateConfirmation
                     key={`${message.id}_confirmation`}
@@ -581,9 +573,7 @@ const AIChat = ({
                 quotaExceeded={quotaExceeded}
                 inputRef={inputRef}
                 attachedDocuments={attachedDocuments.map((doc) => ({
-                  id: doc.id,
-                  name: doc.name,
-                  status: doc.status,
+                  id: doc.id, name: doc.name, status: doc.status,
                 }))}
                 onRemoveDocument={handleRemoveDocument}
                 isAttachDisabled={isUploadingDocument || quotaExceeded}
@@ -592,10 +582,15 @@ const AIChat = ({
               />
             )}
           </div>
+
+          {/* Höger Sidebar (Desktop) - Placerad SIST för att hamna till höger i flex-row */}
+          {!isMobile && !desktopSidebarCollapsed && (
+            <ChatFolderSidebar {...sidebarProps} />
+          )}
         </>
       ) : (
         <div className="flex w-full min-h-0 flex-col overflow-hidden bg-ai-surface">
-          <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden">
+           <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden">
             <div className="absolute inset-0 flex">
               {!isMobile && (
                 <div className="hidden w-[260px] flex-col border-r border-ai-border/60 bg-ai-surface-muted/60 px-4 py-6 md:flex">

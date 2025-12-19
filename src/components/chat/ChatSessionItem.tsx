@@ -17,6 +17,7 @@ import {
   Loader2,
   FolderInput
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ChatSession {
   id: string;
@@ -52,28 +53,33 @@ const ChatSessionItem: React.FC<ChatSessionItemProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(session.session_name);
 
-  const handleStartEdit = () => {
+  const handleStartEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setIsEditing(true);
     setEditValue(session.session_name);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = (e?: React.MouseEvent | React.FocusEvent) => {
+    e?.stopPropagation();
     if (editValue.trim() && editValue !== session.session_name) {
       onEditName(editValue.trim());
     }
     setIsEditing(false);
   };
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setEditValue(session.session_name);
     setIsEditing(false);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
+    e.stopPropagation();
     if (e.key === 'Enter') {
       handleSaveEdit();
     } else if (e.key === 'Escape') {
-      handleCancelEdit();
+      setIsEditing(false);
+      setEditValue(session.session_name);
     }
   };
 
@@ -83,95 +89,82 @@ const ChatSessionItem: React.FC<ChatSessionItemProps> = ({
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) {
-      return 'Idag';
-    } else if (diffDays === 2) {
-      return 'Igår';
-    } else if (diffDays <= 7) {
-      return `${diffDays - 1} dagar sedan`;
-    } else {
-      return date.toLocaleDateString('sv-SE', { 
-        month: 'short', 
-        day: 'numeric' 
-      });
-    }
-  };
-
   return (
     <div 
-      className={`group flex items-center gap-2 p-2 rounded-lg transition-all ${
+      className={cn(
+        "group flex items-center gap-3 p-2 rounded-md cursor-pointer transition-all duration-200 mb-0.5",
         isActive 
-          ? 'bg-primary/10 border border-primary/20' 
-          : 'hover:bg-muted/50'
-      } ${className}`}
+          ? "bg-accent/80 text-accent-foreground shadow-sm" 
+          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+        className
+      )}
       draggable={draggable && !isEditing}
       onDragStart={handleDragStart}
+      onClick={onLoad}
     >
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <MessageSquare className={`w-3 h-3 flex-shrink-0 ${
-          isActive ? 'text-primary' : 'text-muted-foreground'
-        }`} />
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <MessageSquare className={cn(
+          "w-4 h-4 flex-shrink-0 transition-colors",
+          isActive ? "text-primary" : "opacity-60 group-hover:opacity-100"
+        )} />
         
         {isEditing ? (
-          <div className="flex items-center gap-1 flex-1">
+          <div className="flex items-center gap-1 flex-1" onClick={e => e.stopPropagation()}>
             <Input
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               onKeyDown={handleKeyPress}
-              className="h-6 text-xs"
+              className="h-7 text-sm px-2 py-1 bg-background"
               autoFocus
               onBlur={handleSaveEdit}
             />
             <Button
-              size="sm"
+              size="icon"
               variant="ghost"
-              className="h-6 w-6 p-0"
+              className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50"
               onClick={handleSaveEdit}
             >
-              <Check className="w-3 h-3" />
+              <Check className="w-3.5 h-3.5" />
             </Button>
             <Button
-              size="sm"
+              size="icon"
               variant="ghost"
-              className="h-6 w-6 p-0"
+              className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
               onClick={handleCancelEdit}
             >
-              <X className="w-3 h-3" />
+              <X className="w-3.5 h-3.5" />
             </Button>
           </div>
         ) : (
-          <div 
-            className="flex-1 min-w-0 cursor-pointer"
-            onClick={onLoad}
-          >
-            <div className="text-xs font-medium truncate">
-              {session.session_name}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {formatDate(session.created_at)}
+          <div className="flex-1 min-w-0">
+            {/* Här är typography-fixen du bad om */}
+            <div className={cn(
+              "truncate text-sm font-medium leading-tight",
+              isActive ? "text-foreground" : "text-foreground/90"
+            )}>
+              {session.session_name || "Namnlös konversation"}
             </div>
           </div>
         )}
       </div>
 
       {isLoading ? (
-        <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+        <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
       ) : (
         !isEditing && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button 
                 variant="ghost" 
-                size="sm" 
-                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                size="icon" 
+                className={cn(
+                  "h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100",
+                  isActive && "opacity-100 hover:bg-background/20"
+                )}
+                onClick={(e) => e.stopPropagation()}
               >
-                <MoreHorizontal className="w-3 h-3" />
+                <MoreHorizontal className="w-4 h-4" />
+                <span className="sr-only">Alternativ</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
@@ -180,14 +173,20 @@ const ChatSessionItem: React.FC<ChatSessionItemProps> = ({
                 Byt namn
               </DropdownMenuItem>
               {onMoveSession && (
-                <DropdownMenuItem onClick={() => onMoveSession(session.id, null)}>
+                <DropdownMenuItem onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveSession(session.id, null);
+                }}>
                   <FolderInput className="w-4 h-4 mr-2" />
                   Flytta till rot
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem 
-                onClick={onDelete}
-                className="text-destructive"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="text-destructive focus:text-destructive focus:bg-destructive/10"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Ta bort
