@@ -1,25 +1,34 @@
+// src/components/AIChatLayout.tsx
 import React from 'react';
+import { cn } from '@/lib/utils';
 
 interface AIChatLayoutProps {
   children: React.ReactNode;
-  footerSlot?: React.ReactNode;
+  sidebar?: React.ReactNode; // Ny prop för sidofältet
+  isSidebarOpen?: boolean;   // Styr synlighet
 }
 
-const AIChatLayout: React.FC<AIChatLayoutProps> = ({ children, footerSlot }) => {
+const AIChatLayout: React.FC<AIChatLayoutProps> = ({ 
+  children, 
+  sidebar, 
+  isSidebarOpen = true 
+}) => {
   return (
-    // Vi tar bort alla containers som begränsar bredd (max-w), padding (px/py) och marginaler (mx-auto).
-    // Vi tar även bort "kort"-designen (rounded, shadow, ring) för desktop.
-    <div className="relative flex h-full w-full min-w-0 flex-1 flex-col overflow-hidden bg-white transition-colors duration-300 dark:bg-ai-surface">
-      {/* Här låter vi children (chatten) ta upp all plats direkt utan inre containers.
-         flex-1 säkerställer att den växer för att fylla höjden.
-      */}
-      {children}
+    <div className="flex h-[calc(100vh-theme(spacing.4))] w-full overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-white/10 dark:bg-ai-surface">
+      {/* Sidebar Area */}
+      <div 
+        className={cn(
+          "flex-shrink-0 border-r border-gray-100 bg-gray-50/50 transition-all duration-300 ease-in-out dark:border-white/5 dark:bg-black/20",
+          isSidebarOpen ? "w-[280px] translate-x-0 opacity-100" : "w-0 -translate-x-full opacity-0 overflow-hidden"
+        )}
+      >
+        {sidebar}
+      </div>
 
-      {footerSlot && (
-        <div className="border-t border-[#144272]/20 bg-white px-4 py-4 text-sm text-ai-text-muted backdrop-blur-sm transition-colors dark:border-ai-border/60 dark:bg-ai-surface-muted/40">
-          {footerSlot}
-        </div>
-      )}
+      {/* Main Chat Area */}
+      <div className="flex min-w-0 flex-1 flex-col bg-white dark:bg-ai-surface">
+        {children}
+      </div>
     </div>
   );
 };
