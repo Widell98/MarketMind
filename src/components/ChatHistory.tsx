@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +11,8 @@ import {
   Trash2,
   Clock,
   User,
-  Bot
+  Bot,
+  Plus
 } from 'lucide-react';
 
 interface ChatSession {
@@ -27,6 +27,7 @@ interface ChatHistoryProps {
   currentSessionId: string | null;
   onLoadSession: (sessionId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
+  onNewSession?: () => void; // Ny prop för att skapa ny session
   isLoadingSession?: boolean;
 }
 
@@ -35,6 +36,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
   currentSessionId,
   onLoadSession,
   onDeleteSession,
+  onNewSession,
   isLoadingSession = false
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -60,6 +62,13 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
     setIsOpen(false);
   };
 
+  const handleNewSession = () => {
+    if (onNewSession) {
+      onNewSession();
+      setIsOpen(false);
+    }
+  };
+
   const handleDelete = (sessionId: string, sessionName: string) => {
     if (window.confirm(`Är du säker på att du vill ta bort chatten "${sessionName}"? Detta kan inte ångras.`)) {
       onDeleteSession?.(sessionId);
@@ -80,23 +89,33 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="max-w-2xl max-h-[80vh]">
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <History className="w-5 h-5" />
             Chat-historik
-            {currentSessionId && (
-              <Badge variant="outline" className="text-xs">
-                {sessions.find(s => s.id === currentSessionId)?.session_name || 'Aktiv chat'}
-              </Badge>
-            )}
           </DialogTitle>
           <DialogDescription>
-            Alla dina tidigare AI-chattar. Klicka på en chat för att ladda den.
+            Alla dina tidigare AI-chattar.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4">
+        <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+          
+          {/* --- NY CHATT KNAPP (Placerad högst upp) --- */}
+          {onNewSession && (
+            <Button 
+              onClick={handleNewSession}
+              className="w-full justify-start gap-3 h-12 text-base font-medium shadow-sm bg-primary/90 hover:bg-primary"
+              size="lg"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-foreground/20">
+                <Plus className="h-5 w-5" />
+              </div>
+              Starta ny konversation
+            </Button>
+          )}
+
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
@@ -114,8 +133,8 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
             </div>
           )}
 
-          <ScrollArea className="h-96">
-            <div className="space-y-2 pr-4">
+          <ScrollArea className="flex-1 -mr-4 pr-4">
+            <div className="space-y-2 pb-4">
               {filteredSessions.length > 0 ? (
                 filteredSessions.map(session => {
                   const isActive = session.id === currentSessionId;
@@ -124,7 +143,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
                     <div 
                       key={session.id}
                       className={`
-                        w-full p-3 rounded-lg border transition-all cursor-pointer
+                        w-full p-3 rounded-lg border transition-all cursor-pointer group
                         ${isActive 
                           ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700' 
                           : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-gray-50 dark:hover:bg-gray-800/50'
@@ -142,20 +161,22 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className={`font-medium text-sm truncate ${
-                              isActive ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'
-                            }`}>
-                              {session.session_name}
-                            </h4>
+                            <div className="flex items-center justify-between gap-2">
+                              <h4 className={`font-medium text-sm truncate ${
+                                isActive ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'
+                              }`}>
+                                {session.session_name}
+                              </h4>
+                              {isActive && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">
+                                  Aktiv
+                                </Badge>
+                              )}
+                            </div>
                             <div className="flex items-center gap-2 mt-1">
                               <span className="text-xs text-gray-500 dark:text-gray-400">
                                 {getTimeAgo(session.created_at)}
                               </span>
-                              {isActive && (
-                                <Badge variant="secondary" className="text-xs px-2 py-0">
-                                  Aktiv
-                                </Badge>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -168,7 +189,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
                               e.stopPropagation();
                               handleDelete(session.id, session.session_name);
                             }}
-                            className="ml-2 p-2 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                            className="ml-2 h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -181,13 +202,12 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
                 <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                   <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">Inga chattar ännu</p>
-                  <p className="text-xs mt-1">Dina AI-chattar kommer att visas här</p>
+                  <p className="text-xs mt-1">Klicka på knappen ovan för att starta en ny.</p>
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                   <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">Inga chattar matchade din sökning</p>
-                  <p className="text-xs mt-1">Försök med andra sökord</p>
                 </div>
               )}
             </div>
@@ -195,17 +215,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
 
           {sessions.length > 0 && (
             <div className="border-t pt-3 text-xs text-gray-500 dark:text-gray-400 text-center">
-              <div className="flex items-center justify-center gap-4">
-                <div className="flex items-center gap-1">
-                  <User className="w-3 h-3" />
-                  <span>Du</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Bot className="w-3 h-3" />
-                  <span>AI-assistent</span>
-                </div>
-              </div>
-              <p className="mt-2">
+              <p>
                 {sessions.length} {sessions.length === 1 ? 'chat' : 'chattar'} sparade
               </p>
             </div>
