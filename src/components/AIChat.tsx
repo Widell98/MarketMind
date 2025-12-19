@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAIChat } from '@/hooks/useAIChat';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -12,19 +12,16 @@ import ChatDocumentManager from './chat/ChatDocumentManager';
 import { useChatDocuments } from '@/hooks/useChatDocuments';
 import { useChatFolders } from '@/hooks/useChatFolders';
 import { useToast } from '@/hooks/use-toast';
-// Vi tar bort MobileNavigation och SidebarTrigger härifrån eftersom de finns i Layout.tsx
 
 import { 
   LogIn, MessageSquare, Brain, Lock, Sparkles, 
-  Crown, ChevronLeft, ChevronRight, History, PanelRight
+  Crown, History, PanelRight, PanelRightClose
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { cn } from '@/lib/utils';
 
-// ... (Behåll Interface Message och AIChatProps oförändrade) ...
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -62,7 +59,6 @@ const AIChat = ({
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
-  // ... (Behåll all hook-logik och state exakt som det var) ...
   const {
     messages,
     currentSessionId,
@@ -123,13 +119,17 @@ const AIChat = ({
   const currentSessionName = useMemo(() => {
     if (isGuideSession) return "Guidad tur";
     if (!currentSessionId) return "Ny konversation";
+    
+    // Using any to bypass potential type mismatch with session_name/name
     const session = sessions?.find(s => s.id === currentSessionId) as any;
+    
     return session?.session_name || session?.name || "Pågående konversation";
   }, [currentSessionId, sessions, isGuideSession]);
 
-  // ... (Behåll alla useEffects och handlers oförändrade) ...
   useEffect(() => {
-    if (conversationData) setConversationContext(conversationData);
+    if (conversationData) {
+      setConversationContext(conversationData);
+    }
   }, [conversationData]);
 
   useEffect(() => {
@@ -146,11 +146,17 @@ const AIChat = ({
   const handleToggleDocument = useCallback((documentId: string) => {
     const targetDocument = uploadedDocuments.find((doc) => doc.id === documentId);
     if (targetDocument && targetDocument.status !== 'processed') {
-      toast({ title: 'Bearbetning pågår', description: 'Vänta tills dokumentet är färdigbearbetat.' });
+      toast({
+        title: 'Bearbetning pågår',
+        description: 'Vänta tills dokumentet är färdigbearbetat innan du använder det i chatten.',
+      });
       return;
     }
+
     setSelectedDocumentIds((prev) =>
-      prev.includes(documentId) ? prev.filter((id) => id !== documentId) : [...prev, documentId]
+      prev.includes(documentId)
+        ? prev.filter((id) => id !== documentId)
+        : [...prev, documentId]
     );
   }, [uploadedDocuments, toast]);
 
@@ -160,8 +166,11 @@ const AIChat = ({
 
   const handleUploadDocument = useCallback(async (file: File) => {
     const newDocumentId = await uploadDocument(file);
+
     if (newDocumentId) {
-      setSelectedDocumentIds((prev) => prev.includes(newDocumentId) ? prev : [...prev, newDocumentId]);
+      setSelectedDocumentIds((prev) =>
+        prev.includes(newDocumentId) ? prev : [...prev, newDocumentId]
+      );
     }
   }, [setSelectedDocumentIds, uploadDocument]);
 
@@ -171,24 +180,36 @@ const AIChat = ({
   }, [deleteDocument]);
 
   const handleDocumentLimitClick = useCallback(() => {
-    toast({ title: 'Dokumentgräns nådd', description: 'Du kan ha max två uppladdade dokument.', variant: 'destructive' });
+    toast({
+      title: 'Dokumentgräns nådd',
+      description: 'Du kan ha max två uppladdade dokument. Ta bort ett innan du laddar upp ett nytt.',
+      variant: 'destructive',
+    });
   }, [toast]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
     const storedDraft = sessionStorage.getItem(draftStorageKey);
-    if (storedDraft && !hasProcessedInitialMessageRef.current) setInput(storedDraft);
+    if (storedDraft && !hasProcessedInitialMessageRef.current) {
+      setInput(storedDraft);
+    }
   }, [draftStorageKey]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (input) sessionStorage.setItem(draftStorageKey, input);
-    else sessionStorage.removeItem(draftStorageKey);
+
+    if (input) {
+      sessionStorage.setItem(draftStorageKey, input);
+    } else {
+      sessionStorage.removeItem(draftStorageKey);
+    }
   }, [draftStorageKey, input]);
 
   useEffect(() => {
     const handleSessionInit = async () => {
       if (hasProcessedInitialMessageRef.current || !user) return;
+
       const state = location.state || {};
       const triggerNewSession = shouldCreateNewSession || state.createNewSession;
       const msg = initialMessage || state.initialMessage;
@@ -196,13 +217,28 @@ const AIChat = ({
 
       if (triggerNewSession) {
         hasProcessedInitialMessageRef.current = true;
+
         await createNewSession(sessionName);
+        
         if (msg) {
           setInput(msg);
-          setTimeout(() => inputRef.current?.focus(), 100);
+          setTimeout(() => {
+            inputRef.current?.focus();
+          }, 100);
         }
-        if (conversationData) setConversationContext(conversationData);
-        navigate(location.pathname, { replace: true, state: { ...state, createNewSession: false, initialMessage: undefined } });
+        
+        if (conversationData) {
+          setConversationContext(conversationData);
+        }
+        
+        navigate(location.pathname, { 
+          replace: true, 
+          state: { 
+            ...state,                 
+            createNewSession: false,  
+            initialMessage: undefined 
+          } 
+        });
         return;
       }
 
@@ -211,23 +247,58 @@ const AIChat = ({
         await createNewSession(stock);
         const decodedMessage = decodeURIComponent(msg);
         setInput(decodedMessage);
-        setTimeout(() => inputRef.current?.focus(), 100);
-        if (location.search) navigate(`${location.pathname}${location.hash ?? ''}`, { replace: true });
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
+        
+        if (location.search) {
+          const newUrl = `${location.pathname}${location.hash ?? ''}`;
+          navigate(newUrl, { replace: true });
+        }
       }
     };
+
     void handleSessionInit();
-  }, [shouldCreateNewSession, sessionName, initialMessage, initialStock, conversationData, user, createNewSession, navigate, location.pathname, location.hash, location.search, location.state]);
+  }, [
+    shouldCreateNewSession,
+    sessionName,
+    initialMessage,
+    initialStock,
+    conversationData,
+    user,
+    createNewSession,
+    navigate,
+    location.pathname,
+    location.hash,
+    location.search,
+    location.state 
+  ]);
 
   useEffect(() => {
     const handleCreateStockChat = (event: CustomEvent) => {
       const { sessionName, message } = event.detail;
-      void (async () => { await createNewSession(sessionName); setInput(message); setTimeout(() => inputRef.current?.focus(), 100); })();
+      const startChat = async () => {
+        await createNewSession(sessionName);
+        setInput(message);
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
+      };
+      void startChat();
     };
     const handleExamplePrompt = (event: CustomEvent) => {
-      setInput(event.detail.message); setTimeout(() => inputRef.current?.focus(), 100);
+      const { message } = event.detail;
+      setInput(message);
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     };
     const handlePrefillChatInput = (event: CustomEvent) => {
-      setInput(event.detail.message); setTimeout(() => inputRef.current?.focus(), 100);
+      const { message } = event.detail;
+      setInput(message);
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     };
     window.addEventListener('createStockChat', handleCreateStockChat as EventListener);
     window.addEventListener('sendExamplePrompt', handleExamplePrompt as EventListener);
@@ -243,14 +314,19 @@ const AIChat = ({
     e.preventDefault();
     const trimmedInput = input.trim();
     if (!trimmedInput || isLoading || !user) return;
+     
     const previousInput = input;
     setInput('');
+     
     const wasSent = await sendMessage(trimmedInput, {
       documentIds: selectedDocumentIds,
       documents: attachedDocuments.map((doc) => ({ id: doc.id, name: doc.name })),
       conversationData: conversationContext
     });
-    if (!wasSent) setInput(previousInput);
+
+    if (!wasSent) {
+      setInput(previousInput);
+    }
   };
 
   const handleNewSession = useCallback(async () => {
@@ -260,55 +336,79 @@ const AIChat = ({
     hasProcessedInitialMessageRef.current = false; 
     await createNewSession();
     setInput('');
-    if (isMobile) setSidebarOpen(false);
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
   }, [user, createNewSession, isMobile]);
 
   const handleLoadSession = useCallback(async (sessionId: string) => {
     await loadSession(sessionId);
     setConversationContext(null);
-    if (isMobile) setSidebarOpen(false);
+    if (isMobile) {
+      setSidebarOpen(false);
+    } 
   }, [loadSession, isMobile]);
 
   const handleExamplePrompt = (prompt: string) => {
-    if (isGuideSession) { setIsGuideSession(false); handleNewSession(); setTimeout(() => { setInput(prompt); inputRef.current?.focus(); }, 200); } 
-    else { setInput(prompt); setTimeout(() => inputRef.current?.focus(), 100); }
+    if (isGuideSession) {
+      setIsGuideSession(false);
+      handleNewSession();
+      setTimeout(() => {
+        setInput(prompt);
+        inputRef.current?.focus();
+      }, 200);
+    } else {
+      setInput(prompt);
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    }
   };
 
   const handleLoadGuideSession = useCallback(() => {
     setIsGuideSession(true);
     clearMessages();
-    if (isMobile) setSidebarOpen(false);
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
   }, [clearMessages, isMobile]);
 
   const sidebarProps = useMemo(() => ({
     currentSessionId: isGuideSession ? 'guide-session' : currentSessionId,
-    onLoadSession: (sessionId: string) => { setIsGuideSession(false); handleLoadSession(sessionId); },
+    onLoadSession: (sessionId: string) => {
+      setIsGuideSession(false);
+      handleLoadSession(sessionId);
+    },
     onDeleteSession: deleteSession,
     onBulkDeleteSessions: deleteSessionsBulk,
     onEditSessionName: editSessionName,
     onLoadGuideSession: handleLoadGuideSession,
     onCreateNewSession: handleNewSession,
     className: isMobile ? "w-full min-h-full" : "w-[280px] lg:w-[300px]",
-  }), [isGuideSession, currentSessionId, handleLoadSession, deleteSession, deleteSessionsBulk, editSessionName, handleLoadGuideSession, handleNewSession, isMobile]);
+  }), [
+    isGuideSession,
+    currentSessionId,
+    handleLoadSession,
+    deleteSession,
+    deleteSessionsBulk,
+    editSessionName,
+    handleLoadGuideSession,
+    handleNewSession,
+    isMobile,
+  ]);
 
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden">
       {user ? (
         <>
-          {/* Vänster Sidebar (Desktop) */}
-          {!isMobile && !desktopSidebarCollapsed && (
-            <ChatFolderSidebar {...sidebarProps} />
-          )}
-
-          {/* Main Chat Area */}
+          {/* Main Chat Area - Först i flödet för att hamna till vänster */}
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
             
             {/* --- LOCAL CHAT TOOLBAR (Sub-header) --- */}
-            {/* Vi har tagit bort SidebarTrigger/Global Nav härifrån då den nu finns i Layout.tsx */}
             <div className="border-b border-ai-border/40 bg-ai-surface/80 backdrop-blur-md sticky top-0 z-10 w-full">
               <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl px-4 h-12 sm:h-14 flex items-center justify-between">
                 
-                {/* VÄNSTER: Chat Titel (Global Meny ligger nu ovanför) */}
+                {/* VÄNSTER: Chat Titel */}
                 <div className="flex items-center gap-3 overflow-hidden">
                   <div className="flex items-center gap-2 overflow-hidden fade-in animate-in duration-300">
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary flex-shrink-0">
@@ -380,7 +480,7 @@ const AIChat = ({
                             size="icon"
                             className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0"
                           >
-                            {!desktopSidebarCollapsed ? <PanelRight className="h-4 w-4" /> : <History className="h-4 w-4" />}
+                            {!desktopSidebarCollapsed ? <PanelRight className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
@@ -482,9 +582,13 @@ const AIChat = ({
               />
             )}
           </div>
+
+          {/* Höger Sidebar (Desktop) - Placerad SIST för att hamna till höger i flex-row */}
+          {!isMobile && !desktopSidebarCollapsed && (
+            <ChatFolderSidebar {...sidebarProps} />
+          )}
         </>
       ) : (
-        // Icke-inloggad vy (behövs oftast ingen förändring här då Layout redan visar Header)
         <div className="flex w-full min-h-0 flex-col overflow-hidden bg-ai-surface">
            <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden">
             <div className="absolute inset-0 flex">
