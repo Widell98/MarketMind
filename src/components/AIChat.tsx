@@ -12,6 +12,8 @@ import ChatDocumentManager from './chat/ChatDocumentManager';
 import { useChatDocuments } from '@/hooks/useChatDocuments';
 import { useChatFolders } from '@/hooks/useChatFolders';
 import { useToast } from '@/hooks/use-toast';
+import MobileNavigation from './MobileNavigation';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 
 import { 
   LogIn, MessageSquare, Brain, Lock, Sparkles, 
@@ -403,7 +405,7 @@ const AIChat = ({
     <div className="flex h-full min-h-0 w-full overflow-hidden">
       {user ? (
         <>
-          {/* Vänster Sidebar (Desktop) */}
+          {/* Vänster Sidebar (Chatt-historik) - Desktop */}
           {!isMobile && !desktopSidebarCollapsed && (
             <ChatFolderSidebar {...sidebarProps} />
           )}
@@ -411,21 +413,33 @@ const AIChat = ({
           {/* Main Chat Area */}
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
             
-            {/* --- NY TOOLBAR --- */}
-            {/* Wrapper-div som begränsar bredden även i toolbaren */}
-            <div className="border-b border-ai-border/40 bg-ai-surface/50 backdrop-blur-sm sticky top-0 z-10 w-full">
-              <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl px-4 py-2 flex items-center justify-between min-h-[50px]">
+            {/* --- IMPROVED IMMERSIVE TOOLBAR --- */}
+            {/* Denna ersätter den tidigare headern och toolbaren */}
+            <div className="border-b border-ai-border/40 bg-ai-surface/80 backdrop-blur-md sticky top-0 z-10 w-full">
+              <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl px-4 h-14 flex items-center justify-between">
                 
-                {/* Vänster del: Historik-toggle och Titel */}
-                <div className="flex items-center gap-3 overflow-hidden">
+                {/* Vänster del: Navigationers & Titel */}
+                <div className="flex items-center gap-2 overflow-hidden">
+                  
+                  {/* 1. Global App Navigation Trigger (Synlig då globala headern är dold) */}
+                  <div className="flex items-center text-muted-foreground">
+                    <SidebarTrigger className="hidden md:flex h-8 w-8 hover:text-foreground transition-colors" />
+                    <div className="md:hidden flex items-center">
+                      <MobileNavigation />
+                    </div>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="h-4 w-[1px] bg-border/40 mx-1 hidden sm:block" />
+
+                  {/* 2. Chat History Toggle */}
                   {isMobile ? (
-                    /* Mobil: Sheet för historik */
                     <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
                       <SheetTrigger asChild>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0 -ml-2"
+                          className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0"
                         >
                           <PanelLeft className="h-5 w-5" />
                         </Button>
@@ -442,7 +456,6 @@ const AIChat = ({
                       </SheetContent>
                     </Sheet>
                   ) : (
-                    /* Desktop: Toggle knapp */
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -450,7 +463,7 @@ const AIChat = ({
                             onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0 -ml-2"
+                            className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0"
                           >
                             {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
                           </Button>
@@ -462,18 +475,18 @@ const AIChat = ({
                     </TooltipProvider>
                   )}
                   
-                  {/* Dynamisk Chatt-titel med ikon */}
-                  <div className="flex items-center gap-2 overflow-hidden fade-in animate-in duration-300">
+                  {/* 3. Titel */}
+                  <div className="flex items-center gap-2 overflow-hidden fade-in animate-in duration-300 ml-1">
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary flex-shrink-0">
                       <MessageSquare className="h-3 w-3" />
                     </span>
-                    <span className="text-sm font-medium text-foreground truncate max-w-[200px] lg:max-w-[400px]">
+                    <span className="text-sm font-medium text-foreground truncate max-w-[150px] sm:max-w-[300px]">
                       {currentSessionName}
                     </span>
                   </div>
                 </div>
 
-                {/* Höger del: Premium/Credits */}
+                {/* Höger del: Credits / Premium Badge */}
                 <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                   {isPremium ? (
                     <TooltipProvider delayDuration={120}>
