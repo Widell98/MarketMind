@@ -476,8 +476,8 @@ const PortfolioImplementation = () => {
               </div>}
 
           {/* Portfolio Overview & Community */}
-          <div className="space-y-3 sm:space-y-4 md:space-y-6 lg:space-y-8">
-            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4 md:gap-6 lg:gap-8">
+            <div className="xl:col-span-2 relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
               <PortfolioOverview
                 portfolio={activePortfolio ? {
@@ -501,7 +501,7 @@ const PortfolioImplementation = () => {
               <CommunityRecommendations />
             </div>
 
-            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
+            <div className="xl:col-span-2 relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
               <PredictionMarketsPortfolio />
             </div>
