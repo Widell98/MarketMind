@@ -96,8 +96,15 @@ const AIChat = ({
   const hasProcessedInitialMessageRef = useRef(false);
    
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
+  // På mobil: dölj sidebaren som standard så att chatten visas först
+  // På desktop: visa sidebaren som standard
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(isMobile);
   const [showMainNavigation, setShowMainNavigation] = useState(false);
+
+  // Uppdatera sidebar state när skärmstorlek ändras
+  useEffect(() => {
+    setDesktopSidebarCollapsed(isMobile);
+  }, [isMobile]);
   const [isGuideSession, setIsGuideSession] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
    
