@@ -97,6 +97,7 @@ const AIChat = ({
    
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
+  const [showMainNavigation, setShowMainNavigation] = useState(false);
   const [isGuideSession, setIsGuideSession] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
    
@@ -387,6 +388,8 @@ const AIChat = ({
     onLoadGuideSession: handleLoadGuideSession,
     onCreateNewSession: handleNewSession,
     className: isMobile ? "w-full min-h-full" : "w-[280px] lg:w-[300px]",
+    showMainNavigation: showMainNavigation,
+    onToggleNavigation: () => setShowMainNavigation(!showMainNavigation),
   }), [
     isGuideSession,
     currentSessionId,
@@ -397,6 +400,7 @@ const AIChat = ({
     handleLoadGuideSession,
     handleNewSession,
     isMobile,
+    showMainNavigation,
   ]);
 
   return (
@@ -405,98 +409,15 @@ const AIChat = ({
         <>
           {/* Vänster Sidebar (Desktop) */}
           {!isMobile && !desktopSidebarCollapsed && (
-            <ChatFolderSidebar {...sidebarProps} />
+            <ChatFolderSidebar 
+              {...sidebarProps} 
+              showMainNavigation={showMainNavigation}
+              onToggleNavigation={() => setShowMainNavigation(!showMainNavigation)}
+            />
           )}
 
           {/* Main Chat Area */}
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
-            
-            {/* --- OPTIMERAD TOOLBAR FÖR MOBIL --- */}
-            <div className="border-b border-ai-border/40 bg-ai-surface/50 backdrop-blur-sm sticky top-0 z-10 w-full">
-              <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between min-h-[48px] sm:min-h-[50px]">
-                
-                {/* Vänster del: Historik-toggle och Titel */}
-                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                  {isMobile ? (
-                    /* Mobil: Sheet för historik */
-                    <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-                      <SheetTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9 sm:h-8 sm:w-8 text-ai-text-muted hover:text-foreground flex-shrink-0"
-                        >
-                          <PanelLeft className="h-5 w-5" />
-                        </Button>
-                      </SheetTrigger>
-                      <SheetContent side="left" className="w-full max-w-xs p-0 sm:max-w-sm" hideCloseButton>
-                          <div className="flex flex-col h-full">
-                            <div className="px-4 py-3 border-b border-ai-border/60 bg-ai-surface-muted/40 flex items-center justify-between">
-                              <span className="text-sm font-semibold text-foreground">Chat-sessioner</span>
-                            </div>
-                            <div className="flex-1 overflow-auto">
-                              <ChatFolderSidebar {...sidebarProps} />
-                            </div>
-                          </div>
-                      </SheetContent>
-                    </Sheet>
-                  ) : (
-                    /* Desktop: Toggle knapp */
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0"
-                          >
-                            {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {desktopSidebarCollapsed ? "Visa historik" : "Dölj historik"}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                  
-                  {/* Dynamisk Chatt-titel med ikon - kompaktare på mobil */}
-                  <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden flex-1 min-w-0">
-                    <span className="flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full bg-primary/10 text-primary flex-shrink-0">
-                      <MessageSquare className="h-3 w-3" />
-                    </span>
-                    <span className="text-xs sm:text-sm font-medium text-foreground truncate">
-                      {currentSessionName}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Höger del: Premium/Credits - kompaktare på mobil */}
-                <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 ml-2">
-                  {isPremium ? (
-                    <TooltipProvider delayDuration={120}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Badge className="inline-flex h-6 sm:h-7 items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 sm:px-3 text-[10px] sm:text-[11px] font-semibold text-white shadow-sm cursor-default">
-                            <Crown className="h-3 w-3 sm:h-3.5 sm:w-3.5" aria-hidden />
-                            <span className="hidden xs:inline">Premium</span>
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" align="end" className="text-xs font-medium">
-                          Obegränsade meddelanden
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  ) : (
-                    <span className="rounded-full border border-ai-border/70 bg-ai-surface-muted/60 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-medium text-ai-text-muted inline-flex whitespace-nowrap">
-                      {remainingCredits}/{totalCredits} <span className="hidden sm:inline ml-1">krediter</span>
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
             {/* Innehåll: Meddelanden och Input */}
             <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
               {messages.length === 0 && contextData ? (
