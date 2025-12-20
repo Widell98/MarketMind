@@ -257,10 +257,24 @@ const PredictionMarketsDemo = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'curated' | 'all' | 'saved')} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="curated">Utvalda marknader</TabsTrigger>
-            <TabsTrigger value="all">Sök alla marknader</TabsTrigger>
-            <TabsTrigger value="saved" disabled={!user}>
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto sm:h-10 gap-1.5 sm:gap-1 p-1.5 sm:p-1 rounded-lg sm:rounded-md">
+            <TabsTrigger 
+              value="curated" 
+              className="text-xs sm:text-sm py-3 sm:py-0 w-full sm:w-auto rounded-md font-medium transition-all"
+            >
+              Utvalda marknader
+            </TabsTrigger>
+            <TabsTrigger 
+              value="all" 
+              className="text-xs sm:text-sm py-3 sm:py-0 w-full sm:w-auto rounded-md font-medium transition-all"
+            >
+              Sök alla marknader
+            </TabsTrigger>
+            <TabsTrigger 
+              value="saved" 
+              disabled={!user} 
+              className="text-xs sm:text-sm py-3 sm:py-0 w-full sm:w-auto rounded-md font-medium transition-all"
+            >
               Mina sparade
             </TabsTrigger>
           </TabsList>
