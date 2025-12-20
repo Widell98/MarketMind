@@ -169,25 +169,25 @@ const ChatMessages = ({
               </p>
             </div>
 
-            {/* Example Prompts Grid - bättre spacing på mobil */}
-            <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 md:gap-4">
+            {/* Example Prompts Grid - två kolumner även på mobil */}
+            <div className="w-full grid grid-cols-2 gap-2 sm:gap-2.5 md:gap-3 lg:gap-4">
               {examplePrompts.map((example, index) => (
                 <button
                   key={index}
                   onClick={() => onExamplePrompt(example.prompt)}
-                  className="group relative overflow-hidden rounded-xl border border-[#144272]/20 bg-gradient-to-br from-white to-white/95 p-3.5 sm:p-4 md:p-5 text-left shadow-[0_4px_20px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_8px_30px_rgba(20,82,149,0.15)] dark:from-ai-surface dark:to-ai-surface/95 dark:border-ai-border/60 dark:shadow-none dark:hover:border-primary/40 h-full flex flex-col"
+                  className="group relative overflow-hidden rounded-lg sm:rounded-xl border border-[#144272]/20 bg-gradient-to-br from-white to-white/95 p-2.5 sm:p-3.5 md:p-4 lg:p-5 text-left shadow-[0_4px_20px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_8px_30px_rgba(20,82,149,0.15)] dark:from-ai-surface dark:to-ai-surface/95 dark:border-ai-border/60 dark:shadow-none dark:hover:border-primary/40 h-full flex flex-col"
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                   
-                  <div className="relative flex flex-col gap-2 sm:gap-3 items-center flex-1 text-center">
-                    <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 text-primary shadow-sm transition-all duration-300 group-hover:scale-110 group-hover:shadow-md dark:from-primary/20 dark:to-primary/10">
+                  <div className="relative flex flex-col gap-1.5 sm:gap-2 md:gap-3 items-center flex-1 text-center">
+                    <div className="flex h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 lg:h-10 lg:w-10 items-center justify-center rounded-lg sm:rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 text-primary shadow-sm transition-all duration-300 group-hover:scale-110 group-hover:shadow-md dark:from-primary/20 dark:to-primary/10">
                       {example.icon}
                     </div>
-                    <div className="space-y-1 w-full">
-                      <h3 className="text-xs sm:text-sm font-semibold text-foreground transition-colors group-hover:text-primary text-center">
+                    <div className="space-y-0.5 sm:space-y-1 w-full">
+                      <h3 className="text-[10px] sm:text-xs md:text-sm font-semibold text-foreground transition-colors group-hover:text-primary text-center leading-tight">
                         {example.title}
                       </h3>
-                      <p className="text-[10px] sm:text-xs text-ai-text-muted leading-relaxed text-center">
+                      <p className="text-[9px] sm:text-[10px] md:text-xs text-ai-text-muted leading-tight sm:leading-relaxed text-center">
                         {example.description}
                       </p>
                     </div>

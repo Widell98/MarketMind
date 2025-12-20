@@ -407,56 +407,27 @@ const AIChat = ({
     <div className="flex h-full min-h-0 w-full overflow-hidden">
       {user ? (
         <>
-          {/* Vänster Sidebar (Desktop) */}
-          {!isMobile && !desktopSidebarCollapsed && (
+          {/* Vänster Sidebar (Desktop & Mobil) */}
+          {!desktopSidebarCollapsed && (
             <ChatFolderSidebar 
               {...sidebarProps} 
               showMainNavigation={showMainNavigation}
               onToggleNavigation={() => setShowMainNavigation(!showMainNavigation)}
+              onCloseSidebar={() => setDesktopSidebarCollapsed(true)}
             />
           )}
 
-          {/* Mobil: Flytande knapp för att öppna sidebar */}
-          {isMobile && (
-            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-              <SheetTrigger asChild>
-                <Button
-                  variant="default"
-                  size="icon"
-                  className="fixed top-4 left-4 z-50 h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-110 transition-all"
-                  aria-label="Öppna navigering"
-                >
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-full max-w-xs p-0 sm:max-w-sm" hideCloseButton>
-                <div className="flex flex-col h-full">
-                  <div className="px-4 py-3 border-b border-ai-border/60 bg-ai-surface-muted/40 flex items-center justify-between">
-                    <span className="text-sm font-semibold text-foreground">
-                      {showMainNavigation ? 'Navigation' : 'Chat-sessioner'}
-                    </span>
-                    <Button
-                      onClick={() => {
-                        setShowMainNavigation(!showMainNavigation);
-                      }}
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      aria-label={showMainNavigation ? "Visa chat-historik" : "Visa navigation"}
-                    >
-                      {showMainNavigation ? (
-                        <MessageSquare className="h-4 w-4" />
-                      ) : (
-                        <LayoutGrid className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                  <div className="flex-1 overflow-auto">
-                    <ChatFolderSidebar {...sidebarProps} />
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
+          {/* Mobil: Flytande knapp för att visa sidebar (bara när den är dold) */}
+          {isMobile && desktopSidebarCollapsed && (
+            <Button
+              onClick={() => setDesktopSidebarCollapsed(false)}
+              variant="default"
+              size="icon"
+              className="fixed top-4 left-4 z-50 h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-110 transition-all"
+              aria-label="Visa sidebar"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
           )}
 
           {/* Main Chat Area */}
