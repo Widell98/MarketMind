@@ -187,3 +187,4 @@ type ImpactItem = {
 - Visa laddningsindikator under sparning
 
 
+
