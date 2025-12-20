@@ -411,13 +411,12 @@ const AIChat = ({
           {/* Main Chat Area */}
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
             
-            {/* --- NY TOOLBAR --- */}
-            {/* Wrapper-div som begränsar bredden även i toolbaren */}
+            {/* --- OPTIMERAD TOOLBAR FÖR MOBIL --- */}
             <div className="border-b border-ai-border/40 bg-ai-surface/50 backdrop-blur-sm sticky top-0 z-10 w-full">
-              <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl px-4 py-2 flex items-center justify-between min-h-[50px]">
+              <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between min-h-[48px] sm:min-h-[50px]">
                 
                 {/* Vänster del: Historik-toggle och Titel */}
-                <div className="flex items-center gap-3 overflow-hidden">
+                <div className="flex items-center gap-2 sm:gap-3 overflow-hidden flex-1 min-w-0">
                   {isMobile ? (
                     /* Mobil: Sheet för historik */
                     <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -425,7 +424,7 @@ const AIChat = ({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0 -ml-2"
+                          className="h-9 w-9 sm:h-8 sm:w-8 text-ai-text-muted hover:text-foreground flex-shrink-0 -ml-1"
                         >
                           <PanelLeft className="h-5 w-5" />
                         </Button>
@@ -462,26 +461,26 @@ const AIChat = ({
                     </TooltipProvider>
                   )}
                   
-                  {/* Dynamisk Chatt-titel med ikon */}
-                  <div className="flex items-center gap-2 overflow-hidden fade-in animate-in duration-300">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary flex-shrink-0">
+                  {/* Dynamisk Chatt-titel med ikon - kompaktare på mobil */}
+                  <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden flex-1 min-w-0">
+                    <span className="flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full bg-primary/10 text-primary flex-shrink-0">
                       <MessageSquare className="h-3 w-3" />
                     </span>
-                    <span className="text-sm font-medium text-foreground truncate max-w-[200px] lg:max-w-[400px]">
+                    <span className="text-xs sm:text-sm font-medium text-foreground truncate">
                       {currentSessionName}
                     </span>
                   </div>
                 </div>
 
-                {/* Höger del: Premium/Credits */}
-                <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                {/* Höger del: Premium/Credits - kompaktare på mobil */}
+                <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 ml-2">
                   {isPremium ? (
                     <TooltipProvider delayDuration={120}>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Badge className="inline-flex h-7 items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 text-[11px] font-semibold text-white shadow-sm cursor-default">
-                            <Crown className="h-3.5 w-3.5" aria-hidden />
-                            <span className="hidden sm:inline">Premium</span>
+                          <Badge className="inline-flex h-6 sm:h-7 items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 sm:px-3 text-[10px] sm:text-[11px] font-semibold text-white shadow-sm cursor-default">
+                            <Crown className="h-3 w-3 sm:h-3.5 sm:w-3.5" aria-hidden />
+                            <span className="hidden xs:inline">Premium</span>
                           </Badge>
                         </TooltipTrigger>
                         <TooltipContent side="bottom" align="end" className="text-xs font-medium">
@@ -490,7 +489,7 @@ const AIChat = ({
                       </Tooltip>
                     </TooltipProvider>
                   ) : (
-                    <span className="rounded-full border border-ai-border/70 bg-ai-surface-muted/60 px-3 py-1 text-xs font-medium text-ai-text-muted inline-flex whitespace-nowrap">
+                    <span className="rounded-full border border-ai-border/70 bg-ai-surface-muted/60 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-medium text-ai-text-muted inline-flex whitespace-nowrap">
                       {remainingCredits}/{totalCredits} <span className="hidden sm:inline ml-1">krediter</span>
                     </span>
                   )}

@@ -47,3 +47,4 @@ CREATE INDEX IF NOT EXISTS idx_user_prediction_bets_market_id ON public.user_pre
 CREATE INDEX IF NOT EXISTS idx_user_prediction_bets_status ON public.user_prediction_bets(status);
 CREATE INDEX IF NOT EXISTS idx_user_prediction_bets_created_at ON public.user_prediction_bets(created_at DESC);
 
+

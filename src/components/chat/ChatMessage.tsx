@@ -686,52 +686,52 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
   const [showSuggestions, setShowSuggestions] = useState(true);
 
   return (
-    <div className={`flex w-full items-start gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex w-full items-start gap-2 sm:gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
       {message.role === 'assistant' ? (
         <>
-          <div className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-primary shadow-[0_12px_28px_rgba(15,23,42,0.12)] ring-1 ring-[#144272]/25 transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:ring-transparent dark:shadow-none">
-            <Bot className="h-3.5 w-3.5" />
+          <div className="mt-0.5 flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-white/90 text-primary shadow-[0_12px_28px_rgba(15,23,42,0.12)] ring-1 ring-[#144272]/25 transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:ring-transparent dark:shadow-none flex-shrink-0">
+            <Bot className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
           </div>
-          <div className="flex-1 min-w-0 max-w-[75%] lg:max-w-[85%] space-y-2">
-            <div className="rounded-[16px] border border-[#205295]/18 bg-white/95 px-4 py-3 text-foreground shadow-[0_16px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble dark:px-4 dark:py-3 dark:shadow-sm">
-              <div className="flex items-center justify-between text-[10px] font-medium text-ai-text-muted mb-1.5">
-                <span className="flex items-center gap-1 text-primary/80 dark:text-ai-text-muted">
-                  <Sparkles className="h-3 w-3" />
+          <div className="flex-1 min-w-0 max-w-[85%] sm:max-w-[80%] lg:max-w-[85%] space-y-1.5 sm:space-y-2">
+            <div className="rounded-xl sm:rounded-[16px] border border-[#205295]/18 bg-white/95 px-3 py-2.5 sm:px-4 sm:py-3 text-foreground shadow-[0_16px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble dark:shadow-sm">
+              <div className="flex items-center justify-between text-[9px] sm:text-[10px] font-medium text-ai-text-muted mb-1 sm:mb-1.5">
+                <span className="flex items-center gap-0.5 sm:gap-1 text-primary/80 dark:text-ai-text-muted">
+                  <Sparkles className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                   MarketMind
                 </span>
                 <time dateTime={isoTimestamp}>{formattedTime}</time>
               </div>
 
               {assistantDigest && (
-                <div className="mb-2 flex flex-wrap gap-1.5">
+                <div className="mb-1.5 sm:mb-2 flex flex-wrap gap-1 sm:gap-1.5">
                   {assistantDigest.map((chip, index) => (
                     <span
                       key={`${message.id}-chip-${index}`}
-                      className="inline-flex items-center gap-1 rounded-full border border-[#205295]/25 bg-white/80 px-2.5 py-0.5 text-[10px] font-medium text-primary/80 shadow-sm transition-colors dark:border-ai-border/60 dark:bg-ai-surface-muted/60 dark:text-ai-text-muted"
+                      className="inline-flex items-center gap-0.5 sm:gap-1 rounded-full border border-[#205295]/25 bg-white/80 px-2 sm:px-2.5 py-0.5 text-[9px] sm:text-[10px] font-medium text-primary/80 shadow-sm transition-colors dark:border-ai-border/60 dark:bg-ai-surface-muted/60 dark:text-ai-text-muted"
                     >
-                      <Sparkles className="h-2.5 w-2.5" />
+                      <Sparkles className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
                       {chip}
                     </span>
                   ))}
                 </div>
               )}
 
-              <div className="space-y-1">{formatMessageContent(contentWithoutSources)}</div>
+              <div className="space-y-0.5 sm:space-y-1">{formatMessageContent(contentWithoutSources)}</div>
               
               {tavilyFallbackUsed && (
-                <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/80 px-2.5 py-1.5 text-[11px] text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-300">
+                <div className="mt-1.5 sm:mt-2 rounded-lg border border-amber-200 bg-amber-50/80 px-2 sm:px-2.5 py-1 sm:py-1.5 text-[10px] sm:text-[11px] text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-300">
                   <strong>OBS:</strong> Realtidssökning kunde inte genomföras. Svaret baseras på befintlig kunskap.
                 </div>
               )}
 
               {sources.length > 0 && (
-                <div className="mt-3 border-t border-[#205295]/18 pt-2 dark:border-ai-border/40">
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <ExternalLink className="h-3 w-3 text-ai-text-muted" />
-                    <span className="text-[10px] font-semibold text-ai-text-muted uppercase tracking-wide">Källor</span>
-                    <span className="text-[10px] text-ai-text-muted/70">({sources.length})</span>
+                <div className="mt-2 sm:mt-3 border-t border-[#205295]/18 pt-1.5 sm:pt-2 dark:border-ai-border/40">
+                  <div className="flex items-center gap-1 sm:gap-1.5 mb-1 sm:mb-1.5">
+                    <ExternalLink className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-ai-text-muted" />
+                    <span className="text-[9px] sm:text-[10px] font-semibold text-ai-text-muted uppercase tracking-wide">Källor</span>
+                    <span className="text-[9px] sm:text-[10px] text-ai-text-muted/70">({sources.length})</span>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-1 sm:gap-1.5">
                     {sources.map((source, index) => {
                       try {
                         const url = new URL(source);
@@ -748,11 +748,11 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
                             href={source}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="group inline-flex items-center gap-1 rounded-md border border-[#205295]/25 bg-white/90 px-2 py-1 text-[10px] font-medium text-primary/90 transition-all hover:bg-white hover:text-primary hover:shadow-sm hover:-translate-y-0.5 hover:border-primary/40 dark:border-ai-border/60 dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:hover:bg-ai-surface-muted dark:hover:text-foreground dark:hover:border-ai-border"
+                            className="group inline-flex items-center gap-0.5 sm:gap-1 rounded-md border border-[#205295]/25 bg-white/90 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-medium text-primary/90 transition-all hover:bg-white hover:text-primary hover:shadow-sm hover:-translate-y-0.5 hover:border-primary/40 dark:border-ai-border/60 dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:hover:bg-ai-surface-muted dark:hover:text-foreground dark:hover:border-ai-border"
                             title={source}
                           >
-                            <ExternalLink className="h-2.5 w-2.5 flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
-                            <span className="max-w-[150px] truncate">
+                            <ExternalLink className="h-2 w-2 sm:h-2.5 sm:w-2.5 flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
+                            <span className="max-w-[120px] sm:max-w-[150px] truncate">
                               {displayName}
                             </span>
                           </a>
@@ -768,46 +768,48 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
 
             {stockSuggestions.length > 0 && (
               <Collapsible open={showSuggestions} onOpenChange={setShowSuggestions}>
-                <div className="rounded-[14px] border border-[#144272]/18 bg-white/92 shadow-sm backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none">
+                <div className="rounded-xl sm:rounded-[14px] border border-[#144272]/18 bg-white/92 shadow-sm backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none">
                   <CollapsibleTrigger asChild>
                     <button
                       type="button"
-                      className="flex w-full items-center justify-between gap-2 rounded-[14px] px-3 py-2 text-left text-[11px] font-medium text-primary transition-colors hover:bg-white/70 dark:text-ai-text-muted dark:hover:bg-ai-surface-muted/60"
+                      className="flex w-full items-center justify-between gap-2 rounded-xl sm:rounded-[14px] px-2.5 sm:px-3 py-1.5 sm:py-2 text-left text-[10px] sm:text-[11px] font-medium text-primary transition-colors hover:bg-white/70 dark:text-ai-text-muted dark:hover:bg-ai-surface-muted/60"
                     >
-                      <span className="flex items-center gap-1.5">
-                        <TrendingUp className="h-3 w-3" />
+                      <span className="flex items-center gap-1 sm:gap-1.5">
+                        <TrendingUp className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                         Aktieförslag ({stockSuggestions.length} st)
                       </span>
-                      <ChevronDown className={`h-3 w-3 transition-transform ${showSuggestions ? 'rotate-180' : 'rotate-0'}`} />
+                      <ChevronDown className={`h-2.5 w-2.5 sm:h-3 sm:w-3 transition-transform ${showSuggestions ? 'rotate-180' : 'rotate-0'}`} />
                     </button>
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="px-3 pb-3 pt-1">
-                    <div className="space-y-1.5">
+                  <CollapsibleContent className="px-2.5 sm:px-3 pb-2 sm:pb-3 pt-0.5 sm:pt-1">
+                    <div className="space-y-1 sm:space-y-1.5">
                       {stockSuggestions.map((suggestion) => {
                         const isAdded = addedStocks.has(suggestion.symbol);
                         return (
                           <div
                             key={suggestion.symbol}
-                            className="flex items-center justify-between gap-2 rounded-[10px] border border-[#205295]/18 bg-white/85 px-2.5 py-1.5 shadow-sm transition-colors dark:rounded-ai-sm dark:border-ai-border/50 dark:bg-ai-bubble"
+                            className="flex items-center justify-between gap-1.5 sm:gap-2 rounded-lg sm:rounded-[10px] border border-[#205295]/18 bg-white/85 px-2 sm:px-2.5 py-1 sm:py-1.5 shadow-sm transition-colors dark:rounded-ai-sm dark:border-ai-border/50 dark:bg-ai-bubble"
                           >
-                            <div className="min-w-0">
-                              <p className="truncate text-[12px] font-medium text-foreground">{suggestion.name}</p>
-                              <p className="text-[10px] text-ai-text-muted">{suggestion.symbol}</p>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-[11px] sm:text-[12px] font-medium text-foreground">{suggestion.name}</p>
+                              <p className="text-[9px] sm:text-[10px] text-ai-text-muted">{suggestion.symbol}</p>
                             </div>
                             <Button
                               size="sm"
                               variant={isAdded ? 'outline' : 'default'}
                               onClick={() => handleAddStock(suggestion)}
                               disabled={isAdded}
-                              className="h-6 rounded-full px-3 text-[10px] font-medium shadow-sm transition-all hover:-translate-y-0.5 dark:rounded-ai-sm dark:px-2 dark:shadow-none"
+                              className="h-5 sm:h-6 rounded-full px-2 sm:px-3 text-[9px] sm:text-[10px] font-medium shadow-sm transition-all hover:-translate-y-0.5 dark:rounded-ai-sm dark:shadow-none flex-shrink-0"
                             >
                               {isAdded ? (
                                 <>
-                                  <Check className="mr-1 h-2.5 w-2.5" /> Tillagd
+                                  <Check className="mr-0.5 sm:mr-1 h-2 w-2 sm:h-2.5 sm:w-2.5" /> 
+                                  <span className="hidden xs:inline">Tillagd</span>
                                 </>
                               ) : (
                                 <>
-                                  <Plus className="mr-1 h-2.5 w-2.5" /> Lägg till
+                                  <Plus className="mr-0.5 sm:mr-1 h-2 w-2 sm:h-2.5 sm:w-2.5" /> 
+                                  <span className="hidden xs:inline">Lägg till</span>
                                 </>
                               )}
                             </Button>
@@ -823,24 +825,24 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         </>
       ) : (
         <>
-          {/* ÄNDRING: Tog bort flex-1 här så bubblan inte sträcks ut i onödan */}
-          <div className="min-w-0 max-w-[75%] lg:max-w-[85%] space-y-1.5">
-            <div className="rounded-[16px] border border-[#144272]/22 bg-gradient-to-br from-[#144272]/16 via-white/95 to-[#205295]/14 px-4 py-3 text-foreground shadow-[0_18px_46px_rgba(15,23,42,0.1)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble-user dark:px-4 dark:py-3 dark:shadow-sm">
-              <div className="flex items-center justify-between text-[10px] font-medium text-ai-text-muted mb-1">
+          <div className="min-w-0 max-w-[85%] sm:max-w-[80%] lg:max-w-[85%] space-y-1 sm:space-y-1.5">
+            <div className="rounded-xl sm:rounded-[16px] border border-[#144272]/22 bg-gradient-to-br from-[#144272]/16 via-white/95 to-[#205295]/14 px-3 py-2.5 sm:px-4 sm:py-3 text-foreground shadow-[0_18px_46px_rgba(15,23,42,0.1)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble-user dark:shadow-sm">
+              <div className="flex items-center justify-between text-[9px] sm:text-[10px] font-medium text-ai-text-muted mb-0.5 sm:mb-1">
                 <span>Du</span>
                 <time dateTime={isoTimestamp}>{formattedTime}</time>
               </div>
-              <p className="whitespace-pre-wrap break-words text-[13px] leading-[1.6] text-foreground">{message.content}</p>
+              <p className="whitespace-pre-wrap break-words text-xs sm:text-[13px] leading-[1.5] sm:leading-[1.6] text-foreground">{message.content}</p>
             </div>
             {attachedDocumentNames && (
-              <div className="flex flex-wrap items-center gap-1.5 pl-1 text-xs">
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                  <Paperclip className="h-2.5 w-2.5" /> Bifogat
+              <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 pl-0.5 sm:pl-1">
+                <span className="inline-flex items-center gap-0.5 sm:gap-1 rounded-full bg-primary/10 px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-semibold text-primary">
+                  <Paperclip className="h-2 w-2 sm:h-2.5 sm:w-2.5" /> 
+                  <span className="hidden xs:inline">Bifogat</span>
                 </span>
                 {attachedDocumentNames.map((name, index) => (
                   <span
                     key={`${message.id}-doc-${index}`}
-                    className="inline-flex items-center rounded-full border border-primary/30 bg-white/80 px-2 py-0.5 text-[10px] font-medium text-primary shadow-sm"
+                    className="inline-flex items-center rounded-full border border-primary/30 bg-white/80 px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-medium text-primary shadow-sm"
                   >
                     {name}
                   </span>
@@ -848,8 +850,8 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
               </div>
             )}
           </div>
-          <div className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-blue-500 to-blue-600 text-white shadow-[0_16px_40px_rgba(15,23,42,0.18)] ring-1 ring-[#144272]/35 transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:ring-transparent dark:shadow-none">
-            <User className="h-3.5 w-3.5" />
+          <div className="mt-0.5 flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-blue-500 to-blue-600 text-white shadow-[0_16px_40px_rgba(15,23,42,0.18)] ring-1 ring-[#144272]/35 transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:ring-transparent dark:shadow-none flex-shrink-0">
+            <User className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
           </div>
         </>
       )}
