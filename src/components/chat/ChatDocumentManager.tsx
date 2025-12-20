@@ -105,7 +105,7 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
 
   return (
     // ÄNDRING: Lade till flex och justify-center på containern, och en inre div med max-bredd
-    <div className="border-t border-ai-border/40 bg-transparent px-3 py-2 sm:px-4">
+    <div className="border-t border-ai-border/40 bg-transparent px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4">
       <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl">
         <input
           ref={fileInputRef}
@@ -114,34 +114,36 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
           className="hidden"
           onChange={handleFileChange}
         />
-        <div className="mt-1 space-y-2">
-          <div className="flex items-center justify-between gap-2 text-xs text-ai-text-muted">
+        <div className="space-y-1.5 sm:space-y-2">
+          <div className="flex items-center justify-between gap-1.5 sm:gap-2">
             <button
               type="button"
               onClick={() => setIsCollapsed((prev) => !prev)}
-              className="flex items-center gap-2 text-left text-ai-text-muted transition-colors hover:text-primary/80"
+              className="flex items-center gap-1.5 sm:gap-2 text-left text-ai-text-muted transition-colors hover:text-primary/80 flex-1 min-w-0"
               aria-expanded={!isCollapsed}
               aria-controls="chat-document-manager-panel"
             >
               <span
                 className={cn(
-                  'flex h-5 w-5 items-center justify-center rounded-full border border-ai-border/60 text-ai-text-muted transition-transform',
+                  'flex h-4 w-4 sm:h-5 sm:w-5 shrink-0 items-center justify-center rounded-full border border-ai-border/60 text-ai-text-muted transition-transform',
                   isCollapsed ? '-rotate-90' : 'rotate-0'
                 )}
               >
-                <ChevronDown className="h-3 w-3" />
+                <ChevronDown className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
               </span>
-              <span className="text-xs text-ai-text-muted">Uppladdade dokument ({documents.length})</span>
+              <span className="text-[10px] sm:text-xs text-ai-text-muted truncate">Dokument ({documents.length})</span>
             </button>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
               {selectedDocumentsCount > 0 && (
-                <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-                  {selectedDocumentsCount} valda
+                <span className="rounded-full border border-primary/40 bg-primary/10 px-1.5 py-0.5 sm:px-2 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wide text-primary">
+                  <span className="hidden sm:inline">{selectedDocumentsCount} valda</span>
+                  <span className="sm:hidden">{selectedDocumentsCount}</span>
                 </span>
               )}
               {(isLoading || isUploading) && (
-                <span className="flex items-center gap-1 text-primary">
-                  <Loader2 className="h-3 w-3 animate-spin" /> {isUploading ? 'Uppladdar' : 'Hämtar'}
+                <span className="flex items-center gap-0.5 sm:gap-1 text-primary">
+                  <Loader2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 animate-spin" />
+                  <span className="hidden sm:inline text-[10px]">{isUploading ? 'Uppladdar' : 'Hämtar'}</span>
                 </span>
               )}
             </div>
@@ -149,20 +151,20 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
           {!isCollapsed && (
             <>
               {selectedDocumentList.length > 0 && (
-                <div className="rounded-md border border-ai-border/40 bg-white/70 px-3 py-2 text-[11px] text-ai-text">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-medium">AI:n använder dessa dokument som källor</p>
+                <div className="rounded-md border border-ai-border/40 bg-white/70 px-2 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-[11px] text-ai-text">
+                  <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">
+                    <p className="font-medium text-[10px] sm:text-[11px]">AI:n använder dessa dokument som källor</p>
                     <button
                       type="button"
                       onClick={() => setIsCollapsed(true)}
-                      className="text-[10px] font-semibold uppercase tracking-wide text-primary transition-colors hover:text-primary/80"
+                      className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wide text-primary transition-colors hover:text-primary/80 flex-shrink-0"
                     >
                       Dölj
                     </button>
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-1 text-[10px]">
+                  <div className="mt-1 flex flex-wrap gap-1 text-[9px] sm:text-[10px]">
                     {selectedDocumentList.map((document) => (
-                      <span key={document.id} className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">
+                      <span key={document.id} className="rounded-full bg-primary/10 px-1.5 py-0.5 sm:px-2 text-primary truncate max-w-[120px] sm:max-w-none">
                         {document.name}
                       </span>
                     ))}
@@ -171,11 +173,11 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
               )}
               <div id="chat-document-manager-panel" className="space-y-2">
                 {documents.length === 0 ? (
-                  <p className="rounded-lg border border-dashed border-ai-border/60 bg-white/70 p-3 text-xs text-ai-text-muted">
+                  <p className="rounded-lg border border-dashed border-ai-border/60 bg-white/70 p-2 sm:p-3 text-[10px] sm:text-xs text-ai-text-muted">
                     Du har inte laddat upp några dokument ännu.
                   </p>
                 ) : (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     {documents.map((document) => {
                       const isSelected = selectedDocuments.has(document.id);
                       const statusLabel = getStatusLabel(document);
@@ -185,61 +187,61 @@ const ChatDocumentManager: React.FC<ChatDocumentManagerProps> = ({
                         <div
                           key={document.id}
                           className={cn(
-                            'group flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] transition-colors',
+                            'group flex items-center gap-1.5 sm:gap-2 rounded-full border px-2 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-[11px] transition-colors',
                             isSelected
                               ? 'border-primary/60 bg-primary/10 text-primary'
                               : 'border-ai-border/50 bg-white/60 text-ai-text'
                           )}
                         >
                           {isSelected && (
-                            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary text-white">
-                              <Sparkles className="h-3 w-3" aria-hidden="true" />
+                            <span className="flex h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 items-center justify-center rounded-full bg-primary text-white">
+                              <Sparkles className="h-2.5 w-2.5 sm:h-3 sm:w-3" aria-hidden="true" />
                             </span>
                           )}
                           {!isSelected && (
-                            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-ai-border/50 text-ai-text-muted">
-                              <FileText className="h-3 w-3" aria-hidden="true" />
+                            <span className="flex h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 items-center justify-center rounded-full border border-ai-border/50 text-ai-text-muted">
+                              <FileText className="h-2.5 w-2.5 sm:h-3 sm:w-3" aria-hidden="true" />
                             </span>
                           )}
                           <button
                             type="button"
                             onClick={() => handleDocumentClick(document.id)}
-                            className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                            className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2 text-left"
                             aria-pressed={isSelected}
                             title={`${document.name} • ${metaText}`}
                           >
-                            <span className="truncate font-medium">{document.name}</span>
+                            <span className="truncate font-medium text-[10px] sm:text-[11px] max-w-[100px] sm:max-w-none">{document.name}</span>
                             <span
-                              className="hidden text-[10px] text-ai-text-muted sm:inline"
+                              className="hidden text-[9px] sm:text-[10px] text-ai-text-muted sm:inline"
                             >
                               {metaText}
                             </span>
                           </button>
                           <span
                             className={cn(
-                              'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] uppercase',
+                              'flex h-4 w-4 sm:h-5 sm:w-5 shrink-0 items-center justify-center rounded-full border text-[9px] sm:text-[10px] uppercase',
                               document.status === 'processed' && 'border-emerald-300 text-emerald-600',
                               document.status === 'failed' && 'border-destructive text-destructive',
                               document.status === 'processing' && 'border-primary/50 text-primary'
                             )}
                             title={`${statusLabel} • ${metaText}`}
                           >
-                            {document.status === 'processed' && <CheckCircle2 className="h-3 w-3" aria-hidden="true" />}
-                            {document.status === 'failed' && <AlertCircle className="h-3 w-3" aria-hidden="true" />}
-                            {document.status === 'processing' && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
+                            {document.status === 'processed' && <CheckCircle2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" aria-hidden="true" />}
+                            {document.status === 'failed' && <AlertCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3" aria-hidden="true" />}
+                            {document.status === 'processing' && <Loader2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 animate-spin" aria-hidden="true" />}
                           </span>
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6 text-ai-text-muted hover:text-destructive"
+                            className="h-5 w-5 sm:h-6 sm:w-6 text-ai-text-muted hover:text-destructive flex-shrink-0"
                             onClick={(event) => {
                               event.stopPropagation();
                               void onDelete(document.id);
                             }}
                             aria-label={`Ta bort ${document.name}`}
                           >
-                            <Trash className="h-3 w-3" aria-hidden="true" />
+                            <Trash className="h-2.5 w-2.5 sm:h-3 sm:w-3" aria-hidden="true" />
                           </Button>
                         </div>
                       );

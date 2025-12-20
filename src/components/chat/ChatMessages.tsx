@@ -179,15 +179,15 @@ const ChatMessages = ({
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                   
-                  <div className="relative flex flex-col gap-2 sm:gap-3 items-start flex-1">
+                  <div className="relative flex flex-col gap-2 sm:gap-3 items-center flex-1 text-center">
                     <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 text-primary shadow-sm transition-all duration-300 group-hover:scale-110 group-hover:shadow-md dark:from-primary/20 dark:to-primary/10">
                       {example.icon}
                     </div>
                     <div className="space-y-1 w-full">
-                      <h3 className="text-xs sm:text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
+                      <h3 className="text-xs sm:text-sm font-semibold text-foreground transition-colors group-hover:text-primary text-center">
                         {example.title}
                       </h3>
-                      <p className="text-[10px] sm:text-xs text-ai-text-muted leading-relaxed">
+                      <p className="text-[10px] sm:text-xs text-ai-text-muted leading-relaxed text-center">
                         {example.description}
                       </p>
                     </div>

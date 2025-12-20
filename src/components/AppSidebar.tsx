@@ -74,18 +74,18 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ onToggleToChatHistory }) => {
       <SidebarContent className="px-4 py-6 space-y-6">
         {/* Main Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-primary flex items-center gap-2 relative">
+          <SidebarGroupLabel className="text-xs font-semibold text-primary flex items-center gap-2 relative pr-10 sm:pr-12">
             <Home className="w-4 h-4" />
             {t('nav.mainMenu')}
             {/* Flytande return-ikon för chat-historik - bara synlig i /ai-chatt */}
             {isChatRoute && onToggleToChatHistory && (
               <button
                 onClick={onToggleToChatHistory}
-                className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 hover:bg-primary/20 text-primary hover:text-primary border border-primary/20 hover:border-primary/30 transition-all duration-200 hover:scale-110 shadow-sm hover:shadow-md"
+                className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary/10 hover:bg-primary/20 text-primary hover:text-primary border border-primary/20 hover:border-primary/30 transition-all duration-200 hover:scale-110 shadow-sm hover:shadow-md active:scale-95"
                 aria-label="Visa chat-historik"
                 title="Chat-historik"
               >
-                <ArrowLeft className="w-3.5 h-3.5" />
+                <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>
             )}
           </SidebarGroupLabel>
