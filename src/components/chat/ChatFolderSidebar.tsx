@@ -1,4 +1,6 @@
 import React, { useState, memo } from 'react';
+import { Link } from 'react-router-dom';
+import AppSidebar from '@/components/AppSidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -23,6 +25,9 @@ import {
   MessageSquare,
   Sparkles,
   Plus,
+  Brain,
+  Home,
+  LayoutGrid,
 } from 'lucide-react';
 import { useChatFolders } from '@/hooks/useChatFolders';
 import type { ChatFolder, ChatSession } from '@/hooks/useChatFolders';
@@ -40,6 +45,8 @@ interface ChatFolderSidebarProps {
   onCreateNewSession: () => void;
   onBulkDeleteSessions?: (sessionIds: string[]) => Promise<void> | void;
   className?: string;
+  showMainNavigation?: boolean;
+  onToggleNavigation?: () => void;
 }
 
 const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
@@ -51,6 +58,8 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
   onCreateNewSession,
   onBulkDeleteSessions,
   className = '',
+  showMainNavigation = false,
+  onToggleNavigation,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -282,6 +291,15 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
     );
   };
 
+  // Om showMainNavigation är true, visa AppSidebar istället
+  if (showMainNavigation) {
+    return (
+      <aside className={cn('group/sidebar relative flex h-full min-h-0 w-[280px] flex-shrink-0 flex-col overflow-hidden', className)}>
+        <AppSidebar onToggleToChatHistory={onToggleNavigation} />
+      </aside>
+    );
+  }
+
   return (
     <aside
       className={cn(
@@ -291,25 +309,57 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
     >
       <header className="sticky top-0 z-20 border-b border-ai-border/60 bg-ai-surface-muted/90 px-4 pb-5 pt-6 backdrop-blur-sm supports-[backdrop-filter]:bg-ai-surface-muted/70">
         <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ai-text-muted/60">
-              Ai-chatt
-            </p>
-            {/* <h2 className="text-lg font-semibold text-foreground">Konversationer</h2> */}
-          </div>
-          <CreateFolderDialog
-            onCreateFolder={createFolder}
-            trigger={
+          <Link 
+            to="/" 
+            className="flex items-center gap-2 group/logo hover:opacity-80 transition-opacity"
+          >
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center transform group-hover/logo:rotate-0 rotate-3 transition-transform duration-300">
+              <Brain className="w-4 h-4 text-primary-foreground" />
+            </div>
+            <span className="text-sm font-semibold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+              Market Mind
+            </span>
+          </Link>
+          <div className="flex items-center gap-1">
+            {onToggleNavigation && (
+              <Button
+                onClick={onToggleNavigation}
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-full border border-transparent text-ai-text-muted transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
+                aria-label={showMainNavigation ? "Visa chat-historik" : "Visa navigation"}
+              >
+                {showMainNavigation ? (
+                  <MessageSquare className="h-4 w-4" />
+                ) : (
+                  <LayoutGrid className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+            <Link to="/">
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 rounded-full border border-transparent text-ai-text-muted transition-colors hover:border-ai-border/60 hover:bg-ai-surface hover:text-foreground"
-                aria-label="Skapa mapp"
+                className="h-9 w-9 rounded-full border border-transparent text-ai-text-muted transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
+                aria-label="Tillbaka till startsidan"
               >
-                <Folder className="h-4 w-4" />
+                <Home className="h-4 w-4" />
               </Button>
-            }
-          />
+            </Link>
+            <CreateFolderDialog
+              onCreateFolder={createFolder}
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full border border-transparent text-ai-text-muted transition-colors hover:border-ai-border/60 hover:bg-ai-surface hover:text-foreground"
+                  aria-label="Skapa mapp"
+                >
+                  <Folder className="h-4 w-4" />
+                </Button>
+              }
+            />
+          </div>
         </div>
 
         <Button

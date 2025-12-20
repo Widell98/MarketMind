@@ -38,16 +38,18 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const showFooter = !isChatRoute;
   const showBreadcrumb = !isChatRoute;
+  const showHeader = !isChatRoute;
 
   return (
     <ConversationMemoryProvider>
       <SidebarProvider>
         <div className={rootClassName}>
-          {/* Sidebar for desktop */}
-          <AppSidebar />
+          {/* Sidebar for desktop - Döljs i chatten */}
+          {!isChatRoute && <AppSidebar />}
 
           <div className="flex-1 flex flex-col min-w-0 max-w-full">
-            {/* Header - Alltid synlig nu, även i chatten */}
+            {/* Header - Döljs i chatten */}
+            {showHeader && (
             <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border shadow-sm">
               <div className="container-responsive py-2 sm:py-3 lg:py-4 flex justify-between items-center">
                 <div className="flex items-center space-x-2 sm:space-x-4 md:space-x-6 min-w-0">
@@ -87,6 +89,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </div>
               </div>
             </header>
+            )}
             
             {/* Main content */}
             <main

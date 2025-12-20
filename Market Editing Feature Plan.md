@@ -186,3 +186,5 @@ type ImpactItem = {
 - Validera input innan sparning
 - Visa laddningsindikator under sparning
 
+
+

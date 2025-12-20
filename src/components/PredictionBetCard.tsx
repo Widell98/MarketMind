@@ -259,3 +259,5 @@ const PredictionBetCard: React.FC<PredictionBetCardProps> = ({
 
 export default PredictionBetCard;
 
+
+
