@@ -416,7 +416,7 @@ const AIChat = ({
               <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between min-h-[48px] sm:min-h-[50px]">
                 
                 {/* Vänster del: Historik-toggle och Titel */}
-                <div className="flex items-center gap-2 sm:gap-3 overflow-hidden flex-1 min-w-0">
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                   {isMobile ? (
                     /* Mobil: Sheet för historik */
                     <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -424,7 +424,7 @@ const AIChat = ({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-9 w-9 sm:h-8 sm:w-8 text-ai-text-muted hover:text-foreground flex-shrink-0 -ml-1"
+                          className="h-9 w-9 sm:h-8 sm:w-8 text-ai-text-muted hover:text-foreground flex-shrink-0"
                         >
                           <PanelLeft className="h-5 w-5" />
                         </Button>
@@ -449,7 +449,7 @@ const AIChat = ({
                             onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0 -ml-2"
+                            className="h-8 w-8 text-ai-text-muted hover:text-foreground flex-shrink-0"
                           >
                             {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
                           </Button>
