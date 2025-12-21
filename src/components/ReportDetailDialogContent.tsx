@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import type { GeneratedReport } from '@/types/generatedReport';
+import { extractKeyDriver } from '@/utils/reportDataExtractor';
 
 interface ReportDetailDialogContentProps {
   report: GeneratedReport;
@@ -16,6 +17,7 @@ interface ReportDetailDialogContentProps {
 
 const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ report }) => {
   const generatedAt = formatDistanceToNow(new Date(report.createdAt), { addSuffix: true, locale: sv });
+  const keyDriver = extractKeyDriver(report);
 
   return (
     <DialogContent className="max-w-3xl overflow-hidden rounded-3xl border border-border/50 bg-card/95 p-0 shadow-2xl">
@@ -93,6 +95,15 @@ const ReportDetailDialogContent: React.FC<ReportDetailDialogContentProps> = ({ r
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {keyDriver && (
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">Huvuddriver</h3>
+              <div className="rounded-2xl border border-border/60 bg-card/70 p-4 text-base text-foreground/90">
+                {keyDriver}
+              </div>
             </div>
           )}
 

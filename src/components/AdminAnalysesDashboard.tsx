@@ -83,6 +83,7 @@ interface EditableMetric {
   label: string;
   value: string;
   trend: string;
+  beatPercent: string;
 }
 
 interface UpdateReportPayload {
@@ -378,6 +379,7 @@ const AdminAnalysesDashboard: React.FC = () => {
         label: metric.label,
         value: metric.value,
         trend: metric.trend ?? '',
+        beatPercent: metric.beatPercent !== null && metric.beatPercent !== undefined ? metric.beatPercent.toString() : '',
       })),
     );
     setEditDialogOpen(true);
@@ -394,7 +396,7 @@ const AdminAnalysesDashboard: React.FC = () => {
   };
 
   const handleAddMetric = () => {
-    setEditMetrics((previous) => [...previous, { label: '', value: '', trend: '' }]);
+    setEditMetrics((previous) => [...previous, { label: '', value: '', trend: '', beatPercent: '' }]);
   };
 
   const handleUpdateReport = () => {
@@ -441,11 +443,17 @@ const AdminAnalysesDashboard: React.FC = () => {
       .filter((line) => line.length > 0);
 
     const keyMetrics: GeneratedReportKeyMetric[] = editMetrics
-      .map((metric) => ({
-        label: metric.label.trim(),
-        value: metric.value.trim(),
-        trend: metric.trend.trim() ? metric.trend.trim() : undefined,
-      }))
+      .map((metric) => {
+        const beatPercentValue = metric.beatPercent.trim() 
+          ? parseFloat(metric.beatPercent.trim()) 
+          : null;
+        return {
+          label: metric.label.trim(),
+          value: metric.value.trim(),
+          trend: metric.trend.trim() ? metric.trend.trim() : undefined,
+          beatPercent: beatPercentValue !== null && !isNaN(beatPercentValue) ? beatPercentValue : null,
+        };
+      })
       .filter((metric) => metric.label || metric.value || metric.trend);
 
     const payload: UpdateReportPayload = {
@@ -1011,7 +1019,7 @@ const AdminAnalysesDashboard: React.FC = () => {
                             />
                           </div>
                         </div>
-                        <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
+                        <div className="grid gap-2 sm:grid-cols-2">
                           <div className="grid gap-1">
                             <Label htmlFor={`metric-trend-${index}`}>Trend / kommentar</Label>
                             <Input
@@ -1023,10 +1031,25 @@ const AdminAnalysesDashboard: React.FC = () => {
                               placeholder="+8 % y/y"
                             />
                           </div>
+                          <div className="grid gap-1">
+                            <Label htmlFor={`metric-beatPercent-${index}`}>Beat % (vs förväntningar)</Label>
+                            <Input
+                              id={`metric-beatPercent-${index}`}
+                              type="number"
+                              step="0.1"
+                              value={metric.beatPercent}
+                              onChange={(event) =>
+                                handleMetricChange(index, 'beatPercent', event.target.value)
+                              }
+                              placeholder="8.5 (för +8.5%)"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end">
                           <Button
                             type="button"
                             variant="ghost"
-                            className="justify-self-start text-destructive"
+                            className="text-destructive"
                             onClick={() => handleRemoveMetric(index)}
                           >
                             Ta bort

@@ -52,8 +52,14 @@ const parseKeyMetrics = (value: DiscoverReportSummaryRow['key_metrics']): Genera
         : typeof metric.description === 'string'
           ? metric.description.trim()
           : '';
+      const beatPercentValue = typeof metric.beatPercent === 'number'
+        ? metric.beatPercent
+        : (typeof metric.beatPercent === 'string' && metric.beatPercent.trim()
+          ? parseFloat(metric.beatPercent.trim())
+          : null);
+      const beatPercent = beatPercentValue !== null && !isNaN(beatPercentValue) ? beatPercentValue : null;
 
-      if (!label && !metricValue && !trend) {
+      if (!label && !metricValue && !trend && beatPercent === null) {
         return null;
       }
 
@@ -61,6 +67,7 @@ const parseKeyMetrics = (value: DiscoverReportSummaryRow['key_metrics']): Genera
         label: label || 'Nyckeltal',
         value: metricValue || (label ? '' : 'Saknas'),
         trend: trend || undefined,
+        beatPercent: beatPercent,
       } satisfies GeneratedReportKeyMetric;
     })
     .filter((metric): metric is GeneratedReportKeyMetric => !!metric);

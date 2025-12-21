@@ -31,6 +31,7 @@ import { useNewsData } from '@/hooks/useNewsData';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import ReportDetailDialogContent from '@/components/ReportDetailDialogContent';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
+import { extractEpsBeatStatus, extractRevenueBeatStatus, extractGuidanceStatus } from '@/utils/reportDataExtractor';
 
 const formatCategoryLabel = (category?: string) => {
   if (!category) return 'Marknad';
@@ -658,24 +659,69 @@ const [activeTab, setActiveTab] = useState<'news' | 'reports'>(
 
                     <div className="space-y-3">
                       {reportHighlights.length > 0 ? (
-                        reportHighlights.map((report) => (
-                          <Dialog key={report.id}>
-                            <DialogTrigger asChild>
-                              <button
-                                type="button"
-                                className="group flex w-full items-start gap-3 rounded-2xl border border-border/60 bg-muted/20 p-4 text-left transition hover:border-primary/40 hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-                              >
-                                <div className="flex-1 space-y-1">
-                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">{report.companyName}</p>
-                                  <p className="text-sm font-semibold leading-snug text-foreground line-clamp-2">{report.reportTitle}</p>
-                                  <p className="text-xs text-muted-foreground line-clamp-2">{report.summary}</p>
-                                </div>
-                                <ArrowUpRight className="mt-1 h-4 w-4 text-muted-foreground transition group-hover:text-primary" />
-                              </button>
-                            </DialogTrigger>
-                            <ReportDetailDialogContent report={report} />
-                          </Dialog>
-                        ))
+                        reportHighlights.map((report) => {
+                          const epsBeat = extractEpsBeatStatus(report);
+                          const revenueBeat = extractRevenueBeatStatus(report);
+                          const guidanceStatus = extractGuidanceStatus(report);
+
+                          const getBeatStatusText = (status: typeof epsBeat.status, percent?: number) => {
+                            if (!status) return null;
+                            const percentText = percent !== undefined ? ` (${percent > 0 ? '+' : ''}${percent}%)` : '';
+                            return status === 'beat' ? `BEAT${percentText}` : status === 'miss' ? `MISS${percentText}` : 'IN LINE';
+                          };
+
+                          const getBeatStatusClass = (status: typeof epsBeat.status) => {
+                            if (status === 'beat') return 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+                            if (status === 'miss') return 'text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20';
+                            return 'text-muted-foreground bg-muted border-border/60';
+                          };
+
+                          const getGuidanceText = (status: typeof guidanceStatus) => {
+                            if (!status) return null;
+                            return status === 'raised' ? 'RAISED' : status === 'lowered' ? 'LOWERED' : 'MAINTAINED';
+                          };
+
+                          const getGuidanceClass = (status: typeof guidanceStatus) => {
+                            if (status === 'raised') return 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+                            if (status === 'lowered') return 'text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20';
+                            return 'text-muted-foreground bg-muted border-border/60';
+                          };
+
+                          return (
+                            <Dialog key={report.id}>
+                              <DialogTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="group flex w-full items-start gap-3 rounded-2xl border border-border/60 bg-muted/20 p-4 text-left transition hover:border-primary/40 hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                                >
+                                  <div className="flex-1 space-y-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">{report.companyName}</p>
+                                      {epsBeat.status && (
+                                        <Badge className={`rounded-full px-2 py-0.5 text-[10px] font-semibold border ${getBeatStatusClass(epsBeat.status)}`}>
+                                          EPS: {getBeatStatusText(epsBeat.status, epsBeat.percent)}
+                                        </Badge>
+                                      )}
+                                      {revenueBeat.status && (
+                                        <Badge className={`rounded-full px-2 py-0.5 text-[10px] font-semibold border ${getBeatStatusClass(revenueBeat.status)}`}>
+                                          Revenue: {getBeatStatusText(revenueBeat.status, revenueBeat.percent)}
+                                        </Badge>
+                                      )}
+                                      {guidanceStatus && (
+                                        <Badge className={`rounded-full px-2 py-0.5 text-[10px] font-semibold border ${getGuidanceClass(guidanceStatus)}`}>
+                                          Guidance: {getGuidanceText(guidanceStatus)}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <p className="text-sm font-semibold leading-snug text-foreground line-clamp-2">{report.reportTitle}</p>
+                                  </div>
+                                  <ArrowUpRight className="mt-1 h-4 w-4 text-muted-foreground transition group-hover:text-primary shrink-0" />
+                                </button>
+                              </DialogTrigger>
+                              <ReportDetailDialogContent report={report} />
+                            </Dialog>
+                          );
+                        })
                       ) : (
                         <div className="rounded-2xl border border-dashed border-border/60 bg-muted/10 p-4 text-sm text-muted-foreground">
                           Samlar in rapporter...

@@ -17,6 +17,7 @@ type UpdateReportSummaryPayload = {
     label?: string;
     value?: string;
     trend?: string | null;
+    beatPercent?: number | null;
   }>;
   ceo_commentary?: string | null;
   source_url?: string | null;
@@ -50,6 +51,7 @@ type GeneratedReportResponse = {
     label: string;
     value: string;
     trend?: string;
+    beatPercent?: number | null;
   }>;
   ceoCommentary?: string;
   createdAt: string;
@@ -71,7 +73,7 @@ const normalizeKeyPointsInput = (value: unknown): string[] => {
 
 const normalizeKeyMetricsInput = (value: unknown) => {
   if (!Array.isArray(value)) {
-    return [] as Array<{ label: string; value: string; trend?: string }>;
+    return [] as Array<{ label: string; value: string; trend?: string; beatPercent?: number | null }>;
   }
 
   return value
@@ -84,8 +86,14 @@ const normalizeKeyMetricsInput = (value: unknown) => {
       const label = typeof metric.label === "string" ? metric.label.trim() : "";
       const metricValue = typeof metric.value === "string" ? metric.value.trim() : "";
       const trendValue = typeof metric.trend === "string" ? metric.trend.trim() : "";
+      const beatPercentValue = typeof metric.beatPercent === "number" 
+        ? metric.beatPercent 
+        : (typeof metric.beatPercent === "string" && metric.beatPercent.trim() 
+          ? parseFloat(metric.beatPercent.trim()) 
+          : null);
+      const beatPercent = beatPercentValue !== null && !isNaN(beatPercentValue) ? beatPercentValue : null;
 
-      if (!label && !metricValue && !trendValue) {
+      if (!label && !metricValue && !trendValue && beatPercent === null) {
         return null;
       }
 
@@ -93,9 +101,10 @@ const normalizeKeyMetricsInput = (value: unknown) => {
         label: label || "Nyckeltal",
         value: metricValue || (label ? "" : "Saknas"),
         trend: trendValue || undefined,
+        beatPercent: beatPercent,
       };
     })
-    .filter((metric): metric is { label: string; value: string; trend?: string } => !!metric);
+    .filter((metric): metric is { label: string; value: string; trend?: string; beatPercent?: number | null } => !!metric);
 };
 
 const normalizeKeyPointsFromRow = (value: unknown): string[] => {
@@ -138,8 +147,14 @@ const normalizeKeyMetricsFromRow = (value: unknown) => {
         : typeof metric.description === "string"
           ? metric.description.trim()
           : "";
+      const beatPercentValue = typeof metric.beatPercent === "number"
+        ? metric.beatPercent
+        : (typeof metric.beatPercent === "string" && metric.beatPercent.trim()
+          ? parseFloat(metric.beatPercent.trim())
+          : null);
+      const beatPercent = beatPercentValue !== null && !isNaN(beatPercentValue) ? beatPercentValue : null;
 
-      if (!label && !metricValue && !trendValue) {
+      if (!label && !metricValue && !trendValue && beatPercent === null) {
         return null;
       }
 
@@ -147,6 +162,7 @@ const normalizeKeyMetricsFromRow = (value: unknown) => {
         label: label || "Nyckeltal",
         value: metricValue || (label ? "" : "Saknas"),
         trend: trendValue || undefined,
+        beatPercent: beatPercent,
       };
     })
     .filter((metric): metric is GeneratedReportResponse["keyMetrics"][number] => !!metric);

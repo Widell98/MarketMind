@@ -41,6 +41,7 @@ type ParsedMetric = {
   label: string;
   value: string;
   trend?: string;
+  beatPercent?: number | null;
 };
 
 const isValidHttpUrl = (value?: string | null) => {
@@ -251,8 +252,14 @@ const normalizeKeyMetrics = (value: unknown): ParsedMetric[] => {
             : typeof candidate.description === "string"
               ? candidate.description.trim()
               : "";
+          const beatPercentValue = typeof candidate.beatPercent === "number"
+            ? candidate.beatPercent
+            : (typeof candidate.beatPercent === "string" && candidate.beatPercent.trim()
+              ? parseFloat(candidate.beatPercent.trim())
+              : null);
+          const beatPercent = beatPercentValue !== null && !isNaN(beatPercentValue) ? beatPercentValue : null;
 
-          if (!label && !valueText && !trend) {
+          if (!label && !valueText && !trend && beatPercent === null) {
             return null;
           }
 
@@ -260,6 +267,7 @@ const normalizeKeyMetrics = (value: unknown): ParsedMetric[] => {
             label: label || "Nyckeltal",
             value: valueText || (label ? "" : "Saknas"),
             trend: trend || undefined,
+            beatPercent: beatPercent,
           } as ParsedMetric;
         }
 
@@ -314,9 +322,9 @@ const buildPrompt = (
       "",
       "1. Identifiera bolagsnamnet – exakt som det förekommer i dokumentet (använd inte tolkningar).",
       "2. Identifiera rapporttiteln – exakt enligt dokumentets rubrik eller formella titel.",
-      "3. KRITISKT: Formulera en kondenserad och faktadriven sammanfattning (3–4 meningar) som beskriver rapportens kärnbudskap utan tolkningar eller spekulation. ALLT TEXTINNEHÅLL MÅSTE VARA PÅ SVENSKA. Om källmaterialet är på engelska, översätt allt till svenska. Exempel: 'The company reported strong growth' → 'Bolaget redovisade stark tillväxt'.",
-      "4. Extrahera minst tre kvantitativa nyckelsiffror – etiketter och värden ska vara ordagranna från rapporten. Om rapporten anger förändringstal (t.ex. \"+14% y/y\") ska detta placeras i fältet 'trend'. Om etiketter är på engelska, översätt dem till svenska.",
-      "5. KRITISKT: Identifiera 3–6 objektiva datapunkter som framgår tydligt i rapportens text, exempelvis trender, segmentprestationer eller väsentliga händelser. ALLA datapunkter MÅSTE uttryckas på svenska. Översätt från engelska om nödvändigt. Exempel: 'Revenue increased by 15%' → 'Intäkterna ökade med 15%'.",
+      "3. KRITISKT: Formulera en kondenserad och faktadriven sammanfattning (3–4 meningar) som beskriver rapportens kärnbudskap utan tolkningar eller spekulation. ALLT TEXTINNEHÅLL MÅSTE VARA PÅ SVENSKA. Om källmaterialet är på engelska, översätt allt till svenska. Exempel: 'The company reported strong growth' → 'Bolaget redovisade stark tillväxt'. Inkludera information om hur resultaten står sig mot förväntningarna (t.ex. 'EPS överträffade förväntningarna med 8%', 'Revenue missade förväntningarna', 'Gross margin motsvarade förväntningarna').",
+      "4. Extrahera minst tre kvantitativa nyckelsiffror – etiketter och värden ska vara ordagranna från rapporten. Om rapporten anger förändringstal (t.ex. \"+14% y/y\") ska detta placeras i fältet 'trend'. Om etiketter är på engelska, översätt dem till svenska. VIKTIGT: För viktiga nyckeltal som EPS, Revenue, Gross Margin och Revenue Growth, inkludera i 'trend'-fältet om resultatet överträffade, missade eller motsvarade förväntningarna med procent om tillgängligt (t.ex. 'BEAT (+8%)', 'MISS (-3%)', 'IN LINE'). Om en procentuell skillnad mot förväntningarna finns angiven (t.ex. 'överträffade förväntningarna med 8%' eller 'missade med 3%'), inkludera detta numeriska värde i fältet 'beatPercent' (t.ex. 8.0 eller -3.0). Om ingen procentuell skillnad är angiven, sätt 'beatPercent' till null.",
+      "5. KRITISKT: Identifiera 3–6 objektiva datapunkter som framgår tydligt i rapportens text, exempelvis trender, segmentprestationer eller väsentliga händelser. ALLA datapunkter MÅSTE uttryckas på svenska. Översätt från engelska om nödvändigt. Exempel: 'Revenue increased by 15%' → 'Intäkterna ökade med 15%'. Om rapporten innehåller information om guidance (prognos), inkludera om den höjts, sänkts eller behållits (t.ex. 'Guidance höjdes', 'Prognos sänktes', 'Prognos behölls'). Identifiera även huvuddriver för resultaten (t.ex. 'Huvuddriver: AI / Data Center demand').",
       "6. KRITISKT: Sammanfatta VD-kommentaren i 1–2 meningar om en sådan sektion finns. Om ingen VD-kommentar förekommer ska värdet vara: \"Ingen VD-kommentar identifierad\". ALL text MÅSTE vara på svenska. Översätt från engelska om nödvändigt.",
     ].join("\n");
 
@@ -350,9 +358,10 @@ const buildPrompt = (
   "  \"summary\": \"3–4 meningar som sammanfattar rapportens kärna.\",",
   "  \"key_metrics\": [",
   "    {",
-  "      \"label\": \"etikett exakt som i rapporten\",",
+  "      \"label\": \"etikett exakt som i rapporten (översätt till svenska om nödvändigt)\",",
   "      \"value\": \"värde exakt som i rapporten\",",
-  "      \"trend\": \"t.ex. +14% y/y om det förekommer\"",
+  "      \"trend\": \"t.ex. +14% y/y om det förekommer. För EPS, Revenue, Gross Margin och Revenue Growth: inkludera BEAT/MISS/IN LINE med procent om tillgängligt (t.ex. 'BEAT (+8%)', 'MISS (-3%)', 'IN LINE')\",",
+  "      \"beatPercent\": 8.0 eller -3.0 eller null (numeriskt värde för procentuell skillnad mot förväntningarna, eller null om ej angivet)\"",
   "    }",
   "  ],",
   "  \"key_points\": [",
