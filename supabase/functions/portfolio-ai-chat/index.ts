@@ -3476,10 +3476,6 @@ const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_
         if (riskProfile?.investment_experience && ['beginner', 'intermediate', 'advanced'].includes(riskProfile.investment_experience)) {
           expertiseLevel = riskProfile.investment_experience as 'beginner' | 'intermediate' | 'advanced';
         }
-        if ((isStockAnalysisRequest || isPortfolioOptimizationRequest) && expertiseLevel !== 'advanced') {
-          expertiseLevel = expertiseLevel === 'beginner' ? 'intermediate' : 'advanced';
-        }
-
         const existingRiskComfort = (existingMemory?.risk_comfort_patterns as Record<string, unknown> | null) ?? {};
         const followUpPreference = wantsConcise
           ? 'skip'
