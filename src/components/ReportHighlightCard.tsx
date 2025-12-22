@@ -1,167 +1,357 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, FileText, LineChart, ArrowRight, TrendingUp, TrendingDown } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { sv } from 'date-fns/locale';
+import { ArrowUpRight, TrendingUp } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import type { GeneratedReport } from '@/types/generatedReport';
 import ReportDetailDialogContent from '@/components/ReportDetailDialogContent';
+import {
+  extractEpsBeatStatus,
+  extractRevenueBeatStatus,
+  extractGuidanceStatus,
+  extractRevenueGrowth,
+  extractGrossMargin,
+} from '@/utils/reportDataExtractor';
+
+interface Metric {
+  label: string;
+  value: string;
+  subValue?: string;
+  change?: string;
+  changeType?: 'positive' | 'negative' | 'neutral';
+}
 
 interface ReportHighlightCardProps {
   report: GeneratedReport;
+  variant?: 'editorial' | 'modern' | 'minimal' | 'data-forward';
 }
 
-const truncateText = (text: string, limit = 160) => {
-  if (!text) return '';
-  if (text.length <= limit) {
-    return text;
-  }
-
-  return `${text.slice(0, limit)}…`;
-};
-
-const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ report }) => {
-  const highlightedMetrics = (report.keyMetrics ?? []).slice(0, 2);
+const ReportHighlightCard: React.FC<ReportHighlightCardProps> = ({ 
+  report,
+  variant = 'modern'
+}) => {
   const companyInitial = report.companyName?.charAt(0).toUpperCase() || '?';
   const [logoFailed, setLogoFailed] = useState(false);
   useEffect(() => setLogoFailed(false), [report.companyLogoUrl]);
   const companyLogoUrl = logoFailed ? null : report.companyLogoUrl ?? null;
-  const createdAtLabel = formatDistanceToNow(new Date(report.createdAt), {
-    addSuffix: true,
-    locale: sv,
+
+  // Extract company name and remove ticker symbol
+  const companyName = report.companyName || '';
+  const cleanCompanyName = companyName.replace(/\s*\([^)]+\)\s*/, '').trim();
+
+  // Extract earnings data
+  const epsBeat = extractEpsBeatStatus(report);
+  const revenueBeat = extractRevenueBeatStatus(report);
+  const guidanceStatus = extractGuidanceStatus(report);
+  const revenueGrowth = extractRevenueGrowth(report);
+  const grossMargin = extractGrossMargin(report);
+
+  // Translate metric labels to Swedish
+  const translateMetricLabel = (label: string): string => {
+    const lowerLabel = label.toLowerCase();
+    
+    // Filter out unwanted labels
+    if (lowerLabel.includes('hänförlig') || lowerLabel.includes('attributable')) {
+      return '';
+    }
+    
+    const translations: Record<string, string> = {
+      'revenue': 'Omsättning',
+      'revenue growth': 'Omsättningstillväxt',
+      'revenue growth (yoy)': 'Omsättningstillväxt',
+      'gross margin': 'Bruttomarginal',
+      'gross profit': 'Bruttovinst',
+      'operating margin': 'Rörelsemarginal',
+      'operating income': 'Rörelseresultat',
+      'net income': 'Nettoresultat',
+      'net profit': 'Nettoresultat',
+      'eps': 'Vinst per aktie',
+      'earnings per share': 'Vinst per aktie',
+      'ebitda': 'EBITDA',
+      'ebit': 'EBIT',
+      'free cash flow': 'Fritt kassaflöde',
+      'net sales': 'Nettoförsäljning',
+      'nettoförsäljning': 'Nettoförsäljning',
+    };
+
+    if (translations[lowerLabel]) {
+      return translations[lowerLabel];
+    }
+
+    for (const [key, value] of Object.entries(translations)) {
+      if (lowerLabel.includes(key)) {
+        return value;
+      }
+    }
+
+    return label;
+  };
+
+  // Find revenue growth metric object
+  const revenueGrowthMetric = report.keyMetrics?.find(m => {
+    const label = (m.label || '').toLowerCase();
+    return (
+      label.includes('revenue growth') ||
+      label.includes('omsättningstillväxt') ||
+      label.includes('intäktsstillväxt') ||
+      (label.includes('growth') && (label.includes('revenue') || label.includes('omsättning'))) ||
+      (label.includes('yoy') && (label.includes('revenue') || label.includes('omsättning')))
+    );
   });
+
+  // Find gross margin metric object
+  const grossMarginMetric = report.keyMetrics?.find(m => {
+    const label = (m.label || '').toLowerCase();
+    return (
+      label.includes('gross margin') ||
+      label.includes('bruttomarginal') ||
+      label.includes('brutto vinstmarginal') ||
+      label === 'margin' ||
+      label === 'marginal'
+    );
+  });
+
+  // Get additional key metrics (excluding ones we already show)
+  const shownMetricsCount = (revenueGrowth ? 1 : 0) + (grossMargin ? 1 : 0);
+  const maxAdditionalMetrics = Math.max(0, 4 - shownMetricsCount);
+  
+  const additionalMetrics = (report.keyMetrics || []).filter(metric => {
+    const label = (metric.label || '').toLowerCase();
+    return (
+      !label.includes('revenue growth') &&
+      !label.includes('omsättningstillväxt') &&
+      !label.includes('gross margin') &&
+      !label.includes('bruttomarginal') &&
+      !label.includes('constant currency') &&
+      !label.includes('volume') &&
+      !label.includes('eps') &&
+      !label.includes('vinst per aktie') &&
+      !label.includes('hänförlig') &&
+      !label.includes('attributable') &&
+      !label.includes('nettoresultat hänförlig') &&
+      !label.includes('nettoförlust hänförlig') &&
+      !label.includes('net income attributable') &&
+      !label.includes('net loss attributable') &&
+      metric.value && 
+      metric.value.trim() !== ''
+    );
+  }).slice(0, maxAdditionalMetrics);
+
+  // Convert to Metric format
+  const buildMetrics = (): Metric[] => {
+    const metrics: Metric[] = [];
+
+    // Revenue Growth
+    if (revenueGrowth) {
+      const beatPercent = revenueGrowthMetric?.beatPercent;
+      const changeType = beatPercent !== null && beatPercent !== undefined
+        ? (beatPercent > 0 ? 'positive' : beatPercent < 0 ? 'negative' : 'neutral')
+        : undefined;
+      
+      // Extract y/y improvement from trend or value
+      // Check if value contains parentheses (e.g., "7.1% (konstant valuta +3.8%)")
+      const parenthesesMatch = revenueGrowth.match(/\(([^)]+)\)/);
+      const yoyInfo = revenueGrowthMetric?.trend || 
+        (parenthesesMatch ? parenthesesMatch[1] : null);
+      
+      // Clean value - remove parentheses content if it exists
+      const cleanValue = parenthesesMatch 
+        ? revenueGrowth.replace(/\s*\([^)]+\)/g, '').trim()
+        : revenueGrowth;
+      
+      metrics.push({
+        label: 'Omsättningstillväxt',
+        value: cleanValue,
+        subValue: yoyInfo,
+        change: beatPercent !== null && beatPercent !== undefined
+          ? `${beatPercent > 0 ? '+' : ''}${beatPercent.toFixed(1)}%`
+          : undefined,
+        changeType,
+      });
+    }
+
+    // Gross Margin
+    if (grossMargin) {
+      const beatPercent = grossMarginMetric?.beatPercent;
+      const changeType = beatPercent !== null && beatPercent !== undefined
+        ? (beatPercent > 0 ? 'positive' : beatPercent < 0 ? 'negative' : 'neutral')
+        : undefined;
+      
+      // Extract y/y improvement from trend
+      const yoyInfo = grossMarginMetric?.trend;
+      
+      metrics.push({
+        label: 'Bruttomarginal',
+        value: grossMargin,
+        subValue: yoyInfo,
+        change: beatPercent !== null && beatPercent !== undefined
+          ? `${beatPercent > 0 ? '+' : ''}${beatPercent.toFixed(1)}%`
+          : undefined,
+        changeType,
+      });
+    }
+
+    // Additional metrics
+    additionalMetrics.forEach(metric => {
+      const translatedLabel = translateMetricLabel(metric.label);
+      // Skip metrics with empty labels (filtered out)
+      if (!translatedLabel) {
+        return;
+      }
+      
+      const beatPercent = metric.beatPercent;
+      const changeType = beatPercent !== null && beatPercent !== undefined
+        ? (beatPercent > 0 ? 'positive' : beatPercent < 0 ? 'negative' : 'neutral')
+        : undefined;
+
+      metrics.push({
+        label: translatedLabel,
+        value: metric.value,
+        subValue: metric.trend || undefined,
+        change: beatPercent !== null && beatPercent !== undefined
+          ? `${beatPercent > 0 ? '+' : ''}${beatPercent.toFixed(1)}%`
+          : undefined,
+        changeType,
+      });
+    });
+
+    return metrics;
+  };
+
+  const metrics = buildMetrics();
+
+  const getVariantStyles = () => {
+    switch (variant) {
+      case 'editorial':
+        return {
+          card: 'bg-[#fefdfb] border-[#e8e4dc] shadow-sm',
+          header: 'border-b border-[#e8e4dc] pb-6',
+          companyName: 'font-serif text-xl font-medium text-[#1a1a1a] tracking-tight',
+          metricLabel: 'text-[11px] font-medium text-[#6b6b6b] uppercase tracking-wider mb-1.5 font-sans',
+          metricValue: 'text-2xl font-serif font-medium text-[#1a1a1a] tracking-tight',
+          metricSub: 'text-sm text-[#6b6b6b] font-sans mt-0.5',
+          button: 'bg-[#1a1a1a] text-white hover:bg-[#2d2d2d] font-sans',
+        };
+      case 'minimal':
+        return {
+          card: 'bg-white border-gray-100 shadow-sm',
+          header: 'border-b border-gray-100 pb-8',
+          companyName: 'text-2xl font-light text-gray-900 tracking-tight',
+          metricLabel: 'text-[10px] font-medium text-gray-400 uppercase tracking-widest mb-2',
+          metricValue: 'text-3xl font-light text-gray-900 tracking-tight',
+          metricSub: 'text-sm text-gray-400 mt-1',
+          button: 'bg-gray-900 text-white hover:bg-gray-800',
+        };
+      case 'data-forward':
+        return {
+          card: 'bg-[#0a0e27] border-[#1a1f3a] shadow-lg',
+          header: 'border-b border-[#1a1f3a] pb-5',
+          companyName: 'text-lg font-semibold text-white tracking-tight',
+          metricLabel: 'text-[10px] font-semibold text-[#6b7280] uppercase tracking-wider mb-1',
+          metricValue: 'text-3xl font-bold text-white tracking-tight tabular-nums',
+          metricSub: 'text-xs text-[#9ca3af] mt-0.5 tabular-nums',
+          button: 'bg-blue-600 text-white hover:bg-blue-700 font-semibold',
+        };
+      default: // modern
+        return {
+          card: 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 shadow-md',
+          header: 'pb-6',
+          companyName: 'text-xl font-semibold text-gray-900 dark:text-white',
+          metricLabel: 'text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5',
+          metricValue: 'text-2xl font-semibold text-gray-900 dark:text-white',
+          metricSub: 'text-sm text-gray-600 dark:text-gray-400 mt-0.5',
+          button: 'bg-blue-600 text-white hover:bg-blue-700 font-medium',
+        };
+    }
+  };
+
+  const styles = getVariantStyles();
+
+  const getChangeColor = (changeType?: 'positive' | 'negative' | 'neutral') => {
+    if (variant === 'data-forward') {
+      return changeType === 'positive' 
+        ? 'bg-emerald-500/20 text-emerald-400' 
+        : changeType === 'negative'
+        ? 'bg-red-500/20 text-red-400'
+        : 'bg-gray-500/20 text-gray-400';
+    }
+    return changeType === 'positive' 
+      ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400' 
+      : changeType === 'negative'
+      ? 'bg-red-50 dark:bg-red-500/20 text-red-700 dark:text-red-400'
+      : 'bg-gray-50 dark:bg-gray-500/20 text-gray-700 dark:text-gray-400';
+  };
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Card className="group h-full cursor-pointer overflow-hidden border-border/60 bg-card/90 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:border-primary/50 hover:shadow-xl">
-          <CardContent className="flex h-full flex-col gap-3 sm:gap-4 lg:gap-5 p-4 sm:p-5 lg:p-6">
-            {/* Logo and Header Section */}
-            <div className="flex items-start gap-3 sm:gap-4">
-              <div className="relative h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16 shrink-0 overflow-hidden rounded-xl sm:rounded-2xl border border-border/60 bg-gradient-to-br from-primary/10 via-primary/5 to-muted shadow-sm ring-1 ring-inset ring-border/40">
-                {companyLogoUrl ? (
-                  <img
-                    src={companyLogoUrl}
-                    alt={`${report.companyName} logotyp`}
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
-                    loading="lazy"
-                    onError={() => setLogoFailed(true)}
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-sm sm:text-base lg:text-lg font-bold text-primary">
-                    {companyInitial}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex-1 min-w-0 space-y-1.5 sm:space-y-2">
-                <Badge variant="secondary" className="rounded-full bg-primary/10 px-2 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-xs font-semibold text-primary border-primary/20">
-                  {report.companyName}
-                </Badge>
-                <h3 className="text-base sm:text-lg lg:text-xl font-bold text-foreground leading-tight line-clamp-2 group-hover:text-primary transition-colors">{report.reportTitle}</h3>
-              </div>
-            </div>
-
-            {/* Summary Section */}
-            <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground line-clamp-2 sm:line-clamp-3">{truncateText(report.summary, 180)}</p>
-
-            {/* Key Metrics Section */}
-            {highlightedMetrics.length > 0 && (
-              <div className="space-y-1.5 sm:space-y-2">
-                <div className="flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  <LineChart className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-primary" />
-                  Nyckeltal
-                </div>
-                <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
-                  {highlightedMetrics.map((metric, index) => {
-                    const normalizeTrend = (trend: string | undefined): string => {
-                      if (!trend) return '';
-                      
-                      const lowerTrend = trend.toLowerCase();
-                      
-                      // Ersätt "ökade med" med "+"
-                      if (lowerTrend.includes('ökade med')) {
-                        const match = trend.match(/ökade med\s*([\d.,\s]+)/i);
-                        if (match) {
-                          return `+${match[1].trim()}`;
-                        }
-                        return trend.replace(/ökade med/gi, '+');
-                      }
-                      
-                      // Ersätt "minskade med" med "-"
-                      if (lowerTrend.includes('minskade med')) {
-                        const match = trend.match(/minskade med\s*([\d.,\s]+)/i);
-                        if (match) {
-                          return `-${match[1].trim()}`;
-                        }
-                        return trend.replace(/minskade med/gi, '-');
-                      }
-                      
-                      // Om det redan finns + eller - i början, behåll det
-                      if (trend.trim().startsWith('+') || trend.trim().startsWith('-')) {
-                        return trend;
-                      }
-                      
-                      return trend;
-                    };
-                    
-                    const normalizedTrend = normalizeTrend(metric.trend);
-                    const trendUp = normalizedTrend.toLowerCase().includes('upp') || normalizedTrend.startsWith('+') || normalizedTrend.match(/\+[\d.,\s]+/);
-                    const trendDown = normalizedTrend.toLowerCase().includes('ned') || normalizedTrend.startsWith('-') || normalizedTrend.match(/-[\d.,\s]+/);
-                    
-                    return (
-                      <div
-                        key={`${report.id}-highlight-metric-${index}`}
-                        className="rounded-lg border border-border/50 bg-gradient-to-br from-muted/40 to-muted/20 p-2 sm:p-2.5 transition-all duration-300 group-hover:border-primary/50 group-hover:shadow-sm overflow-hidden"
-                      >
-                        <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-0.5 sm:mb-1 truncate min-w-0">{metric.label}</p>
-                        <div className="flex items-baseline gap-1 sm:gap-1.5 min-w-0">
-                          <p className="text-base sm:text-lg font-bold text-foreground truncate min-w-0 flex-1">{metric.value}</p>
-                          {normalizedTrend && (
-                            <div className={`flex items-center gap-0.5 text-[9px] sm:text-[10px] font-medium shrink-0 min-w-0 ${
-                              trendUp ? 'text-emerald-600 dark:text-emerald-400' : 
-                              trendDown ? 'text-red-600 dark:text-red-400' : 
-                              'text-muted-foreground'
-                            }`}>
-                              {trendUp && <TrendingUp className="h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0" />}
-                              {trendDown && <TrendingDown className="h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0" />}
-                              <span className="truncate min-w-0">{normalizedTrend}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+        <motion.div
+          data-id={report.id}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+          whileHover={{ y: -4, transition: { duration: 0.2 } }}
+          className={`rounded-xl border p-6 transition-shadow hover:shadow-xl cursor-pointer h-full flex flex-col ${styles.card}`}
+        >
+          {/* Header */}
+          <div className={`flex items-start gap-4 ${styles.header}`}>
+            {companyLogoUrl ? (
+              <img 
+                src={companyLogoUrl} 
+                alt={cleanCompanyName}
+                className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
+                loading="lazy"
+                onError={() => setLogoFailed(true)}
+              />
+            ) : (
+              <div className={`w-14 h-14 rounded-lg flex items-center justify-center text-xl font-bold flex-shrink-0 ${
+                variant === 'data-forward' ? 'bg-blue-600/20 text-blue-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+              }`}>
+                {companyInitial}
               </div>
             )}
-
-            {/* Metadata Section */}
-            <div className="flex items-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border border-border/50 bg-muted/20 px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs">
-              <div className="flex items-center gap-1 sm:gap-1.5 rounded-md sm:rounded-lg bg-background/80 px-1.5 sm:px-2 py-0.5 sm:py-1 font-medium text-foreground">
-                <FileText className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground" />
-                <span>{report.keyPoints.length}</span>
-              </div>
-              <div className="flex items-center gap-1 sm:gap-1.5 rounded-md sm:rounded-lg bg-background/80 px-1.5 sm:px-2 py-0.5 sm:py-1 font-medium text-foreground">
-                <LineChart className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground" />
-                <span>{report.keyMetrics.length}</span>
-              </div>
-              <div className="flex items-center gap-1 sm:gap-1.5 rounded-md sm:rounded-lg bg-background/80 px-1.5 sm:px-2 py-0.5 sm:py-1 font-medium text-muted-foreground ml-auto">
-                <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                <span className="hidden sm:inline">{createdAtLabel}</span>
-                <span className="sm:hidden text-[9px]">Nyligen</span>
-              </div>
+            <div className="flex-1 min-w-0">
+              <h3 className={styles.companyName}>{cleanCompanyName}</h3>
             </div>
+          </div>
 
-            {/* CTA Section */}
-            <div className="mt-auto flex items-center justify-between rounded-lg border border-dashed border-primary/30 bg-primary/5 px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-medium text-primary transition-colors group-hover:border-primary/50 group-hover:bg-primary/10">
-              <span className="truncate">Klicka för att läsa hela analysen</span>
-              <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-0 transition-opacity group-hover:opacity-100 shrink-0 ml-1" />
+          {/* Metrics Grid */}
+          {metrics.length > 0 && (
+            <div className="grid grid-cols-2 gap-x-6 gap-y-6 mt-6">
+              {metrics.map((metric, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                >
+                  <div className={styles.metricLabel}>{metric.label}</div>
+                  <div className="flex items-baseline gap-2">
+                    <div className={styles.metricValue}>{metric.value}</div>
+                    {metric.change && (
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${getChangeColor(metric.changeType)}`}>
+                        {metric.change}
+                      </span>
+                    )}
+                  </div>
+                  {metric.subValue && (
+                    <div className={styles.metricSub}>{metric.subValue}</div>
+                  )}
+                </motion.div>
+              ))}
             </div>
-          </CardContent>
-        </Card>
+          )}
+
+          {/* CTA Button */}
+          <motion.button
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
+            className={`w-full mt-6 px-4 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors ${styles.button}`}
+          >
+            Läs hela rapporten
+            <ArrowUpRight className="w-4 h-4" />
+          </motion.button>
+        </motion.div>
       </DialogTrigger>
       <ReportDetailDialogContent report={report} />
     </Dialog>

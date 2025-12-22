@@ -2,6 +2,7 @@ export interface GeneratedReportKeyMetric {
   label: string;
   value: string;
   trend?: string;
+  beatPercent?: number | null;
 }
 
 export interface GeneratedReport {
@@ -19,4 +20,10 @@ export interface GeneratedReport {
   sourceDocumentName?: string | null;
   sourceDocumentId?: string | null;
   isFeatured: boolean; // Nytt fält
+  // Optional fields for extracted earnings data (for future use if stored directly)
+  epsBeatStatus?: 'beat' | 'miss' | 'in_line' | null;
+  epsBeatPercent?: number | null;
+  revenueBeatStatus?: 'beat' | 'miss' | 'in_line' | null;
+  revenueBeatPercent?: number | null;
+  guidanceStatus?: 'raised' | 'lowered' | 'maintained' | null;
 }
