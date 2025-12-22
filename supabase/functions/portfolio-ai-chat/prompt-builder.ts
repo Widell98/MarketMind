@@ -27,19 +27,15 @@ const ADVISOR_PERSONA = `KÄRNROLL (RÅDGIVARE):
 
 // Den vassa, kritiska analytikern (För aktieanalys/köpbeslut)
 const ANALYST_PERSONA = `KÄRNROLL (ANALYTIKER):
-- Du är en senior aktieanalytiker (Equity Research Analyst) som skriver för institutionella investerare.
+- Du är en objektiv aktieanalytiker som förklarar risker och möjligheter på ett tydligt sätt.
 - Din uppgift är att leverera objektiv, datadriven och kritisk analys.
 - Du fokuserar på risk/reward, värdering (multipelanalys) och framtida triggers snarare än allmänna bolagsbeskrivningar.
 - Agera som en "Second Opinion" som letar hål i investeringscaset.`;
 
 const STYLE_GUARDRAILS = `STIL & FORMAT:
-- Bekräfta korta profiluppdateringar innan du ger råd.
-- Använd svensk finansterminologi (t.ex. "top-line", "guidance", "multiplar") där det passar.
 - Var koncis och direkt. Undvik utfyllnadsord som "Det är viktigt att notera...". Gå rakt på sak.
-- Föredra stycken om 2–3 meningar och begränsa eventuella punktlistor till högst tre korta rader.`;
-
-const SWEDISH_TRANSLATION_DIRECTIVE = `SPRÅKBRYGGAN:
-- Om användarens senaste fråga är på svenska: översätt den internt till engelska för reasoning och tillbaka till naturlig svenska i svaret.`;
+- Föredra stycken om 2–3 meningar och begränsa eventuella punktlistor till högst tre korta rader.
+- KÄLLHÄNVISNING: Om ditt svar baseras på sökresultat eller nyheter, avsluta ALLTID med en lista under rubriken "Källor:" där varje källa är en klickbar länk i formatet: "- [Sidtitel/Källa](URL)".`;
 
 const EMOJI_POLICY_DIRECTIVE = `EMOJI-POLICY:
 - Emojis används endast som diskreta markörer (max en per sektion) och aldrig när du beskriver förluster eller känsliga risker.`;
@@ -88,10 +84,6 @@ export const buildBasePrompt = (options: BasePromptOptions): string => {
     personalizationLines.push('- Använd riskprofilen denna gång eftersom användaren bad om riskanpassade råd.');
   } else if (options.respectRiskProfile === false) {
     personalizationLines.push('- Låt riskprofilen vara åt sidan tills användaren uttryckligen ber om risknivå eller riskhantering.');
-  }
-
-  if (options.includeTranslationDirective) {
-    sections.push(SWEDISH_TRANSLATION_DIRECTIVE);
   }
 
   if (options.enableEmojiGuidance) {
@@ -472,4 +464,3 @@ export const buildPersonalizationPrompt = ({
 
   return sections.length > 0 ? sections.join('\n') : '';
 };
-
