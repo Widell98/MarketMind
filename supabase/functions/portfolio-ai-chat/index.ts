@@ -3233,21 +3233,23 @@ const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_
       }
     }
 
-// --- 1. Avgör om sökning behövs ---
-    const shouldFetchTavily = !hasUploadedDocuments && !isDocumentSummaryRequest && !isSimplePersonalAdviceRequest && llmTavilyPlan.shouldSearch;
-
-    // Variabel för att lagra sökresultat
-    let tavilyContext: TavilyContextPayload = { formattedContext: '', sources: [] };
-
-    // --- 2. Utför sökning (Antingen via Perplexity "Sonar" eller Tavily) ---
-    if (shouldFetchTavily) {
-      console.log('Hämtar realtidsdata...');
-
-      // Alternativ A: Perplexity (Billigare & Snabbare)
 // Alternativ A: Perplexity (Billigare & Snabbare)
       if (PERPLEXITY_API_KEY) {
         console.log('Använder Perplexity (Sonar) som sökverktyg...');
         try {
+          // 1. Skapa dagens datum som referenspunkt
+          const currentDate = new Date().toLocaleDateString('sv-SE', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          });
+
+          // 2. Använd den optimerade sökfrasen från AI:n om den finns (ger bättre träffar än användarens råa fråga)
+          const queryContent = (llmTavilyPlan.query && llmTavilyPlan.query.length > 5) 
+            ? llmTavilyPlan.query 
+            : message;
+
           const searchResponse = await fetch('https://api.perplexity.ai/chat/completions', {
             method: 'POST',
             headers: {
@@ -3255,19 +3257,37 @@ const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'sonar', // Den snabba, billiga modellen
-              max_tokens: 600, // Begränsar svaret till ca 450 ord (lagom för sammanfattning)
+              model: 'sonar', // Snabb och aktuell modell
+              max_tokens: 600,
               messages: [
                 {
                   role: 'system',
-                  content: 'Du är en avancerad finansiell sökmotor. Din uppgift är att hitta relevant kontext, nyheter och bakgrundsinformation för finansfrågor.\n\nFOKUS:\n- Hitta orsaker bakom marknadsrörelser.\n- Leta efter specifika händelser, rapporter, pressmeddelanden och makronyheter.\n- Sammanfatta marknadssentiment och analytikerkommentarer.\n\nUNDANTAG:\n- Du behöver INTE leta efter exakta aktiekurser eller daglig procentuell utveckling.\n\nFORMAT:\n- Svara inte som en chattbot (inget småprat).\n- Leverera enbart en faktaspäckad sammanfattning av informationen du hittar.'
+                  // Här kombinerar vi datumet med din specifika prompt
+                  content: `Current date: ${currentDate}. Du är en avancerad finansiell sökmotor. Din uppgift är att hitta relevant kontext, nyheter och bakgrundsinformation för finansfrågor.
+
+VIKTIGT OM TIDSPERSPEKTIV:
+- "Idag" eller "nu" betyder ALLTID ${currentDate}.
+- Prioritera färska nyheter (senaste 24h) för frågor om "idag".
+- Om användaren frågar om historik (t.ex. "2021"), bortse från dagens datum.
+
+FOKUS:
+- Hitta orsaker bakom marknadsrörelser.
+- Leta efter specifika händelser, rapporter, pressmeddelanden och makronyheter.
+- Sammanfatta marknadssentiment och analytikerkommentarer.
+
+UNDANTAG:
+- Du behöver INTE leta efter exakta aktiekurser eller daglig procentuell utveckling.
+
+FORMAT:
+- Svara inte som en chattbot (inget småprat).
+- Leverera enbart en faktaspäckad sammanfattning av informationen du hittar.`
                 },
                 {
                   role: 'user',
-                  content: message // Användarens fråga
+                  content: queryContent
                 }
               ],
-              stream: false // Vi vill ha hela datan direkt
+              stream: false
             }),
           });
 
@@ -3276,9 +3296,8 @@ const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_
             const content = data.choices?.[0]?.message?.content || '';
             const citations = data.citations || [];
 
-            // Spara resultatet i kontext-variabeln så GPT-5.1 kan läsa det
             tavilyContext = {
-              formattedContext: `Sammanfattning från realtidssökning (via Perplexity):\n${content}`,
+              formattedContext: `Sammanfattning från realtidssökning (via Perplexity, ${currentDate}):\n${content}`,
               sources: citations
             };
             console.log(`Perplexity-sökning klar. Hittade ${citations.length} källor.`);
