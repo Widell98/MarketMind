@@ -39,8 +39,6 @@ const PortfolioImplementation = () => {
     loading
   } = usePortfolio();
 
-  // Även om du inte använder 'rates'-variabeln direkt här, 
-  // så tvingar detta komponenten att rendera om när kurserna uppdateras.
   const { rates } = useExchangeRates();
   const {
     user,
@@ -73,7 +71,6 @@ const PortfolioImplementation = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Only show login modal if auth has finished loading and user is not authenticated
     if (!authLoading && !user) {
       setShowLoginModal(true);
     } else if (user) {
@@ -87,7 +84,6 @@ const PortfolioImplementation = () => {
   }, [user, activePortfolio, loading]);
 
   useEffect(() => {
-    // Set last updated time
     setLastUpdated(new Date().toLocaleTimeString('sv-SE', {
       hour: '2-digit',
       minute: '2-digit'
@@ -99,17 +95,9 @@ const PortfolioImplementation = () => {
   }, [user?.id]);
 
   useEffect(() => {
-    if (!user || holdingsLoading) {
-      return;
-    }
-
-    if (actualHoldings.length === 0) {
-      return;
-    }
-
-    if (hasTriggeredAutoUpdate.current) {
-      return;
-    }
+    if (!user || holdingsLoading) return;
+    if (actualHoldings.length === 0) return;
+    if (hasTriggeredAutoUpdate.current) return;
 
     hasTriggeredAutoUpdate.current = true;
 
@@ -121,25 +109,20 @@ const PortfolioImplementation = () => {
     })();
   }, [user, holdingsLoading, actualHoldings.length, updateAllPrices, refetchHoldings]);
 
-  // Beräkna en justerad performance för "Idag"-vyn som tar hänsyn till öppettider
   const adjustedPerformance = React.useMemo(() => {
-    // Om ingen data finns, returnera original
     if (!performance || !actualHoldings?.length) return performance;
 
     let adjustedDayChangeValue = 0;
 
     actualHoldings.forEach(holding => {
-      // Hoppa över om marknaden är stängd
       if (!isMarketOpen(holding)) return;
 
       const { valueInSEK } = resolveHoldingValue(holding);
       const changePct = holding.dailyChangePercent ?? holding.daily_change_pct ?? 0;
       
-      // Räkna ut kronförändring för detta innehav (om marknaden är öppen)
       adjustedDayChangeValue += (valueInSEK * changePct) / 100;
     });
     
-    // Räkna ut ny procent baserat på hela portföljens värde (inte bara de öppna)
     const totalPortfolioVal = performance.totalPortfolioValue || 1;
     const adjustedDayChangePercent = (adjustedDayChangeValue / totalPortfolioVal) * 100;
 
@@ -151,17 +134,11 @@ const PortfolioImplementation = () => {
   }, [performance, actualHoldings]);
 
   const handleQuickChat = (message: string) => {
-    if (!riskProfile) {
-      return;
-    }
+    if (!riskProfile) return;
     if (message.startsWith('NEW_SESSION:')) {
       const [, sessionName, actualMessage] = message.split(':');
       navigate('/ai-chatt', {
-        state: {
-          createNewSession: true,
-          sessionName,
-          initialMessage: actualMessage
-        }
+        state: { createNewSession: true, sessionName, initialMessage: actualMessage }
       });
     } else {
       navigate('/ai-chatt');
@@ -169,7 +146,7 @@ const PortfolioImplementation = () => {
   };
 
   const handleActionClick = (action: string) => {
-    // Future enhancement: trigger contextual workflows based on action
+    // Future enhancement
   };
 
   const handleUpdateProfile = () => {
@@ -177,7 +154,6 @@ const PortfolioImplementation = () => {
       setShowLoginModal(true);
       return;
     }
-
     navigate('/profile?tab=riskprofile#fine-tune-risk');
   };
 
@@ -188,38 +164,26 @@ const PortfolioImplementation = () => {
       setShowLoginModal(true);
       return;
     }
-
     fileInputRef.current?.click();
   };
 
   const handlePortfolioCsvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     setIsImportingHoldings(true);
 
     try {
       const text = await file.text();
       const rawHoldings = parsePortfolioHoldingsFromCSV(text);
-      
       const enrichedHoldings = rawHoldings.map(h => enrichHoldingWithTicker(h, tickers));
 
-      if (!enrichedHoldings.length) {
-        throw new Error('Kunde inte tolka några innehav från CSV-filen. Kontrollera formatet.');
-      }
-
-      if (!user) {
-        throw new Error('Du måste vara inloggad för att importera innehav.');
-      }
+      if (!enrichedHoldings.length) throw new Error('Kunde inte tolka några innehav.');
+      if (!user) throw new Error('Du måste vara inloggad.');
 
       const nowIso = new Date().toISOString();
       const holdingsToInsert = enrichedHoldings.map(holding => {
-        const normalizedSymbol = holding.symbol.trim()
-          ? normalizeShareClassTicker(holding.symbol)
-          : null;
+        const normalizedSymbol = holding.symbol.trim() ? normalizeShareClassTicker(holding.symbol) : null;
         const roundedPurchasePrice = roundToTwo(holding.purchasePrice);
         const quantity = holding.quantity;
         const currentValue = roundToTwo(roundedPurchasePrice * quantity);
@@ -240,35 +204,21 @@ const PortfolioImplementation = () => {
       });
 
       const { error } = await supabase.from('user_holdings').insert(holdingsToInsert);
-
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       await refetchHoldings({ silent: true });
+      toast({ title: 'Innehav importerade', description: `${holdingsToInsert.length} innehav tillagda.` });
 
-      toast({
-        title: 'Innehav importerade',
-        description: `${holdingsToInsert.length} innehav har lagts till från din CSV-fil.`,
-      });
-
-      if (typeof window !== 'undefined') {
-        window.location.reload();
-      }
+      if (typeof window !== 'undefined') window.location.reload();
     } catch (error) {
-      console.error('Failed to import portfolio CSV:', error);
-      toast({
-        title: 'Fel vid import',
-        description: error instanceof Error ? error.message : 'Kunde inte läsa CSV-filen. Försök igen.',
-        variant: 'destructive',
-      });
+      console.error('Failed to import:', error);
+      toast({ title: 'Fel vid import', description: error instanceof Error ? error.message : 'Kunde inte läsa filen.', variant: 'destructive' });
     } finally {
       setIsImportingHoldings(false);
       event.target.value = '';
     }
   };
 
-  // Show loading while portfolio is loading
   if (loading || riskProfileLoading) {
     return <Layout>
         <div className="min-h-screen flex items-center justify-center p-3 sm:p-4">
@@ -283,7 +233,6 @@ const PortfolioImplementation = () => {
       </Layout>;
   }
 
-  // Show onboarding if user explicitly wants to create a profile
   if (showOnboarding) {
     return <Layout>
         <div className="min-h-screen py-4 sm:py-6 px-3 sm:px-4">
@@ -304,6 +253,7 @@ const PortfolioImplementation = () => {
         </div>
       </Layout>;
   }
+  
   const totalPortfolioValue = performance.totalPortfolioValue ?? 0;
   const investedValue = performance.totalValue ?? 0;
 
@@ -322,44 +272,29 @@ const PortfolioImplementation = () => {
   const hasPortfolioData = (actualHoldings?.length || 0) > 0 && totalPortfolioValue > 0;
   const lastUpdatedLabel = lastUpdated ? `Senast uppdaterad ${lastUpdated}` : 'Ingen uppdatering ännu';
   const formatCurrency = (value: number) => value.toLocaleString('sv-SE', {
-    style: 'currency',
-    currency: 'SEK',
-    maximumFractionDigits: 0,
+    style: 'currency', currency: 'SEK', maximumFractionDigits: 0,
   });
 
   const healthCards = [
     {
       label: 'Total portfölj',
       value: hasPortfolioData ? formatCurrency(totalPortfolioValue) : '—',
-      description: hasPortfolioData
-        ? 'Summerad portföljstorlek inklusive kassa för en snabb överblick.'
-        : 'Importera eller lägg till innehav för att se din totala portfölj.',
+      description: hasPortfolioData ? 'Summerad portföljstorlek inklusive kassa.' : 'Importera eller lägg till innehav.',
     },
     {
       label: 'Investerat värde',
       value: hasPortfolioData ? formatCurrency(investedValue) : '—',
-      description: hasPortfolioData
-        ? 'Aktuellt marknadsvärde för dina investeringar exklusive kassa.'
-        : 'När du lägger till innehav visas värdet av dina placeringar här.',
+      description: hasPortfolioData ? 'Aktuellt marknadsvärde exklusive kassa.' : 'Värdet av dina placeringar.',
     },
     {
       label: 'Kassa',
       value: hasPortfolioData ? formatCurrency(totalCash) : '—',
-      description: hasPortfolioData
-        ? 'Likvida medel redo för ombalansering eller nya köp.'
-        : 'Importera eller lägg till kassa för att se din tillgängliga likviditet.',
+      description: hasPortfolioData ? 'Likvida medel redo för köp.' : 'Tillgänglig likviditet.',
     },
   ];
 
-  // Always show portfolio implementation page with tabs
   return <Layout>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".csv,text/csv"
-        className="hidden"
-        onChange={handlePortfolioCsvUpload}
-      />
+      <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handlePortfolioCsvUpload} />
       <LoginPromptModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
       
       <div className="min-h-0 bg-gradient-to-br from-background to-secondary/5">
@@ -390,23 +325,26 @@ const PortfolioImplementation = () => {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2 sm:gap-3">
-                  <Button
-                    onClick={() => handleQuickChat('NEW_SESSION:Portfölj AI:Kan du granska min portfölj och föreslå nästa steg?')}
-                    className="rounded-xl sm:rounded-2xl px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-primary to-primary/90 text-primary-foreground text-xs sm:text-sm"
-                  >
-                    <Sparkles className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    <span className="hidden xs:inline">Starta AI-chatt</span>
-                    <span className="xs:hidden">AI-chatt</span>
-                  </Button>
-                  <Button
-                    onClick={handleUpdateProfile}
-                    className="rounded-xl sm:rounded-2xl px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 shadow-none text-xs sm:text-sm"
-                    variant="ghost"
-                  >
-                    <User className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    <span className="hidden md:inline">Uppdatera profil</span>
-                    <span className="md:hidden">Profil</span>
-                  </Button>
+                  {/* Wrappa knapparna så de inte åker utanför på små skärmar */}
+                  <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
+                    <Button
+                      onClick={() => handleQuickChat('NEW_SESSION:Portfölj AI:Kan du granska min portfölj och föreslå nästa steg?')}
+                      className="rounded-xl sm:rounded-2xl px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-primary to-primary/90 text-primary-foreground text-xs sm:text-sm whitespace-nowrap"
+                    >
+                      <Sparkles className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      <span className="hidden xs:inline">Starta AI-chatt</span>
+                      <span className="xs:hidden">AI-chatt</span>
+                    </Button>
+                    <Button
+                      onClick={handleUpdateProfile}
+                      className="rounded-xl sm:rounded-2xl px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 shadow-none text-xs sm:text-sm whitespace-nowrap"
+                      variant="ghost"
+                    >
+                      <User className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      <span className="hidden md:inline">Uppdatera profil</span>
+                      <span className="md:hidden">Profil</span>
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -445,14 +383,12 @@ const PortfolioImplementation = () => {
                 </div>
               </TooltipProvider>
 
-              {/* Best/Worst Holdings */}
               <div className="mt-4 sm:mt-5 md:mt-6">
                 <BestWorstHoldings />
               </div>
             </div>
           </section>
 
-          {/* Risk Profile Required Alert */}
           {user && !riskProfile && <div className="bg-amber-50/70 dark:bg-amber-950/20 backdrop-blur-xl border border-amber-200/50 dark:border-amber-800/50 rounded-xl sm:rounded-2xl md:rounded-3xl p-3 sm:p-4 md:p-6 lg:p-8 shadow-xl">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 md:gap-6">
                   <div className="flex items-start sm:items-center gap-2 sm:gap-3 md:gap-4">
@@ -468,48 +404,60 @@ const PortfolioImplementation = () => {
                       </p>
                     </div>
                   </div>
-                  <Button onClick={() => navigate('/portfolio-advisor')} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg sm:rounded-xl md:rounded-2xl px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm w-full sm:w-auto">
+                  <Button onClick={() => navigate('/portfolio-advisor')} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg sm:rounded-xl md:rounded-2xl px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm w-full sm:w-auto whitespace-nowrap">
                     <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                     {t('portfolio.createProfile.button')}
                   </Button>
                 </div>
               </div>}
 
-          {/* Portfolio Overview & Community */}
-          <div className="space-y-3 sm:space-y-4 md:space-y-6 lg:space-y-8">
-            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
+          {/* Grid Layout fixad för full höjd och responsivitet */}
+          <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3 sm:gap-4 md:gap-6 lg:gap-8 auto-rows-fr">
+            
+            {/* Portfolio Overview */}
+            <div className="2xl:col-span-2 relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden min-w-0 flex flex-col h-full">
               <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
-              <PortfolioOverview
-                portfolio={activePortfolio ? {
-                  ...activePortfolio,
-                  day_change: adjustedPerformance.dayChange,
-                  day_change_pct: adjustedPerformance.dayChangePercentage
-                } : activePortfolio}
-                onQuickChat={handleQuickChat}
-                onActionClick={handleActionClick}
-                importControls={portfolioImportControls}
-              />
+              <div className="flex-1">
+                <PortfolioOverview
+                  portfolio={activePortfolio ? {
+                    ...activePortfolio,
+                    day_change: adjustedPerformance.dayChange,
+                    day_change_pct: adjustedPerformance.dayChangePercentage
+                  } : activePortfolio}
+                  onQuickChat={handleQuickChat}
+                  onActionClick={handleActionClick}
+                  importControls={portfolioImportControls}
+                />
+              </div>
             </div>
 
-            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden" data-ai-recommendations>
+            {/* AI Recommendations */}
+            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden min-w-0 flex flex-col h-full" data-ai-recommendations>
               <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
-              <AIRecommendations />
+              <div className="flex-1 overflow-hidden">
+                <AIRecommendations />
+              </div>
             </div>
 
-            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
+            {/* Community Recommendations - Nu med h-full för att täcka hela modulen */}
+            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden min-w-0 flex flex-col h-full">
               <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
-              <CommunityRecommendations />
+              <div className="flex-1 h-full overflow-hidden">
+                <CommunityRecommendations />
+              </div>
             </div>
 
-            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden">
+            {/* Prediction Markets */}
+            <div className="2xl:col-span-2 relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden min-w-0 flex flex-col h-full">
               <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
-              <PredictionMarketsPortfolio />
+              <div className="flex-1">
+                <PredictionMarketsPortfolio />
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Floating Action Button */}
       <FloatingActionButton />
     </Layout>;
 };

@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { jsonrepair } from "https://esm.sh/jsonrepair@3.6.1";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8";
+import yahooFinance from "npm:yahoo-finance2@2.8.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,7 +11,7 @@ const corsHeaders = {
 
 const openAIApiKey = Deno.env.get("OPENAI_API_KEY");
 const tavilyApiKey = Deno.env.get("TAVILY_API_KEY");
-const OPENAI_MODEL = "gpt-5.1";
+const OPENAI_MODEL = "gpt-5.1"; // Kan bytas till gpt-4o om tillgängligt
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const supabaseClient = supabaseUrl && supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceKey) : null;
@@ -25,6 +26,8 @@ serve(async (req) => {
     const body = await readJsonBody(req);
     const type = typeof body?.type === "string" ? body.type : "news";
     const contentType = parseContentType(body);
+    // Hämta userName om det finns i requesten
+    const userName = typeof body?.userName === "string" ? body.userName : ""; 
 
     switch (type) {
       case "momentum": {
@@ -42,7 +45,8 @@ serve(async (req) => {
           return jsonResponse(formatMorningBriefResponse(latestStored, contentType));
         }
 
-        const generated = await generateMorningBrief({ allowRepeats: forceRefresh });
+        // Skicka med userName till generateMorningBrief
+        const generated = await generateMorningBrief({ allowRepeats: forceRefresh, userName });
 
         const persisted = shouldPersist
           ? await storeMorningBrief(generated)
@@ -166,6 +170,9 @@ function extractSourceName(url: string): string {
       "marketwatch.com": "MarketWatch",
       "investing.com": "Investing.com",
       "ft.com": "Financial Times",
+      "omni.se": "Omni Ekonomi",
+      "realtid.se": "Realtid",
+      "aktiespararna.se": "Aktiespararna"
     };
     
     const domain = hostname.split("/")[0];
@@ -218,32 +225,44 @@ function areHeadlinesSimilar(headline1: string, headline2: string): boolean {
 }
 
 function deduplicateNewsItems(items: NewsItem[]): NewsItem[] {
-  const seen = new Map<string, NewsItem>();
+  const uniqueItems: NewsItem[] = [];
+  const seenFingerprints = new Set<string>();
+  const seenUrls = new Set<string>();
   
   for (const item of items) {
     const normalizedUrl = normalizeUrl(item.url);
-    let isDuplicate = false;
     
-    // Check if we've seen this normalized URL before
-    if (seen.has(normalizedUrl)) {
+    // 1. Skapa ett fingeravtryck av innehållet (kategori + första 60 tecknen av summary)
+    const fingerprint = `${item.category}-${item.summary.slice(0, 60).toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+    
+    let isDuplicate = false;
+
+    // Check URL
+    if (seenUrls.has(normalizedUrl)) {
       isDuplicate = true;
-    } else {
-      // Check if any existing item has a similar headline
-      for (const [url, existingItem] of seen.entries()) {
-        if (areHeadlinesSimilar(item.headline, existingItem.headline)) {
+    } 
+    // Check Content
+    else if (seenFingerprints.has(fingerprint)) {
+      isDuplicate = true;
+    }
+    // Fallback: Check Headline similarity
+    else {
+      for (const existing of uniqueItems) {
+        if (areHeadlinesSimilar(item.headline, existing.headline)) {
           isDuplicate = true;
           break;
         }
       }
     }
     
-    // Only add if not a duplicate
     if (!isDuplicate) {
-      seen.set(normalizedUrl, item);
+      seenUrls.add(normalizedUrl);
+      seenFingerprints.add(fingerprint);
+      uniqueItems.push(item);
     }
   }
   
-  return Array.from(seen.values());
+  return uniqueItems;
 }
 
 // Lägg till parametern 'domains' (string array)
@@ -255,28 +274,8 @@ async function fetchTavilyNews(query: string, maxResults = 15, days = 1, domains
 
   // Standardlista om ingen specifik lista skickas med
   const defaultDomains = [
-    "reuters.com",
-          "marketwatch.com",
-          "investing.com",
-          "cnbc.com",
-          "ft.com",
-          "barrons.com",
-          "marketscreener.com",
-          "finance.yahoo.com",
-          "seekingalpha.com",
-          "apnews.com",
-          "axios.com",
-          "forbes.com",
-          "fortune.com",
-          "techcrunch.com",
-          "theverge.com",
-          "wired.com",
-        "breakit.se",
-          "privataaffarer.se",
-          "affarsvarlden.se",
-          "svd.se/bors/news.php",
-          "placera.se"
-          
+    "di.se", "svd.se", "affarsvarlden.se", "privataaffarer.se", "breakit.se", "realtid.se", "aktiespararna.se", "omni.se",
+    "bloomberg.com", "reuters.com", "cnbc.com", "wsj.com", "ft.com", "investing.com", "marketwatch.com", "barrons.com", "finance.yahoo.com"
   ];
 
   // Använd de specifika domänerna om de finns, annars default
@@ -290,7 +289,7 @@ async function fetchTavilyNews(query: string, maxResults = 15, days = 1, domains
         api_key: tavilyApiKey,
         query,
         search_depth: "basic",
-        include_domains: targetDomains, // <--- HÄR ÄR ÄNDRINGEN
+        include_domains: targetDomains,
         topic: "news",
         max_results: maxResults,
         days: days
@@ -328,7 +327,7 @@ async function fetchMultipleTavilySearches(
   maxResultsPerQuery = 20,
   days = 1,
   options: GenerateOptions = {},
-  domains: string[] = [] // <--- NY PARAMETER
+  domains: string[] = [] 
 ): Promise<TavilyArticle[]> {
   console.log(`[fetchMultipleTavilySearches] Starting ${queries.length} searches`);
 
@@ -336,10 +335,8 @@ async function fetchMultipleTavilySearches(
   const { allowRepeats = false } = options;
   const seenUrls = allowRepeats ? null : new Set<string>();
   
-  // Skicka med 'domains' till fetchTavilyNews
   const searchPromises = queries.map(query => fetchTavilyNews(query, maxResultsPerQuery, days, domains));
   
-  // ... resten av logiken är samma ...
   const results = await Promise.all(searchPromises);
   
   // Combine and deduplicate when requested
@@ -419,7 +416,6 @@ async function summarizeArticle(article: TavilyArticle): Promise<NewsItem> {
     const systemPrompt =
       "Du är en senior finansanalytiker. Svara alltid med giltig JSON: { \"headline\": \"...\", \"summary\": \"...\", \"takeaway\": \"...\" }.";
 
-    // HÄR ÄR FÖRBÄTTRINGEN: Vi ber om en "takeaway"
     const userPrompt = `Analysera texten och skapa:
 1. En rubrik (max 7 ord).
 2. En sammanfattning (2-3 meningar).
@@ -612,8 +608,59 @@ type GeneratedMorningBrief = {
 
 type GenerateOptions = {
   allowRepeats?: boolean;
+  userName?: string; // TILLAGT
 };
 
+// --- CORE FUNCTION: FETCH HARD MARKET DATA (Hybrid Yahoo/Tavily) ---
+async function fetchHardMarketData() {
+  console.log("[fetchHardMarketData] Fetching real-time data from Yahoo Finance & Scouting OMX forecast...");
+
+  try {
+    // 1. Hämta HÅRDA DATA från Yahoo Finance parallellt
+    const quotes = await yahooFinance.quote([
+      "^OMX",       // OMXS30 Index (Stängning)
+      "^GDAXI",     // DAX Index (Stängning)
+      "^IXIC",      // Nasdaq Composite (Stängning)
+      "^GSPC",      // S&P 500 (Stängning)
+      "NQ=F",       // Nasdaq 100 Futures (Just nu)
+      "ES=F",       // S&P 500 Futures (Just nu)
+      "SEK=X",      // USD/SEK
+      "EURSEK=X",   // EUR/SEK
+      "CL=F",       // Olja
+      "GC=F",       // Guld
+      "^N225"       // Nikkei 225
+    ]);
+
+    const getQ = (symbol: string) => quotes.find(q => q.symbol === symbol);
+    
+    // Hjälpfunktion för att formatera: "2500 (+1.5%)"
+    const fmt = (q: any) => q ? `${q.regularMarketPrice?.toFixed(2)} (${q.regularMarketChangePercent > 0 ? '+' : ''}${q.regularMarketChangePercent?.toFixed(2)}%)` : "N/A";
+    const fmtPct = (q: any) => q ? `${q.regularMarketChangePercent > 0 ? '+' : ''}${q.regularMarketChangePercent?.toFixed(2)}%` : "0%";
+
+    return {
+      omx_close: fmt(getQ("^OMX")),
+      dax_close: fmt(getQ("^GDAXI")),
+      nasdaq_close: fmt(getQ("^IXIC")),
+      sp500_close: fmt(getQ("^GSPC")),
+      
+      // Terminer visar vi bara procent på för trend
+      nasdaq_future: fmtPct(getQ("NQ=F")),
+      sp500_future: fmtPct(getQ("ES=F")),
+      
+      usd_sek: getQ("SEK=X")?.regularMarketPrice?.toFixed(2) || "-",
+      eur_sek: getQ("EURSEK=X")?.regularMarketPrice?.toFixed(2) || "-",
+      oil: getQ("CL=F")?.regularMarketPrice?.toFixed(2) || "-",
+      nikkei: fmt(getQ("^N225"))
+    };
+
+  } catch (error) {
+    console.error("Yahoo Finance fetch failed", error);
+    // Returnera tomma värden så att prompten inte kraschar
+    return { omx_close: "?", dax_close: "?", nasdaq_close: "?", sp500_close: "?", nasdaq_future: "?", sp500_future: "?", usd_sek: "?", eur_sek: "?", oil: "?", nikkei: "?" };
+  }
+}
+
+// --- ORIGINAL WEEKLY SUMMARY (RESTORED) ---
 async function generateWeeklySummary(): Promise<GeneratedMorningBrief> {
   const today = new Date();
   const weekStart = getWeekStart(today);
@@ -775,178 +822,117 @@ Regler:
   return { morningBrief: normalizedBrief, news: deduplicatedNews, rawPayload: {}, digestHash };
 }
 
+// --- CORE LOGIC: THE GOLDEN STANDARD BRIEF (Updated) ---
 async function generateMorningBrief(options: GenerateOptions = {}): Promise<GeneratedMorningBrief> {
   const today = new Date();
-  const { allowRepeats = false } = options;
+  const { allowRepeats = false, userName = "" } = options;
+  const greetingName = userName ? userName : ""; // Om inget namn, lämna tomt så prompten kör "God morgon,"
+
+  if (isWeekend(today)) return await generateWeeklySummary();
   
-  // Helg-check
-  if (isWeekend(today)) {
-    console.log(`[generateMorningBrief] Weekend detected, generating weekly summary`);
-    return await generateWeeklySummary();
-  }
+  console.log("[generateMorningBrief] Starting generation...");
+
+  // 1. DATA: Hämta "Hårda Fakta" (Stängning) + Trender
+  const [marketSnapshot, trendingHeadlines] = await Promise.all([
+    fetchHardMarketData(),
+    fetchTrendingTopics()
+  ]);
+
+  // 2. SÖK: Fokusera på analys av gårdagen och dagens makro
+  const specificQueries = [
+    "stockholm börsen analys gårdagens stängning vinnare förlorare",
+    "varför steg/föll börsen igår analys",
+    "viktiga makrohändelser idag sverige usa",
+    ...await generateDynamicQueries(trendingHeadlines)
+  ].slice(0, 6);
+
+  const tavilyArticles = await fetchMultipleTavilySearches(specificQueries, 8, 1, { allowRepeats });
+
+  // 3. FILTRERA & SUMMERING
+  const highQualityArticles = tavilyArticles
+    .filter(a => !isLowQualityNews(a.title, a.content))
+    .sort((a, b) => b.content.length - a.content.length)
+    .slice(0, 12);
+
+  const summaries = await Promise.all(highQualityArticles.map(a => summarizeArticle(a)));
+  const cleanNews = deduplicateNewsItems(summaries.filter((i): i is NewsItem => i !== null));
+
+  // 4. KONTEXT: Bygg ihop datan för AI:n
+  const marketContextString = `
+  GÅRDAGENS STÄNGNING (FAKTA):
+  - OMXS30: ${marketSnapshot.omx_close}
+  - Tyskland (DAX): ${marketSnapshot.dax_close}
+  - USA (S&P 500): ${marketSnapshot.sp500_close}
+  - USA (Nasdaq): ${marketSnapshot.nasdaq_close}
+  - Asien (Nikkei): ${marketSnapshot.nikkei}
+
+  INDIKATION IDAG (TERMINER):
+  - USA Terminer: Nasdaq ${marketSnapshot.nasdaq_future}, S&P ${marketSnapshot.sp500_future}
   
-  const yesterday = getPreviousWeekday(today);
-  const previousBrief = await getPreviousDayBrief(today);
+  VALUTA/RÅVAROR:
+  - USD/SEK: ${marketSnapshot.usd_sek}
+  - EUR/SEK: ${marketSnapshot.eur_sek}
+  - Olja: ${marketSnapshot.oil} USD
+  `;
+
+  const newsContextString = cleanNews.map(n => 
+    `Rubrik: ${n.headline}\nSammanfattning: ${n.summary}\nKategori: ${n.category}\n`
+  ).join("\n---\n");
+
+  const systemPrompt = `Du är en senior aktiemäklare. Du skriver personliga och skarpa morgonbrev.`;
+
+  const userPrompt = `Skriv dagens morgonbrev. 
+  Mottagare: "${greetingName}" (Om tomt, skriv bara "God morgon,").
+
+  MÅL:
+  Förklara GÅRDAGENS rörelser (varför steg/föll det?) och ge en kort utblick för idag.
+  Använd INTE fraser som "ser ut att öppna oklart". Håll dig till fakta om hur det stängde igår.
+
+  EXEMPEL PÅ TONLÄGE (FÖLJ DETTA):
+  "God morgon ${greetingName || "Erik"},
+  OMXS30 stängde igår på 2560 (+0,5%) efter en stark rapport från Atlas Copco. USA-börserna var blandade där Nasdaq backade något på ränteoro.
   
-  console.log("[generateMorningBrief] Starting SMART generation...");
-
-  // --- STEG A: SPANAR-SÖKNING ---
-  // Hitta vad som är hett just nu genom att skanna rubriker
-  const trendingHeadlines = await fetchTrendingTopics();
-  console.log(`[generateMorningBrief] Found ${trendingHeadlines.length} trending headlines.`);
-
-  // --- STEG B: GENERERA DYNAMISKA SÖKFRÅGOR ---
-  // Låt AI bestämma vad vi ska djupdyka i
-  const dynamicQueries = await generateDynamicQueries(trendingHeadlines);
+  Det var en volatil dag där Riksbankens besked stod i fokus...
   
-  // Lägg till våra fasta "måste-ha"-sökningar
-  const baseQueries = [
-    "stockholm stock market news today", 
-    "key economic events today sweden usa eu" // Kalender-data
-  ];
+  I USA kom KPI in högre än väntat, vilket pressade tech-sektorn. Dollarn stärktes till 10,90 kr.
   
-  // Kombinera sökfrågor (max 5 dynamiska + bas)
-  const allQueries = [...new Set([...baseQueries, ...dynamicQueries])].slice(0, 7);
-  console.log("[generateMorningBrief] Final search queries:", allQueries);
+  Inför idag pekar terminerna svagt uppåt. Vi håller extra koll på..."
 
-// --- STEG C: HÄMTA ARTIKLAR ---
-const tavilyArticles = await fetchMultipleTavilySearches(
-  allQueries, 
-  8, 
-  1, 
-  { allowRepeats }
-);
+  DATA:
+  ${marketContextString}
 
-console.log(`[generateMorningBrief] Fetched total: ${tavilyArticles.length} articles`);
+  NYHETER:
+  ${newsContextString}
 
-// --- STEG D: FILTRERA & SUMMERING (NY LOGIK) ---
-  
-  // 1. Grovfiltrera bort skräp (Kallelser, korta notiser) INNAN vi slösar AI-tokens
-  // (Förutsätter att du lagt till funktionen isLowQualityNews längst ner i filen)
-  const highQualityArticles = tavilyArticles.filter(a => 
-    !isLowQualityNews(a.title, a.content)
-  );
-
-  // 2. Prioritera "Långläsning" (Artiklar med mycket text är ofta analyser)
-  // Sortera så de längsta artiklarna hamnar först
-  highQualityArticles.sort((a, b) => b.content.length - a.content.length);
-
-  // 3. Ta de 12 bästa kandidaterna för summering
-  const articlesToProcess = highQualityArticles.slice(0, 12);
-  
-  console.log(`[generateMorningBrief] Processing ${articlesToProcess.length} high-quality insight articles (filtered from ${tavilyArticles.length})`);
-
-  const summaryPromises = articlesToProcess.map(async (article) => {
-    try {
-      return await summarizeArticle(article);
-    } catch (error) {
-      return null;
+  FORMAT (JSON):
+  {
+    "morning_brief": {
+      "headline": "Kort rubrik (t.ex 'Börsen stiger på räntebesked')",
+      "overview": "Hela texten (3-4 stycken) enligt tonläget ovan. Byt ut radbrytningar mot \\n\\n.",
+      "key_highlights": ["Punkt 1", "Punkt 2", ...],
+      "focus_today": ["Hållpunkt 1", ...],
+      "sentiment": "bullish"|"bearish"|"neutral",
+      "generated_at": "${new Date().toISOString()}",
+      "sections": [] 
     }
-  });
-
-  const results = await Promise.all(summaryPromises);
-  const summarizedNews = results.filter((item): item is NewsItem => item !== null);
-  
-  // Deduplicera
-  const cleanNews = deduplicateNewsItems(summarizedNews);
-
-  // --- STEG E: KATEGORISERA & MIXA (NY LOGIK) ---
-  // Vi vill ha en bra mix i "Nyhetsflödet", inte 5 tech-nyheter på rad.
-  
-  const categories = {
-    macro: cleanNews.filter(n => n.category === 'macro' || n.category === 'sweden'),
-    tech: cleanNews.filter(n => n.category === 'tech'),
-    commodities: cleanNews.filter(n => n.category === 'commodities'),
-    company: cleanNews.filter(n => n.category === 'earnings' || n.category === 'global')
-  };
-
-  // Plocka 1 från varje kategori roterande tills vi har max 8 nyheter
-  const balancedNews: NewsItem[] = [];
-  const maxNews = 8;
-  
-  let i = 0;
-  while (balancedNews.length < maxNews && i < 5) { // Loopa några varv
-    if (categories.macro[i]) balancedNews.push(categories.macro[i]);
-    if (categories.company[i]) balancedNews.push(categories.company[i]);
-    if (categories.tech[i]) balancedNews.push(categories.tech[i]);
-    if (categories.commodities[i]) balancedNews.push(categories.commodities[i]);
-    i++;
-  }
-
-  // Om vi har för få, fyll på med resten av de högkvalitativa
-  if (balancedNews.length < 5) {
-     const remaining = cleanNews.filter(n => !balancedNews.includes(n));
-     balancedNews.push(...remaining.slice(0, maxNews - balancedNews.length));
-  }
-  
-  // Slutgiltig lista som visas för användaren
-  const finalNewsSelection = deduplicateNewsItems(balancedNews);
-
-  // --- STEG F: SKAPA BRIEF (MED FÖRBÄTTRAD PROMPT) ---
-  // Vi använder 'cleanNews' (alla analyserade) för kontexten så AI:n vet mer än vad som visas
-  const tavilyContext = cleanNews.slice(0, 20)
-    .map((a) => `- ${a.headline} (${a.source}): ${a.summary}`).join("\n\n");
-  
-  const previousDayContext = previousBrief
-    ? `Gårdagens huvudnyhet: ${previousBrief.morningBrief.headline}\nTeman: ${previousBrief.morningBrief.focusToday.join(", ")}\n`
-    : "";
-
-  const systemPrompt =
-    "Du är en svensk finansredaktör. Du skapar analyserande morgonbrev. Du svarar med giltig JSON.";
-
-  const userPrompt = `Skriv ett morgonbrev för ${today.toLocaleDateString("sv-SE")}.
-
-KONTEXT FRÅN NYHETER OCH ANALYSER:
-${tavilyContext || "Inga nyheter."}
-
-${previousDayContext ? `GÅRDAGEN: ${previousDayContext}` : ""}
-
-INSTRUKTIONER:
-1. **Hero-sektion (Overview):** Fånga den absolut viktigaste händelsen ("The big story") baserat på de medföljande artiklarna.
-2. **Snabbkollen (Key Highlights):** 5 korta punkter baserade uteslutande på de största nyheterna i kontexten. Tvinga inte in makro om det inte är en huvudnyhet.
-3. **Fokus idag:** Identifiera specifika händelser eller deadlines som nämns i texten att de sker IDAG. Om inget specifikt nämns, lämna denna lista tom eller nämn generella teman från nyheterna.
-4. **Fördjupning (Sections):** Skapa exakt 3 sektioner:
-   - Sektion 1: "Marknadsläget" (Sammanfatta marknadsrörelser baserat på datan).
-   - Sektion 2: "Dagens Huvudämne" (Välj det mest dominerande ämnet/bolaget i nyhetsflödet).
-   - Sektion 3: "Övriga Trender" (Fånga upp andra viktiga nyheter som inte passar i ovanstående).
-
-FORMAT (JSON):
-{
-  "morning_brief": {
-    "headline": "Kort rubrik",
-    "overview": "3-4 meningar analys.",
-    "key_highlights": ["Punkt 1", "Punkt 2", ...],
-    "focus_today": ["Hållpunkt 1", "Hållpunkt 2", ...],
-    "sentiment": "bullish"|"bearish"|"neutral",
-    "generated_at": "${new Date().toISOString()}",
-    "sections": [
-      { "title": "Marknadsläget", "body": "..." },
-      { "title": "Dagens Djupdykning: [Ämne]", "body": "..." },
-      { "title": "Makro & Omvärld", "body": "..." }
-    ]
-  }
-}`;
+  }`;
 
   let morningBrief: MorningBrief;
-  
-  if (tavilyArticles.length > 0 && openAIApiKey) {
-    try {
-      const raw = await callOpenAI(systemPrompt, userPrompt, 2500);
-      const parsed = parseJsonPayload(raw);
-      morningBrief = normalizeMorningBrief((parsed?.morning_brief ?? parsed) as Record<string, unknown>);
-    } catch (error) {
-      console.error("Failed to generate brief:", error);
-      morningBrief = createFallbackBrief(tavilyArticles);
-    }
-  } else {
-    morningBrief = createFallbackBrief([]);
+
+  try {
+    const raw = await callOpenAI(systemPrompt, userPrompt, 2000);
+    const parsed = parseJsonPayload(raw);
+    morningBrief = normalizeMorningBrief((parsed?.morning_brief ?? parsed) as Record<string, unknown>);
+  } catch (error) {
+    console.error("AI Generation failed:", error);
+    morningBrief = createFallbackBrief(tavilyArticles);
   }
 
   const runGeneratedAt = new Date().toISOString();
   const normalizedBrief = { ...morningBrief, generatedAt: runGeneratedAt };
-  const digestHash = await computeDigestHash({ morningBrief: normalizedBrief, news: finalNewsSelection });
+  const digestHash = await computeDigestHash({ morningBrief: normalizedBrief, news: cleanNews });
 
-  return { morningBrief: normalizedBrief, news: finalNewsSelection, rawPayload: {}, digestHash };
+  return { morningBrief: normalizedBrief, news: cleanNews, rawPayload: {}, digestHash };
 }
 
 // Liten hjälpfunktion för fallback om allt kraschar

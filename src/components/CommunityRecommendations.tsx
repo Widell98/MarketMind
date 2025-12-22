@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -246,14 +245,14 @@ const CommunityRecommendations: React.FC = () => {
 
   if (loading) {
     return (
-      <Card>
+      <Card className="h-full flex flex-col">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="w-5 h-5 text-blue-600" />
             Community-förslag Innehav
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 flex items-center justify-center">
           <div className="text-center py-8 text-muted-foreground">
             <div className="flex items-center justify-center gap-2">
               <Users className="w-4 h-4 animate-pulse" />
@@ -267,7 +266,7 @@ const CommunityRecommendations: React.FC = () => {
 
   if (recommendations.length === 0) {
     return (
-      <Card>
+      <Card className="h-full flex flex-col">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="w-5 h-5 text-blue-600" />
@@ -277,7 +276,7 @@ const CommunityRecommendations: React.FC = () => {
             Dina sparade stock-cases och analyser från communityn
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1">
           <div className="text-center py-8">
             <Users className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
             <h3 className="text-lg font-medium mb-2 text-foreground">Inga sparade rekommendationer</h3>
@@ -313,7 +312,8 @@ const CommunityRecommendations: React.FC = () => {
   }
 
   return (
-    <Card className="bg-card/30 backdrop-blur-xl border-border/20 shadow-lg rounded-3xl overflow-hidden">
+    // UPDATED: Added h-full and flex flex-col to fill the parent container
+    <Card className="bg-card/30 backdrop-blur-xl border-border/20 shadow-lg rounded-3xl overflow-hidden h-full flex flex-col">
       <CardHeader className="pb-6 bg-gradient-to-r from-primary/5 to-purple/5 border-b border-border/20">
         <div className="flex flex-col items-center gap-3 text-center sm:items-start sm:text-left">
           <CardTitle className="text-xl font-semibold flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:text-left">
@@ -332,12 +332,15 @@ const CommunityRecommendations: React.FC = () => {
           </CardDescription>
         </div>
       </CardHeader>
-      <CardContent className="p-6 sm:p-8">
+      
+      {/* UPDATED: Added flex-1 to content so it expands */}
+      <CardContent className="p-6 sm:p-8 flex-1">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div className="text-sm text-muted-foreground font-medium text-center sm:text-left">
             {recommendations.length} sparade rekommendationer
           </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          {/* UPDATED: Added flex-wrap to prevent button overflow on small screens */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto flex-wrap">
             <div className="flex items-center justify-center sm:justify-end gap-1">
               <Button
                 variant="ghost"
@@ -368,7 +371,8 @@ const CommunityRecommendations: React.FC = () => {
         </div>
         {viewMode === 'grid' ? (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {/* UPDATED: Adjusted grid columns. On 2xl screens (where this component is half width), we drop back to 2 columns to prevent squished cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-2 gap-4">
               {recommendations.slice(0, 6).map((recommendation) => (
                 <RecommendationCard
                   key={recommendation.id}
