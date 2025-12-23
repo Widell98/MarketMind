@@ -22,6 +22,7 @@ const translations = {
     'nav.openNavigation': 'Öppna navigering',
     'nav.mainMenu': 'Huvudmeny',
     'nav.aiTools': 'AI-Verktyg',
+    'nav.analysis': 'Analys',
     'nav.account': 'Konto',
     'nav.login': 'Logga in',
     
@@ -152,6 +153,7 @@ const translations = {
     'nav.openNavigation': 'Open navigation',
     'nav.mainMenu': 'Main Menu',
     'nav.aiTools': 'AI Tools',
+    'nav.analysis': 'Analysis',
     'nav.account': 'Account',
     'nav.login': 'Login',
     

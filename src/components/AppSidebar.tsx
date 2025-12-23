@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Home, TrendingUp, BarChart3, Lock, Brain, Sparkles, User, Settings, HelpCircle, Newspaper, ArrowLeft } from 'lucide-react';
+import { Home, TrendingUp, BarChart3, Lock, Brain, Sparkles, User, Settings, HelpCircle, Newspaper, ArrowLeft, Activity } from 'lucide-react';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import HelpButton from '@/components/HelpButton';
@@ -30,20 +30,15 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ onToggleToChatHistory, renderDi
     icon: BarChart3,
     requiresAuth: true
   }];
-  const mainNavigation = [{
-    name: t('nav.home'),
-    href: '/',
-    icon: Home
-  }, {
+  const analysisNavigation = [{
     name: t('nav.discover'),
     href: '/discover',
     icon: Sparkles
-  },
-    {
+  }, {
     name: 'Prediction markets', 
     href: '/predictions',
     icon: TrendingUp
-  },                      {
+  }, {
     name: t('nav.news'),
     href: '/news',
     icon: Newspaper
@@ -87,7 +82,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ onToggleToChatHistory, renderDi
   };
   const navigationContent = (
     <>
-      {/* Main Navigation */}
+      {/* Home Section */}
       <div className="relative flex w-full min-w-0 flex-col p-2">
         <div className="text-[10px] sm:text-xs font-semibold text-primary flex items-center gap-1.5 sm:gap-2 relative pr-8 sm:pr-10 md:pr-12 mb-2">
           <Home className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -106,12 +101,13 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ onToggleToChatHistory, renderDi
         </div>
         <div className="relative flex w-full min-w-0 flex-col">
           <ul className="space-y-1">
-            {mainNavigation.map(item => renderNavItem(item, renderDirectly))}
+            {renderNavItem({ name: t('nav.home'), href: '/', icon: Home }, !renderDirectly)}
+            {user && renderNavItem({ name: t('nav.profile'), href: '/profile', icon: User, requiresAuth: true }, !renderDirectly)}
           </ul>
         </div>
       </div>
 
-      {/* AI-First Section */}
+      {/* AI Tools Section */}
       <div className="relative flex w-full min-w-0 flex-col p-2">
         <div className="text-[10px] sm:text-xs font-semibold text-primary flex items-center gap-1.5 sm:gap-2 mb-2">
           <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -119,25 +115,23 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ onToggleToChatHistory, renderDi
         </div>
         <div className="relative flex w-full min-w-0 flex-col">
           <ul className="space-y-1">
-            {aiNavigation.map(item => renderNavItem(item, renderDirectly))}
+            {aiNavigation.map(item => renderNavItem(item, !renderDirectly))}
           </ul>
         </div>
       </div>
 
-      {/* User Section */}
-      {user && (
-        <div className="relative flex w-full min-w-0 flex-col p-2 mt-auto">
-          <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground flex items-center gap-1.5 sm:gap-2 mb-2">
-            <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            {t('nav.account')}
-          </div>
-          <div className="relative flex w-full min-w-0 flex-col">
-            <ul className="space-y-1">
-              {userNavigation.map(item => renderNavItem(item, renderDirectly))}
-            </ul>
-          </div>
+      {/* Analysis Section */}
+      <div className="relative flex w-full min-w-0 flex-col p-2">
+        <div className="text-[10px] sm:text-xs font-semibold text-primary flex items-center gap-1.5 sm:gap-2 mb-2">
+          <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          {t('nav.analysis')}
         </div>
-      )}
+        <div className="relative flex w-full min-w-0 flex-col">
+          <ul className="space-y-1">
+            {analysisNavigation.map(item => renderNavItem(item, !renderDirectly))}
+          </ul>
+        </div>
+      </div>
 
       {/* Help Section */}
       <div className="relative flex w-full min-w-0 flex-col p-2 mt-auto pt-2 sm:pt-3 md:pt-4 border-t">
@@ -176,12 +170,13 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ onToggleToChatHistory, renderDi
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainNavigation.map(item => renderNavItem(item))}
+              {renderNavItem({ name: t('nav.home'), href: '/', icon: Home })}
+              {user && renderNavItem({ name: t('nav.profile'), href: '/profile', icon: User, requiresAuth: true })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* AI-First Section */}
+        {/* AI Tools Section */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-[10px] sm:text-xs font-semibold text-primary flex items-center gap-1.5 sm:gap-2">
             <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -194,18 +189,18 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ onToggleToChatHistory, renderDi
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* User Section */}
-        {user && <SidebarGroup className="mt-auto">
-            <SidebarGroupLabel className="text-[10px] sm:text-xs font-semibold text-muted-foreground flex items-center gap-1.5 sm:gap-2">
-              <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              {t('nav.account')}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {userNavigation.map(item => renderNavItem(item))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>}
+        {/* Analysis Section */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-[10px] sm:text-xs font-semibold text-primary flex items-center gap-1.5 sm:gap-2">
+            <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            {t('nav.analysis')}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {analysisNavigation.map(item => renderNavItem(item))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
         {/* Help Section */}
         <SidebarGroup className="mt-auto pt-2 sm:pt-3 md:pt-4 border-t">
