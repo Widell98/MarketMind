@@ -1,10 +1,11 @@
 import React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { PieChart, Activity, Zap, TrendingUp, Brain } from 'lucide-react';
+import { PieChart, Activity, Zap, TrendingUp, Brain, PanelLeft, PanelLeftClose, Sparkles, BarChart3, HelpCircle } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 import GuideBot from './GuideBot';
 import { useGuideSession } from '@/hooks/useGuideSession';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Message {
   id: string;
@@ -25,6 +26,8 @@ interface ChatMessagesProps {
   messagesEndRef: React.RefObject<HTMLDivElement>;
   onExamplePrompt?: (prompt: string) => void;
   showGuideBot?: boolean;
+  onToggleSidebar?: () => void;
+  isSidebarCollapsed?: boolean;
 }
 
 const ChatMessages = ({
@@ -34,7 +37,10 @@ const ChatMessages = ({
   messagesEndRef,
   onExamplePrompt,
   showGuideBot = false,
+  onToggleSidebar,
+  isSidebarCollapsed = false,
 }: ChatMessagesProps) => {
+  const { user } = useAuth();
   const {
     shouldShowGuide,
     handlePromptExample,
@@ -86,7 +92,9 @@ const ChatMessages = ({
     });
   }, [messages, isUserNearBottom, messagesEndRef]);
 
-  const examplePrompts = [
+  // Olika prompts för gäster vs inloggade användare
+  const examplePrompts = user ? [
+    // För inloggade användare med portfölj
     {
       title: 'Portföljanalys',
       prompt: 'Ge mig en komplett analys av min portfölj med rekommendationer för optimering',
@@ -110,6 +118,32 @@ const ChatMessages = ({
       prompt: 'Vad händer på marknaden just nu och hur påverkar det min investeringsstrategi?',
       icon: <TrendingUp className="h-4 w-4" />,
       description: 'Uppdateras om marknadstrender',
+    },
+  ] : [
+    // För gäster/nya användare utan portfölj
+    {
+      title: 'Marknadsöversikt',
+      prompt: 'Vad händer på marknaden just nu? Ge mig en översikt av aktuella trender och utvecklingar.',
+      icon: <TrendingUp className="h-4 w-4" />,
+      description: 'Få insikter om marknadsläget',
+    },
+    {
+      title: 'Kom igång',
+      prompt: 'Jag är ny på börsen. Hur börjar jag investera och vad är viktigt att tänka på?',
+      icon: <Sparkles className="h-4 w-4" />,
+      description: 'Grundläggande investeringsråd',
+    },
+    {
+      title: 'Aktieanalys',
+      prompt: 'Kan du analysera [ange aktie] åt mig?',
+      icon: <BarChart3 className="h-4 w-4" />,
+      description: 'Få analys av aktier',
+    },
+    {
+      title: 'Frågor & Svar',
+      prompt: 'Jag har frågor om investeringar och börsen. Kan du hjälpa mig förstå?',
+      icon: <HelpCircle className="h-4 w-4" />,
+      description: 'Få svar på dina frågor',
     },
   ];
 
@@ -141,9 +175,28 @@ const ChatMessages = ({
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      className="flex-1 min-h-0 overflow-y-auto w-full"
+      className="flex-1 min-h-0 overflow-y-auto w-full relative"
       style={{ scrollbarGutter: 'stable' }}
     >
+      {/* Toggle Sidebar Button - Positioned outside sidebar */}
+      {onToggleSidebar && (
+        <Button
+          onClick={onToggleSidebar}
+          variant="ghost"
+          size="icon"
+          className={isSidebarCollapsed 
+            ? "fixed top-4 left-4 z-40 h-9 w-9 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 text-muted-foreground hover:text-foreground hover:bg-background shadow-sm transition-all hover:shadow-md"
+            : "fixed top-4 left-[280px] lg:left-[300px] z-40 h-9 w-9 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 text-muted-foreground hover:text-foreground hover:bg-background shadow-sm transition-all hover:shadow-md"
+          }
+          aria-label={isSidebarCollapsed ? "Visa sidebar" : "Dölj sidebar"}
+        >
+          {isSidebarCollapsed ? (
+            <PanelLeft className="h-4 w-4" />
+          ) : (
+            <PanelLeftClose className="h-4 w-4" />
+          )}
+        </Button>
+      )}
       {/* OPTIMERAD: Edge-to-edge på mobil, max-width på större skärmar */}
       <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl space-y-3 sm:space-y-4 px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6">
         {showGuideBot && (

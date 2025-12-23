@@ -829,86 +829,100 @@ export const useAIChat = (portfolioId?: string) => {
 };
 
   const sendMessage = useCallback(async (content: string, options?: SendMessageOptions): Promise<boolean> => {
-
-    if (!user || !content.trim()) {
-      return false;
-    }
-
-    const sanitizedDocumentIds = Array.isArray(options?.documentIds)
-      ? options.documentIds.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
-      : [];
-
-    const hasDocumentAttachments = sanitizedDocumentIds.length > 0;
-    const isPremium = subscription?.subscribed;
-
-    if (hasDocumentAttachments) {
-      const now = new Date();
-      const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
-      const endOfDay = new Date(startOfDay);
-      endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
-
-      const documentMessageLimit = isPremium
-        ? PREMIUM_DAILY_DOCUMENT_MESSAGE_LIMIT
-        : FREE_DAILY_DOCUMENT_MESSAGE_LIMIT;
-
-      const { count: todaysSourceMessages, error: sourceMessageError } = await supabase
-        .from('portfolio_chat_history')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('message_type', 'user')
-        .not('context_data->documentIds', 'is', null)
-        .gte('created_at', startOfDay.toISOString())
-        .lt('created_at', endOfDay.toISOString());
-
-      if (sourceMessageError) {
-        console.error('Failed to verify daily source message limit', sourceMessageError);
-        toast({
-          title: "Kunde inte verifiera källgränsen",
-          description: "Försök igen om en liten stund.",
-          variant: "destructive",
-        });
+    if (user) {
+      // Logged in user flow - check limits
+      if (!content.trim()) {
         return false;
       }
 
-      if ((todaysSourceMessages ?? 0) >= documentMessageLimit) {
+      const sanitizedDocumentIds = Array.isArray(options?.documentIds)
+        ? options.documentIds.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+        : [];
+
+      const hasDocumentAttachments = sanitizedDocumentIds.length > 0;
+      const isPremium = subscription?.subscribed;
+
+      if (hasDocumentAttachments) {
+        const now = new Date();
+        const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
+        const endOfDay = new Date(startOfDay);
+        endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+
+        const documentMessageLimit = isPremium
+          ? PREMIUM_DAILY_DOCUMENT_MESSAGE_LIMIT
+          : FREE_DAILY_DOCUMENT_MESSAGE_LIMIT;
+
+        const { count: todaysSourceMessages, error: sourceMessageError } = await supabase
+          .from('portfolio_chat_history')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('message_type', 'user')
+          .not('context_data->documentIds', 'is', null)
+          .gte('created_at', startOfDay.toISOString())
+          .lt('created_at', endOfDay.toISOString());
+
+        if (sourceMessageError) {
+          console.error('Failed to verify daily source message limit', sourceMessageError);
+          toast({
+            title: "Kunde inte verifiera källgränsen",
+            description: "Försök igen om en liten stund.",
+            variant: "destructive",
+          });
+          return false;
+        }
+
+        if ((todaysSourceMessages ?? 0) >= documentMessageLimit) {
+          toast({
+            title: "Daglig källgräns nådd",
+            description: `Du kan bara skicka ${documentMessageLimit} frågor per dag med bifogade källor eller dokument.`,
+            variant: "destructive",
+          });
+          return false;
+        }
+      }
+
+      const normalizedOptions: SendMessageOptions | undefined = (options || hasDocumentAttachments)
+        ? { ...(options ?? {}), documentIds: sanitizedDocumentIds }
+        : undefined;
+
+      // Check usage limit with better error handling
+      const canSendMessage = checkUsageLimit('ai_message');
+      const dailyLimit = DAILY_MESSAGE_CREDITS;
+
+      if (!canSendMessage && !isPremium) {
         toast({
-          title: "Daglig källgräns nådd",
-          description: `Du kan bara skicka ${documentMessageLimit} frågor per dag med bifogade källor eller dokument.`,
+          title: "Daglig gräns nådd",
+          description: `Du har använt alla dina ${dailyLimit} gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.`,
           variant: "destructive",
         });
+        setQuotaExceeded(true);
         return false;
       }
+
+      // If no session exists, create one and send message
+      if (!currentSessionId) {
+        return await createNewSessionAndSendMessage(content, normalizedOptions);
+      }
+      return await sendMessageToSession(content, undefined, normalizedOptions);
+    } else {
+      // Guest mode: skip limits and checks, just send message
+      if (!content.trim()) {
+        return false;
+      }
+
+      const normalizedOptions: SendMessageOptions | undefined = options;
+
+      // If no session exists for guest, generate one and send message
+      if (!currentSessionId) {
+        return await sendMessageToSession(content, undefined, normalizedOptions);
+      }
+      return await sendMessageToSession(content, undefined, normalizedOptions);
     }
-
-    const normalizedOptions: SendMessageOptions | undefined = (options || hasDocumentAttachments)
-      ? { ...(options ?? {}), documentIds: sanitizedDocumentIds }
-      : undefined;
-
-    // Check usage limit with better error handling
-    const canSendMessage = checkUsageLimit('ai_message');
-    const dailyLimit = DAILY_MESSAGE_CREDITS;
-
-    if (!canSendMessage && !isPremium) {
-      toast({
-        title: "Daglig gräns nådd",
-        description: `Du har använt alla dina ${dailyLimit} gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.`,
-        variant: "destructive",
-      });
-      setQuotaExceeded(true);
-      return false;
-    }
-
-    // If no session exists, create one and send message
-    if (!currentSessionId) {
-      return await createNewSessionAndSendMessage(content, normalizedOptions);
-    }
-
-    return await sendMessageToSession(content, undefined, normalizedOptions);
   }, [
     user,
     currentSessionId,
-    checkUsageLimit,
-    subscription,
+    checkUsageLimit, // Only relevant for logged-in users
+    subscription, // Only relevant for logged-in users
     toast,
   ]);
 
@@ -981,10 +995,15 @@ export const useAIChat = (portfolioId?: string) => {
   }, [user, toast, clearEphemeralMessages, currentSessionId, portfolioId]);
 
   const sendMessageToSession = useCallback(async (content: string, sessionId?: string, options?: SendMessageOptions): Promise<boolean> => {
+    let targetSessionId = sessionId || currentSessionId;
 
-    const targetSessionId = sessionId || currentSessionId;
+    // For guests, generate a temporary session ID if none exists
+    if (!user && !targetSessionId) {
+      targetSessionId = `guest-${Date.now()}`;
+      setCurrentSessionId(targetSessionId);
+    }
 
-    if (!user || !content.trim() || !targetSessionId) {
+    if (!content.trim() || !targetSessionId) {
       return false;
     }
     
@@ -1064,7 +1083,7 @@ export const useAIChat = (portfolioId?: string) => {
       
      const requestPayload: Record<string, unknown> = {
   message: trimmedContent,
-  userId: user.id,
+  userId: user?.id || null, // Send null if user is not logged in
   portfolioId: portfolioId,
   sessionId: targetSessionId,
   chatHistory: chatHistoryForAPI,
@@ -1243,22 +1262,26 @@ export const useAIChat = (portfolioId?: string) => {
         }
       }
       
-      // After streaming is complete, reload messages from database to get the complete conversation with correct IDs
-      setTimeout(() => {
-        loadMessages(targetSessionId, true);
-      }, 1000);
+      // After streaming is complete, reload messages from database to get the complete conversation with correct IDs (only for logged in users)
+      if (user) {
+        setTimeout(() => {
+          loadMessages(targetSessionId, true);
+        }, 1000);
+      }
 
       clearPendingState(targetSessionId, requestId);
 
-      // Track usage
-      const { error: usageError } = await supabase.rpc('increment_ai_usage', {
-        _user_id: user.id,
-        _usage_type: 'ai_message'
-      });
-      if (usageError) {
-        console.error('Usage tracking failed:', usageError);
-      } else {
-        incrementUsage('ai_message');
+      // Track usage (only for logged in users)
+      if (user) {
+        const { error: usageError } = await supabase.rpc('increment_ai_usage', {
+          _user_id: user.id,
+          _usage_type: 'ai_message'
+        });
+        if (usageError) {
+          console.error('Usage tracking failed:', usageError);
+        } else {
+          incrementUsage('ai_message');
+        }
       }
       return true;
 
@@ -1277,7 +1300,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage, incrementUsage, loadMessages, addOrReplaceEphemeralMessage]);
+  }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage, incrementUsage, loadMessages, addOrReplaceEphemeralMessage, supabase, setCurrentSessionId]);
 
   const dismissProfileUpdatePrompt = useCallback(async (messageId: string) => {
     const targetMessage = messages.find(msg => msg.id === messageId);

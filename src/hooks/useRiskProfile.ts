@@ -103,6 +103,10 @@ export const useRiskProfile = () => {
   useEffect(() => {
     if (user) {
       fetchRiskProfile();
+    } else {
+      // For guests, set loading to false immediately
+      setLoading(false);
+      setRiskProfile(null);
     }
   }, [user]);
 

@@ -22,7 +22,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   // Vi vill inte ha h-screen på rooten om headern ska vara med, för då trycks innehållet ut.
   // Vi låter flex-col hantera höjden.
-  const rootClassName = isChatRoute
+  // För gäster i chatten visar vi headern, så vi använder min-h-screen istället för h-screen
+  const rootClassName = (isChatRoute && user)
     ? 'h-screen w-full flex overflow-hidden bg-white dark:bg-background'
     : 'min-h-screen bg-background w-full flex overflow-hidden';
 
@@ -38,14 +39,15 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const showFooter = !isChatRoute;
   const showBreadcrumb = !isChatRoute;
-  const showHeader = !isChatRoute;
+  // Visa header för gäster även i chatten
+  const showHeader = !isChatRoute || !user;
 
   return (
     <ConversationMemoryProvider>
       <SidebarProvider>
         <div className={rootClassName}>
-          {/* Sidebar for desktop - Döljs i chatten */}
-          {!isChatRoute && <AppSidebar />}
+          {/* Sidebar for desktop - Döljs i chatten för inloggade, visas för gäster */}
+          {(!isChatRoute || !user) && <AppSidebar />}
 
           <div className="flex-1 flex flex-col min-w-0 max-w-full">
             {/* Header - Döljs i chatten */}

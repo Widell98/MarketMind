@@ -19,6 +19,7 @@ interface ChatInputProps {
   isAttachDisabled?: boolean;
   isDocumentLimitReached?: boolean;
   onDocumentLimitClick?: () => void;
+  placeholder?: string;
 }
 
 const ChatInput = memo(({
@@ -33,6 +34,7 @@ const ChatInput = memo(({
   isAttachDisabled = false,
   isDocumentLimitReached = false,
   onDocumentLimitClick,
+  placeholder,
 }: ChatInputProps) => {
   const { isSubscribed } = useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -134,7 +136,7 @@ const ChatInput = memo(({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isLoading ? "Assistenten tänker..." : "Ställ en fråga om din portfölj..."}
+              placeholder={placeholder || (isLoading ? "Assistenten tänker..." : "Ställ en fråga om din portfölj...")}
               className="min-h-[36px] sm:min-h-[40px] max-h-[200px] w-full resize-none border-0 bg-transparent py-2 sm:py-2.5 text-sm placeholder:text-ai-text-muted focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-50"
               disabled={isLoading}
             />
