@@ -37,11 +37,13 @@ const AIChatPage = () => {
   useEffect(() => {
     // Om det är en vanlig chat och riskprofil saknas -> redirect.
     // MEN om det är en prediction chat -> stanna kvar (behöver ingen profil).
+    // NYTT: Endast redirecta om användaren är inloggad OCH saknar riskprofil
     if (user && !riskProfileLoading && !riskProfile && !isPredictionChat) {
       navigate('/portfolio-advisor');
     }
   }, [user, riskProfile, riskProfileLoading, navigate, isPredictionChat]);
 
+  // Visa varning om riskprofil saknas ENDAST om det inte är en prediction chat OCH användaren är inloggad
   if (user && riskProfileLoading) {
     return (
       <Layout>
@@ -57,7 +59,7 @@ const AIChatPage = () => {
     );
   }
 
-  // Visa varning om riskprofil saknas ENDAST om det inte är en prediction chat
+  // Visa varning om riskprofil saknas ENDAST om det inte är en prediction chat OCH användaren är inloggad
   if (user && !riskProfile && !isPredictionChat) {
     return (
       <Layout>

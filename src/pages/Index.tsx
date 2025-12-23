@@ -396,8 +396,8 @@ const Index = () => {
                     </div>
                     <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
                       <Button asChild size="lg" className="h-12 rounded-2xl bg-primary px-8 text-base font-semibold text-primary-foreground shadow-lg transition-all duration-300 hover:bg-primary/90 hover:shadow-xl">
-                        <Link to="/auth" className="flex items-center gap-2">
-                          {t('hero.cta.start')}
+                        <Link to="/ai-chatt" className="flex items-center gap-2">
+                          Testa chatten
                           <ArrowUpRight className="h-4 w-4" />
                         </Link>
                       </Button>

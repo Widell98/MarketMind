@@ -60,6 +60,10 @@ const AIChat = ({
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
+  const MAX_FREE_QUESTIONS = 2; // Antal gratisfrågor
+  const [guestCount, setGuestCount] = useState(0);
+  const [showPaywall, setShowPaywall] = useState(false);
+
   const {
     messages,
     currentSessionId,
@@ -320,10 +324,32 @@ const AIChat = ({
     };
   }, [createNewSession]);
 
+  // 1. Läs in antal använda frågor vid start (bara för gäster)
+  useEffect(() => {
+    if (!user) { // Use 'user' from useAuth
+      const count = parseInt(localStorage.getItem('marketmind_guest_count') || '0');
+      setGuestCount(count);
+      if (count >= MAX_FREE_QUESTIONS) {
+        setShowPaywall(true);
+      }
+    } else {
+      // Clear guest count if user logs in
+      localStorage.removeItem('marketmind_guest_count');
+      setGuestCount(0);
+      setShowPaywall(false);
+    }
+  }, [user]); // Depend on 'user'
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedInput = input.trim();
-    if (!trimmedInput || isLoading || !user) return;
+    if (!trimmedInput || isLoading) return; // Removed !user
+
+    // 2. SPÄRR: Om gäst och gränsen är nådd -> Avbryt och visa paywall
+    if (!user && guestCount >= MAX_FREE_QUESTIONS) {
+      setShowPaywall(true);
+      return;
+    }
      
     const previousInput = input;
     setInput('');
@@ -336,6 +362,19 @@ const AIChat = ({
 
     if (!wasSent) {
       setInput(previousInput);
+    } else {
+      // 3. Om anropet lyckades (inuti din try/catch eller success-block):
+      if (!user) { // Only for guests
+        const newCount = guestCount + 1;
+        setGuestCount(newCount);
+        localStorage.setItem('marketmind_guest_count', newCount.toString());
+
+        // Valfritt: Visa paywall direkt efter sista svaret laddat klart
+        if (newCount >= MAX_FREE_QUESTIONS) {
+          // Du kan sätta en timeout här för att visa rutan efter svaret kommit
+          setTimeout(() => setShowPaywall(true), 500); // Added a small delay
+        }
+      }
     }
   };
 
@@ -412,218 +451,151 @@ const AIChat = ({
 
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden">
-      {user ? (
-        <>
-          {/* Vänster Sidebar (Desktop & Mobil) */}
-          {!desktopSidebarCollapsed && (
-            <ChatFolderSidebar 
-              {...sidebarProps} 
-              showMainNavigation={showMainNavigation}
-              onToggleNavigation={() => setShowMainNavigation(!showMainNavigation)}
-              onCloseSidebar={() => setDesktopSidebarCollapsed(true)}
+      {/* Vänster Sidebar (Desktop & Mobil) - För inloggade användare */}
+      {user && !desktopSidebarCollapsed && (
+        <ChatFolderSidebar 
+          {...sidebarProps} 
+          showMainNavigation={showMainNavigation}
+          onToggleNavigation={() => setShowMainNavigation(!showMainNavigation)}
+          onCloseSidebar={() => setDesktopSidebarCollapsed(true)}
+        />
+      )}
+
+      {/* Flytande knapp för att visa sidebar (bara när den är dold) - Endast för inloggade användare */}
+      {user && desktopSidebarCollapsed && (
+        <Button
+          onClick={() => setDesktopSidebarCollapsed(false)}
+          variant="default"
+          size="icon"
+          className={cn(
+            "fixed top-4 left-4 z-50 h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-110 transition-all",
+            !isMobile && "h-9 w-9"
+          )}
+          aria-label="Visa sidebar"
+        >
+          {isMobile ? <Menu className="h-5 w-5" /> : <PanelLeft className="h-4 w-4" />}
+        </Button>
+      )}
+
+      {/* Main Chat Area - Tillgänglig för alla (gäster och inloggade) */}
+      <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
+        {/* Innehåll: Meddelanden och Input */}
+        <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
+          {messages.length === 0 && contextData ? (
+            <div className="flex flex-col items-center justify-center h-full p-8 space-y-8 animate-in fade-in zoom-in duration-300 overflow-y-auto">
+              <div className="text-center space-y-3 max-w-lg">
+                <div className="flex justify-center mb-4">
+                   <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                     <Sparkles className="w-8 h-8 text-primary" />
+                   </div>
+                </div>
+                <h2 className="text-2xl font-semibold text-foreground tracking-tight">
+                  {contextData.title}
+                </h2>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  {contextData.subtitle}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-3xl px-4">
+                {contextData.prompts.map((prompt: string, index: number) => (
+                  <button
+                    key={index}
+                    onClick={() => handleExamplePrompt(prompt)}
+                    className="flex flex-col text-left p-5 rounded-xl border border-ai-border/60 bg-ai-surface hover:bg-ai-surface-muted hover:border-primary/30 transition-all duration-200 group shadow-sm hover:shadow-md"
+                  >
+                    <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors mb-1">
+                      {prompt}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <ChatMessages
+              messages={messages}
+              isLoading={isLoading}
+              isLoadingSession={isLoadingSession}
+              messagesEndRef={messagesEndRef}
+              onExamplePrompt={showExamplePrompts ? handleExamplePrompt : undefined}
+              showGuideBot={isGuideSession}
             />
           )}
 
-          {/* Mobil: Flytande knapp för att visa sidebar (bara när den är dold) */}
-          {isMobile && desktopSidebarCollapsed && (
-            <Button
-              onClick={() => setDesktopSidebarCollapsed(false)}
-              variant="default"
-              size="icon"
-              className="fixed top-4 left-4 z-50 h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-110 transition-all"
-              aria-label="Visa sidebar"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
+          {/* Document Manager - Endast för inloggade användare */}
+          {user && !isGuideSession && (
+            <ChatDocumentManager
+              documents={uploadedDocuments}
+              selectedDocumentIds={selectedDocumentIds}
+              onToggleDocument={handleToggleDocument}
+              onUpload={handleUploadDocument}
+              onDelete={handleDeleteDocument}
+              isLoading={isLoadingDocuments}
+              isUploading={isUploadingDocument}
+            />
           )}
 
-          {/* Main Chat Area */}
-          <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
-            {/* Innehåll: Meddelanden och Input */}
-            <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
-              {messages.length === 0 && contextData ? (
-                <div className="flex flex-col items-center justify-center h-full p-8 space-y-8 animate-in fade-in zoom-in duration-300 overflow-y-auto">
-                  <div className="text-center space-y-3 max-w-lg">
-                    <div className="flex justify-center mb-4">
-                       <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                         <Sparkles className="w-8 h-8 text-primary" />
-                       </div>
-                    </div>
-                    <h2 className="text-2xl font-semibold text-foreground tracking-tight">
-                      {contextData.title}
-                    </h2>
-                    <p className="text-muted-foreground text-sm leading-relaxed">
-                      {contextData.subtitle}
-                    </p>
-                  </div>
+          {/* Profile Update Confirmations - Endast för inloggade användare */}
+          {user && messages.map((message) => {
+            const profileUpdates = message.context?.profileUpdates;
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-3xl px-4">
-                    {contextData.prompts.map((prompt: string, index: number) => (
-                      <button
-                        key={index}
-                        onClick={() => handleExamplePrompt(prompt)}
-                        className="flex flex-col text-left p-5 rounded-xl border border-ai-border/60 bg-ai-surface hover:bg-ai-surface-muted hover:border-primary/30 transition-all duration-200 group shadow-sm hover:shadow-md"
-                      >
-                        <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors mb-1">
-                          {prompt}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <ChatMessages
-                  messages={messages}
-                  isLoading={isLoading}
-                  isLoadingSession={isLoadingSession}
-                  messagesEndRef={messagesEndRef}
-                  onExamplePrompt={showExamplePrompts ? handleExamplePrompt : undefined}
-                  showGuideBot={isGuideSession}
-                />
-              )}
+            if (!message.context?.requiresConfirmation || !profileUpdates) {
+              return null;
+            }
 
-              {user && !isGuideSession && (
-                <ChatDocumentManager
-                  documents={uploadedDocuments}
-                  selectedDocumentIds={selectedDocumentIds}
-                  onToggleDocument={handleToggleDocument}
-                  onUpload={handleUploadDocument}
-                  onDelete={handleDeleteDocument}
-                  isLoading={isLoadingDocuments}
-                  isUploading={isUploadingDocument}
-                />
-              )}
-
-              {messages.map((message) => {
-                const profileUpdates = message.context?.profileUpdates;
-
-                if (!message.context?.requiresConfirmation || !profileUpdates) {
-                  return null;
-                }
-
-                return (
-                  <ProfileUpdateConfirmation
-                    key={`${message.id}_confirmation`}
-                    profileUpdates={profileUpdates}
-                    summary={typeof message.context?.detectedSummary === 'string' ? message.context?.detectedSummary : undefined}
-                    onConfirm={() => updateUserProfile(profileUpdates, message.id)}
-                    onReject={() => dismissProfileUpdatePrompt(message.id)}
-                  />
-                );
-              })}
-            </div>
-
-            {user && !isGuideSession && (
-              <ChatInput
-                input={input}
-                setInput={setInput}
-                onSubmit={handleSubmit}
-                isLoading={isLoading}
-                quotaExceeded={quotaExceeded}
-                inputRef={inputRef}
-                attachedDocuments={attachedDocuments.map((doc) => ({
-                  id: doc.id,
-                  name: doc.name,
-                  status: doc.status,
-                }))}
-                onRemoveDocument={handleRemoveDocument}
-                isAttachDisabled={isUploadingDocument || quotaExceeded}
-                isDocumentLimitReached={hasReachedDocumentLimit}
-                onDocumentLimitClick={handleDocumentLimitClick}
+            return (
+              <ProfileUpdateConfirmation
+                key={`${message.id}_confirmation`}
+                profileUpdates={profileUpdates}
+                summary={typeof message.context?.detectedSummary === 'string' ? message.context?.detectedSummary : undefined}
+                onConfirm={() => updateUserProfile(profileUpdates, message.id)}
+                onReject={() => dismissProfileUpdatePrompt(message.id)}
               />
-            )}
-          </div>
-        </>
-      ) : (
-        <div className="flex w-full min-h-0 flex-col overflow-hidden bg-ai-surface">
-          <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden">
-            <div className="absolute inset-0 flex">
-              {!isMobile && (
-                <div className="hidden w-[260px] flex-col border-r border-ai-border/60 bg-ai-surface-muted/60 px-4 py-6 md:flex">
-                  <h3 className="text-sm font-semibold text-foreground">Senaste konversationer</h3>
-                  <div className="mt-4 space-y-3 text-[15px] text-ai-text-muted">
-                    <div className="rounded-ai-sm border border-ai-border/50 bg-ai-surface px-3 py-2">
-                      <p className="font-medium text-foreground">Portföljanalys</p>
-                      <p className="text-xs text-ai-text-muted">Idag</p>
-                    </div>
-                    <div className="rounded-ai-sm border border-ai-border/50 bg-ai-surface px-3 py-2">
-                      <p className="font-medium text-foreground">Tesla uppföljning</p>
-                      <p className="text-xs text-ai-text-muted">Igår</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div className="flex flex-1 flex-col overflow-y-auto bg-ai-surface px-4 py-8 sm:px-10 lg:px-14">
-                <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center space-y-6 py-6 sm:py-8">
-                  <div className="flex flex-col gap-4">
-                    <div className="flex justify-center">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-ai-surface-muted/70 text-ai-text-muted">
-                        <Sparkles className="h-5 w-5" />
-                      </div>
-                    </div>
-                    <div className="space-y-2 text-center">
-                      <h2 className="text-xl font-semibold text-foreground">Utforska Market Minds AI-assistent</h2>
-                      <p className="text-sm text-ai-text-muted">
-                        Se hur dialogen fungerar innan du loggar in. Dina riktiga portföljinsikter låses upp när du autentiserar dig.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-4 text-[15px]">
-                    <div className="flex justify-start">
-                      <div className="max-w-[80%] rounded-ai-md border border-ai-border/50 bg-ai-bubble px-4 py-3 text-ai-text-muted">
-                        Hej! Jag är din AI-assistent och kan analysera portföljer, marknadsläge och ge nästa steg.
-                      </div>
-                    </div>
-                    <div className="flex justify-end">
-                      <div className="max-w-[80%] rounded-ai-md border border-ai-border/60 bg-ai-bubble-user px-4 py-3 text-foreground">
-                        Kan du sammanfatta min portfölj och vad jag borde fokusera på?
-                      </div>
-                    </div>
-                    <div className="flex justify-start">
-                      <div className="max-w-[80%] rounded-ai-md border border-ai-border/50 bg-ai-bubble px-4 py-3 text-ai-text-muted">
-                        Självklart. Logga in så kan jag använda din profil och ge rekommendationer som passar din risknivå.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center bg-ai-surface/85 px-4 py-6 backdrop-blur-sm">
-              <div className="w-full max-w-md rounded-ai-md border border-ai-border/60 bg-ai-surface px-6 py-8 text-center shadow-xl">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-ai-surface-muted/70 text-ai-text-muted">
-                  <Lock className="h-6 w-6" />
-                </div>
-                <h3 className="mt-4 text-lg font-semibold text-foreground">Logga in för att fortsätta</h3>
-                <p className="mt-2 text-sm text-ai-text-muted">
-                  Skapa en gratis profil för att låsa upp personliga analyser, riskinsikter och nästa steg för din portfölj.
-                </p>
-                <div className="mt-6 space-y-3 text-left text-[14px] text-ai-text-muted">
-                  <div className="flex items-center gap-3">
-                    <Brain className="h-4 w-4 text-foreground" />
-                    <span>Rådgivning baserat på din riskprofil</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <MessageSquare className="h-4 w-4 text-foreground" />
-                    <span>Sparade konversationer och rekommendationer</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Sparkles className="h-4 w-4 text-foreground" />
-                    <span>Dagliga insikter om marknadsläget</span>
-                  </div>
-                </div>
-                <Button
-                  onClick={() => (window.location.href = '/auth')}
-                  className="mt-8 w-full rounded-ai-sm bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
-                >
-                  <LogIn className="mr-2 h-4 w-4" />
+            );
+          })}
+        </div>
+
+        {/* Input Area - Tillgänglig för alla (gäster och inloggade) */}
+        {!isGuideSession && (
+          showPaywall ? (
+            // === THE HOOK / PAYWALL UI ===
+            <div className="bg-gradient-to-r from-slate-900 to-slate-800 border border-slate-700 rounded-xl p-6 text-center shadow-2xl animate-in fade-in slide-in-from-bottom-4">
+              <h3 className="text-xl font-bold text-white mb-2">Gillade du analysen? 🚀</h3>
+              <p className="text-slate-300 mb-6 text-sm">
+                Du har använt dina testfrågor. Skapa ett gratis konto för att fortsätta chatta obegränsat och låta AI:n analysera din riktiga portfölj.
+              </p>
+              <div className="flex gap-4 justify-center">
+                <Button onClick={() => window.location.href = '/auth?mode=signup'} className="bg-primary text-white">
+                  Skapa gratis konto
+                </Button>
+                <Button variant="outline" onClick={() => window.location.href = '/auth?mode=login'}>
                   Logga in
                 </Button>
-                <p className="mt-3 text-xs text-ai-text-muted">Det är kostnadsfritt att komma igång</p>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          ) : (
+            // === VANLIG INPUT ===
+            <ChatInput
+              input={input}
+              setInput={setInput}
+              onSubmit={handleSubmit}
+              isLoading={isLoading}
+              quotaExceeded={quotaExceeded}
+              inputRef={inputRef}
+              attachedDocuments={attachedDocuments.map((doc) => ({
+                id: doc.id,
+                name: doc.name,
+                status: doc.status,
+              }))}
+              onRemoveDocument={handleRemoveDocument}
+              isAttachDisabled={isUploadingDocument || quotaExceeded}
+              isDocumentLimitReached={hasReachedDocumentLimit}
+              onDocumentLimitClick={handleDocumentLimitClick}
+              placeholder={!user ? `Gästläge (${MAX_FREE_QUESTIONS - guestCount} frågor kvar)...` : undefined}
+            />
+          )
+        )}
+      </div>
     </div>
   );
 };

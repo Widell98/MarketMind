@@ -149,7 +149,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ onToggleToChatHistory, renderDi
   if (renderDirectly) {
     return (
       <div className="flex h-full w-full flex-col bg-gradient-to-b from-background via-background to-muted/20 overflow-auto">
-        <div className="flex min-h-0 flex-1 flex-col gap-2 px-2 py-3 sm:px-3 sm:py-4 md:px-4 md:py-6 space-y-3 sm:space-y-4 md:space-y-6">
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden px-2 py-3 sm:px-3 sm:py-4 md:px-4 md:py-6 space-y-3 sm:space-y-4 md:space-y-6">
           {navigationContent}
         </div>
       </div>

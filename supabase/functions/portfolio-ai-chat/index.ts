@@ -2150,9 +2150,13 @@ serve(async (req) => {
     const mentionsRisk = (value?: string): boolean => typeof value === 'string' && riskKeywordPattern.test(value);
     const userExplicitRiskFocus = mentionsRisk(message) || recentUserMessages.some(mentionsRisk);
 
-    if (!message || !userId) {
-      console.error('Missing required fields:', { message: !!message, userId: !!userId });
-      throw new Error('Message and userId are required');
+    // Identify if it's a guest (no userId)
+    const isGuest = !userId;
+    console.log(`Request received. Guest mode: ${isGuest}`);
+
+    if (!message) {
+      console.error('Missing required field: message');
+      throw new Error('Message is required');
     }
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -2175,16 +2179,51 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     const invokeHeaders = authHeader ? { Authorization: authHeader } : {};
 
-    // Fetch all independent data in parallel for better performance
-    const [userContext, sheetTickerResult] = await Promise.all([
-      fetchUserContext(supabase, userId),
-      supabase.functions.invoke('list-sheet-tickers', {
-        headers: invokeHeaders,
-      }).catch((error) => {
-        console.error('Failed to fetch Google Sheets tickers:', error);
-        return { data: null, error };
-      }),
-    ]);
+    // Initialize user context variables
+    let userContext: { aiMemory: Record<string, unknown> | null; riskProfile: Record<string, unknown> | null; portfolio: Record<string, unknown> | null; holdings: any[]; subscriber: { subscribed: boolean } | null };
+    
+    // Fetch sheet tickers for all users (guests and logged in) - start this early
+    const sheetTickerResultPromise = supabase.functions.invoke('list-sheet-tickers', {
+      headers: invokeHeaders,
+    }).catch((error) => {
+      console.error('Failed to fetch Google Sheets tickers:', error);
+      return { data: null, error };
+    });
+    
+    // Fetch user data ONLY if user is logged in
+    if (!isGuest && userId) {
+      try {
+        // Fetch user context and sheet tickers in parallel
+        const [fetchedUserContext, fetchedSheetTickerResult] = await Promise.all([
+          fetchUserContext(supabase, userId),
+          sheetTickerResultPromise,
+        ]);
+        userContext = fetchedUserContext;
+        // sheetTickerResult will be assigned below
+      } catch (error) {
+        console.error("Error fetching user data", error);
+        // Fallback to empty user context on error
+        userContext = {
+          aiMemory: null,
+          riskProfile: null,
+          portfolio: null,
+          holdings: [],
+          subscriber: null,
+        };
+      }
+    } else {
+      // Guest mode: set all user context to null/empty
+      userContext = {
+        aiMemory: null,
+        riskProfile: null,
+        portfolio: null,
+        holdings: [],
+        subscriber: null,
+      };
+    }
+    
+    // Await sheet ticker result (already started above)
+    const sheetTickerResult = await sheetTickerResultPromise;
 
     const aiMemory = userContext.aiMemory;
     const riskProfile = userContext.riskProfile;
@@ -3234,6 +3273,14 @@ const personalIntentTypes = new Set<IntentType>(['portfolio_optimization', 'buy_
     }
 
 // Alternativ A: Perplexity (Billigare & Snabbare)
+let tavilyContext: TavilyContextPayload = { 
+  formattedContext: '', 
+  sources: [] 
+};
+
+// Flagga för att avgöra om vi ska köra Tavily (default: ja, om vi inte har Perplexity eller om den fallerar)
+let performTavilySearch = true;
+
       if (PERPLEXITY_API_KEY) {
         console.log('Använder Perplexity (Sonar) som sökverktyg...');
         try {
@@ -3419,16 +3466,17 @@ FORMAT:
           console.log('Tavily-sökning misslyckades eller tog för lång tid.');
         }
       }
-    }
+    
     // AI Memory update function
     const updateAIMemory = async (
       supabase: any,
-      userId: string,
+      userId: string | null, // Allow null userId
       userMessage: string,
       aiResponse: string,
       existingMemory: any,
       detectedIntent: IntentType,
     ) => {
+      if (!userId) return; // Skip if guest
       try {
         const normalizedMessage = userMessage.toLowerCase();
         const interests: string[] = [];
@@ -3610,7 +3658,7 @@ FORMAT:
     const enforceTickerFormat = isStockMentionRequest
       || ['stock_analysis', 'buy_sell_decisions', 'general_advice', 'portfolio_optimization'].includes(userIntent);
 
-    const basePrompt = buildBasePrompt({
+    let basePrompt = buildBasePrompt({
       shouldOfferFollowUp,
       expertiseLevel: expertiseFromMemory ?? expertiseFromProfile ?? null,
       preferredResponseLength: preferredLength,
@@ -3621,6 +3669,11 @@ FORMAT:
         enforceTickerFormat,
         intent: userIntent,
       });
+
+    // Add guest mode instructions if user is not logged in
+    if (isGuest) {
+      basePrompt += `\n\nVIKTIGT (GUEST MODE - DEMO):\n- Du pratar med en oinloggad besökare.\n- Du har INTE tillgång till någon portföljdata (även om de frågar).\n- Svara på marknadsfrågor generellt och professionellt.\n- Om användaren frågar "hur påverkar det mig?" eller om råd, svara kortfattat på marknadsläget men avsluta med att de behöver skapa ett konto för personlig analys.`;
+    }
 
     const headingDirective = buildHeadingDirectives({ intent: userIntent });
     const intentPrompt = buildIntentPrompt({
@@ -4782,26 +4835,28 @@ ${importantLines.join('\n')}
         }
       }
 
-      // Update AI memory and optionally save to chat history
-      await updateAIMemory(supabase, userId, message, aiMessage, aiMemory, userIntent);
-      if (sessionId && aiMessage) {
-        await supabase
-          .from('portfolio_chat_history')
-          .insert({
-            user_id: userId,
-            chat_session_id: sessionId,
-            message: aiMessage,
-            message_type: 'assistant',
-            context_data: {
-              analysisType,
-              model,
-              requestId,
-              hasMarketData,
-              profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
-              requiresConfirmation: profileChangeDetection.requiresConfirmation,
-              confidence: 0.8
-            }
-          });
+      // Update AI memory and optionally save to chat history (only for logged in users)
+      if (userId) {
+        await updateAIMemory(supabase, userId, message, aiMessage, aiMemory, userIntent);
+        if (sessionId && aiMessage) {
+          await supabase
+            .from('portfolio_chat_history')
+            .insert({
+              user_id: userId,
+              chat_session_id: sessionId,
+              message: aiMessage,
+              message_type: 'assistant',
+              context_data: {
+                analysisType,
+                model,
+                requestId,
+                hasMarketData,
+                profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+                requiresConfirmation: profileChangeDetection.requiresConfirmation,
+                confidence: 0.8
+              }
+            });
+        }
       }
 
       console.log('TELEMETRY COMPLETE:', { ...telemetryData, responseLength: aiMessage.length, completed: true });
@@ -5000,11 +5055,13 @@ ${importantLines.join('\n')}
                     }
                   }
                   
-                  // Update AI memory
-                  await updateAIMemory(supabase, userId, message, aiMessage, aiMemory, userIntent);
+                  // Update AI memory (only for logged in users)
+                  if (userId) {
+                    await updateAIMemory(supabase, userId, message, aiMessage, aiMemory, userIntent);
+                  }
                   
-                  // Save complete message to database
-                  if (sessionId && aiMessage) {
+                  // Save complete message to database (only for logged in users)
+                  if (userId && sessionId && aiMessage) {
                     await supabase
                       .from('portfolio_chat_history')
                       .insert({
