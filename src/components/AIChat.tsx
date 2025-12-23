@@ -519,6 +519,8 @@ const AIChat = ({
               messagesEndRef={messagesEndRef}
               onExamplePrompt={showExamplePrompts ? handleExamplePrompt : undefined}
               showGuideBot={isGuideSession}
+              onToggleSidebar={user ? () => setDesktopSidebarCollapsed(!desktopSidebarCollapsed) : undefined}
+              isSidebarCollapsed={user ? desktopSidebarCollapsed : false}
             />
           )}
 

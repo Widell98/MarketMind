@@ -3281,7 +3281,37 @@ let tavilyContext: TavilyContextPayload = {
 // Flagga för att avgöra om vi ska köra Tavily (default: ja, om vi inte har Perplexity eller om den fallerar)
 let performTavilySearch = true;
 
-      if (PERPLEXITY_API_KEY) {
+      // Kontrollera om det är en enkel pris-fråga som kan besvaras med Google Sheets data
+      const isSimplePriceQuery = (): boolean => {
+        // Måste ha detekterade tickers
+        if (detectedTickers.length === 0) return false;
+        
+        // Måste ha prisdata i Google Sheets för minst en ticker
+        const hasPriceInSheets = detectedTickers.some(ticker => {
+          // Normalisera ticker på samma sätt som i resten av koden
+          const normalizedTicker = ticker.toUpperCase().replace(/[^A-Za-z0-9]/g, '');
+          return sheetTickerPriceMap.has(normalizedTicker);
+        });
+        if (!hasPriceInSheets) return false;
+        
+        // Frågan måste handla om pris, inte analys
+        const lowerMessage = message.toLowerCase();
+        const isPriceQuestion = /(?:vad\s+står|hur\s+mycket\s+kostar|pris\s+på|priset\s+på|vad\s+kostar|hur\s+går\s+.*\s+idag|hur\s+har\s+.*\s+gått\s+idag|dagens\s+pris|aktuellt\s+pris)/i.test(lowerMessage);
+        const isAnalysisQuestion = /(?:analysera|analys|vad\s+tycker\s+du|berätta\s+om|utvärdera|bedöm|värdera|opinion|kursmål|värdering|fundamental|teknisk|information\s+om|företagsinfo|vad\s+har\s+.*\s+för)/i.test(lowerMessage);
+        
+        // Det är en enkel pris-fråga om det handlar om pris OCH inte om analys
+        return isPriceQuestion && !isAnalysisQuestion;
+      };
+
+      const isSimplePriceQueryResult = isSimplePriceQuery();
+      
+      // Avgör om sökning faktiskt behövs baserat på AI:ns beslut
+      // Exkludera enkla pris-frågor som kan besvaras med Google Sheets data
+      const shouldPerformSearch = (hasRealTimeTrigger || llmTavilyPlan.shouldSearch) && !isSimplePriceQueryResult;
+
+      // Alternativ A: Perplexity (Billigare & Snabbare)
+      // Vi söker BARA om nyckeln finns OCH om sökning bedömts nödvändig
+      if (PERPLEXITY_API_KEY && shouldPerformSearch) {
         console.log('Använder Perplexity (Sonar) som sökverktyg...');
         try {
           // 1. Skapa dagens datum som referenspunkt
@@ -3347,17 +3377,28 @@ FORMAT:
               formattedContext: `Sammanfattning från realtidssökning (via Perplexity, ${currentDate}):\n${content}`,
               sources: citations
             };
+            performTavilySearch = false; // Perplexity lyckades, hoppa över Tavily
             console.log(`Perplexity-sökning klar. Hittade ${citations.length} källor.`);
           } else {
             console.warn('Perplexity-sökning misslyckades:', await searchResponse.text());
+            // Perplexity misslyckades, låt Tavily köra som fallback
           }
         } catch (error) {
           console.error('Fel vid Perplexity-sökning:', error);
+          // Perplexity kraschade, låt Tavily köra som fallback
         }
+      } else if (PERPLEXITY_API_KEY && !shouldPerformSearch) {
+        // Perplexity-nyckel finns men sökning behövs inte - hoppa över både Perplexity och Tavily
+        if (isSimplePriceQueryResult) {
+          console.log('Enkel pris-fråga med data i Google Sheets - hoppar över Perplexity och Tavily.');
+        } else {
+          console.log('Sökning bedömdes inte nödvändig - hoppar över Perplexity och Tavily.');
+        }
+        performTavilySearch = false;
       }
       
-      // Alternativ B: Tavily (Körs om ingen Perplexity-nyckel finns)
-      else {
+      // Alternativ B: Tavily (Körs om Perplexity saknas/misslyckades OCH sökning behövs)
+      if (performTavilySearch && shouldPerformSearch) {
         // --- DIN GAMLA TAVILY-KOD (Flyttad hit) ---
         const logMessage = llmTavilyPlan.reason
           ? `LLM begärde Tavily-sökning: ${llmTavilyPlan.reason}`
