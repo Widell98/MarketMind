@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
@@ -13,11 +13,13 @@ import ThemeToggle from './ThemeToggle';
 import { ConversationMemoryProvider } from './AIConversationMemory';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Brain } from 'lucide-react';
+import AuthDialog from './AuthDialog';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const location = useLocation();
+  const navigate = useNavigate();
   const isChatRoute = location.pathname.startsWith('/ai-chat') || location.pathname.startsWith('/ai-chatt');
 
   // Vi vill inte ha h-screen på rooten om headern ska vara med, för då trycks innehållet ut.
@@ -56,7 +58,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               <div className="container-responsive py-2 sm:py-3 lg:py-4 flex justify-between items-center">
                 <div className="flex items-center space-x-2 sm:space-x-4 md:space-x-6 min-w-0">
                   {/* Sidebar trigger for desktop */}
-                  <SidebarTrigger className="hidden md:flex flex-shrink-0" />
+                  <SidebarTrigger className="flex flex-shrink-0" />
                   
                   {/* Mobile navigation trigger */}
                   <MobileNavigation />
@@ -80,12 +82,15 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                       variant="outline" 
                       size="sm"
                       className="px-2 sm:px-4 lg:px-6 py-1.5 sm:py-2 text-xs sm:text-sm lg:text-base font-medium border-primary text-primary hover:bg-primary hover:text-primary-foreground flex-shrink-0"
-                      asChild
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const searchParams = new URLSearchParams(location.search);
+                        searchParams.set('auth', 'login');
+                        navigate(`${location.pathname}?${searchParams.toString()}`, { replace: true });
+                      }}
                     >
-                      <Link to="/auth">
-                        <span className="hidden sm:inline">{t('nav.login')}</span>
-                        <span className="sm:hidden">{t('nav.login')}</span>
-                      </Link>
+                      <span className="hidden sm:inline">{t('nav.login')}</span>
+                      <span className="sm:hidden">{t('nav.login')}</span>
                     </Button>
                   )}
                 </div>
@@ -132,6 +137,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {/* AI Floating Widget - available on all pages */}
           {/* <AIFloatingWidget /> */}
         </div>
+        
+        {/* Auth Dialog */}
+        <AuthDialog />
       </SidebarProvider>
     </ConversationMemoryProvider>
   );

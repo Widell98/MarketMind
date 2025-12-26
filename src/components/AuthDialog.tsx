@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,13 +31,18 @@ const signupSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 type SignupFormValues = z.infer<typeof signupSchema>;
 
-const Auth = () => {
-  const [activeTab, setActiveTab] = useState<string>('login');
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const { user, loading, signIn, signUp, resetPassword } = useAuth();
+const AuthDialog = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const location = useLocation();
+  const { user, loading, signIn, signUp, resetPassword } = useAuth();
   const { toast } = useToast();
+  
+  const authParam = searchParams.get('auth');
+  const isOpen = authParam === 'login' || authParam === 'signup';
+  const initialTab = authParam === 'signup' ? 'signup' : 'login';
+  
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -57,31 +62,38 @@ const Auth = () => {
     },
   });
 
+  // Uppdatera activeTab när dialog öppnas
   useEffect(() => {
-    // If user is already logged in, redirect to home
-    if (user && !loading) {
-      navigate('/');
+    if (isOpen) {
+      setActiveTab(initialTab);
     }
-  }, [user, loading, navigate]);
+  }, [isOpen, initialTab]);
 
-  // Lyssna efter lösenordsåterställning och visa notis
+  // Stäng dialog om användaren loggar in
   useEffect(() => {
-    if (location.state?.passwordReset) {
-      toast({
-        title: "Lösenord uppdaterat",
-        description: "Ditt lösenord har ändrats. Vänligen logga in med ditt nya lösenord.",
-        variant: "default",
-      });
-      
-      // Rensa state så notisen inte visas igen om man laddar om sidan
-      window.history.replaceState({}, document.title);
+    if (user && !loading && isOpen) {
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete('auth');
+      setSearchParams(newSearchParams, { replace: true });
+      setShowForgotPassword(false);
+      loginForm.reset();
+      signupForm.reset();
     }
-  }, [location, toast]);
+  }, [user, loading, isOpen, searchParams, setSearchParams]);
+
+  const handleClose = () => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.delete('auth');
+    setSearchParams(newSearchParams, { replace: true });
+    setShowForgotPassword(false);
+    loginForm.reset();
+    signupForm.reset();
+  };
 
   const onLoginSubmit = async (data: LoginFormValues) => {
     try {
       await signIn(data.email, data.password);
-      // Navigation will happen automatically via the useEffect above
+      // Dialog stängs automatiskt via useEffect ovan
     } catch (error) {
       console.error("Login error:", error);
     }
@@ -94,6 +106,11 @@ const Auth = () => {
         displayName: data.username // Använd samma värde för både username och displayName
       });
       setActiveTab('login');
+      toast({
+        title: "Konto skapat",
+        description: "Du kan nu logga in med dina uppgifter.",
+        variant: "default",
+      });
     } catch (error) {
       console.error("Signup error:", error);
     }
@@ -103,43 +120,41 @@ const Auth = () => {
     try {
       await resetPassword(email);
       setShowForgotPassword(false);
+      toast({
+        title: "E-post skickad",
+        description: "Kontrollera din e-post för instruktioner.",
+        variant: "default",
+      });
     } catch (error) {
       console.error("Password reset error:", error);
     }
   };
 
-  if (loading && user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md shadow-sm border">
-        <CardHeader className="text-center space-y-4">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent className="sm:max-w-sm max-h-[90vh] overflow-y-auto p-5">
+        <DialogHeader className="text-center space-y-3 pb-2">
           <div className="flex justify-center">
-            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-              <Brain className="w-6 h-6 text-primary-foreground" />
+            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+              <Brain className="w-5 h-5 text-primary-foreground" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-semibold text-foreground">
+          <DialogTitle className="text-xl font-semibold text-foreground">
             Market Mind
-          </CardTitle>
-          <CardDescription className="text-sm text-muted-foreground">
+          </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground">
             {activeTab === 'login' 
               ? 'Logga in för att få tillgång till dina personliga marknadsinsikter'
               : 'Skapa ditt konto för att börja'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="mt-2">
           {showForgotPassword ? (
             <div className="space-y-4">
               <div className="text-center">
-                <h3 className="text-lg font-semibold">Återställ lösenord</h3>
-                <p className="text-sm text-muted-foreground mt-2">
+                <h3 className="text-base font-semibold">Återställ lösenord</h3>
+                <p className="text-xs text-muted-foreground mt-1">
                   Ange din e-post för att få instruktioner för återställning
                 </p>
               </div>
@@ -178,14 +193,14 @@ const Auth = () => {
             </div>
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="login">Logga in</TabsTrigger>
-                <TabsTrigger value="signup">Skapa konto</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 mb-4 h-9">
+                <TabsTrigger value="login" className="text-sm">Logga in</TabsTrigger>
+                <TabsTrigger value="signup" className="text-sm">Skapa konto</TabsTrigger>
               </TabsList>
 
               <TabsContent value="login">
                 <Form {...loginForm}>
-                  <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+                  <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-3">
                     <FormField
                       control={loginForm.control}
                       name="email"
@@ -247,7 +262,7 @@ const Auth = () => {
 
               <TabsContent value="signup">
                 <Form {...signupForm}>
-                  <form onSubmit={signupForm.handleSubmit(onSignupSubmit)} className="space-y-4">
+                  <form onSubmit={signupForm.handleSubmit(onSignupSubmit)} className="space-y-3">
                     <FormField
                       control={signupForm.control}
                       name="email"
@@ -337,24 +352,31 @@ const Auth = () => {
               </TabsContent>
             </Tabs>
           )}
-        </CardContent>
-        <CardFooter className="text-center text-sm text-muted-foreground flex flex-col gap-1 pt-6 border-t">
-          <Link 
-            to="/terms" 
-            className="hover:text-primary transition-colors"
-          >
-            Användarvillkor
-          </Link>
-          <Link 
-            to="/privacy" 
-            className="hover:text-primary transition-colors"
-          >
-            Integritetspolicy
-          </Link>
-        </CardFooter>
-      </Card>
-    </div>
+        </div>
+        
+        <DialogFooter className="text-center text-xs text-muted-foreground flex flex-col gap-1 pt-3 mt-2 border-t sm:justify-center">
+          <div className="flex items-center justify-center gap-2">
+            <Link 
+              to="/terms" 
+              className="hover:text-primary transition-colors"
+              onClick={handleClose}
+            >
+              Användarvillkor
+            </Link>
+            <span>•</span>
+            <Link 
+              to="/privacy" 
+              className="hover:text-primary transition-colors"
+              onClick={handleClose}
+            >
+              Integritetspolicy
+            </Link>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
-export default Auth;
+export default AuthDialog;
+

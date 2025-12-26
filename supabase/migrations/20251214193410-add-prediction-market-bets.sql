@@ -49,3 +49,4 @@ CREATE INDEX IF NOT EXISTS idx_user_prediction_bets_created_at ON public.user_pr
 
 
 
+

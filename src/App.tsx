@@ -90,8 +90,8 @@ function App() {
                     <Route path="/analysis/:id" element={<AnalysisDetail />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/profile/:userId" element={<UserProfile />} />
-                    <Route path="/auth" element={<Auth />} />
-                    <Route path="/login" element={<Auth />} />
+                    <Route path="/auth" element={<Navigate to="/?auth=login" replace />} />
+                    <Route path="/login" element={<Navigate to="/?auth=login" replace />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/auth/reset-password" element={<ResetPassword />} />
                     <Route path="/portfolio-implementation" element={<PortfolioImplementation />} />
