@@ -97,7 +97,7 @@ interface StockCaseCardProps {
   showActions?: boolean; // Ny prop för att dölja footer-knappar
 }
 
-const StockCaseCard: React.FC<StockCaseCardProps> = ({
+const StockCaseCardComponent: React.FC<StockCaseCardProps> = ({
   stockCase,
   onViewDetails,
   onDelete,
@@ -369,4 +369,6 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
       </CardContent>
     </Card>;
 };
+
+const StockCaseCard = React.memo(StockCaseCardComponent);
 export default StockCaseCard;

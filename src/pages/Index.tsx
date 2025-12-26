@@ -51,6 +51,7 @@ import HoldingsHighlightCard from '@/components/HoldingsHighlightCard';
 import AllocationCard from '@/components/AllocationCard';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import ReportDetailDialogContent from '@/components/ReportDetailDialogContent';
+import { logger } from '@/utils/logger';
 
 // Definiera gränssnittet för QuickAction här
 interface QuickAction {
@@ -237,7 +238,7 @@ const Index = () => {
           value: Math.round(changeValue * 100) / 100,
         });
       } catch (error) {
-        console.error('Error calculating today development:', error);
+        logger.error('Error calculating today development:', error);
         setTodayDevelopment({
           percent: 0,
           value: 0,

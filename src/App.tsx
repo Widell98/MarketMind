@@ -1,9 +1,8 @@
-import { useEffect } from "react"; // VIKTIG: Saknades
+import { useEffect, Suspense, lazy } from "react"; // VIKTIG: Saknades
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom"; // VIKTIG: useNavigate saknades
 import { supabase } from "@/integrations/supabase/client"; // VIKTIG: Måste finnas med
+import { logger } from "@/utils/logger";
 
-import PredictionMarketsDemo from "./pages/PredictionMarketsDemo";
-import PredictionMarketDetail from "./pages/PredictionMarketDetail";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,29 +15,33 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { DailyChangeDataProvider } from "@/contexts/DailyChangeDataContext";
 import { ExchangeRatesProvider } from "@/contexts/ExchangeRatesContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import Index from "./pages/Index";
-import StockCases from "./pages/StockCases";
-import StockCaseDetail from "./pages/StockCaseDetail";
-import AnalysisDetail from "./pages/AnalysisDetail";
-import Profile from "./pages/Profile";
-import UserProfile from "./pages/UserProfile";
-import Auth from "./pages/Auth";
-import ResetPassword from "./pages/ResetPassword";
-import PortfolioImplementation from "./pages/PortfolioImplementation";
-import PortfolioAdvisor from "./pages/PortfolioAdvisor";
-import AdminPredictionMarkets from "./pages/AdminPredictionMarkets";
-import AIChat from "./pages/AIChat";
-import Learning from "./pages/Learning";
-import SocialIndex from "./pages/SocialIndex";
-import AdminStockCases from "./pages/AdminStockCases";
-import AdvancedFeatures from "./pages/AdvancedFeatures";
-import Discover from "./pages/Discover";
-import DiscoverNews from "./pages/DiscoverNews";
-import MarketAnalyses from "./pages/MarketAnalyses";
-import Watchlist from "./pages/Watchlist";
-import NotFound from "./pages/NotFound";
-import Terms from "./pages/Terms";
-import Privacy from "./pages/Privacy";
+
+// Lazy load heavy routes for code splitting
+const Index = lazy(() => import("./pages/Index"));
+const StockCases = lazy(() => import("./pages/StockCases"));
+const StockCaseDetail = lazy(() => import("./pages/StockCaseDetail"));
+const AnalysisDetail = lazy(() => import("./pages/AnalysisDetail"));
+const Profile = lazy(() => import("./pages/Profile"));
+const UserProfile = lazy(() => import("./pages/UserProfile"));
+const Auth = lazy(() => import("./pages/Auth"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const PortfolioImplementation = lazy(() => import("./pages/PortfolioImplementation"));
+const PortfolioAdvisor = lazy(() => import("./pages/PortfolioAdvisor"));
+const AdminPredictionMarkets = lazy(() => import("./pages/AdminPredictionMarkets"));
+const AIChat = lazy(() => import("./pages/AIChat"));
+const Learning = lazy(() => import("./pages/Learning"));
+const SocialIndex = lazy(() => import("./pages/SocialIndex"));
+const AdminStockCases = lazy(() => import("./pages/AdminStockCases"));
+const AdvancedFeatures = lazy(() => import("./pages/AdvancedFeatures"));
+const Discover = lazy(() => import("./pages/Discover"));
+const DiscoverNews = lazy(() => import("./pages/DiscoverNews"));
+const MarketAnalyses = lazy(() => import("./pages/MarketAnalyses"));
+const Watchlist = lazy(() => import("./pages/Watchlist"));
+const PredictionMarketsDemo = lazy(() => import("./pages/PredictionMarketsDemo"));
+const PredictionMarketDetail = lazy(() => import("./pages/PredictionMarketDetail"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
 
 // Här är den korrigerade komponenten
 const AuthEventHandler = () => {
@@ -46,7 +49,7 @@ const AuthEventHandler = () => {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth event:", event); // Bra för felsökning
+      logger.log("Auth event:", event);
       if (event === 'PASSWORD_RECOVERY') {
         // Oavsett var användaren landar, skicka dem till rätt sida
         navigate('/auth/reset-password'); 
@@ -83,6 +86,7 @@ function App() {
                       {/* Lyssnaren placeras här, innan Routes */}
                       <AuthEventHandler />
                       
+                      <Suspense fallback={<div className="flex h-screen w-full items-center justify-center"><div className="flex flex-col items-center gap-4"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /><p className="text-sm text-muted-foreground">Laddar...</p></div></div>}>
                       <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/stock-cases" element={<StockCases />} />
@@ -116,6 +120,7 @@ function App() {
                     <Route path="/watchlist" element={<Watchlist />} />
                       <Route path="*" element={<NotFound />} />
                       </Routes>
+                      </Suspense>
                     </BrowserRouter>
                   </ErrorBoundary>
                 </TooltipProvider>

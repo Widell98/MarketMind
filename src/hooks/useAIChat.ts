@@ -4,6 +4,7 @@ import { useChatSessions } from '@/contexts/ChatSessionsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { FREE_DAILY_AI_MESSAGE_LIMIT, useSubscription } from '@/hooks/useSubscription';
+import { logger } from '@/utils/logger';
 
 const DAILY_MESSAGE_CREDITS = FREE_DAILY_AI_MESSAGE_LIMIT;
 const FREE_DAILY_DOCUMENT_MESSAGE_LIMIT = 1;
@@ -421,7 +422,7 @@ export const useAIChat = (portfolioId?: string) => {
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.error('Error loading messages:', error);
+        logger.error('Error loading messages:', error);
         throw error;
       }
 
@@ -492,7 +493,7 @@ export const useAIChat = (portfolioId?: string) => {
       }
 
     } catch (error) {
-      console.error('Error loading messages:', error);
+      logger.error('Error loading messages:', error);
       toast({
         title: "Fel",
         description: "Kunde inte ladda meddelanden. Försök igen.",
@@ -517,7 +518,7 @@ export const useAIChat = (portfolioId?: string) => {
         return;
       }
     } catch (error) {
-      console.error('Error loading sessions:', error);
+      logger.error('Error loading sessions:', error);
       toast({
         title: "Fel",
         description: "Kunde inte ladda sessioner. Försök igen.",
@@ -580,7 +581,7 @@ export const useAIChat = (portfolioId?: string) => {
         .single();
 
       if (error) {
-        console.error('Error creating session:', error);
+        logger.error('Error creating session:', error);
         throw error;
       }
 
@@ -616,7 +617,7 @@ export const useAIChat = (portfolioId?: string) => {
       });
       
     } catch (error) {
-      console.error('Error creating new session:', error);
+      logger.error('Error creating new session:', error);
       isCreatingSessionRef.current = false;
       toast({
         title: "Fel",
@@ -630,7 +631,7 @@ export const useAIChat = (portfolioId?: string) => {
 
   const deleteSession = useCallback(async (sessionId: string) => {
     if (!user) {
-      console.error('Cannot delete session: no authenticated user');
+      logger.error('Cannot delete session: no authenticated user');
       return;
     }
     
@@ -645,12 +646,12 @@ export const useAIChat = (portfolioId?: string) => {
         .maybeSingle();
 
       if (sessionCheckError) {
-        console.error('Error checking session ownership:', sessionCheckError);
+        logger.error('Error checking session ownership:', sessionCheckError);
         throw new Error(`Kunde inte kontrollera session: ${sessionCheckError.message}`);
       }
 
       if (!sessionCheck) {
-        console.error('Session not found or does not belong to user');
+        logger.error('Session not found or does not belong to user');
         toast({
           title: "Fel",
           description: "Sessionen hittades inte eller tillhör inte dig.",
@@ -668,7 +669,7 @@ export const useAIChat = (portfolioId?: string) => {
         .eq('user_id', user.id);
 
       if (messagesError) {
-        console.error('Error deleting messages:', messagesError);
+        logger.error('Error deleting messages:', messagesError);
         throw new Error(`Kunde inte radera meddelanden: ${messagesError.message}`);
       }
 
@@ -680,7 +681,7 @@ export const useAIChat = (portfolioId?: string) => {
         .eq('user_id', user.id);
 
       if (sessionError) {
-        console.error('Error deleting session:', sessionError);
+        logger.error('Error deleting session:', sessionError);
         throw new Error(`Kunde inte radera session: ${sessionError.message}`);
       }
 
@@ -712,7 +713,7 @@ export const useAIChat = (portfolioId?: string) => {
       });
 
     } catch (error) {
-      console.error('Error deleting session:', error);
+      logger.error('Error deleting session:', error);
       toast({
         title: "Fel",
         description: error instanceof Error ? error.message : "Kunde inte ta bort chatten. Försök igen.",
@@ -771,7 +772,7 @@ export const useAIChat = (portfolioId?: string) => {
         description: "Dina osorterade chattar har tagits bort.",
       });
     } catch (error) {
-      console.error('Error clearing sessions:', error);
+      logger.error('Error clearing sessions:', error);
       toast({
         title: "Fel",
         description: error instanceof Error ? error.message : "Kunde inte rensa chattar. Försök igen.",
@@ -782,7 +783,7 @@ export const useAIChat = (portfolioId?: string) => {
 
   const editSessionName = useCallback(async (sessionId: string, newName: string) => {
     if (!user) {
-      console.error('Cannot edit session name: no authenticated user');
+      logger.error('Cannot edit session name: no authenticated user');
       return;
     }
     
@@ -795,7 +796,7 @@ export const useAIChat = (portfolioId?: string) => {
         .eq('user_id', user.id);
 
       if (error) {
-        console.error('Error updating session name:', error);
+        logger.error('Error updating session name:', error);
         throw error;
       }
 
@@ -813,7 +814,7 @@ export const useAIChat = (portfolioId?: string) => {
       });
 
     } catch (error) {
-      console.error('Error editing session name:', error);
+      logger.error('Error editing session name:', error);
       toast({
         title: "Fel",
         description: "Kunde inte ändra chattnamnet. Försök igen.",
@@ -862,7 +863,7 @@ export const useAIChat = (portfolioId?: string) => {
           .lt('created_at', endOfDay.toISOString());
 
         if (sourceMessageError) {
-          console.error('Failed to verify daily source message limit', sourceMessageError);
+          logger.error('Failed to verify daily source message limit', sourceMessageError);
           toast({
             title: "Kunde inte verifiera källgränsen",
             description: "Försök igen om en liten stund.",
@@ -961,7 +962,7 @@ export const useAIChat = (portfolioId?: string) => {
         .single();
 
       if (error) {
-        console.error('Error creating session:', error);
+        logger.error('Error creating session:', error);
         throw error;
       }
 
@@ -982,7 +983,7 @@ export const useAIChat = (portfolioId?: string) => {
       return sendResult;
 
     } catch (error) {
-      console.error('Error creating new session:', error);
+      logger.error('Error creating new session:', error);
       toast({
         title: "Fel",
         description: "Kunde inte skapa ny session. Försök igen.",
@@ -1278,7 +1279,7 @@ export const useAIChat = (portfolioId?: string) => {
           _usage_type: 'ai_message'
         });
         if (usageError) {
-          console.error('Usage tracking failed:', usageError);
+          logger.error('Usage tracking failed:', usageError);
         } else {
           incrementUsage('ai_message');
         }
@@ -1286,7 +1287,7 @@ export const useAIChat = (portfolioId?: string) => {
       return true;
 
     } catch (error) {
-      console.error('Error sending message:', error);
+      logger.error('Error sending message:', error);
       toast({
         title: "Fel",
         description: "Kunde inte skicka meddelandet. Försök igen.",
@@ -1342,10 +1343,10 @@ export const useAIChat = (portfolioId?: string) => {
         .eq('id', messageId);
 
       if (error) {
-        console.error('Error updating message context:', error);
+        logger.error('Error updating message context:', error);
       }
     } catch (error) {
-      console.error('Error dismissing profile update prompt:', error);
+      logger.error('Error dismissing profile update prompt:', error);
     }
   }, [messages, addOrReplaceEphemeralMessage, removeEphemeralMessage]);
 
@@ -1449,7 +1450,7 @@ export const useAIChat = (portfolioId?: string) => {
           .maybeSingle();
 
         if (insertError) {
-          console.error('Error saving confirmation message:', insertError);
+          logger.error('Error saving confirmation message:', insertError);
         }
 
         if (insertedMessage) {
@@ -1494,7 +1495,7 @@ export const useAIChat = (portfolioId?: string) => {
         ]);
       }
     } catch (error) {
-      console.error('Error updating profile:', error);
+      logger.error('Error updating profile:', error);
       toast({
         title: "Fel",
         description: "Kunde inte uppdatera profilen. Försök igen.",
@@ -1537,12 +1538,12 @@ export const useAIChat = (portfolioId?: string) => {
       });
 
       if (usageError) {
-        console.error('Error incrementing analysis usage:', usageError);
+        logger.error('Error incrementing analysis usage:', usageError);
       } else {
       }
 
     } catch (error) {
-      console.error('Error analyzing portfolio:', error);
+      logger.error('Error analyzing portfolio:', error);
     } finally {
       setIsAnalyzing(false);
     }
