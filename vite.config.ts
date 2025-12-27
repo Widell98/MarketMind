@@ -40,6 +40,11 @@ export default defineConfig(() => ({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/supabase/functions/**', // Exclude supabase functions tests (they use Node.js test)
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -49,6 +54,7 @@ export default defineConfig(() => ({
         '**/*.d.ts',
         '**/*.config.*',
         '**/mockData/**',
+        'supabase/**',
       ],
     },
   },

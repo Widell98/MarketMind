@@ -1,10 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import { env, validateEnv } from '../env';
 
 describe('env config', () => {
   it('should export env object with supabase configuration', () => {
-    // Dynamic import to ensure we get the actual module
-    const { env, validateEnv } = require('../env');
-    
     // Verify structure
     expect(env).toBeDefined();
     expect(env.supabase).toBeDefined();
@@ -18,8 +16,6 @@ describe('env config', () => {
   });
 
   it('should have non-empty supabase URL and key', () => {
-    const { env } = require('../env');
-    
     expect(env.supabase.url).toBeTruthy();
     expect(typeof env.supabase.url).toBe('string');
     expect(env.supabase.url.length).toBeGreaterThan(0);
@@ -30,7 +26,6 @@ describe('env config', () => {
   });
 
   it('should export validateEnv function', () => {
-    const { validateEnv } = require('../env');
     expect(typeof validateEnv).toBe('function');
     
     // Should not throw when called (assuming env vars are set)

@@ -20,7 +20,12 @@ describe('Auth page links', () => {
         <Auth />
       </MemoryRouter>
     );
-    expect(screen.getByRole('link', { name: /terms of service/i })).toHaveAttribute('href', '/terms');
-    expect(screen.getByRole('link', { name: /privacy policy/i })).toHaveAttribute('href', '/privacy');
+    
+    // Find links by href attribute instead of text content
+    const termsLink = screen.getByRole('link', { name: /användarvillkor/i });
+    expect(termsLink).toHaveAttribute('href', '/terms');
+    
+    const privacyLink = screen.getByRole('link', { name: /integritetspolicy/i });
+    expect(privacyLink).toHaveAttribute('href', '/privacy');
   });
 });
